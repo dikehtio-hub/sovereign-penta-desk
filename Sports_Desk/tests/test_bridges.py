@@ -349,5 +349,51 @@ class TestBridgeBSettlement(BridgeTestBase):
         self.assertEqual(open_desk_exposure(db_path=self.db), 0.0)
 
 
+class TestReconcileSpelling(unittest.TestCase):
+    """--reconcile and --check-sync are one switch.
+
+    The desk calls this operation reconciliation; the flag was built as
+    --check-sync. Rather than rename it and break the existing spelling, both
+    land on the same dest. A test guards that, because an argparse alias is
+    silent when it regresses - the second spelling simply becomes an
+    unrecognised argument at the moment somebody needs it.
+    """
+
+    def _parser_dest(self, flag):
+        import argparse
+        from Sports_Desk.interfaces import monarch_shark
+        captured = {}
+        real = argparse.ArgumentParser.parse_args
+
+        def spy(self_, argv=None, namespace=None):
+            captured["ns"] = real(self_, argv, namespace)
+            raise SystemExit(0)
+
+        argparse.ArgumentParser.parse_args = spy
+        try:
+            with self.assertRaises(SystemExit):
+                monarch_shark.main([flag])
+        finally:
+            argparse.ArgumentParser.parse_args = real
+        return captured["ns"]
+
+    def test_both_spellings_set_check_sync(self):
+        for flag in ("--check-sync", "--reconcile"):
+            with self.subTest(flag=flag):
+                self.assertTrue(self._parser_dest(flag).check_sync)
+
+    def test_the_export_targets_the_folder_the_watcher_reads(self):
+        """The drop path is not a free choice.
+
+        Tax_Reserve_Agent/config.yaml sets imports.drop_folder to data/imports
+        and csv_watcher's DEFAULT_IMPORTS_DIR resolves to the same place. An
+        export written anywhere else - data/drop/, say - is a file nothing ever
+        picks up: the bridge would appear to work and silently import nothing.
+        """
+        from Sports_Desk.interfaces.monarch_shark import TAX_DROP_DIR
+        from Tax_Reserve_Agent.ingestors.csv_watcher import DEFAULT_IMPORTS_DIR
+        self.assertEqual(TAX_DROP_DIR.resolve(), DEFAULT_IMPORTS_DIR.resolve())
+
+
 if __name__ == "__main__":
     unittest.main()

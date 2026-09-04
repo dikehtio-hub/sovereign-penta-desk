@@ -540,10 +540,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--arb", action="store_true", help="print arbitrage and exit")
     parser.add_argument("--performance", action="store_true",
                         help="print realised P&L / ROI / calibration and exit")
-    parser.add_argument("--check-sync", action="store_true",
-                        help="list placed bets the tax ledger has not seen")
+    # --reconcile is the same switch under the name the desk actually uses for
+    # it. Both spellings land on args.check_sync.
+    parser.add_argument("--check-sync", "--reconcile", action="store_true",
+                        dest="check_sync",
+                        help="reconcile placed bets against the tax ledger and "
+                             "list any the ledger has not seen")
     parser.add_argument("--export-to-tax-agent", action="store_true",
-                        help="write un-synced bets into the tax agent drop folder")
+                        help="write un-synced bets into the tax agent drop folder "
+                             "(Tax_Reserve_Agent/data/imports - the path config.yaml "
+                             "imports.drop_folder actually watches)")
     args = parser.parse_args(argv)
 
     from Tax_Reserve_Agent.interfaces.monarch_hook import get_hook
