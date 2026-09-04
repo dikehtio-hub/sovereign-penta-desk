@@ -431,12 +431,19 @@ class MarketCollector:
             if novel:
                 logger.warning("perpDexs lists dex(es) unknown to settings - refused until "
                                "classified in CRYPTO_DEXES / TRADFI_DEXES: %s", ", ".join(novel))
-            write_collector_status(COLLECTOR_STATUS_PATH, {
-                "unclassified_dexs": novel,
-                "dexes_listed": sorted(str(n).lower() for n in listed if n),
-                "checked_at": time.time(),
-                "pid": os.getpid(),
-            })
+            # Round 50 closeout (R49-Q2 settled): only the collector that OWNS
+            # maintenance writes the status file. An embedded collector that a
+            # service has joined still warns in its own console but leaves the
+            # file to the service, so two writers never race on it.
+            if self._owns_maintenance():
+                write_collector_status(COLLECTOR_STATUS_PATH, {
+                    "unclassified_dexs": novel,
+                    "dexes_listed": sorted(str(n).lower() for n in listed if n),
+                    "checked_at": time.time(),
+                    "pid": os.getpid(),
+                })
+            else:
+                logger.debug("collector status not written: a service collector owns it")
             return novel
         except Exception as e:                              # noqa: BLE001 - telemetry only
             logger.debug(f"perpDexs drift check skipped: {e}")

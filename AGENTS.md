@@ -209,6 +209,42 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
 
+## Round 50 closeout (session end, 2026-09-04 ~23:05 UTC)
+
+Antigravity's independent audit, re-derived from basis_paper_state.json and
+live spot contexts, not from Claude's summaries:
+- Invariant: equity $100,310.41 - starting $100,000.00 - realised $310.41 =
+  $0.000000. PASS.
+- Every open hedge liquid at the $100k floor: UANSEM $898,154/day (8.98x),
+  UXPL $1,291,837/day (12.92x). PASS.
+
+Settled at closeout (no longer carrying):
+- R44-Q2 polling mkts/io: NO - ~150 weight/min per dex against the 1,200
+  ceiling, and their perps cannot be basis legs.
+- R49-Q1 dashboard stop signal: KeyboardInterrupt vs unhandled exception in
+  dashboard.jsonl is sufficient on Windows.
+- R49-Q2 dual-mode status write: only the collector that OWNS maintenance
+  writes collector_status.json (implemented at closeout: `_check_perp_dexs`
+  checks `_owns_maintenance()`; an embedded collector a service has joined
+  still warns, but leaves the file). Code on disk is newer than the running
+  processes; the changed path is not exercised by a service collector or a
+  read-only dashboard, so no restart was taken. The next restart picks it up.
+- R48(b) sampler 6h refresh: kept as the cold-start fallback (0 weight warm).
+- Macro placeholder labelling: RATIFIED.
+
+Queued for Round 51 / next session:
+- Measure the Titan note's macro block from real sources: Fed-cut and BTC
+  milestone probabilities from Polymarket markets in polymarket_whales.db;
+  equity/crypto bias from latest_snapshots funding and OI momentum.
+- Item 18, lead-lag event correlator (offline research): event drops from
+  Sports_Desk/data/polymarket_drops/ and cross_market/data/ against historical
+  asset_snapshots. The titan-resolution module stays the production component.
+
+Overnight policy: HL_Monarch collector + supervisor run 24/7 (keep-awake held);
+Sports and Cross-Market desks stay static (their watchers are an operator
+session workflow, start_all_ecosystem_sync.bat). Morning checklist: the
+Round 50 handoff, section 5.
+
 ## Round 50 milestone log
 
 THREE NUMBERING SERIES MEET HERE, and the log says which is which:

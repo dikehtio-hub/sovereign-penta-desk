@@ -168,6 +168,7 @@ def test_the_collector_checks_perp_dexs_at_start_up_and_writes_the_status_file(t
     path = tmp_path / "collector_status.json"
     monkeypatch.setattr(mc, "COLLECTOR_STATUS_PATH", path)
     collector = mc.MarketCollector.__new__(mc.MarketCollector)
+    collector.maintenance, collector.yield_to_service, collector._yield_logged = True, False, False
     collector.rest_client = Client([None, {"name": "xyz"}, {"name": "para"}, {"name": "NewDex"}, {}])
     assert collector._check_perp_dexs() == ["newdex"]
     written = json.loads(path.read_text(encoding="utf-8"))
@@ -183,6 +184,18 @@ def test_the_collector_checks_perp_dexs_at_start_up_and_writes_the_status_file(t
     from ui.terminal_dashboard import TerminalDashboard
     monkeypatch.setattr(settings, "COLLECTOR_STATUS_PATH", path)
     assert "NOVEL DEX: newdex" in TerminalDashboard.__new__(TerminalDashboard)._header_status("")
+    # Round 50 closeout (R49-Q2): an embedded collector that a service has joined still checks
+    # and warns, but leaves the file to the service - the file is not touched.
+    embedded = mc.MarketCollector.__new__(mc.MarketCollector)
+    embedded.maintenance, embedded.yield_to_service, embedded._yield_logged = True, True, False
+    embedded.rest_client = Client([None, {"name": "xyz"}, {"name": "otherdex"}])
+    monkeypatch.setattr(mc, "service_collector_alive", lambda *a, **k: True)
+    before = path.read_text(encoding="utf-8")
+    assert embedded._check_perp_dexs() == ["otherdex"]
+    assert path.read_text(encoding="utf-8") == before
+    monkeypatch.setattr(mc, "service_collector_alive", lambda *a, **k: False)     # the service died: it owns again
+    assert embedded._check_perp_dexs() == ["otherdex"]
+    assert json.loads(path.read_text(encoding="utf-8"))["unclassified_dexs"] == ["otherdex"]
 
 
 def test_the_dashboard_logs_its_start_stop_and_crash(tmp_path, monkeypatch):
