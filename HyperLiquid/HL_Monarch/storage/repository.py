@@ -106,6 +106,22 @@ class MarketRepository:
         with self.db.connection as conn:
             conn.executemany(sql, events)
 
+    def insert_orderbook_snapshots(self, snapshots: List[Dict[str, Any]]):
+        """Batch form of insert_orderbook_snapshot - one transaction per sampling pass."""
+        if not snapshots:
+            return
+        sql = """
+        INSERT INTO orderbook_snapshots (
+            timestamp, coin, best_bid, best_ask, spread, spread_bps,
+            bid_depth_1pct, ask_depth_1pct, bid_depth_total, ask_depth_total, imbalance_ratio
+        ) VALUES (
+            :timestamp, :coin, :best_bid, :best_ask, :spread, :spread_bps,
+            :bid_depth_1pct, :ask_depth_1pct, :bid_depth_total, :ask_depth_total, :imbalance_ratio
+        );
+        """
+        with self.db.connection as conn:
+            conn.executemany(sql, snapshots)
+
     def insert_orderbook_snapshot(self, snapshot: Dict[str, Any]):
         """Record order book spread and depth snapshot."""
         sql = """
@@ -357,7 +373,9 @@ class MarketRepository:
         hour_ms = 3600 * 1000
         deleted: Dict[str, int] = {}
 
-        measured_tables = {"asset_snapshots", "liquidation_events"}
+        # Round 35: orderbook_snapshots joins the measured set - the spread at a
+        # window's entry is read from it, so it must not be pruned unmeasured.
+        measured_tables = {"asset_snapshots", "liquidation_events", "orderbook_snapshots"}
         skip_tables: set = set()
         self.last_persistence = None
         if persist_first:

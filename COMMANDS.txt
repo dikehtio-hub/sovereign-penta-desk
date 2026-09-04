@@ -2322,7 +2322,7 @@ esults_drops\.
           cross_market.tests.test_obsidian_exporter
           cross_market.tests.test_polymarket_fetcher
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1012 passed as of Round 34)
+                        (1025 passed as of Round 35)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2358,6 +2358,21 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 35 - SPREAD ALIGNMENT, L2 SPREAD SAMPLING, SUPERVISOR HARDENING
+     SPREAD FILES: each leg carries its OWN signed handicap (Chiefs -3.5, Ravens +3.5).
+         The watcher groups a market by the unsigned number; the stored line is the
+         leg's own. Results files must match: a Ravens result is line +3.5.
+         A home-keyed file (both legs -3.5) still prices but can never hedge a spread.
+     python -m Sports_Desk.ingestors.odds_fetcher --sample --run-watcher --hurdle-from-ledger
+     python -m cross_market.interfaces.obsidian_exporter --once     -> 7 of 7 pairs matched
+     python run_collector_service.py [--allow-sleep]
+         Holds the host awake (idle timer only) while supervising; logs keep_awake.
+         The collector that owns maintenance also samples top-of-book spreads for
+         24 coins every 120s into orderbook_snapshots (REST budget: 24 of the
+         ~60 weight/min left after context polling). Do not raise the cap blindly.
+     cd HyperLiquid\HL_Monarch && python main.py persist --status
+         fees_measured climbs once sampled spreads exist at grid instants.
 
      ROUND 34 - INCREMENTAL PERSISTENCE & DATA INGESTION
      cd HyperLiquid\HL_Monarch && python main.py persist --status

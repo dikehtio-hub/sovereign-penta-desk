@@ -115,16 +115,18 @@ def sample_rows(now: Optional[datetime] = None,
         for book, (h, a) in fx["moneyline"].items():
             add(fx, "moneyline", "", home, book, h)
             add(fx, "moneyline", "", away, book, a)
-        # ONE LINE KEY FOR BOTH LEGS. The watcher groups a market by
-        # (event, sport, market_type, LINE); writing the home leg at -3.5 and the
-        # away leg at +3.5 makes them two different one-leg markets, and the
-        # watcher refuses each because a market missing a leg devigs cleanly and
-        # WRONGLY. Its guard caught exactly that in the first real run. The
-        # handicap is the market's identity; the selection says which side.
-        line = fx["spread"]
+        # EACH LEG CARRIES ITS OWN SIGNED HANDICAP (Round 35, Ruling 5.B): the
+        # home side at -3.5, the away side at +3.5. The watcher identifies the
+        # market by the unsigned number, so both legs still devig together, and
+        # the stored line is what the cross-market matcher and a results file
+        # key on. Round 33 keyed both legs under the home number; that grouped
+        # correctly but left the away side's true handicap unrecorded, so no
+        # spread hedge could ever match.
+        home_line = fx["spread"]
+        away_line = "%+g" % (-float(home_line))
         for book, (h, a) in fx["spread_prices"].items():
-            add(fx, "spread", line, home, book, h)
-            add(fx, "spread", line, away, book, a)
+            add(fx, "spread", home_line, home, book, h)
+            add(fx, "spread", away_line, away, book, a)
         for book, (o, u) in fx["total_prices"].items():
             add(fx, "totals", fx["total"], "Over %s" % fx["total"], book, o)
             add(fx, "totals", fx["total"], "Under %s" % fx["total"], book, u)

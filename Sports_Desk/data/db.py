@@ -317,10 +317,23 @@ def record_fair_value_measurement(
     quoted_at: Optional[str] = None,
     start_time: Optional[str] = None,
     db_path: Path = DEFAULT_DB_PATH,
+    lines: Optional[Sequence[Optional[str]]] = None,
 ) -> List[int]:
-    """Persists a complete market fair-value assessment with provenance."""
+    """
+    Persists a complete market fair-value assessment with provenance.
+
+    `lines`, when given, is the per-selection line: on a spread each leg is
+    stored under ITS OWN signed handicap (Chiefs -3.5, Ravens +3.5), which is what
+    the cross-market matcher and a results file both key on. `line` remains the
+    fallback for any selection without one, and for totals and moneylines.
+    """
     init_market_db(db_path)
     now_ts = timestamp or datetime.now(timezone.utc).isoformat()
+
+    def line_for(idx: int) -> str:
+        if lines is not None and idx < len(lines) and lines[idx] not in (None, ""):
+            return str(lines[idx])
+        return str(line or "")
     raw_quotes_dict = {
         (selections[i] if i < len(selections) else f"Outcome_{i + 1}"): o.offered_odds
         for i, o in enumerate(result.outcomes)
@@ -333,6 +346,7 @@ def record_fair_value_measurement(
         cursor = conn.cursor()
         for idx, outcome in enumerate(result.outcomes):
             sel = selections[idx] if idx < len(selections) else f"Outcome_{idx + 1}"
+            row_line = line_for(idx)
             if is_closing:
                 # Demote any prior close for this selection. There is exactly one
                 # closing line and it is the most recently declared one; the
@@ -342,7 +356,7 @@ def record_fair_value_measurement(
                     UPDATE fair_odds_measurements SET is_closing = 0
                     WHERE event_id = ? AND market_type = ? AND line = ?
                       AND selection = ? AND is_closing = 1
-                """, (event_id, market_type, str(line or ""), sel))
+                """, (event_id, market_type, row_line, sel))
             cursor.execute("""
                 INSERT INTO fair_odds_measurements (
                     timestamp, event_id, sport, market_type, line, sportsbook,
@@ -353,7 +367,7 @@ def record_fair_value_measurement(
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                           ?, ?, ?)
             """, (
-                now_ts, event_id, sport, market_type, str(line or ""), sportsbook,
+                now_ts, event_id, sport, market_type, row_line, sportsbook,
                 raw_quotes_json, sel, outcome.offered_odds, outcome.implied_prob_raw,
                 outcome.fair_prob, outcome.fair_odds, outcome.expected_value,
                 outcome.quarter_kelly, result.overround, result.shin_z, result.power_k,

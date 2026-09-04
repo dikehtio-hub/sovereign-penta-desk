@@ -122,6 +122,10 @@ class MarketQuote:
     is_closing: bool = False
     is_live: bool = False
     start_time: Optional[datetime] = None
+    # THIS SELECTION'S OWN handicap or total, as the file gave it: Chiefs -3.5,
+    # Ravens +3.5 (Round 35, Ruling 5.B). The MARKET is identified by the unsigned
+    # number - see market_line_key - so the two legs still land in one basket.
+    line: str = ""
 
     @property
     def key(self) -> str:
@@ -172,6 +176,28 @@ def _first(row: Dict[str, str], *keys: str) -> str:
         if value:
             return str(value).strip()
     return ""
+
+
+def market_line_key(line: str) -> str:
+    """
+    The number that identifies a market, sign dropped.
+
+    Chiefs -3.5 and Ravens +3.5 are the two legs of ONE market, so the market is
+    keyed by 3.5 while each leg keeps its own signed handicap (Ruling 5.B, Round
+    35). A file that keys both legs under the home number (-3.5 / -3.5, the
+    Round 33 convention) still groups, because abs() is the same either way;
+    what it cannot do is tell the matcher the away side's true handicap, so such
+    a feed produces no spread hedges. Totals are already unsigned. A non-numeric
+    line is used as written.
+    """
+    text = str(line or "").strip()
+    if not text:
+        return ""
+    try:
+        value = abs(float(text))
+    except ValueError:
+        return text
+    return ("%.2f" % value).rstrip("0").rstrip(".")
 
 
 def _truthy(text: str) -> bool:
@@ -249,11 +275,13 @@ def parse_odds_csv(path: Path,
             book_key = canonical_book(book)
             sharp = (_truthy(row["is_sharp"]) if row.get("is_sharp")
                      else book_key in SHARP_BOOKS)
-            markets.setdefault((event_id, sport, market_type, line), []).append(
+            # Keyed by the UNSIGNED number so both legs of a spread share one
+            # market; the quote keeps the signed handicap it was quoted at.
+            markets.setdefault((event_id, sport, market_type, market_line_key(line)), []).append(
                 MarketQuote(book=book_key, selection=selection,
                             decimal_odds=quote.decimal, is_sharp=sharp,
                             quoted_at=quoted_at, is_closing=is_closing,
-                            is_live=is_live, start_time=start_time))
+                            is_live=is_live, start_time=start_time, line=line))
     return markets, rows_read, skipped
 
 
@@ -496,7 +524,10 @@ class OddsWatcher:
             record_fair_value_measurement(
                 event_id=event_id, sport=sport, selections=sharp_selections,
                 market_type=market_type, sportsbook=sharp_book, result=result,
-                timestamp=now_ts, line=line, is_closing=market_is_closing,
+                timestamp=now_ts, line=line,
+                # Each leg is stored under ITS OWN signed handicap (Ruling 5.B).
+                lines=[q.line or line for q in sharp_legs],
+                is_closing=market_is_closing,
                 is_live=market_is_live,
                 quoted_at=quoted_at.isoformat() if quoted_at else None,
                 start_time=start_time.isoformat() if start_time else None,
@@ -536,7 +567,7 @@ class OddsWatcher:
                     retail_book=quote.book, retail_offered_odds=quote.decimal_odds,
                     gross_edge=edge, after_tax_hurdle=self.hurdle_for(quote.decimal_odds),
                     source_file=path.name, content_hash=report.content_hash,
-                    timestamp=now_ts, line=line,
+                    timestamp=now_ts, line=quote.line or line,
                     is_closing=quote.is_closing or market_is_closing,
                     is_live=quote.is_live or market_is_live,
                     quoted_at=quote.quoted_at.isoformat() if quote.quoted_at else None,

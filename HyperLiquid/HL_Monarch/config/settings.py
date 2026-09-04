@@ -92,7 +92,21 @@ ALL_CORE_WATCHLIST = (
 # which starved every other REST caller and invited sustained 429s. 8s keeps the
 # collector at ~900 weight/min and leaves headroom for wallet/whale scans.
 REST_POLL_INTERVAL = 8.0       # Ticker and context polling interval
-ORDERBOOK_POLL_INTERVAL = 5.0  # Order book snapshot interval
+ORDERBOOK_POLL_INTERVAL = 5.0  # Order book snapshot interval (dashboard live view; not the sampler)
+
+# --- Round 35: TOP-OF-BOOK SPREAD SAMPLING (Ruling 5.C) ------------------------
+# orderbook_snapshots was empty and nothing wrote it, so no persisted basis window
+# carried a measured execution cost. The sampler writes one l2Book snapshot per
+# coin per interval for a BOUNDED set of coins, and only from the collector that
+# owns maintenance (two samplers would double the spend).
+#
+# THE BUDGET IS THE CONSTRAINT. Context polling already costs len(ACTIVE_DEXES)
+# x 20 weight every REST_POLL_INTERVAL = 900 weight/min against a 960/min ceiling
+# (1200 x 0.8 safety). l2Book costs 2. 24 coins every 120s is 24 weight/min -
+# inside the remaining headroom, with room left for wallet and whale scans. Do
+# not raise the cap or shorten the interval without redoing that arithmetic.
+ORDERBOOK_SAMPLE_INTERVAL = 120.0   # seconds between sampling passes
+ORDERBOOK_SAMPLE_MAX_COINS = 24     # rotated (high-volume) coins first, then the core watchlist
 DB_FLUSH_INTERVAL = 2.0        # Database batch insert flush interval
 
 # Database maintenance / retention.

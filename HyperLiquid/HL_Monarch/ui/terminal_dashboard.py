@@ -277,7 +277,9 @@ class TerminalDashboard:
             # collector. This dashboard ran fifteen hours with a stale 72h
             # retention in memory and deleted history every five minutes while
             # the service, restarted with 192h, was trying to keep it.
-            collector = MarketCollector(maintenance=not service_collector_alive())
+            # Round 35: the check is re-run every cycle inside the collector, so a
+            # service that starts (or dies) after this dashboard is honoured too.
+            collector = MarketCollector(maintenance=True, yield_to_service=True)
             try:
                 loop.run_until_complete(collector.run())
             except Exception:

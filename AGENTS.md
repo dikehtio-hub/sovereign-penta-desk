@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+Round 35 complete: SPREAD ALIGNMENT, L2 SPREAD SAMPLING & SUPERVISOR HARDENING.
+Each spread leg is stored under its OWN signed handicap (Ruling 5.B) and the
+cross-market sample now matches 7 of 7 questions; the collector that owns
+maintenance samples top-of-book spreads for a bounded coin set into
+`orderbook_snapshots` (Ruling 5.C), which joins the fail-closed set; the
+supervisor holds the host awake (Ruling 5.A); a live PID counts as the service
+only if its command line says "collector", and the dashboard's embedded
+collector re-decides ownership every cycle. 21 new tests.
+
 Round 34 complete: INCREMENTAL PERSISTENCE & DATA INGESTION. The pruner now
 reduces raw rows to `basis_realised_windows` and `cascade_excursions` BEFORE
 deleting them (never pruned; Ruling D's 720h standard is now reachable);
@@ -40,8 +49,8 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (15 modules) | 788 OK |
-| HL_Monarch (pytest) | 1012 passed |
+| master + bridges + cross-market + exporters + ingestors (15 modules) | 793 OK |
+| HL_Monarch (pytest) | 1025 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -64,6 +73,38 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 35 findings
+
+- **Ruling 5.B, as built.** `MarketQuote.line` is the selection's own handicap;
+  the watcher keys a market by `market_line_key` = the UNSIGNED number, so both
+  legs still devig together; `record_fair_value_measurement(lines=...)` stores
+  one signed line per leg. A home-keyed file (Round 33's -3.5 / -3.5) still
+  groups into one market but stores -3.5 on both legs, so it can never hedge a
+  spread - the convention is "as the feed states each leg". RESULTS FILES MUST
+  FOLLOW IT: `settle_placed_bets` joins on the `line` string, so a Ravens result
+  is `+3.5`, not `-3.5`.
+- **7 of 7 matched** on the real `sports_market.db` after re-dropping the sample:
+  the Eagles -6.5 question hedges against Pinnacle Cowboys +6.5 at 1.909, book
+  arb -2.33%, worst branch -8.78%. 0 clear the hurdle, as before.
+- **The REST budget decides the sampler, not the wish list.** Context polling
+  costs 6 dexes x 20 weight every 8s = 900 of the 960 weight/min the limiter
+  allows. Sampling 24 coins every 120s costs 24/min. It runs ONLY in the
+  collector that owns maintenance; the sampled spread is the PERP leg's and
+  stands in for both legs of the drag formula.
+- **The dashboard still ingests.** Its embedded collector yields maintenance and
+  sampling now, but it still polls contexts and writes snapshots alongside the
+  service: 727 snapshot rows per coin per hour where one collector at 8s would
+  write ~450, and a second 900 weight/min against the same IP. That duplication
+  is the most likely cause of the 429s behind the continuity gaps. Decision
+  needed: the dashboard should read the database and not run a collector while
+  the service is alive.
+- **Keep-awake holds the IDLE timer only.** ES_CONTINUOUS|ES_SYSTEM_REQUIRED is
+  set by the supervisor and released on exit; a user-chosen Sleep, a lid close,
+  or a critical-battery shutdown still sleeps the host. `--allow-sleep` opts out.
+- **Polymarket outcome 1 is priced off the mirrored bid** when that is worse than
+  the posted price (1 - bestBid_0); basis recorded as `mirrored_bid`. Totals and
+  spread outcomes are never rewritten as fixture questions.
 
 ## Round 34 findings
 
@@ -233,6 +274,12 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   (23.9317%, matches to 1e-6) and the trivially-zero fully-relieved case.
 
 ## Next / open questions
+
+- **Stop the dashboard ingesting when the service is alive** (see findings).
+  One REST budget, one writer. Until then the two collectors share 1200 weight.
+- `persist --status` will show `fees_measured` climbing from the next grid
+  instant after a sampling pass; the first 7-day windows with a measured fee
+  arrive with the first 168h windows (~2026-09-11).
 
 - **Decision needed: the collector host sleeps.** Continuity was 78% before
   and a nightly sleep makes it worse; the service must be relaunched by hand

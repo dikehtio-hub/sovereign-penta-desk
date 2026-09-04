@@ -9,9 +9,10 @@ import time
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set
+from typing import Callable, Dict, Any, List, Optional, Set, Tuple
 from config.settings import (
     ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST, COLLECTOR_LOCK_PATH,
+    ORDERBOOK_SAMPLE_INTERVAL, ORDERBOOK_SAMPLE_MAX_COINS,
     DB_FLUSH_INTERVAL, DB_MAINTENANCE_INTERVAL,
     ROTATION_INTERVAL, ROTATION_MAX_COINS,
     ROTATION_COOLDOWN_SECONDS, ROTATION_MIN_DAY_VOLUME,
@@ -30,6 +31,7 @@ from storage.repository import MarketRepository
 from analytics.liquidation_engine import LiquidationEngine
 from analytics.whale_tracker import WhaleTracker
 from analytics.alerter import WebhookAlerter
+from collectors.orderbook_sampler import sample_orderbooks, select_sample_coins
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 
@@ -45,15 +47,46 @@ MAX_BUFFERED_TRADES = 20_000
 MAX_BUFFERED_LIQ_EVENTS = 5_000
 
 
-def service_collector_alive(lock_path: Optional[Path] = None) -> bool:
+def _probe_process(pid: int) -> Optional[Tuple[bool, Optional[str]]]:
     """
-    True when `data/collector.pid` names a LIVE process other than this one.
+    (exists, command line) for `pid` via psutil; None when psutil is unavailable.
+    A process that exists but cannot be inspected reports a None command line.
+    """
+    try:
+        import psutil
+    except ImportError:
+        return None
+    try:
+        proc = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return False, None
+    except psutil.AccessDenied:
+        return True, None
+    try:
+        return True, " ".join(proc.cmdline())
+    except (psutil.AccessDenied, psutil.ZombieProcess):
+        return True, None
+    except psutil.NoSuchProcess:
+        return False, None
+
+
+def service_collector_alive(lock_path: Optional[Path] = None,
+                            probe: Optional[Callable[[int], Optional[Tuple[bool, Optional[str]]]]] = None
+                            ) -> bool:
+    """
+    True when `data/collector.pid` names a LIVE COLLECTOR process other than this one.
 
     Used by the dashboard's embedded collector to decide whether to run the
-    maintenance loop at all. Two pruners with two ideas of the retention window
-    is exactly what happened in Round 34: the dashboard, launched fifteen hours
+    maintenance loop. Two pruners with two ideas of the retention window is
+    exactly what happened in Round 34: the dashboard, launched fifteen hours
     before the retention constant changed, kept deleting at 72h every five
     minutes while the restarted service collector held 192h.
+
+    ROUND 35 - PID REUSE. After a reboot the number in a stale lock file can
+    belong to anything, so a live PID counts only if its command line says
+    "collector". A process that exists but cannot be inspected is honoured as
+    the service rather than risk a second pruner; an absent psutil is treated
+    the same way.
     """
     path = Path(lock_path) if lock_path is not None else COLLECTOR_LOCK_PATH
     try:
@@ -62,20 +95,26 @@ def service_collector_alive(lock_path: Optional[Path] = None) -> bool:
         return False
     if pid == os.getpid():
         return False
-    try:
-        import psutil
-    except ImportError:
-        # Cannot verify; honour the lock rather than start a second pruner.
+    result = (probe or _probe_process)(pid)
+    if result is None:
         return True
-    return psutil.pid_exists(pid)
+    exists, cmdline = result
+    if not exists:
+        return False
+    if cmdline is None:
+        return True
+    return "collector" in cmdline.lower()
 
 
 class MarketCollector:
-    def __init__(self, maintenance: bool = True):
-        # Whether THIS collector prunes and measures. Retention belongs to exactly
-        # one process; an embedded collector inside a UI passes False when the
-        # service collector is alive.
+    def __init__(self, maintenance: bool = True, yield_to_service: bool = False):
+        # Whether THIS collector may prune, measure and sample order books at all.
         self.maintenance = bool(maintenance)
+        # Round 35: re-checked EVERY cycle rather than once at start-up, so an
+        # embedded collector (the dashboard's) hands maintenance over the moment a
+        # service collector appears, and takes it back if the service dies.
+        self.yield_to_service = bool(yield_to_service)
+        self._yield_logged = False
         self.rest_client = HyperliquidRestClient()
         self.ws_client = HyperliquidWsClient()
         self.repo = MarketRepository()
@@ -98,6 +137,9 @@ class MarketCollector:
         # would create the very gaps the measurements are made from and the
         # buffers (20k trades) would overflow. SQLite connections are per thread.
         self._maint_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hl-maint")
+        # Round 35: order book sampling is REST-bound and must not sit behind a
+        # measurement pass or in front of a buffer flush.
+        self._io_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hl-l2")
 
         # Coins subscribed dynamically by volume rotation, tracked separately so
         # the core watchlist is never rotated out from under the dashboard.
@@ -281,6 +323,51 @@ class MarketCollector:
                 self._dropped_rows = 0
             await loop.run_in_executor(self._db_executor, self._flush_buffers_sync, trades, liqs)
 
+    def _owns_maintenance(self) -> bool:
+        """
+        Does THIS process prune, measure and sample right now?
+
+        Exactly one process may. The service collector always does; the
+        dashboard's embedded collector does only while no service collector is
+        alive, and asks again every cycle.
+        """
+        if not self.maintenance:
+            return False
+        if self.yield_to_service and service_collector_alive():
+            if not self._yield_logged:
+                logger.info("Maintenance yielded: a service collector owns retention, "
+                            "measurement persistence and order book sampling")
+                self._yield_logged = True
+            return False
+        if self._yield_logged:
+            logger.warning("Service collector gone: this embedded collector takes over maintenance")
+            self._yield_logged = False
+        return True
+
+    async def _orderbook_sample_loop(self):
+        """Round 35: sample top-of-book spreads for a bounded coin set (Ruling 5.C)."""
+        loop = asyncio.get_running_loop()
+        while self.running:
+            await asyncio.sleep(ORDERBOOK_SAMPLE_INTERVAL)
+            if not self.running:
+                return
+            if not self._owns_maintenance():
+                continue
+            coins = select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
+                                        cap=ORDERBOOK_SAMPLE_MAX_COINS)
+            try:
+                stats = await loop.run_in_executor(
+                    self._io_executor, sample_orderbooks, self.rest_client, self.repo, coins)
+                logger.info(
+                    "Order book sample: %d/%d coins written, median spread %s bps%s",
+                    stats["written"], stats["requested"],
+                    ("%.1f" % stats["median_spread_bps"]) if stats["median_spread_bps"] is not None else "n/a",
+                    (", failed: %s" % ", ".join(sorted(stats["failed"]))) if stats["failed"] else "")
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"Order book sampling failed: {e}")
+
     async def _maintenance_loop(self):
         """Periodically prune expired rows and checkpoint the WAL."""
         loop = asyncio.get_running_loop()
@@ -288,6 +375,8 @@ class MarketCollector:
             await asyncio.sleep(DB_MAINTENANCE_INTERVAL)
             if not self.running:
                 return
+            if not self._owns_maintenance():
+                continue
             try:
                 stats = await loop.run_in_executor(self._maint_executor, self.repo.run_maintenance)
                 persisted = stats.get("persisted") or {}
@@ -731,6 +820,10 @@ class MarketCollector:
         ]
         if self.maintenance:
             tasks.append(asyncio.create_task(self._maintenance_loop()))
+            tasks.append(asyncio.create_task(self._orderbook_sample_loop()))
+            if self.yield_to_service:
+                logger.info("Embedded collector: maintenance and order book sampling yield to a "
+                            "live service collector, re-checked every cycle")
         else:
             logger.info("Maintenance loop DISABLED for this collector: another process owns "
                         "retention and measurement persistence")
@@ -756,6 +849,7 @@ class MarketCollector:
             self.whale_tracker.shutdown()
             self._db_executor.shutdown(wait=False)
             self._maint_executor.shutdown(wait=False)
+            self._io_executor.shutdown(wait=False)
 
 
 def start_collector():

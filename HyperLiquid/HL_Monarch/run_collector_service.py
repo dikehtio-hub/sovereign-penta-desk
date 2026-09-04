@@ -65,6 +65,40 @@ MAX_BACKOFF_SECONDS = 600.0
 COVERAGE_REPORT_INTERVAL = 900.0   # report measured coverage every 15 minutes
 
 
+# Round 35 (Ruling 5.A): the collector host slept for nine hours and took the
+# service with it. While the supervisor runs, Windows is asked not to sleep.
+ES_CONTINUOUS = 0x80000000
+ES_SYSTEM_REQUIRED = 0x00000001
+
+
+def set_keep_awake(enabled: bool, kernel32: Any = None) -> Optional[int]:
+    """
+    Ask Windows not to enter automatic sleep while this process lives.
+
+    SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED) holds the system
+    awake until the same thread clears it with ES_CONTINUOUS alone - which also
+    happens when the process exits. It stops the IDLE timer only: it does not
+    stop a user choosing Sleep, a lid close configured to sleep, or a critical-
+    battery shutdown, and the display may still turn off. Returns the previous
+    state, or None where unsupported or refused - the caller logs it and carries
+    on, because a collector that runs until the next sleep beats none at all.
+    """
+    if kernel32 is None:
+        if sys.platform != "win32":
+            return None
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+        except Exception:
+            return None
+    flags = (ES_CONTINUOUS | ES_SYSTEM_REQUIRED) if enabled else ES_CONTINUOUS
+    try:
+        previous = kernel32.SetThreadExecutionState(flags)
+    except Exception:
+        return None
+    return int(previous) if previous else None
+
+
 class JsonLineFormatter(logging.Formatter):
     """One JSON object per line: greppable by humans, parseable by tooling."""
 
@@ -264,8 +298,11 @@ class CollectorSupervisor:
         quiet: bool = False,
         python_executable: Optional[str] = None,
         pid_file: Path = DEFAULT_PID_FILE,
+        keep_awake: bool = True,
     ):
         self.logger = build_logger(Path(log_file), quiet=quiet)
+        self.keep_awake = bool(keep_awake)
+        self._awake_state: Optional[int] = None
         self.pid_file = Path(pid_file)
         self.max_restarts = max_restarts
         self.python = python_executable or sys.executable
@@ -329,6 +366,15 @@ class CollectorSupervisor:
         log_event(self.logger, "service_start", pid=os.getpid(), pid_file=str(self.pid_file),
                   cwd=str(SERVICE_DIR), max_restarts=self.max_restarts)
 
+        if self.keep_awake:
+            self._awake_state = set_keep_awake(True)
+            held = self._awake_state is not None
+            log_event(self.logger, "keep_awake",
+                      level=logging.INFO if held else logging.WARNING,
+                      enabled=held, previous_state=self._awake_state,
+                      note=("ES_CONTINUOUS|ES_SYSTEM_REQUIRED held while supervising" if held
+                            else "unsupported or refused - the host may still sleep"))
+
         while self.running:
             run_started = time.time()
             try:
@@ -390,6 +436,9 @@ class CollectorSupervisor:
                 except Exception:
                     pass
 
+        if self.keep_awake and self._awake_state is not None:
+            set_keep_awake(False)
+            log_event(self.logger, "keep_awake_released")
         release_pid_lock(self.pid_file)
 
         final = measure_coverage()
@@ -418,6 +467,8 @@ def main():
                         help=f"Lockfile path (default: {DEFAULT_PID_FILE})")
     parser.add_argument("--status", action="store_true",
                         help="Report whether a supervisor holds the lock, plus coverage, then exit")
+    parser.add_argument("--allow-sleep", action="store_true",
+                        help="Do NOT hold the host awake while supervising (default: hold it awake)")
     args = parser.parse_args()
 
     if args.status:
@@ -440,6 +491,7 @@ def main():
         max_restarts=args.max_restarts,
         quiet=args.quiet,
         pid_file=Path(args.pid_file),
+        keep_awake=not args.allow_sleep,
     )
     summary = supervisor.run()
     if summary.get("already_running"):

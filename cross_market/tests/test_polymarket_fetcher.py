@@ -19,7 +19,7 @@ from pathlib import Path
 from cross_market.hud import scan_cross_market
 from cross_market.ingestors.polymarket_fetcher import (DEFAULT_DROP_DIR, DEFAULT_DROP_NAME,
                                                        SPORTS_TAG_ID, FetchError, fetch_events,
-                                                       fingerprint, json_list, main,
+                                                       fingerprint, json_list, looks_like_team, main,
                                                        normalise_event, normalise_events, poll,
                                                        sample_questions, sport_of,
                                                        validate_questions, write_drop)
@@ -83,9 +83,7 @@ class TestSample(Base):
     def test_sample_matches_the_odds_samples_fixtures_end_to_end(self):
         """
         THE POINT OF THE TARGET: questions -> matcher -> real sports_market.db rows
-        -> priced pairs. Moneyline and totals match; the spread does not, because
-        the book keys both spread legs under the home handicap while the matcher
-        looks for the mirrored line - a convention gap this test makes visible.
+        -> priced pairs, every market type included.
         """
         odds_drop = self.root / "odds_drops"
         db = self.root / "sports_market.db"
@@ -95,11 +93,13 @@ class TestSample(Base):
 
         results, pairs = scan_cross_market(FakeHook(), sample_questions(now=NOW), db_path=db,
                                            capital=1_000.0)
-        self.assertGreaterEqual(len(pairs), 4)
+        # Round 35 (Ruling 5.B): the spread leg is stored under its own signed
+        # handicap, so the seventh question matches too - 7 of 7.
+        self.assertEqual(len(pairs), 7)
         matched = {p.market.market_type for p in pairs}
-        self.assertIn(MONEYLINE, matched)
-        self.assertIn(TOTALS, matched)
-        self.assertNotIn(SPREAD, matched)
+        self.assertEqual(matched, {MONEYLINE, TOTALS, SPREAD})
+        spread = [p for p in pairs if p.market.market_type == SPREAD][0]
+        self.assertEqual((spread.book_selection, spread.target.line), ("Cowboys", "+6.5"))
         # Every sample pair is priced, and none survives the tax: the worst branch
         # returns less than the capital staked. Real cross-market arbs pay 1-3%.
         self.assertEqual(len(results), len(pairs))
@@ -163,8 +163,10 @@ class TestGammaNormalisation(unittest.TestCase):
         self.assertEqual(first["price_basis"], "best_ask")
         self.assertEqual(first["token_id"], "876119152467")
         self.assertEqual(second["question"], "Will the Los Angeles Dodgers beat the St. Louis Cardinals?")
-        self.assertEqual(second["yes_price"], 0.405)
-        self.assertEqual(second["price_basis"], "outcome_price")
+        # Round 35: outcome 1's executable ask is the WORSE of its posted price
+        # (0.405) and 1 - outcome 0's bid (1 - 0.59 = 0.41).
+        self.assertAlmostEqual(second["yes_price"], 0.41, places=9)
+        self.assertEqual(second["price_basis"], "mirrored_bid")
         self.assertEqual(second["token_id"], "744473264035")
         for q in (first, second):
             self.assertEqual(q["derived_from"], "St. Louis Cardinals vs. Los Angeles Dodgers")
@@ -191,6 +193,30 @@ class TestGammaNormalisation(unittest.TestCase):
         self.assertEqual((q["question"], q["yes_price"], q["token_id"], q["sport"]),
                          ("Will the Chiefs beat the Ravens?", 0.56, "t-yes", "NFL"))
         self.assertEqual(q["yes_bid"], 0.54)
+
+    def test_second_leg_falls_back_to_the_posted_price_without_a_bid(self):
+        event = gamma_event()
+        del event["markets"][0]["bestBid"]
+        second = normalise_event(event)["questions"][1]
+        self.assertEqual((second["yes_price"], second["price_basis"]), (0.405, "outcome_price"))
+        # A posted price ABOVE the mirrored bid is kept: the worse number wins.
+        event = gamma_event()
+        event["markets"][0]["outcomePrices"] = '["0.55", "0.45"]'
+        second = normalise_event(event)["questions"][1]
+        self.assertEqual((second["yes_price"], second["price_basis"]), (0.45, "outcome_price"))
+
+    def test_totals_and_spread_outcomes_are_not_rewritten_as_fixtures(self):
+        for outcomes in ('["Over 47.5", "Under 47.5"]', '["Eagles -6.5", "Cowboys +6.5"]',
+                         '["O 47.5", "Under"]'):
+            event = gamma_event()
+            event["markets"][0]["outcomes"] = outcomes
+            out = normalise_event(event)
+            self.assertEqual(out["questions"], [], outcomes)
+            self.assertEqual(out["skipped"], {"not_a_fixture_market": 1}, outcomes)
+        self.assertTrue(looks_like_team("St. Louis Cardinals"))
+        self.assertTrue(looks_like_team("49ers"))                 # a digit alone is not a spread
+        self.assertFalse(looks_like_team("Chiefs -3.5"))
+        self.assertFalse(looks_like_team(""))
 
     def test_what_is_skipped_is_counted_by_reason(self):
         tennis = gamma_event(tags=[{"label": "Tennis"}])

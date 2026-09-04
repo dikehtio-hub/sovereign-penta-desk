@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -106,10 +107,9 @@ def sample_questions(now: Optional[datetime] = None,
         q("Will the Cowboys beat the Eagles?", 0.22, "sample-phi-dal-dal", slug="nfl-phi-dal-sample"),
         q("Will the Eagles vs Cowboys total go under 44.5 points?", 0.51, "sample-phi-dal-u44.5",
           slug="nfl-phi-dal-sample"),
-        # A spread question. It parses, but the book keys BOTH spread legs under the
-        # home handicap (-6.5) while the matcher looks for the mirrored +6.5 on the
-        # opponent, so today it produces NO MATCH. Kept in the sample so the gap is
-        # visible in the drop rather than hidden by leaving spreads out.
+        # A spread question. Until Round 35 the book keyed both spread legs under
+        # the home handicap and this could not match; each leg now carries its own
+        # signed handicap (Ruling 5.B), so it hedges against Cowboys +6.5.
         q("Will the Eagles beat the Cowboys by more than 6.5 points?", 0.50, "sample-phi-dal-s6.5",
           slug="nfl-phi-dal-sample"),
     ]
@@ -158,14 +158,56 @@ def _team_phrase(name: str) -> str:
     return name if name.upper().startswith("THE ") else "the %s" % name
 
 
-def _live_price(is_dead_ok: bool, ask: Optional[float], outcome_price: Optional[float]
-                ) -> Optional[Dict[str, Any]]:
-    price, basis = (ask, "best_ask") if ask is not None and ask > 0 else (outcome_price, "outcome_price")
+def _priced(is_dead_ok: bool, price: Optional[float], basis: str) -> Optional[Dict[str, Any]]:
     if price is None:
         return None
     if not is_dead_ok and not (DEAD_PRICE_FLOOR <= price <= DEAD_PRICE_CEILING):
         return None
     return {"price": float(price), "basis": basis}
+
+
+def _live_price(is_dead_ok: bool, ask: Optional[float], outcome_price: Optional[float]
+                ) -> Optional[Dict[str, Any]]:
+    if ask is not None and ask > 0:
+        return _priced(is_dead_ok, ask, "best_ask")
+    return _priced(is_dead_ok, outcome_price, "outcome_price")
+
+
+def _second_leg_price(is_dead_ok: bool, outcome_price: Optional[float],
+                      first_leg_bid: Optional[float]) -> Optional[Dict[str, Any]]:
+    """
+    The executable ask on outcome 1 when Gamma only quotes outcome 0's book.
+
+    In a binary market, buying outcome 1 is selling outcome 0, so the ask on the
+    second token is 1 - bid on the first. Taking the WORSE of that and the posted
+    outcome price is the conservative reading (Round 35, Target 4): a hedge
+    priced off the optimistic number reports an arbitrage that cannot be filled.
+    """
+    price, basis = outcome_price, "outcome_price"
+    if first_leg_bid is not None and 0.0 < first_leg_bid < 1.0:
+        mirrored = 1.0 - first_leg_bid
+        if price is None or mirrored > price:
+            price, basis = mirrored, "mirrored_bid"
+    return _priced(is_dead_ok, price, basis)
+
+
+_TOTAL_WORDS = re.compile(r"\b(OVER|UNDER)\b")
+_SPREAD_MARK = re.compile(r"[+-]\s*\d")
+
+
+def looks_like_team(outcome: str) -> bool:
+    """
+    Is this outcome a TEAM, rather than a total ("Over 47.5") or a spread
+    ("Eagles -6.5")? Only a fixture whose two outcomes are both teams is rewritten
+    into "Will A beat B?"; anything else would derive a moneyline question from a
+    market that is not one.
+    """
+    text = str(outcome or "").strip().upper()
+    if not text:
+        return False
+    if _TOTAL_WORDS.search(text) or _SPREAD_MARK.search(text):
+        return False
+    return True
 
 
 def normalise_event(event: Dict[str, Any], sports: Sequence[str] = DEFAULT_SPORTS,
@@ -225,8 +267,11 @@ def normalise_event(event: Dict[str, Any], sports: Sequence[str] = DEFAULT_SPORT
 
         # A fixture market: the two teams are the outcomes. Derive both directions.
         a, b = outcomes
+        if not (looks_like_team(a) and looks_like_team(b)):
+            skip("not_a_fixture_market")
+            continue
         first = _live_price(keep_dead, ask, prices[0] if prices else None)
-        second = _live_price(keep_dead, None, prices[1] if len(prices) > 1 else None)
+        second = _second_leg_price(keep_dead, prices[1] if len(prices) > 1 else None, bid)
         original = str(market.get("question") or market.get("groupItemTitle") or "")
         if first is None and second is None:
             skip("dead_or_unpriced")

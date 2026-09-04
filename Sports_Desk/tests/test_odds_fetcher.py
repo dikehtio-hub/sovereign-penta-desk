@@ -10,6 +10,7 @@ it, and that the live path never touches the network unless asked.
 
 import csv
 import io
+import sqlite3
 import tempfile
 import time
 import unittest
@@ -137,6 +138,46 @@ class TestLivePathIsAContract(FetcherBase):
         self.assertEqual(len(rows), len(sample_rows()))
         with self.assertRaises(FetchError):
             fetch_json_rows("http://example.invalid", getter=lambda url, t: [{"junk": 1}])
+
+
+class TestSignedHandicaps(FetcherBase):
+    """Round 35 Ruling 5.B: each spread leg is stored under its own signed handicap."""
+
+    def _rows(self, db):
+        conn = sqlite3.connect(db)
+        try:
+            return conn.execute(
+                "SELECT selection, line FROM fair_odds_measurements WHERE market_type = 'spread' "
+                "AND event_id = 'NFL_KC_BAL' ORDER BY id").fetchall()
+        finally:
+            conn.close()
+
+    def test_the_sample_writes_home_minus_and_away_plus(self):
+        spreads = [(r["selection"], r["line"]) for r in sample_rows()
+                   if r["market_type"] == "spread" and r["event_id"] == "NFL_KC_BAL" and r["book"] == SHARP_BOOK]
+        self.assertEqual(spreads, [("Chiefs", "-3.5"), ("Ravens", "+3.5")])
+
+    def test_both_legs_price_as_one_market_and_keep_their_own_lines(self):
+        write_drop(sample_rows(), self.drop, name="s.csv")
+        reports = run_watcher(self.drop, self.db, archive=False)
+        self.assertEqual(reports[0].markets_priced, 6)          # 2 fixtures x ML / spread / total
+        self.assertEqual(reports[0].markets_seen, 6)            # NOT 8: the two legs are one market
+        self.assertEqual(sorted(set(self._rows(self.db))), [("Chiefs", "-3.5"), ("Ravens", "+3.5")])
+        edges = [(e["selection"], e["line"]) for e in query_edges(min_edge=-1.0, db_path=self.db)
+                 if e["market_type"] == "spread" and e["event_id"] == "NFL_KC_BAL"]
+        self.assertIn(("Ravens", "+3.5"), edges)
+        self.assertIn(("Chiefs", "-3.5"), edges)
+
+    def test_a_home_keyed_file_still_groups_but_cannot_name_the_away_handicap(self):
+        """The Round 33 convention: both legs at -3.5. One market, two legs, both stored at -3.5."""
+        rows = sample_rows()
+        for row in rows:
+            if row["market_type"] == "spread" and row["line"].startswith("+"):
+                row["line"] = "-" + row["line"][1:]
+        write_drop(rows, self.drop, name="old.csv")
+        reports = run_watcher(self.drop, self.db, archive=False)
+        self.assertEqual(reports[0].markets_seen, 6)
+        self.assertEqual(sorted(set(self._rows(self.db))), [("Chiefs", "-3.5"), ("Ravens", "-3.5")])
 
 
 class TestRecurringPoller(FetcherBase):

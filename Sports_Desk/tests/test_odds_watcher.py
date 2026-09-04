@@ -413,9 +413,11 @@ class TestLineDimension(OddsWatcherTestBase):
         markets, _rows, skipped = parse_odds_csv(self._drop("spreads2.csv", self.SPREADS))
         self.assertEqual(skipped, [])
         for (_event, _sport, _market, line), quotes in markets.items():
+            # The market key is the unsigned number; each quote keeps its own line.
+            self.assertIn(line, ("3.5", "2.5"))
             for quote in quotes:
                 self.assertGreater(quote.decimal_odds, 1.0)
-                self.assertIn(line, ("-3.5", "-2.5"))
+                self.assertIn(quote.line, ("-3.5", "-2.5"))
 
     def test_a_moneyline_has_a_blank_line_and_still_groups(self):
         self._drop("ml.csv", SHARP_2WAY)
