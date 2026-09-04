@@ -8,18 +8,18 @@ tags:
   - polymarket
   - quant-trading-lab
   - dashboard
-last_synced: "2026-09-01 23:51:41 UTC"
+last_synced: "2026-09-04 22:51:36 UTC"
 ---
 
 # 👑 Cross-Market Titan & Macro Intelligence Desk
 
 > [!INFO] **Executive Overview**
-> - **Last Synchronized**: `2026-09-01 23:51:41 UTC`
+> - **Last Synchronized**: `2026-09-04 22:51:36 UTC`
 > - **Target Vault**: `C:\Users\ixis1\Desktop\DEV\obsidian_vault`
 > - **Confirmed Titan Entities**: `0` institutional actors
 > - **Active Macro Signals**: `3` convergent vectors
 
-> **Cockpit Navigation**: [[Monarch_Hub|👑 Master Hub]] • [[Bot_Control|🎮 Bot Control]] • [[Bot_Config|⚙️ Bot Config]] • [[Trading_Terminal|📈 Trading Terminal]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]] • [[Polymarket_Monarch|🌐 Polymarket]] • [[Quant_Trading_Lab|⚡ Quant Lab]]
+> **Cockpit Navigation**: [[Monarch_Hub|👑 Master Hub]] • [[Bot_Control|🎮 Bot Control]] • [[Bot_Config|⚙️ Bot Config]] • [[Trading_Terminal|📈 Trading Terminal]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]] • [[Polymarket_Monarch|🌐 Polymarket]] • [[Quant_Trading_Lab|⚡ Quant Lab]] • [[Sports_Desk|🏈 Sports Desk]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]]
 
 ---
 

@@ -5,6 +5,12 @@ the detail.
 
 ## Status
 
+Round 50 complete - MILESTONE. Titan correlator gains `--scan` / `--report` CLI
+with a printed summary (its macro block is labelled as the static placeholder
+it is); all five desk notes, the hub, the canvas and today's tax note were
+regenerated from their exporters and checked against the live book; the
+milestone log below records the round series and the day. 1 new test.
+
 Round 49 complete: DASHBOARD LIFECYCLE LOG, 2-HOUR STATUS WINDOW, PERPDEXS
 CHECK AT START-UP. The dashboard appends start / stop / frame_error / crash
 (with traceback) to `data/dashboard.jsonl`, so the next unexplained death has
@@ -178,7 +184,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
+| master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 798 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -202,6 +208,64 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 50 milestone log
+
+THREE NUMBERING SERIES MEET HERE, and the log says which is which:
+- HL_Monarch rounds 1-25 (to 2026-09-02) predate version control - the repo was
+  initialised at "Round 26L" (743496b, 526 files, 2026-09-03). Their record is
+  `HyperLiquid/HL_Monarch/AGENTS.md` and COMMANDS.txt, not git.
+- The Tax Reserve Agent kept its own series (COMMANDS.txt "ROUND 15..36",
+  2026-09-01..03: tax gate, HIFO, receipts, fee model validated on chain).
+- The DEV series below is the one Antigravity and Claude Code have run since
+  the penta-desk vault (Round 33). Rounds 34-50 were all on 2026-09-04.
+
+| DEV round | commit | what it settled |
+|---|---|---|
+| 26L-31 | 743496b..027a3e1 | quad-desk baseline, sports desk, cross-market arb under asymmetric tax, harvester gated on the basis bucket |
+| 33 | 5dbc12b | data grounding: 192h retention, fail-closed bankroll, real sports DB, penta-desk vault |
+| 34 | 33111d7 | incremental measurement persistence (measure before prune), Polymarket ingestion, odds poller, cockpit canvas |
+| 35 | 18b4989 | signed spread lines, L2 spread sampler, keep-awake, PID-reuse guard |
+| 36 | a4b6c51 | read-only dashboard under a live service (one ingester), held positions sampled first |
+| 37 | d80c937 | STALLED badge, candidate-first sampling, runtime files untracked |
+| 38 | acff08d | spread ceiling on every costed row, one position per spot symbol, stall threshold from poll interval |
+| 39 | a4f43b4 | spot universe = liquid pairs (spotMetaAndAssetCtxs), net-APR candidate ranking |
+| 40 | 287b603 | alias table, most-liquid hedge, spot decimals fix, floor $50k, para:ANSEM -> UANSEM |
+| 41 | 35b98ea | equity quarantine, floor scales with notional, [ILLIQUID SPOT] tags, --unmapped-spot |
+| 42 | cfd137b | quarantine on the PERP, illiquid-leg sweep (3 dead legs closed, $60k freed), 10x ADV floor |
+| 43 | 7068e40 | dex-level quarantine, canonical duplicate guard, one volume map per cycle, vault closed-trades fix |
+| 44 | e7b2e54 | TRADFI_DEXES + mkts/io, config clamp floor, malformed-field fallback |
+| 45 | 06c12d9 | per-field config fallback for every field (safety flags fail armed), unclassified dexes fail closed |
+| 46 | 9e91818 | vntl TradFi, hyna mixed, abcd unclassified, preset-aware fallback |
+| 47 | c84c150 | structural dex fail-closed, hourly drift detector, one candidate slot per underlying |
+| 48 | 914c852 | mixed-dex crypto allow-list (para), NOVEL DEX dashboard badge, candidate rotation log |
+| 49 | 2146012 | dashboard lifecycle log, 2h status window, perpDexs check at start-up |
+| 50 | (this) | Titan CLI, five-desk vault regeneration, milestone log, command index |
+
+THE DAY IN NUMBERS (2026-09-04): 17 rounds (34-50), 19 commits, 15 service
+restarts, 2 unexplained dashboard deaths (now logged) and 1 unexplained
+collector death (20:43, ~7.5 min lost). Tests 2,3xx -> 2,427. Paper book:
+5 positions -> 2 after the sweep; cash $324 -> $60,310; every position's hedge
+now verified liquid; invariant equity - starting == realised exact throughout.
+UNCHANGED ALL DAY: FADE_STRATEGY_ENABLED False, WHALE_SWEEP_EXECUTION_ENABLED
+False, the pre-registration bar, the live tax ledger at $0.00.
+
+## Round 50 findings
+
+- **`detect_macro_signals()` returns fixed narratives.** The Titan note's
+  "Macro Co-Positioning" block (Fed cut 88%, BTC $100k 64%, /NQ divergence)
+  is hard-coded, not measured. The new CLI report labels it STATIC
+  PLACEHOLDERS; the vault note still renders it as before. Ruling asked.
+- **The ruling described a different module** (lead-lag over event drops).
+  What exists correlates HyperLiquid whale wallets with Polymarket sharp
+  traders (EOA -> proxy, conviction score). The CLI was built for the module
+  that exists; the lead-lag idea is recorded as an open item.
+- Vault regeneration: HL `obsidian --once` rewrites HyperLiquid_Monarch.md,
+  Trading_Terminal.md, the hub and the canvas; Sports_Desk.md and
+  Cross_Market_Arb.md reported "unchanged" (no new drops since their last
+  sync); Quant_Trading_Lab.md and Polymarket_Monarch.md (+41 trader notes)
+  rewritten; today's Tax_Reserve note written by `Tax_Reserve_Agent.main
+  export` (read-only: it computes the summary and writes the note).
 
 ## Round 49 findings
 

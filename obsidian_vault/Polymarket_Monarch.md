@@ -5,15 +5,15 @@ tags:
   - prediction-markets
   - alpha
   - dashboard
-last_synced: "2026-09-02 22:07:05 UTC"
+last_synced: "2026-09-04 22:44:52 UTC"
 ---
 
 # 👑 Polymarket Monarch • Real-Time Intelligence
 
-> **Vault Navigation**: [[Monarch_Hub|👑 Monarch Intelligence Hub]] • [[HyperLiquid_Monarch|👑 HyperLiquid Monarch]] • [[Quant_Trading_Lab|⚡ Quant Trading Lab]]
+> **Vault Navigation**: [[Monarch_Hub|👑 Monarch Intelligence Hub]] • [[HyperLiquid_Monarch|👑 HyperLiquid Monarch]] • [[Quant_Trading_Lab|⚡ Quant Trading Lab]] • [[Sports_Desk|🏈 Sports Desk]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]]
 
 > [!TIP] **System Status: LIVE**
-> - **Last Synchronized**: `2026-09-02 22:07:05 UTC`
+> - **Last Synchronized**: `2026-09-04 22:44:52 UTC`
 > - **Active Sharp Traders ($300+ 7D Realized)**: `41`
 > - **Public Polymarket Data Engine**: 100% Free / Native Public APIs (No Paid Keys)
 
@@ -59,13 +59,14 @@ last_synced: "2026-09-02 22:07:05 UTC"
 
 | Category | Top Volume Market | 24h Vol | Yes Odds / Probability |
 | :--- | :--- | :---: | :--- |
-| 🪙 Crypto | What price will Bitcoin hit in September? | `$558.8K` | `░░░░░░░░░░` **2.8%** |
-| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$397.4K` | `█████░░░░░` **50.0%** |
-| 🪙 Crypto | Bitcoin above ___ on September 3? | `$378.8K` | `██████████` **100.0%** |
-| 🌐 Politics | Fed Decision in September? | `$2.77M` | `░░░░░░░░░░` **0.1%** |
-| 🌐 Politics | Democratic Presidential Nominee 2028 | `$1.93M` | `█░░░░░░░░░` **14.1%** |
-| 🌐 Politics | Presidential Election Winner 2028 | `$1.22M` | `███░░░░░░░` **25.4%** |
-| 🏛 Economics | Will Argentina dollarize by...? | `$0` | `█░░░░░░░░░` **5.5%** |
+| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$2.03M` | `█░░░░░░░░░` **14.5%** |
+| 🪙 Crypto | Bitcoin above ___ on September 5? | `$648.2K` | `██████████` **100.0%** |
+| 🪙 Crypto | What price will Bitcoin hit in September? | `$641.9K` | `░░░░░░░░░░` **4.7%** |
+| 🌐 Politics | Fed Decision in September? | `$10.15M` | `░░░░░░░░░░` **0.1%** |
+| 🌐 Politics | Clarity Act (H.R.3633) signed into law in 2026? | `$2.03M` | `█░░░░░░░░░` **14.5%** |
+| 🌐 Politics | Republican Presidential Nominee 2028 | `$1.56M` | `░░░░░░░░░░` **2.1%** |
+| 🏛 Economics | US announces another yen intervention by...? | `$0` | `██░░░░░░░░` **17.5%** |
+| 🏛 Economics | Will Argentina dollarize by...? | `$0` | `█░░░░░░░░░` **5.7%** |
 
 ---
 *Generated automatically by Polymarket Monarch Obsidian Sync.*

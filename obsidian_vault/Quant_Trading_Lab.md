@@ -7,7 +7,7 @@ tags:
   - market-profile
   - ict-killzones
   - dashboard
-last_synced: "2026-09-02 22:12:12 UTC"
+last_synced: "2026-09-04 22:44:50 UTC"
 ---
 
 # ⚡ Quant Trading Lab • CME Futures & Microstructure Desk
@@ -15,12 +15,16 @@ last_synced: "2026-09-02 22:12:12 UTC"
 > **Cockpit Navigation**: [[Monarch_Hub|👑 Monarch Intelligence Hub]] • [[Bot_Control|🎮 Bot Control]] • [[Bot_Config|⚙️ Bot Config]] • [[Trading_Terminal|📈 Trading Terminal]] • [[HyperLiquid_Monarch|🏛 HyperLiquid Desk]] • [[Polymarket_Monarch|🌐 Polymarket Desk]]
 
 > [!INFO] **Live Execution Status & Session Clock**
-> - **Current Eastern Time**: **`18:12:12 EST`** (UTC: `2026-09-02 22:12:12 UTC`)
-> - **Active Killzone Window**: 🟢 **ASIA SESSION** (Initial range formation (Tokyo/Sydney)) • Ends in `468m`
-> - **Macro News Blackout**: 🟢 **CLEAR (STANDALONE)** • News filter idle
+> - **Current Eastern Time**: **`18:44:50 EST`** (UTC: `2026-09-04 22:44:50 UTC`)
+> - **Active Killzone Window**: 🟢 **ASIA SESSION** (Initial range formation (Tokyo/Sydney)) • Ends in `436m`
+> - **Macro News Blackout**: 🟢 **CLEAR - NORMAL EXECUTION** • No active high-impact blackout window
 > - **Base Capital Tier**: **`$100.0K`** (Peak: `$100.0K`)
+> - **Multi-Venue Capital Sleeves ($3,000 Retail)**:
+>   - 🏛 **HyperLiquid Desk**: `$1,500 – $2,000` (Crypto & HIP-3 TradFi Perps)
+>   - 🌐 **Polymarket Desk**: `$1,000` (Binary Intraday & Dutching Arb, $50–$100 caps)
+>   - 🎯 **CME Futures Desk**: `$500 Reserve` (1 Micro MES/MNQ / Prop Eval)
 > - **Circuit Breaker Status**: 🟢 **ARMED (NORMAL)**
-> - **Last Synchronized**: `2026-09-02 22:12:12 UTC`
+> - **Last Synchronized**: `2026-09-04 22:44:50 UTC`
 
 ---
 

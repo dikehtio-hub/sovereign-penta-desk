@@ -556,20 +556,81 @@ def run_loop(interval: int = 15, vault_str: Optional[str] = None, enable_resolve
         print("\nStopped Titan Correlation loop.")
 
 
-if __name__ == "__main__":
+def _short(address: str) -> str:
+    address = str(address or "")
+    return address if len(address) <= 12 else f"{address[:6]}..{address[-4:]}"
+
+
+def format_cli_report(titans: List[TitanProfile], signals: List[MacroSignal], top_n: int = 15) -> str:
+    """
+    The scan as a terminal report (Round 50, Ruling 50-2): the matched titans
+    ranked by conviction, then the macro signals. The macro block is labelled
+    for what it is - detect_macro_signals() returns fixed narratives, not
+    measured data - so a reader is not shown a placeholder as a finding.
+    """
+    ranked = sorted(titans, key=lambda t: (-float(t.conviction_score or 0.0), t.hl_address))
+    lines = [
+        "",
+        "CROSS-MARKET TITAN & MACRO CORRELATION - SCAN REPORT",
+        f"  titans matched across HyperLiquid and Polymarket: {len(titans)}",
+    ]
+    if ranked:
+        lines.append("")
+        lines.append(f"  {'TITAN':<22}{'HL EQUITY':>14}{'PM VOL 7D':>13}{'PM PNL 7D':>12}"
+                     f"{'WIN%':>7}{'CONVICTION':>12}  BIAS")
+        for t in ranked[:top_n]:
+            name = (t.pseudonym or "").strip() or _short(t.hl_address)
+            lines.append(
+                f"  {name[:22]:<22}{t.hl_equity:>14,.0f}{t.pm_volume_7d:>13,.0f}{t.pm_pnl_7d:>+12,.0f}"
+                f"{t.pm_win_rate:>7.1f}{t.conviction_score:>12.2f}  {t.primary_bias}")
+        if len(ranked) > top_n:
+            lines.append(f"  ... {len(ranked) - top_n} more")
+    else:
+        lines.append("  none: no HyperLiquid whale resolves to a Polymarket sharp trader (cache or eoa_address)")
+    lines.append("")
+    lines.append(f"  macro co-positioning signals: {len(signals)}  "
+                 "[STATIC PLACEHOLDERS - detect_macro_signals() returns fixed narratives, not measured data]")
+    for sig in signals:
+        lines.append(f"    {sig.topic:<40} PM {sig.polymarket_probability:>5.0%}  {sig.co_positioning_state}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    """
+    `python -m cross_market.titan_correlator --scan | --report | --once | (loop)`.
+    --report prints the summary and writes nothing; --scan prints it AND writes
+    the vault note; --once writes the note only (the pre-Round-50 behaviour).
+    """
     parser = argparse.ArgumentParser(description="Cross-Market Titan & Macro Correlation Agent")
     parser.add_argument("--vault", type=str, default=None, help="Target Obsidian vault path")
-    parser.add_argument("--once", action="store_true", help="One-shot discovery scan and exit")
+    parser.add_argument("--once", action="store_true", help="One-shot discovery scan, write the vault note, exit")
+    parser.add_argument("--scan", action="store_true", help="One-shot scan: print the CLI report AND write the vault note")
+    parser.add_argument("--report", action="store_true", help="Print the CLI report only; write nothing")
     parser.add_argument("--resolve", action="store_true", help="Enable Gamma API EOA->Proxy profile resolution")
     parser.add_argument("--interval", type=int, default=15, help="Scan loop interval in seconds")
-    args = parser.parse_args()
+    parser.add_argument("--hl-db", type=str, default=None, help="HyperLiquid SQLite path (default: HL_Monarch data)")
+    parser.add_argument("--pm-db", type=str, default=None, help="Polymarket SQLite path (default: Polymarket_Monarch data)")
+    parser.add_argument("--cache", type=str, default=None, help="Identity cache JSON path")
+    args = parser.parse_args(argv)
 
-    if args.once:
+    if args.once or args.scan or args.report:
         c = TitanCorrelator(
+            hl_db_path=Path(args.hl_db) if args.hl_db else None,
+            pm_db_path=Path(args.pm_db) if args.pm_db else None,
             vault_path=Path(args.vault) if args.vault else None,
+            cache_path=Path(args.cache) if args.cache else None,
             enable_remote_resolve=args.resolve,
         )
-        path, written = c.export_to_obsidian()
-        print(f"✓ Successfully exported Cross-Market Titans to: {path}")
-    else:
-        run_loop(interval=args.interval, vault_str=args.vault, enable_resolve=args.resolve)
+        if args.scan or args.report:
+            print(format_cli_report(c.scan_titans(), c.detect_macro_signals()))
+        if not args.report:
+            path, written = c.export_to_obsidian()
+            print(f"✓ Cross-Market Titans note {'written' if written else 'unchanged'}: {path}")
+        return 0
+    run_loop(interval=args.interval, vault_str=args.vault, enable_resolve=args.resolve)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

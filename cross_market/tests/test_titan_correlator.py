@@ -178,5 +178,45 @@ class TestTitanCorrelator(unittest.TestCase):
         self.assertIn("Hand-written investigation: Titan is market making on BTC perps.", updated_content)
 
 
+    def test_cli_report_and_scan(self):
+        """
+        Round 50 (Ruling 50-2): `python -m cross_market.titan_correlator --report`
+        prints the scan and writes nothing; `--scan` prints it and writes the
+        note. The macro block is labelled as the static placeholder it is.
+        """
+        import contextlib
+        import io
+        from cross_market.titan_correlator import format_cli_report, main
+
+        common = ["--hl-db", str(self.hl_db), "--pm-db", str(self.pm_db),
+                  "--vault", str(self.vault), "--cache", str(self.cache_path)]
+        note = self.vault / "Cross_Market_Titans.md"
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(main(["--report"] + common), 0)
+        text = out.getvalue()
+        self.assertIn("SCAN REPORT", text)
+        self.assertIn("titans matched across HyperLiquid and Polymarket: 2", text)
+        self.assertIn("SharpTitan-Alpha", text)
+        self.assertIn("STATIC PLACEHOLDERS", text)
+        self.assertFalse(note.exists())                                   # --report writes nothing
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(main(["--scan"] + common), 0)
+        self.assertIn("SharpTitan-Alpha", out.getvalue())
+        self.assertIn("note written", out.getvalue())
+        self.assertTrue(note.exists())                                    # --scan writes it
+
+        # The report itself is a pure function: ranked by conviction, empty case honest.
+        titans = self.correlator.scan_titans()
+        report = format_cli_report(titans, [])
+        first = [l for l in report.splitlines() if "SharpTitan" in l]
+        self.assertEqual(len(first), 2)
+        self.assertTrue(first[0].strip().startswith("SharpTitan-Alpha"))  # the higher conviction ranks first
+        self.assertIn("none: no HyperLiquid whale resolves", format_cli_report([], []))
+
+
 if __name__ == "__main__":
     unittest.main()

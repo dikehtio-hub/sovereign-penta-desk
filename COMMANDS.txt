@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1083 passed as of Round 49)
+                        (1083 passed as of Round 50)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,40 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 50 - MILESTONE: FIVE-DESK COMMAND INDEX (everything runnable, one place)
+     All commands run from C:\Users\ixis1\Desktop\DEV unless a cd is shown.
+
+     DESK 1 - HL_Monarch (HyperLiquid perps + HIP-3, basis harvester)      cd HyperLiquid\HL_Monarch
+       service:   scripts\launchers\start_collector.bat | stop_collector.bat | open_dashboard.bat
+                  (python run_collector_service.py  |  python main.py dashboard)
+       book:      python main.py basis --harvest | --unmapped-spot | --sweep-illiquid (service stopped)
+       scans:     python main.py basis | arb --check-spreads | squeeze | backtest | persist --status
+       vault:     python main.py obsidian --once   (HyperLiquid_Monarch, Trading_Terminal, Monarch_Hub, canvas)
+       tests:     python -m pytest tests -q                                       (1,083)
+       runtime:   data/collector_service.jsonl, data/dashboard.jsonl, data/collector_status.json
+     DESK 2 - Sports_Desk (Poisson fair value, Shin devig, CLV, tax bridge)
+       ingest:    python -m Sports_Desk.ingestors.odds_fetcher --watch --interval 60
+       vault:     python -m Sports_Desk.interfaces.obsidian_exporter --once      (Sports_Desk.md)
+       tests:     Sports_Desk.tests.test_arbitrage test_bridges test_cli_hotlist test_fair_value
+                  test_monarch_shark test_obsidian_exporter test_odds_fetcher test_odds_watcher test_results_watcher
+     DESK 3 - cross_market (Polymarket vs sportsbook dutching; Titan correlator)
+       ingest:    python -m cross_market.ingestors.polymarket_fetcher --live | --watch | --sample
+       vault:     python -m cross_market.interfaces.obsidian_exporter --once     (Cross_Market_Arb.md)
+       titans:    python -m cross_market.titan_correlator --report | --scan | --once   (Cross_Market_Titans.md)
+       tests:     cross_market.tests.test_hybrid_arb test_obsidian_exporter test_polymarket_fetcher test_titan_correlator
+     DESK 4 - quant_trading_lab (CME futures, own git repo)                  cd quant_trading_lab
+       vault:     python -m telemetry.obsidian_exporter --once                    (Quant_Trading_Lab.md)
+     DESK 5 - Tax_Reserve_Agent (escrow, safe bankroll, receipts) + Polymarket_Monarch
+       tax note:  python -m Tax_Reserve_Agent.main export                         (Trading_Taxes/Tax_Reserve_<date>.md)
+                  NEVER seed-bankroll against the live ledger; paper runs use --paper-bankroll <amt>
+       polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
+       tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
+                  test_sports_tax test_tradovate_receipts                            (546)
+     MASTER SUITE (15 modules, 798): the Sports_Desk + cross_market modules above plus
+       Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
+     ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
+       five `--once` commands above in order; the canvas links the newest Tax_Reserve note.
 
      ROUND 49 - DASHBOARD LIFECYCLE LOG, 2H STATUS WINDOW, PERPDEXS AT START-UP
      data/dashboard.jsonl (DASHBOARD_LOG_PATH): dashboard_start {mode, service_pid,
