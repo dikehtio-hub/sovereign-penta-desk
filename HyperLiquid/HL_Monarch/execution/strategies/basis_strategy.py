@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional
 
 from analytics.funding_arbitrage import FundingArbitrageEngine
 from config.settings import (
+    ARB_MAX_SPREAD_BPS,
     BASIS_HOLDING_DAYS,
     BASIS_MIN_FUNDING_APR,
     BASIS_MIN_NET_APR,
@@ -119,20 +120,31 @@ def scan_basis_opportunities(
     holding_days: float = BASIS_HOLDING_DAYS,
     check_spreads: bool = True,
     snapshots: Optional[List[Dict[str, Any]]] = None,
+    max_spread_bps: float = ARB_MAX_SPREAD_BPS,
 ) -> Dict[str, Any]:
     """
-    Every constructible basis trade clearing both the gross and net APR bars.
+    Every constructible basis trade clearing the gross bar, the net bar AND the
+    spread ceiling.
 
     `check_spreads` defaults True here even though it costs live L2 calls: with
     no measured spread `net_apr_after_spread` returns the gross APR unchanged,
     so the net bar would be a no-op and every row would trivially "pass". A
     basis trade whose cost has not been measured has not been evaluated.
+
+    ROUND 38 - THE CEILING REACHES EVERY COSTED ROW. The scanner applies
+    `max_spread_bps` only to the head of its ranked list (ARB_SPREAD_CHECK_LIMIT
+    rows); the rows costed on demand below were judged against the net bar
+    alone. A wide spread amortised over a 7-day hold can still clear that bar -
+    para:AVGO entered the paper book at 35.05 bps against a 25 bps ceiling with
+    a net APR of 41% - so the ceiling is enforced here on whatever spread the
+    row carries, whoever measured it.
     """
     scanner = scanner or FundingArbitrageEngine()
     scan = scanner.scan_funding_opportunities(
         min_apr_pct=min_funding_apr,
         snapshots=snapshots,
         check_spreads=check_spreads,
+        max_spread_bps=max_spread_bps,
         holding_period_days=holding_days,
         classify_spot=True,
     )
@@ -168,6 +180,13 @@ def scan_basis_opportunities(
                 "basis_reject": f"net APR {pos['net_apr']:.1f}% < {min_net_apr:.1f}% bar",
             })
             continue
+        spread = opp.get("spread_bps")
+        if spread is not None and float(spread) > float(max_spread_bps):
+            rejected.append({
+                **opp,
+                "basis_reject": f"spread {float(spread):.1f}bps > {float(max_spread_bps):.1f}bps max",
+            })
+            continue
         accepted.append(pos)
 
     accepted.sort(key=lambda p: p["net_apr"], reverse=True)
@@ -176,6 +195,7 @@ def scan_basis_opportunities(
         "rejected": rejected,
         "min_funding_apr": min_funding_apr,
         "min_net_apr": min_net_apr,
+        "max_spread_bps": max_spread_bps,
         "holding_days": holding_days,
         "notional_per_leg_usd": notional_usd,
         "total_projected_pnl_usd": sum(p["projected_pnl_usd"] for p in accepted),

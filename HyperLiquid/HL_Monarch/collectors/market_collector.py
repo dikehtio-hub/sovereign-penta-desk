@@ -13,6 +13,7 @@ from typing import Callable, Dict, Any, List, Optional, Sequence, Set, Tuple
 from config.settings import (
     ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST, COLLECTOR_LOCK_PATH,
     ORDERBOOK_SAMPLE_INTERVAL, ORDERBOOK_SAMPLE_MAX_COINS, ORDERBOOK_SAMPLE_CANDIDATES,
+    SPOT_UNIVERSE_REFRESH_SECONDS, ARB_MAX_SPREAD_BPS,
     DB_FLUSH_INTERVAL, DB_MAINTENANCE_INTERVAL,
     ROTATION_INTERVAL, ROTATION_MAX_COINS,
     ROTATION_COOLDOWN_SECONDS, ROTATION_MIN_DAY_VOLUME,
@@ -127,6 +128,13 @@ class MarketCollector:
         self.liq_engine = LiquidationEngine()
         self.whale_tracker = WhaleTracker()
         self.alerter = WebhookAlerter()
+        # Round 38: the live spot token universe, for deciding which funding
+        # candidates the sampler may treat as spot-backed. Fetched lazily on the
+        # sampling thread and refreshed on SPOT_UNIVERSE_REFRESH_SECONDS.
+        self._spot_universe: Optional[Set[str]] = None
+        self._spot_universe_at: float = 0.0
+        self._spot_universe_warned = False
+        self._arb_engine = None
         self.running = False
         self._current_marks: Dict[str, float] = {}
 
@@ -350,6 +358,41 @@ class MarketCollector:
             self._yield_logged = False
         return True
 
+    def _spot_universe_cached(self) -> Set[str]:
+        """
+        The live spot token universe via the arbitrage engine's own lookup, so
+        the sampler and the harvester's scan agree on what "spot-backed" means.
+
+        A failed lookup yields an EMPTY set, which `top_funding_candidates`
+        treats as "no spot backing can be claimed": zero candidates this pass,
+        retried next pass. It is never a licence to fall back to the prefix
+        rule that put four unhedgeable coins in the Round 37 sample. A stale
+        copy outlives a failed refresh - a listing that existed six hours ago
+        still exists.
+        """
+        now = time.time()
+        cached = self._spot_universe
+        if cached and now - self._spot_universe_at < SPOT_UNIVERSE_REFRESH_SECONDS:
+            return cached
+        universe: Set[str] = set()
+        try:
+            from analytics.funding_arbitrage import FundingArbitrageEngine
+            if self._arb_engine is None:
+                self._arb_engine = FundingArbitrageEngine(client=self.rest_client)
+            universe = set(self._arb_engine.get_spot_universe(refresh=True) or ())
+        except Exception as e:                              # noqa: BLE001 - never fail the pass
+            logger.warning(f"Spot universe lookup failed: {e}")
+        if universe:
+            self._spot_universe, self._spot_universe_at = universe, now
+            self._spot_universe_warned = False
+            return universe
+        if cached:
+            return cached
+        if not self._spot_universe_warned:
+            logger.warning("Spot universe unavailable: no funding candidates are sampled until it loads")
+            self._spot_universe_warned = True
+        return set()
+
     def _sample_coins(self, snapshots: Sequence[Dict[str, Any]] = ()) -> List[str]:
         """
         Which coins this pass samples, capped:
@@ -359,11 +402,16 @@ class MarketCollector:
         Held positions (Round 36) must never lose their spread series to a rank
         change; the top positive-funding candidates (Round 37) get a spread on
         record BEFORE their entry instant, so a persisted window is measured at
-        the moment it opens rather than only after the position is held.
+        the moment it opens rather than only after the position is held. Round
+        38: a candidate must be spot-backed per the live universe and clear the
+        OI and volume floors the harvester's scan applies.
         """
         harvester = getattr(self, "basis_harvester", None)
         held = list(getattr(harvester, "positions", {}).keys()) if harvester is not None else []
-        candidates = top_funding_candidates(snapshots, n=ORDERBOOK_SAMPLE_CANDIDATES)
+        candidates: List[str] = []
+        if snapshots:
+            candidates = top_funding_candidates(snapshots, n=ORDERBOOK_SAMPLE_CANDIDATES,
+                                                spot_universe=self._spot_universe_cached())
         return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
                                    cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held, candidates=candidates)
 
@@ -510,6 +558,9 @@ class MarketCollector:
                             min_funding_apr=cfg.basis_min_funding_apr if cfg.basis_min_funding_apr is not None else BASIS_MIN_FUNDING_APR,
                             min_net_apr=cfg.basis_min_net_apr if cfg.basis_min_net_apr is not None else BASIS_MIN_NET_APR,
                             notional_usd=cfg.basis_notional_usd if cfg.basis_notional_usd is not None else BASIS_NOTIONAL_USD,
+                            # Round 38: the spread ceiling reaches every costed
+                            # row, not only the head the scanner probes.
+                            max_spread_bps=cfg.max_spread_bps if cfg.max_spread_bps is not None else ARB_MAX_SPREAD_BPS,
                             check_spreads=True,
                         )
                         for opp in scan["accepted"]:
@@ -523,6 +574,9 @@ class MarketCollector:
                                 notional_per_leg=verdict.gate.approved_notional_per_leg)
                             if pos:
                                 opened.append(pos)
+                            else:
+                                logger.info("Basis %s not opened: %s", opp.get("coin"),
+                                            getattr(harvester, "last_refusal", None) or "harvester gate")
                     harvester.save()
                     return credited, opened, closed
 

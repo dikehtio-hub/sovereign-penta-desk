@@ -107,7 +107,28 @@ ORDERBOOK_POLL_INTERVAL = 5.0  # Order book snapshot interval (dashboard live vi
 # not raise the cap or shorten the interval without redoing that arithmetic.
 ORDERBOOK_SAMPLE_INTERVAL = 120.0   # seconds between sampling passes
 ORDERBOOK_SAMPLE_MAX_COINS = 24     # held positions > funding candidates > rotated > core watchlist
-ORDERBOOK_SAMPLE_CANDIDATES = 5     # top positive-funding main-dex perps sampled ahead of their entry (Round 37)
+ORDERBOOK_SAMPLE_CANDIDATES = 5     # top positive-funding spot-backed perps sampled ahead of their entry (Round 37/38)
+# Round 38: candidate eligibility is decided by spot_symbol_for() against the
+# live spot token universe, never by the coin's dex prefix. The universe changes
+# rarely (new listings), so the sampler refreshes its copy on this cadence.
+SPOT_UNIVERSE_REFRESH_SECONDS = 6 * 3600.0
+
+# --- Round 38: the stalled-service threshold scales with the poll cadence -------
+# A service that is ALIVE BUT NOT WRITING shows STALLED on the dashboard once the
+# newest snapshot is older than this. Four missed cycles is a stall, not jitter:
+# the effective cycle is REST_POLL_INTERVAL plus ~2s of request overhead (8s
+# configured, ~10s observed), and 45s is the floor so a faster poll cannot turn
+# ordinary jitter into a red badge. Derived here rather than hard-coded in the
+# UI so raising the poll interval does not make every frame a false alarm.
+STALLED_FLOOR_SECONDS = 45.0
+
+
+def stalled_after_seconds(poll_interval: float = REST_POLL_INTERVAL,
+                          floor: float = STALLED_FLOOR_SECONDS) -> float:
+    return max(float(floor), (float(poll_interval) + 2.0) * 4.0)
+
+
+STALLED_AFTER_SECONDS = stalled_after_seconds()
 DB_FLUSH_INTERVAL = 2.0        # Database batch insert flush interval
 
 # Database maintenance / retention.

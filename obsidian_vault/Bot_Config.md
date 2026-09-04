@@ -11,7 +11,7 @@ whale_danger_zone_pct: 5.0
 alert_cooldown_seconds: 60.0
 emergency_killswitch: false
 pause_new_entries: false
-active_preset: "balanced"
+active_preset: "custom"
 tags:
   - monarch
   - bot-config
@@ -22,7 +22,7 @@ tags:
 
 > [!INFO] **Live Parameter Hot-Reload Controller**
 > Edit any field in the YAML frontmatter above and save. Running daemons automatically detect changes in `< 1s` without dropping WebSocket feeds.
-> - **Active Risk Preset**: `BALANCED`
+> - **Active Risk Preset**: `CUSTOM`
 > - **Execution Status**: 🟢 **ACTIVE**
 > - **Emergency Kill-Switch**: 🟢 **ARMED / READY (NORMAL)**
 

@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 38 complete: SPOT-GROUNDED CANDIDATES, SPREAD CEILING & CONCENTRATION
+GUARD. Funding candidates for the spread sampler are now decided by
+`spot_symbol_for` against the live spot universe (the ':' prefix rule was wrong
+both ways) and pre-filtered by the OI/volume floors; the basis spread ceiling
+now reaches every costed row in the scan AND the harvester's own gate (para:AVGO
+had entered at 35 bps against 25); one paper position per spot symbol
+(para:AVGO + xyz:AVGO were both hedged with AVGO); the stalled-service threshold
+is derived from REST_POLL_INTERVAL with a 45s floor; Bot_Config.md's preset label
+is "custom" to match its 5 slots. 12 new tests.
+
 Round 37 complete: STALLED-SERVICE DETECTION, CANDIDATE SPREAD SAMPLING & REPO
 UNTRACKING. The dashboard header has a fifth state - a live service that has
 written nothing for 45s shows STALLED in red; order book sampling now runs
@@ -65,8 +75,8 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (15 modules) | 793 OK |
-| HL_Monarch (pytest) | 1038 passed |
+| master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
+| HL_Monarch (pytest) | 1050 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -89,6 +99,32 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 38 findings
+
+- **The prefix rule was wrong both ways.** Live spot lookup: CHIP, PONS, XMR,
+  FARTCOIN (four of Round 37's five candidates) have NO spot token; para:ANSEM
+  (held against spot ANSEM) and xyz:TSLA (spot TSLA) were excluded. Candidates
+  now go through `spot_symbol_for(coin, spot_universe)`, the same function the
+  harvester's scan uses. The collector caches the universe (6h refresh); a
+  FAILED lookup yields zero candidates, never the prefix guess; a stale copy
+  outlives a failed refresh.
+- **Two paper positions showed two missing gates.** `scan_basis_opportunities`
+  costed rows on demand below the scanner's 8-row spread probe and judged them
+  on the net bar alone: 77.9% gross at 35.05 bps amortised over 7 days still
+  nets 41%, so para:AVGO entered against a 25 bps ceiling. The ceiling is now
+  enforced on every costed row (reason `spread X.Xbps > Y.Ybps max`) and again
+  in `BasisHarvester.open_position` - the last gate before capital moves must
+  not rely on the caller. `can_open(spot_symbol=)` refuses a spot token already
+  hedging an open position (para:AVGO + xyz:AVGO = $40k on AVGO). Refusals now
+  carry a reason (`harvester.last_refusal`) and the accrual loop logs it.
+- **The two existing over-ceiling / duplicate positions were NOT closed.** The
+  guard is on entry; the paper book still holds them and the exits stay
+  yield-driven (Ruling 34-B style: a gate change is not a reversal).
+- **Stall threshold**: `STALLED_AFTER_SECONDS = max(45, (REST_POLL_INTERVAL + 2) x 4)`
+  lives in settings (45s at the 8s poll; 88s at 20s); `ui/components` re-exports.
+- Bot_Config.md: `active_preset: "custom"`, `max_concurrent_positions: 5` kept;
+  the harvester report shows the cap in force ("Open n/5"), not the code's 2.
 
 ## Round 37 findings
 

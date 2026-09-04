@@ -70,21 +70,54 @@ def test_candidates_sit_between_held_positions_and_the_rotation():
     assert picked == ["SOL", "WIF", "BTC"]
 
 
-def test_top_funding_candidates_rank_positive_main_dex_funding_deterministically():
+def snap(coin, rate, oi=1_000_000.0, vol=1_000_000.0):
+    return {"coin": coin, "funding_rate": rate, "notional_oi": oi, "day_ntl_vlm": vol}
+
+
+def test_top_funding_candidates_rank_positive_funding_deterministically():
     snapshots = [
-        {"coin": "BTC", "funding_rate": 0.0001},
-        {"coin": "ETH", "funding_rate": -0.0002},          # negative: the spot-backed harvester cannot collect it
-        {"coin": "xyz:TSLA", "funding_rate": 0.001},        # HIP-3: no spot leg, excluded by default
-        {"coin": "PUMP", "funding_rate": 0.0005},
-        {"coin": "AAA", "funding_rate": 0.0005},            # ties break on the name
-        {"coin": "WIF", "funding_rate": None},
-        {"coin": "ZERO", "funding_rate": 0.0},
-        {"coin": "", "funding_rate": 0.9},
+        snap("BTC", 0.0001),
+        snap("ETH", -0.0002),           # negative: the spot-backed harvester cannot collect it
+        snap("xyz:TSLA", 0.001),        # no universe given: the prefix fallback excludes it
+        snap("PUMP", 0.0005),
+        snap("AAA", 0.0005),            # ties break on the name
+        snap("WIF", None),
+        snap("ZERO", 0.0),
+        snap("", 0.9),
+        "junk",
     ]
     assert top_funding_candidates(snapshots, n=3) == ["AAA", "PUMP", "BTC"]
     assert top_funding_candidates(snapshots, n=2, spot_backed_only=False) == ["xyz:TSLA", "AAA"]
     assert top_funding_candidates([], n=5) == []
     assert top_funding_candidates(snapshots, n=0) == []
+
+
+def test_candidates_are_grounded_on_the_spot_universe_not_the_prefix():
+    """
+    Round 38 (cross-check 3.2): the live sample under the prefix rule was CHIP,
+    PONS, XMR, FARTCOIN, STABLE - four of them with no spot token - while
+    para:ANSEM, which the harvester holds against spot ANSEM, was excluded.
+    """
+    snapshots = [snap("CHIP", 0.009), snap("PONS", 0.008), snap("XMR", 0.007), snap("FARTCOIN", 0.006),
+                 snap("STABLE", 0.005), snap("para:ANSEM", 0.004), snap("XPL", 0.003), snap("BTC", 0.002)]
+    universe = {"STABLE", "ANSEM", "UXPL", "UBTC"}          # wrapped large caps count, per spot_symbol_for
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe) == ["STABLE", "para:ANSEM", "XPL", "BTC"]
+    # An EMPTY universe is a failed lookup: nothing can be called spot-backed, so nothing is sampled as a candidate.
+    assert top_funding_candidates(snapshots, n=5, spot_universe=set()) == []
+    # The prefix rule survives only as the no-universe fallback.
+    assert top_funding_candidates(snapshots, n=5)[:4] == ["CHIP", "PONS", "XMR", "FARTCOIN"]
+
+
+def test_candidates_under_the_liquidity_floors_are_not_worth_a_sampling_slot():
+    """Cross-check 3.3: the scan rejects them before reading a spread, so sampling them measures nothing tradeable."""
+    universe = {"HOT", "THIN", "DEAD", "NOOI"}
+    snapshots = [snap("THIN", 0.01, oi=1_000_000.0, vol=99_999.0),    # under the volume floor
+                 snap("NOOI", 0.01, oi=249_999.0, vol=1_000_000.0),   # under the OI floor
+                 snap("HOT", 0.001),
+                 {"coin": "DEAD", "funding_rate": 0.02}]              # no liquidity fields at all: fail closed
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe) == ["HOT"]
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe,
+                                  min_notional_oi=0.0, min_day_volume=0.0) == ["DEAD", "NOOI", "THIN", "HOT"]
 
 
 def test_open_positions_are_sampled_even_when_the_cap_is_tight():
@@ -116,18 +149,59 @@ def test_the_collector_samples_held_positions_first_and_copes_without_a_harveste
     collector = mc.MarketCollector.__new__(mc.MarketCollector)
     collector._rotated_coins = {"PUMP", "FARTCOIN"}
     collector.basis_harvester = Harvester()
-    snapshots = [{"coin": "HOT", "funding_rate": 0.002}, {"coin": "WARM", "funding_rate": 0.001},
-                 {"coin": "xyz:TSLA", "funding_rate": 0.01}]
+    collector._spot_universe, collector._spot_universe_at = {"HOT", "WARM", "ANSEM"}, time.time()
+    snapshots = [snap("HOT", 0.002), snap("WARM", 0.001), snap("para:ANSEM", 0.0005),
+                 snap("CHIP", 0.01)]                                # highest funding, no spot token: not a candidate
     picked = collector._sample_coins(snapshots)
-    assert picked[:4] == ["FARTCOIN", "xyz:SILVER", "HOT", "WARM"]   # held, then candidates, then PUMP...
-    assert picked[4] == "PUMP"
-    assert "xyz:TSLA" not in picked[:5]
+    assert picked[:5] == ["FARTCOIN", "xyz:SILVER", "HOT", "WARM", "para:ANSEM"]   # held, then candidates, then PUMP
+    assert picked[5] == "PUMP"
+    assert "CHIP" not in picked
     assert picked.count("FARTCOIN") == 1
     assert len(picked) <= mc.ORDERBOOK_SAMPLE_MAX_COINS
 
     bare = mc.MarketCollector.__new__(mc.MarketCollector)
     bare._rotated_coins = set()
     assert bare._sample_coins()[0] == mc.ALL_CORE_WATCHLIST[0]      # no harvester, no snapshots: core first
+
+
+def test_the_spot_universe_is_cached_refreshed_and_never_guessed(monkeypatch):
+    """
+    Round 38: a failed lookup yields NO candidates (an empty universe), not the
+    prefix rule; a stale copy outlives a failed refresh; a good copy is reused
+    until SPOT_UNIVERSE_REFRESH_SECONDS have passed.
+    """
+    import collectors.market_collector as mc
+
+    class Engine:
+        def __init__(self, answers):
+            self.answers, self.calls = list(answers), 0
+
+        def get_spot_universe(self, refresh=False):
+            self.calls += 1
+            answer = self.answers.pop(0)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+
+    collector = mc.MarketCollector.__new__(mc.MarketCollector)
+    collector._spot_universe, collector._spot_universe_at, collector._spot_universe_warned = None, 0.0, False
+    collector._rotated_coins = set()
+    collector._arb_engine = Engine([set(), {"ANSEM"}, RuntimeError("429"), {"ANSEM", "NEW"}])
+
+    assert collector._spot_universe_cached() == set()                 # lookup failed: nothing is spot-backed
+    assert collector._spot_universe_warned
+    assert collector._spot_universe_cached() == {"ANSEM"}             # retried on the next pass
+    assert collector._spot_universe_cached() == {"ANSEM"}             # fresh: served from the cache
+    assert collector._arb_engine.calls == 2
+    collector._spot_universe_at -= mc.SPOT_UNIVERSE_REFRESH_SECONDS + 1
+    assert collector._spot_universe_cached() == {"ANSEM"}             # refresh failed: the stale copy stands
+    assert collector._spot_universe_cached() == {"ANSEM", "NEW"}      # and the next attempt replaces it
+    assert collector._arb_engine.calls == 4
+    # The cached universe is what decides candidates: the highest funding on the
+    # tape (CHIP) has no spot token and is not sampled ahead of the core list.
+    picked = collector._sample_coins([snap("para:ANSEM", 0.01), snap("CHIP", 0.02)])
+    assert picked[0] == "para:ANSEM" and "CHIP" not in picked
+    assert collector._arb_engine.calls == 4                           # served from the cache, no fetch
 
 
 def test_a_sampling_pass_reads_current_state_and_samples_the_candidates(repo):
@@ -140,13 +214,14 @@ def test_a_sampling_pass_reads_current_state_and_samples_the_candidates(repo):
             self.rows = []
 
         def get_latest_snapshots(self, coins=None):
-            return [{"coin": "HOT", "funding_rate": 0.002}, {"coin": "COLD", "funding_rate": -0.001}]
+            return [snap("HOT", 0.002), snap("COLD", -0.001)]
 
         def insert_orderbook_snapshots(self, rows):
             self.rows.extend(rows)
 
     collector = mc.MarketCollector.__new__(mc.MarketCollector)
     collector._rotated_coins = set()
+    collector._spot_universe, collector._spot_universe_at = {"HOT", "COLD"}, time.time()
     collector.repo = Repo(repo)
     collector.rest_client = FakeClient({"HOT": book(10.0, 3.0)})
     stats = collector._sample_pass()

@@ -2321,8 +2321,9 @@ esults_drops\.
           Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter
           cross_market.tests.test_obsidian_exporter
           cross_market.tests.test_polymarket_fetcher
+          cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1038 passed as of Round 37)
+                        (1050 passed as of Round 38)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2358,6 +2359,20 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 38 - SPOT-GROUNDED CANDIDATES, SPREAD CEILING, CONCENTRATION GUARD
+     Sampler candidates: spot-backed per spot_symbol_for() against the LIVE spot
+         universe (cached 6h; a failed lookup = no candidates), and over the
+         ARB_MIN_NOTIONAL_OI / ARB_MIN_DAY_VOLUME floors. The ':' prefix rule had
+         sampled CHIP/PONS/XMR/FARTCOIN (no spot) and skipped para:ANSEM (spot ANSEM).
+     Basis entries: max_spread_bps (Bot_Config, default ARB_MAX_SPREAD_BPS = 25)
+         is enforced on EVERY costed row in the scan and again in
+         BasisHarvester.open_position; one position per spot symbol
+         (can_open(spot_symbol=)). harvester.last_refusal says why an open was
+         refused; the collector logs "Basis X not opened: <reason>".
+         python main.py basis --harvest      -> "Open n/<cap in force>"
+     STALLED_AFTER_SECONDS = max(45, (REST_POLL_INTERVAL + 2) x 4), in settings.
+     Bot_Config.md: active_preset "custom" with max_concurrent_positions 5.
 
      ROUND 37 - STALLED-SERVICE DETECTION, CANDIDATE SAMPLING, UNTRACKING
      Dashboard header, 5th state: "Service: STALLED (PID n) · No snapshots written

@@ -72,6 +72,20 @@ def test_a_live_service_that_writes_nothing_is_stalled_not_calm():
     assert ingestion_badge(False, None, None, newest_snapshot_age_s=999.0)[0] == "standalone"
 
 
+def test_the_stall_threshold_scales_with_the_poll_interval_above_a_floor():
+    """Round 38 (cross-check 3.1): four missed cycles, never under 45s, derived in settings."""
+    from config.settings import REST_POLL_INTERVAL, STALLED_FLOOR_SECONDS, stalled_after_seconds
+    from config import settings
+
+    assert STALLED_AFTER_SECONDS is settings.STALLED_AFTER_SECONDS      # the UI re-exports, it does not redefine
+    assert STALLED_AFTER_SECONDS == stalled_after_seconds(REST_POLL_INTERVAL)
+    assert stalled_after_seconds(8.0) == STALLED_FLOOR_SECONDS == 45.0   # (8 + 2) x 4 = 40 sits under the floor
+    assert stalled_after_seconds(20.0) == 88.0                          # a slower poll raises the bar, no false alarms
+    assert stalled_after_seconds(1.0) == 45.0                           # a faster poll never drops below it
+    # And the badge honours whatever the derived value is.
+    assert ingestion_badge(True, 1, True, newest_snapshot_age_s=STALLED_AFTER_SECONDS + 0.1)[0] == "stalled"
+
+
 def test_newest_snapshot_age_reads_millisecond_timestamps_and_tolerates_junk():
     now = 1_788_000_100.0
     rows = [{"timestamp": 1_788_000_000_000}, {"timestamp": 1_788_000_040_000}, {"timestamp": None},

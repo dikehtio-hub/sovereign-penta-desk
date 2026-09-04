@@ -34,7 +34,8 @@ def format_coin_name(coin: str) -> str:
         return coin[4:]
     return coin
 
-STALLED_AFTER_SECONDS = 45.0   # the service polls every ~10s; four misses is a stall, not jitter
+# Round 38: derived from REST_POLL_INTERVAL in settings (floor 45s), not fixed here.
+from config.settings import STALLED_AFTER_SECONDS  # noqa: E402 - re-exported for the dashboard and tests
 
 
 def newest_snapshot_age_seconds(snapshots, now: Optional[float] = None) -> Optional[float]:

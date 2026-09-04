@@ -177,6 +177,51 @@ class TestUncostedRowsAreNotAccepted(unittest.TestCase):
         self.assertIn("net APR", r["rejected"][0]["basis_reject"])
 
 
+class TestSpreadCeilingReachesEveryCostedRow(unittest.TestCase):
+    """
+    Round 38. The scanner's max-spread filter probes only the head of its ranked
+    list; a row costed on demand below that head was judged against the net bar
+    alone. para:AVGO entered the paper book at 35.05 bps against a 25 bps ceiling
+    because 77.9% gross amortised over 7 days still nets 41%.
+    """
+
+    def scanner(self, rows, measured=None):
+        s = mock.Mock()
+        s.scan_funding_opportunities.return_value = {"short_harvest": rows,
+                                                     "long_harvest": [], "rejected": []}
+        s.fetch_spread_bps.return_value = measured
+        return s
+
+    def test_the_para_avgo_case_is_rejected_by_the_ceiling_not_the_net_bar(self):
+        row = opp(apr=77.928, spread_bps=None, coin="para:AVGO", spot="AVGO")
+        r = bs.scan_basis_opportunities(scanner=self.scanner([row], measured=35.046),
+                                        check_spreads=True, max_spread_bps=25.0)
+        self.assertEqual(r["accepted"], [])
+        self.assertEqual(r["rejected"][0]["basis_reject"], "spread 35.0bps > 25.0bps max")
+        # It clears the net bar comfortably - which is exactly why the ceiling must be its own gate.
+        costed = bs.build_position({**row, "spread_bps": 35.046})
+        self.assertGreater(costed["net_apr"], BASIS_MIN_NET_APR)
+
+    def test_a_pre_costed_row_over_the_ceiling_is_rejected_even_without_live_checks(self):
+        r = bs.scan_basis_opportunities(scanner=self.scanner([opp(apr=60.0, spread_bps=30.0)]),
+                                        check_spreads=False)
+        self.assertEqual(r["accepted"], [])
+        self.assertEqual(r["rejected"][0]["basis_reject"], "spread 30.0bps > 25.0bps max")
+
+    def test_the_ceiling_is_configurable_and_reaches_the_scanner_too(self):
+        s = self.scanner([opp(apr=60.0, spread_bps=30.0)])
+        r = bs.scan_basis_opportunities(scanner=s, check_spreads=False, max_spread_bps=40.0)
+        self.assertEqual(len(r["accepted"]), 1)
+        self.assertEqual(r["max_spread_bps"], 40.0)
+        self.assertEqual(s.scan_funding_opportunities.call_args.kwargs["max_spread_bps"], 40.0)
+
+    def test_the_default_ceiling_is_the_arb_gate_and_is_inclusive(self):
+        from config.settings import ARB_MAX_SPREAD_BPS
+        self.assertEqual(ARB_MAX_SPREAD_BPS, 25.0)
+        r = bs.scan_basis_opportunities(scanner=self.scanner([opp(spread_bps=25.0)]), check_spreads=False)
+        self.assertEqual(len(r["accepted"]), 1)
+
+
 class TestConfiguredBars(unittest.TestCase):
     def test_the_directive_bars_are_what_is_configured(self):
         """Net bar raised 15 -> 20 when the basis harvester became a primary

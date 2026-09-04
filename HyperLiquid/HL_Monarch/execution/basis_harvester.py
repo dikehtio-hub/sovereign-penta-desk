@@ -87,6 +87,8 @@ class BasisHarvester:
         self.funding_collected = 0.0
         self.fees_paid = 0.0
         self.accruals = 0
+        # Round 38: why the last open_position() returned None, for the log.
+        self.last_refusal: Optional[str] = None
         self.state_path = Path(state_path or BASIS_PAPER_STATE_PATH)
 
     # ---------------------------------------------------------------- open
@@ -95,45 +97,93 @@ class BasisHarvester:
         """Both legs tie up capital - the headline APR is quoted against one."""
         return notional_per_leg * 2.0
 
-    def can_open(self, coin: str, notional_per_leg: Optional[float] = None) -> bool:
+    @staticmethod
+    def effective_max_positions(cfg: Optional[Any] = None) -> int:
+        """The slot cap in force: the hot-reloaded config's, else the code default."""
+        cfg = cfg if cfg is not None else get_dynamic_config()
+        configured = getattr(cfg, "max_concurrent_positions", None)
+        return int(configured) if configured else BASIS_MAX_CONCURRENT
+
+    def holds_spot(self, spot_symbol: Optional[str]) -> Optional[str]:
+        """The coin already hedged against `spot_symbol`, or None."""
+        if not spot_symbol:
+            return None
+        for coin, pos in self.positions.items():
+            if pos.get("spot_symbol") == spot_symbol:
+                return coin
+        return None
+
+    def can_open(self, coin: str, notional_per_leg: Optional[float] = None,
+                 spot_symbol: Optional[str] = None) -> bool:
+        """
+        Round 38 adds the underlying to the gate. Two perps against the SAME spot
+        token (para:AVGO and xyz:AVGO, both hedged with AVGO) are two positions
+        by coin and one concentration by risk: the spot leg is the same asset
+        twice, and both perps' funding tends to move with the same flow. One
+        position per spot symbol.
+        """
         cfg = get_dynamic_config()
         if cfg.emergency_killswitch or cfg.pause_new_entries:
             return False
         effective_notional = notional_per_leg if notional_per_leg is not None else cfg.basis_notional_usd
-        effective_max = cfg.max_concurrent_positions if cfg.max_concurrent_positions else BASIS_MAX_CONCURRENT
-        return (coin not in self.positions
-                and len(self.positions) < effective_max
-                and self.capital_required(effective_notional) <= self.cash)
+        if coin in self.positions or len(self.positions) >= self.effective_max_positions(cfg):
+            return False
+        if self.holds_spot(spot_symbol) is not None:
+            return False
+        return self.capital_required(effective_notional) <= self.cash
+
+    def _refuse(self, reason: str) -> None:
+        self.last_refusal = reason
+        return None
 
     def open_position(self, opportunity: Dict[str, Any],
                       notional_per_leg: Optional[float] = None,
                       min_hold_days: Optional[float] = None,
-                      now: Optional[float] = None) -> Optional[Dict[str, Any]]:
+                      now: Optional[float] = None,
+                      max_spread_bps: Optional[float] = None) -> Optional[Dict[str, Any]]:
         """
-        Open a 1:1 cash-and-carry, or None if it fails a gate.
+        Open a 1:1 cash-and-carry, or None if it fails a gate (`last_refusal`
+        says which).
 
         Requires a MEASURED spread. `net_apr_after_spread` returns the gross APR
         untouched when no book was fetched, so an uncosted row would clear the net
         bar it was never tested against - the same trap basis_strategy refuses.
+
+        Round 38: the measured spread must also sit under the configured ceiling
+        (`max_spread_bps`, else the hot-reloaded config's). The scan enforces the
+        same ceiling; this is the last gate before capital moves and must not
+        rely on the caller having applied it. And the opportunity's spot symbol
+        must not already be hedging an open position - see `can_open`.
         """
+        self.last_refusal = None
         cfg = get_dynamic_config()
         if cfg.emergency_killswitch or cfg.pause_new_entries:
-            return None
+            return self._refuse("entries paused or kill-switch active")
         notional_per_leg = notional_per_leg if notional_per_leg is not None else cfg.basis_notional_usd
         effective_min_hold = min_hold_days if min_hold_days is not None else cfg.basis_holding_days
 
         coin = opportunity.get("coin")
-        if not coin or not self.can_open(coin, notional_per_leg):
-            return None
-        if opportunity.get("spread_bps") is None:
-            return None
+        if not coin:
+            return self._refuse("no coin")
+        spot_symbol = opportunity.get("spot_symbol")
+        held_by = self.holds_spot(spot_symbol)
+        if held_by is not None:
+            return self._refuse(f"spot {spot_symbol} already hedges {held_by}")
+        if not self.can_open(coin, notional_per_leg, spot_symbol=spot_symbol):
+            return self._refuse("gate: held, slots full, or insufficient cash")
+        spread = opportunity.get("spread_bps")
+        if spread is None:
+            return self._refuse("spread unmeasured")
+        ceiling = max_spread_bps if max_spread_bps is not None else cfg.max_spread_bps
+        if ceiling is not None and float(spread) > float(ceiling):
+            return self._refuse(f"spread {float(spread):.1f}bps > {float(ceiling):.1f}bps max")
         if float(opportunity.get("funding_apr") or 0.0) <= 0:
-            return None
+            return self._refuse("funding not positive")
         if float(opportunity.get("holding_days") or 0.0) < effective_min_hold:
-            return None
+            return self._refuse("holding period below minimum")
         mark = float(opportunity.get("mark_px") or 0.0)
         if mark <= 0:
-            return None
+            return self._refuse("no mark price")
 
         # Both legs must carry the SAME size, floored to the coarser szDecimals.
         # MON is the live case: perp is whole-units-only while spot takes 2dp, so
@@ -145,7 +195,7 @@ class BasisHarvester:
             spot_decimals=opportunity.get("spot_sz_decimals"),
         )
         if sizing["decimals"] is not None and not sizing["tradeable"]:
-            return None
+            return self._refuse("size not expressible at both legs' precision")
         if sizing["tradeable"]:
             # Deploy what the instruments can actually express, never more.
             notional_per_leg = sizing["notional_usd"]
@@ -164,9 +214,9 @@ class BasisHarvester:
                     coin=coin, sz=sz_str, spot_px=spot_px_str, perp_px=perp_px_str
                 )
                 if exec_result.get("aborted"):
-                    return None
-            except Exception:
-                return None
+                    return self._refuse("executor aborted the pair")
+            except Exception as exc:
+                return self._refuse(f"executor failed: {type(exc).__name__}")
 
         self.cash -= capital + entry_fee
         self.fees_paid += entry_fee
@@ -476,7 +526,7 @@ def format_report(h: BasisHarvester) -> str:
         f"deployed ${s['deployed_capital']:,.2f}",
         f"  Funding collected ${s['funding_collected']:,.2f}   "
         f"fees ${s['fees_paid']:,.2f}   net ${s['realized_pnl']:,.2f}",
-        f"  Open {s['open_positions']}/{BASIS_MAX_CONCURRENT}   "
+        f"  Open {s['open_positions']}/{h.effective_max_positions()}   "
         f"closed {s['closed_positions']}   accrual cycles {s['accrual_cycles']}",
         "",
     ]

@@ -22,33 +22,60 @@ not sampled here; the drag formula's two legs use the perp figure for both.
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
+from analytics.funding_arbitrage import spot_symbol_for
 from analytics.liquidation_engine import LiquidationEngine
+from config.settings import ARB_MIN_DAY_VOLUME, ARB_MIN_NOTIONAL_OI
 
 
 def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
-                           spot_backed_only: bool = True) -> List[str]:
+                           spot_backed_only: bool = True,
+                           spot_universe: Optional[Set[str]] = None,
+                           min_notional_oi: float = ARB_MIN_NOTIONAL_OI,
+                           min_day_volume: float = ARB_MIN_DAY_VOLUME) -> List[str]:
     """
-    The coins quoting the highest POSITIVE funding right now - what the
-    spot-backed harvester would open next (Round 37, cross-check 3.3). Sampling
-    them BEFORE the entry means a measured spread exists at the instant a grid
-    window opens, not only after the position is held.
+    The coins quoting the highest POSITIVE funding right now that the
+    spot-backed harvester could actually open next (Round 37, cross-check 3.3).
+    Sampling them BEFORE the entry means a measured spread exists at the instant
+    a grid window opens, not only after the position is held.
 
-    Main-dex perps only by default: a HIP-3 perp (`xyz:TSLA`) has no spot leg
-    to hedge with, so its funding is not a candidate for this strategy however
-    high it prints. Ties break on the coin name so the list is deterministic.
+    ROUND 38 - SPOT BACKING IS LOOKED UP, NOT GUESSED (cross-check 3.2). The
+    Round 37 rule "no ':' in the coin" was wrong both ways on live markets: four
+    of the five candidates it sampled (CHIP, PONS, XMR, FARTCOIN) have no spot
+    token and can never be a basis leg, while `para:ANSEM` - which the harvester
+    holds against spot ANSEM - was excluded. Eligibility is now decided by
+    `spot_symbol_for` against the live spot universe, the same function the
+    harvester's scan uses. With no universe supplied (`None`) the prefix rule
+    remains as a fallback; an EMPTY universe means the lookup failed and yields
+    no candidates rather than a guess.
+
+    LIQUIDITY FLOORS (cross-check 3.3). The scan rejects a market under the OI
+    or 24h-volume floor before it reads any spread, so a sampling slot spent on
+    one measures nothing that can be traded. The spread itself stays ungated:
+    sampling is what produces it. Ties break on the coin name so the list is
+    deterministic.
     """
     ranked: List[Tuple[float, str]] = []
     for s in snapshots or ():
-        coin = str((s.get("coin") if isinstance(s, dict) else "") or "")
-        if not coin or (spot_backed_only and ":" in coin):
+        if not isinstance(s, dict):
             continue
+        coin = str(s.get("coin") or "")
+        if not coin:
+            continue
+        if spot_backed_only:
+            if spot_universe is not None:
+                if spot_symbol_for(coin, spot_universe) is None:
+                    continue
+            elif ":" in coin:
+                continue
         try:
             rate = float(s.get("funding_rate"))
+            notional_oi = float(s.get("notional_oi") or 0.0)
+            day_volume = float(s.get("day_ntl_vlm") or 0.0)
         except (TypeError, ValueError):
             continue
-        if rate <= 0.0:
+        if rate <= 0.0 or notional_oi < min_notional_oi or day_volume < min_day_volume:
             continue
         ranked.append((rate, coin))
     ranked.sort(key=lambda item: (-item[0], item[1]))

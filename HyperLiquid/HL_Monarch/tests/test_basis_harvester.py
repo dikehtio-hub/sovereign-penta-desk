@@ -77,8 +77,60 @@ class TestOpening(HarvesterCase):
         from config.dynamic_config import get_dynamic_config
         expected_cap = get_dynamic_config().max_concurrent_positions or BASIS_MAX_CONCURRENT
         for i in range(expected_cap + 3):
-            self.h.open_position(opp(coin=f"C{i}"), notional_per_leg=1_000.0)
+            self.h.open_position(opp(coin=f"C{i}", spot=f"C{i}"), notional_per_leg=1_000.0)
         self.assertEqual(len(self.h.positions), expected_cap)
+
+    def test_a_spread_over_the_ceiling_is_refused_with_the_reason(self):
+        """
+        Round 38. para:AVGO opened at 35.05 bps against a 25 bps ceiling: the scan
+        probes only the head of its list and the net bar alone let it through.
+        The harvester is the last gate before capital moves, so it checks too.
+        """
+        wide = opp(coin="para:AVGO", spot="AVGO", apr=77.9, spread=35.046)
+        self.assertIsNone(self.h.open_position(wide, notional_per_leg=10_000.0, max_spread_bps=25.0))
+        self.assertEqual(self.h.last_refusal, "spread 35.0bps > 25.0bps max")
+        self.assertEqual(self.h.positions, {})
+        # At the ceiling is inside it, and the refusal clears on success.
+        at_ceiling = opp(coin="para:AVGO", spot="AVGO", spread=25.0)
+        self.assertIsNotNone(self.h.open_position(at_ceiling, notional_per_leg=10_000.0, max_spread_bps=25.0))
+        self.assertIsNone(self.h.last_refusal)
+
+    def test_the_ceiling_defaults_to_the_hot_reloaded_config(self):
+        from config.dynamic_config import get_dynamic_config
+        ceiling = get_dynamic_config().max_spread_bps
+        self.assertIsNone(self.h.open_position(opp(spread=ceiling + 1.0), notional_per_leg=10_000.0))
+        self.assertIn("bps max", self.h.last_refusal)
+
+    def test_one_position_per_spot_symbol(self):
+        """
+        Round 38. para:AVGO and xyz:AVGO were both opened against spot AVGO - two
+        positions by coin, one concentration by risk: the same asset held twice,
+        and both perps' funding moving with the same flow.
+        """
+        self.assertIsNotNone(self.h.open_position(opp(coin="para:AVGO", spot="AVGO"), notional_per_leg=10_000.0))
+        self.assertIsNone(self.h.open_position(opp(coin="xyz:AVGO", spot="AVGO"), notional_per_leg=10_000.0))
+        self.assertEqual(self.h.last_refusal, "spot AVGO already hedges para:AVGO")
+        self.assertFalse(self.h.can_open("xyz:AVGO", 10_000.0, spot_symbol="AVGO"))
+        self.assertTrue(self.h.can_open("xyz:AVGO", 10_000.0, spot_symbol="UAVGO"))
+        self.assertTrue(self.h.can_open("xyz:AVGO", 10_000.0))            # no symbol given: nothing to compare
+        self.assertEqual(self.h.holds_spot("AVGO"), "para:AVGO")
+        self.assertIsNone(self.h.holds_spot(None))
+        # Closing the first frees the underlying.
+        self.h.close_position("para:AVGO")
+        self.assertIsNotNone(self.h.open_position(opp(coin="xyz:AVGO", spot="AVGO"), notional_per_leg=10_000.0))
+
+    def test_the_report_shows_the_cap_in_force_not_the_code_default(self):
+        from execution.basis_harvester import format_report
+        self.assertIn(f"Open 0/{self.h.effective_max_positions()}", format_report(self.h))
+
+        class Seven:
+            max_concurrent_positions = 7
+
+        class Unset:
+            max_concurrent_positions = 0
+
+        self.assertEqual(BasisHarvester.effective_max_positions(Seven()), 7)
+        self.assertEqual(BasisHarvester.effective_max_positions(Unset()), BASIS_MAX_CONCURRENT)
 
     def test_a_position_larger_than_cash_is_refused(self):
         self.assertIsNone(self.h.open_position(opp(), notional_per_leg=80_000.0))
