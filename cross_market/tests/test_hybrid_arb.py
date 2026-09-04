@@ -606,6 +606,27 @@ class TestHud(unittest.TestCase):
         self.assertNotIn("LEG A  POLYMARKET", text)
         self.assertIn("NOTHING IS ACTIONABLE", text)
 
+    def test_both_characterisations_are_shown_on_every_clearing_pair(self):
+        """
+        Round 29 ruled IRC 1234A capital the default and kept the wagering reading
+        available. That is only useful if the operator sees what the adverse
+        reading costs AT THE MOMENT OF DECIDING - showing one number turns a live
+        legal question the IRS has not answered into a settled one.
+        """
+        text = render_cross_market([self._result(3.0, 3.0)])
+        self.assertIn("IRC 1234A capital", text)
+        self.assertIn("WAGERING", text)
+        self.assertIn("165(d)", text)
+        self.assertIn("has not ruled", text)
+
+    def test_the_adverse_hurdle_is_never_better_than_the_capital_one(self):
+        """Losing the capital treatment cannot make a position easier to clear."""
+        from cross_market.hud import _adverse_hurdle
+        for cap in (0.0, BIG):
+            result = self._result(3.0, 3.0, cap=cap)
+            self.assertGreaterEqual(_adverse_hurdle(result),
+                                    result.breakeven_gross_arb - 1e-9)
+
     def test_no_stray_double_percent_reaches_the_screen(self):
         for text in (render_cross_market([]),
                      render_cross_market([self._result(3.0, 3.0)]),

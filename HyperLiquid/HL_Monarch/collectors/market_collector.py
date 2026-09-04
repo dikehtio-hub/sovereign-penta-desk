@@ -299,10 +299,27 @@ class MarketCollector:
         from execution.basis_harvester import BasisHarvester
         from execution.strategies.basis_strategy import scan_basis_opportunities
         from config.dynamic_config import get_dynamic_config
+        from strategies.funding_harvester import FundingHarvester
 
         harvester = BasisHarvester()
         harvester.load()
         self.basis_harvester = harvester
+        # EVERY OPEN NOW GOES THROUGH THE hl_basis_harvest BUCKET. Until Round 29
+        # this loop called `harvester.open_position(opp)` directly, and the
+        # harvester gates only on its own paper cash - so two positions at the
+        # configured notional committed $40,000 without one reference to the
+        # bankroll. Built once, outside the cycle, because constructing it opens
+        # the tax ledger.
+        gated = FundingHarvester(harvester=harvester)
+        self.basis_gate = gated
+        if gated.gate.hook is None:
+            # The gate fails closed by design, so this is the difference between
+            # "no opportunities today" and "the strategy is switched off". Said
+            # once, loudly, rather than discovered from an empty position list.
+            logger.error(
+                "Basis harvester is GATED OFF: the bankroll could not be read (%s). "
+                "No position will open until the tax ledger is available.",
+                gated.gate.hook_error or "no hook")
         loop = asyncio.get_running_loop()
 
         while self.running:
@@ -333,7 +350,14 @@ class MarketCollector:
                             check_spreads=True,
                         )
                         for opp in scan["accepted"]:
-                            pos = harvester.open_position(opp)
+                            verdict = gated.evaluate(opp)
+                            if not verdict.tradeable:
+                                logger.info("Basis %s declined: %s",
+                                            verdict.coin, " | ".join(verdict.reasons))
+                                continue
+                            pos = harvester.open_position(
+                                opp,
+                                notional_per_leg=verdict.gate.approved_notional_per_leg)
                             if pos:
                                 opened.append(pos)
                     harvester.save()

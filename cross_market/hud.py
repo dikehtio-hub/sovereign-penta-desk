@@ -76,6 +76,32 @@ def render_cross_market(results: Sequence[HybridArbResult],
     return "\n".join(lines)
 
 
+def _adverse_hurdle(result: HybridArbResult) -> Optional[float]:
+    """
+    The same pair priced as though the Polymarket leg were a wager.
+
+    Recomputed rather than cached, because it is a property of the shape and the
+    tax reading, not of the live book - and because a stale adverse number
+    silently attached to a re-quoted pair would be worse than none.
+    """
+    from cross_market.hybrid_arb import (HybridLeg, breakeven_gross_arb,
+                                         prediction_as_wagering_tax)
+    leg_b = result.leg_b
+    ordinary = leg_b.tax.gain_rate
+    state = leg_b.tax.relief_rate
+    adverse_a = HybridLeg(
+        venue=result.leg_a.venue, selection=result.leg_a.selection,
+        decimal_odds=result.leg_a.decimal_odds,
+        tax=prediction_as_wagering_tax(ordinary, state,
+                                       leg_b.tax.relief_capacity),
+        token_id=result.leg_a.token_id, limit_price=result.leg_a.limit_price,
+        raw_price=result.leg_a.raw_price, fee_rate=result.leg_a.fee_rate)
+    try:
+        return breakeven_gross_arb(adverse_a, leg_b)
+    except Exception:                                       # noqa: BLE001
+        return None
+
+
 def _fixture(result: HybridArbResult) -> str:
     return "%s / %s" % (result.leg_a.selection, result.leg_b.selection)
 
@@ -90,8 +116,16 @@ def _render_one(result: HybridArbResult, pair: Any = None) -> List[str]:
              % ((result.tax_manufactured_variance / result.capital) * 100.0
                 if result.capital else 0.0)]
     if result.breakeven_gross_arb is not None:
-        lines.append("  after-tax hurdle for this shape: %+.2f%%"
+        lines.append("  after-tax hurdle for this shape: %+.2f%%   (IRC 1234A capital)"
                      % (result.breakeven_gross_arb * 100.0))
+    # BOTH CHARACTERISATIONS, ALWAYS. Round 29 ruled 1234A capital the default and
+    # kept the wagering reading available - which is only useful if the operator
+    # can see what the adverse reading costs at the moment of deciding. Showing
+    # one number turns a live legal question into a settled one.
+    adverse = _adverse_hurdle(result)
+    if adverse is not None:
+        lines.append("  same shape if read as WAGERING:   %+.2f%%   (IRC 165(d) - "
+                     "the IRS has not ruled)" % (adverse * 100.0))
     lines.append("")
 
     # LEG A first because it is the one with a limit price to set. A market order

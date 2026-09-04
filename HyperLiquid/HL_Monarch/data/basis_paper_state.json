@@ -1,6 +1,6 @@
 {
   "starting_cash": 100000.0,
-  "cash": 262.9966465130076,
+  "cash": 275.8794176293543,
   "positions": {
     "para:ANSEM": {
       "coin": "para:ANSEM",
@@ -14,9 +14,9 @@
       "entry_net_apr": 2918.516234104807,
       "spread_bps": 5.9758972145683575,
       "entry_fee": 7.0,
-      "funding_accrued": 265.0601300000001,
-      "hours_held": 47.0,
-      "accruals": 47,
+      "funding_accrued": 277.20477100000005,
+      "hours_held": 48.0,
+      "accruals": 48,
       "opened_at": 1788245024.92587
     },
     "xyz:HOOD": {
@@ -31,9 +31,9 @@
       "entry_net_apr": 53.04671502424655,
       "spread_bps": 2.7471269630512465,
       "entry_fee": 7.0,
-      "funding_accrued": 12.634961999999998,
-      "hours_held": 47.0,
-      "accruals": 47,
+      "funding_accrued": 12.697461999999998,
+      "hours_held": 48.0,
+      "accruals": 48,
       "opened_at": 1788245024.9258761
     },
     "para:AVGO": {
@@ -50,9 +50,9 @@
       "entry_net_apr": 41.38052901211273,
       "spread_bps": 35.04560067331656,
       "entry_fee": 6.99845181,
-      "funding_accrued": 6.592564599933091,
-      "hours_held": 12.0,
-      "accruals": 12,
+      "funding_accrued": 7.0770274275861915,
+      "hours_held": 13.0,
+      "accruals": 13,
       "opened_at": 1788399721.854447
     },
     "xyz:AVGO": {
@@ -69,9 +69,9 @@
       "entry_net_apr": 32.643577228873916,
       "spread_bps": 0.8281916435455634,
       "entry_fee": 6.998283600000001,
-      "funding_accrued": 1.3115243353608006,
-      "hours_held": 12.0,
-      "accruals": 12,
+      "funding_accrued": 1.3740090103608007,
+      "hours_held": 13.0,
+      "accruals": 13,
       "opened_at": 1788399721.8555417
     },
     "XPL": {
@@ -88,16 +88,16 @@
       "entry_net_apr": 24.526177343019114,
       "spread_bps": 6.760723753269343,
       "entry_fee": 6.9999789859999995,
-      "funding_accrued": 3.0067399737395024,
-      "hours_held": 12.0,
-      "accruals": 12,
+      "funding_accrued": 3.1354225874331365,
+      "hours_held": 13.0,
+      "accruals": 13,
       "opened_at": 1788399721.8566296
     }
   },
   "closed": [],
-  "realized_pnl": 253.60920651303337,
-  "funding_collected": 288.6059209090334,
+  "realized_pnl": 266.4919776293801,
+  "funding_collected": 301.4886920253801,
   "fees_paid": 34.996714396,
-  "accruals": 47,
-  "saved_at": 1788486365.8606088
+  "accruals": 48,
+  "saved_at": 1788489965.8819897
 }

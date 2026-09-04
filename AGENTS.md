@@ -5,7 +5,12 @@ the detail.
 
 ## Status
 
-Round 27 complete: Item 6, cross-market arbitrage (`cross_market/hybrid_arb.py`,
+Round 29 complete: Item 8, the funding harvester's BUCKET GATE and after-tax
+economics (`HL_Monarch/strategies/funding_harvester.py`). The delta-neutral
+engine already existed and was left alone; what was missing was the layer
+between it and the bankroll. 24 new tests.
+
+Round 27 before it: Item 6, cross-market arbitrage (`cross_market/hybrid_arb.py`,
 `matcher.py`, `hud.py`, `--cross-market` on Monarch_Shark). 52 new tests.
 
 Round 26m before it. **The repository now has version history** — it had none
@@ -16,10 +21,10 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market (11 modules) | 736 OK |
+| master + bridges + cross-market (11 modules) | 738 OK |
+| HL_Monarch (pytest) | 928 passed |
 | Sports_Desk master + bridges (9 modules) | 680 OK |
 | Tax_Reserve_Agent (4 modules) | 524 OK |
-| HL_Monarch | 904 passed |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 24% federal + 6.37% NJ + 2% buffer, `casual_standard_deduction`.
@@ -41,6 +46,27 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 29 findings
+
+- **Item 8 was ~90% already built.** `execution/basis_harvester.py` (delta-neutral,
+  accrues at the CURRENT rate not the entry quote), `analytics/funding_arbitrage.py`
+  (scan + spread amortisation), `BASIS_MIN_NET_APR = 20.0` already the *net* bar,
+  and `hl_basis_harvest` already the bucket name in `risk_manager.py`.
+- **The real gap: the harvester never asked the bankroll.** It imported
+  `STRATEGY_BASIS_HARVEST` only to tag receipts and gated on its own paper cash;
+  `market_collector.py` opened positions with no bucket check at all. Same defect
+  as Monarch_Shark running 1.7x over its sports bucket. Now wired, and the live
+  call site goes through it.
+- **The quoted APR is double the return on capital.** Every APR in the system is
+  per-*leg*; `capital_required()` is `notional x 2`. A position reporting 56%
+  realised earns 28% on money committed. A gate asking for one leg's notional
+  would authorise half what the position spends.
+- **The honest restatement**: 20% quoted -> 10% on capital -> 6.8% after tax ->
+  vs 3.7% for a T-bill after ITS tax (state-exempt, 31 USC 3124(a)). A three-point
+  edge, not fifteen.
+- The gate **fails closed**: an unreadable ledger rejects rather than waving
+  through, and logs loudly so "gated off" is never mistaken for "no opportunities".
 
 ## Round 27 findings
 
