@@ -111,6 +111,7 @@ obsidian_vault/.obsidian/
 # All of these are rewritten by running processes and were tracked only because
 # the Round 26 baseline was a snapshot of a live working tree.
 basis_paper_state.json
+collector_status.json
 paper_trading_state.json
 hyperliquidusers.txt
 **/data/cache/*
