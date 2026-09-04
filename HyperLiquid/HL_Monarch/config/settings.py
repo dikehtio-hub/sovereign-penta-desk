@@ -226,6 +226,19 @@ ARB_SPREAD_CHECK_LIMIT = 8         # max live l2Book checks per direction (weigh
 # $10k/day pair is the whole day's turnover. 32 of 499 tokens clear $50k on
 # 2026-09-04 (46 at $10k, 25 at $100k) - the liquid wrappers stay, the shells go.
 SPOT_MIN_DAY_VOLUME = 50_000.0     # USD 24h notional floor for the SPOT leg's pair (>= 5x a $10k leg)
+# Round 41 (Ruling 41-3): the floor scales with the leg. effective_spot_min_volume()
+# in analytics/funding_arbitrage.py returns max(SPOT_MIN_DAY_VOLUME, notional x this),
+# so a $25k leg needs a $125k/day pair. The constant above is the floor of the floor.
+SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE = 5.0
+# Round 41 (Ruling 41-1): tokenised equities (NVDAX, TSLAX, EQNVDA...) are liquid spot
+# tokens that price a stock which trades five days a week. A basis hedge on one
+# carries the weekend gap and the market-hours liquidity cliff the perp does not.
+# Quarantined: spot_symbol_for ignores SYNTHETIC_EQUITY_ALIASES while this is False.
+ALLOW_SYNTHETIC_EQUITY_BASIS = False
+# Round 41 (Ruling 41-4): liquid spot tokens that can never be a basis leg because
+# they are the quote/settlement asset, not something a perp prices. Excluded from
+# the unmapped-spot telemetry so it reports missing aliases, not stablecoins.
+SPOT_NON_BASIS_TOKENS = ("USDC", "USDT0", "USDE", "USDH", "USDHL", "FEUSD", "USR")
 
 # Funding harvest modelling.
 # Hyperliquid settles perp funding hourly (verified against the API: the `funding`

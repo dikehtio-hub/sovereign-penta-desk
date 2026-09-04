@@ -90,6 +90,7 @@ def main():
     basis_parser.add_argument("--days", type=float, default=None, help="Holding period in days used to amortise cost (default: 7)")
     basis_parser.add_argument("--harvest", action="store_true", help="Show the paper harvester book instead of a fresh scan")
     basis_parser.add_argument("--no-spreads", action="store_true", help="Skip live L2 spread checks (net APR then equals gross - the net bar becomes a no-op)")
+    basis_parser.add_argument("--unmapped-spot", action="store_true", help="List liquid spot tokens no perp resolves to (a wrapper missing from SPOT_SYMBOL_ALIASES, or nothing to harvest)")
 
     # Command: excursion (MFE/MAE benchmark on the liquidation entry signal)
     exc_parser = subparsers.add_parser("excursion", help="MFE/MAE excursion benchmark: does the liquidation entry signal have edge?")
@@ -484,11 +485,38 @@ def main():
             "holding_days": args.days if args.days is not None else BASIS_HOLDING_DAYS,
             "check_spreads": not args.no_spreads,
         }
+        if args.unmapped_spot:
+            from analytics.funding_arbitrage import FundingArbitrageEngine, effective_spot_min_volume
+            engine = FundingArbitrageEngine()
+            rows = engine.get_unmapped_liquid_spot()
+            floor = effective_spot_min_volume()
+            print()
+            print(f"LIQUID SPOT TOKENS NO PERP RESOLVES TO  (24h pair volume >= ${floor:,.0f})")
+            if engine.get_spot_volumes() is None:
+                print("  spot volume lookup failed - nothing can be said")
+            elif not rows:
+                print("  none: every liquid spot token is reachable from some perp")
+            else:
+                print(f"  {'TOKEN':<10}{'24H VOLUME':>16}")
+                for r in rows:
+                    print(f"  {r['token']:<10}{r['day_volume']:>16,.0f}")
+            print("  A row is either a wrapper missing from SPOT_SYMBOL_ALIASES (verify its fullName on the")
+            print("  live token list before adding it) or an asset with no perp - nothing to harvest.")
+            print()
+            return
         if args.harvest:
             from execution.basis_harvester import BasisHarvester, format_report as harvest_report
+            from analytics.funding_arbitrage import FundingArbitrageEngine
             h = BasisHarvester()
             h.load()
-            print(harvest_report(h))
+            # One request, so dead spot legs are tagged [ILLIQUID SPOT]; a failed
+            # lookup prints the book untagged rather than claiming anything.
+            volumes = None
+            try:
+                volumes = FundingArbitrageEngine().get_spot_volumes()
+            except Exception:
+                volumes = None
+            print(harvest_report(h, spot_volumes=volumes))
             return
         print("Scanning for delta-neutral basis trades (long spot + short perp)...")
         print(format_report(scan_basis_opportunities(**kwargs)))

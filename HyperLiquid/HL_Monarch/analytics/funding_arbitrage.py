@@ -21,6 +21,9 @@ from config.settings import (
     ARB_DEFAULT_HOLDING_DAYS,
     ARB_FUNDING_INTERVAL_HOURS,
     SPOT_MIN_DAY_VOLUME,
+    SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE,
+    ALLOW_SYNTHETIC_EQUITY_BASIS,
+    SPOT_NON_BASIS_TOKENS,
 )
 
 
@@ -33,16 +36,23 @@ SPOT_WRAPPER_PREFIXES = ("U",)
 # Authoritative and hand-kept - never fuzzy-matched on fullName, because a wrong
 # alias hedges one asset with another. Verified on the live token list on
 # 2026-09-04: UFART "Unit Fartcoin" ($570k/day), HPENGU "Pudgy Penguins", XMR1
-# "XMR - Wagyu.xyz" ($16M/day), FXMR "Freedom XMR", NVDAX "Wrapped NVIDIA
-# xStock", TSLAX "Wrapped Tesla xStock", FXRP. EQNVDA, EQTSLA, IXRP and WXRP
-# exist with no pair today; the volume floor keeps them out until they trade.
+# "XMR - Wagyu.xyz" ($16M/day), FXMR "Freedom XMR", FXRP. IXRP and WXRP exist
+# with no pair today; the volume floor keeps them out until they trade.
 SPOT_SYMBOL_ALIASES: Dict[str, Tuple[str, ...]] = {
     "FARTCOIN": ("UFART",),
     "PENGU": ("HPENGU",),
     "XMR": ("XMR1", "FXMR"),
+    "XRP": ("FXRP", "IXRP", "WXRP"),
+}
+
+# Round 41 (Ruling 41-1): tokenised EQUITIES. NVDAX "Wrapped NVIDIA xStock",
+# TSLAX "Wrapped Tesla xStock", EQNVDA/EQTSLA "EQX Tokenized". They price a stock
+# that trades five days a week while the HIP-3 perp trades seven, so the hedge
+# carries the weekend gap and the market-hours liquidity cliff. Used only while
+# settings.ALLOW_SYNTHETIC_EQUITY_BASIS is True.
+SYNTHETIC_EQUITY_ALIASES: Dict[str, Tuple[str, ...]] = {
     "NVDA": ("NVDAX", "EQNVDA"),
     "TSLA": ("TSLAX", "EQTSLA"),
-    "XRP": ("FXRP", "IXRP", "WXRP"),
 }
 
 
@@ -51,14 +61,21 @@ def perp_base_symbol(coin: str) -> str:
     return coin.split(":", 1)[1] if ":" in coin else coin
 
 
-def spot_symbol_candidates(coin: str) -> List[str]:
+def spot_symbol_candidates(coin: str, allow_synthetic_equity: Optional[bool] = None) -> List[str]:
     """
-    Every spot name that could hedge this perp, in precedence order: the bare
-    name, then the "U" wrapper, then the hand-kept aliases. Deduplicated.
+    Every spot name that could hedge this perp, in precedence order, deduplicated.
+
+    Round 41: the "U" wrapper comes BEFORE the bare name. Unit tokens are the
+    canonical bridged assets; a bare-named token of the same symbol is usually a
+    third-party deployment (ANSEM $1.5k/day beside UANSEM $928k). Then the
+    crypto-native aliases, then - only if allowed - the tokenised equities.
     """
+    allow = ALLOW_SYNTHETIC_EQUITY_BASIS if allow_synthetic_equity is None else bool(allow_synthetic_equity)
     base = perp_base_symbol(coin).upper()
-    ordered = [base] + [prefix + base for prefix in SPOT_WRAPPER_PREFIXES]
+    ordered = [prefix + base for prefix in SPOT_WRAPPER_PREFIXES] + [base]
     ordered += list(SPOT_SYMBOL_ALIASES.get(base, ()))
+    if allow:
+        ordered += list(SYNTHETIC_EQUITY_ALIASES.get(base, ()))
     out: List[str] = []
     for sym in ordered:
         if sym and sym not in out:
@@ -67,7 +84,8 @@ def spot_symbol_candidates(coin: str) -> List[str]:
 
 
 def spot_symbol_for(coin: str, spot_universe: Set[str],
-                    spot_volumes: Optional[Dict[str, float]] = None) -> Optional[str]:
+                    spot_volumes: Optional[Dict[str, float]] = None,
+                    allow_synthetic_equity: Optional[bool] = None) -> Optional[str]:
     """
     The spot ticker that could hedge this perp, or None when none exists.
 
@@ -78,10 +96,13 @@ def spot_symbol_for(coin: str, spot_universe: Set[str],
     Round 40 (Ruling 40-2): when several candidates are in the universe and
     `spot_volumes` (token -> 24h notional) is supplied, the MOST LIQUID one is
     the hedge - para:ANSEM resolves to UANSEM ($928k/day), not the bare ANSEM
-    ($1.5k/day) it was first booked against. Without volumes the precedence
-    order stands: bare name, "U" wrapper, aliases.
+    ($1.5k/day) it was first booked against. Ties, and calls without volumes,
+    follow the precedence order: "U" wrapper, bare name, aliases (Round 41).
+    Tokenised equities are ignored unless `allow_synthetic_equity` (default:
+    settings.ALLOW_SYNTHETIC_EQUITY_BASIS) says otherwise.
     """
-    present = [sym for sym in spot_symbol_candidates(coin) if sym in spot_universe]
+    candidates = spot_symbol_candidates(coin, allow_synthetic_equity=allow_synthetic_equity)
+    present = [sym for sym in candidates if sym in spot_universe]
     if not present:
         return None
     if spot_volumes:
@@ -93,6 +114,27 @@ def spot_symbol_for(coin: str, spot_universe: Set[str],
             return (volume, -present.index(sym))            # ties keep the precedence order
         return max(present, key=liquidity)
     return present[0]
+
+
+def effective_spot_min_volume(cfg: Any = None) -> float:
+    """
+    The spot-leg volume floor in force (Ruling 41-3): the larger of
+    SPOT_MIN_DAY_VOLUME and SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE x the configured
+    per-leg notional. A $10k leg needs a $50k/day pair; a $25k leg $125k. Reads
+    the hot-reloaded Bot_Config when no `cfg` is given; falls back to the
+    constant if the config is unreadable.
+    """
+    if cfg is None:
+        try:
+            from config.dynamic_config import get_dynamic_config
+            cfg = get_dynamic_config()
+        except Exception:
+            cfg = None
+    try:
+        notional = float(getattr(cfg, "basis_notional_usd", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        notional = 0.0
+    return max(float(SPOT_MIN_DAY_VOLUME), notional * float(SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE))
 
 
 class FundingArbitrageEngine:
@@ -141,9 +183,10 @@ class FundingArbitrageEngine:
         return volumes
 
     def get_spot_universe(self, refresh: bool = False,
-                          min_spot_volume: float = SPOT_MIN_DAY_VOLUME) -> Set[str]:
+                          min_spot_volume: Optional[float] = None) -> Set[str]:
         """
-        Spot tokens with a TRADEABLE pair: best pair 24h notional >= `min_spot_volume`.
+        Spot tokens with a TRADEABLE pair: best pair 24h notional >= `min_spot_volume`
+        (default: effective_spot_min_volume(), which scales with the configured leg).
 
         Before Round 39 this was every token name in spotMeta, and a token is not
         a market: TSLA and AVGO spot turned over $0 while their HIP-3 perps traded
@@ -154,8 +197,43 @@ class FundingArbitrageEngine:
         volumes = self.get_spot_volumes(refresh=refresh)
         if not volumes:
             return set()
-        floor = float(min_spot_volume)
+        floor = float(min_spot_volume) if min_spot_volume is not None else effective_spot_min_volume()
         return {token for token, volume in volumes.items() if volume >= floor}
+
+    def get_unmapped_liquid_spot(self, perp_coins: Optional[List[str]] = None,
+                                 min_spot_volume: Optional[float] = None,
+                                 refresh: bool = False) -> List[Dict[str, Any]]:
+        """
+        Liquid spot tokens that NO perp resolves to, most liquid first (Ruling 41-4).
+
+        A hand-kept alias table goes stale silently: a new wrapper lists, trades
+        millions, and the harvester never sees it. Each row here is either a
+        wrapper missing from SPOT_SYMBOL_ALIASES (verify its fullName on the live
+        token list before adding it) or an asset with no perp, which is nothing to
+        harvest. Every candidate name a perp could use counts as mapped, including
+        quarantined equity aliases - NVDAX is mapped-but-blocked, not missing - and
+        stablecoins are left out because they are never a basis leg.
+        """
+        volumes = self.get_spot_volumes(refresh=refresh) or {}
+        floor = float(min_spot_volume) if min_spot_volume is not None else effective_spot_min_volume()
+        liquid = {token for token, volume in volumes.items() if volume >= floor}
+        if perp_coins is None:
+            try:
+                perp_coins = [str(s.get("coin") or "") for s in self.repo.get_latest_snapshots()]
+            except Exception:
+                perp_coins = []
+        mapped: Set[str] = set()
+        for coin in perp_coins:
+            if not coin:
+                continue
+            for sym in spot_symbol_candidates(coin, allow_synthetic_equity=True):
+                if sym in liquid:
+                    mapped.add(sym)
+        excluded = {str(t).upper() for t in SPOT_NON_BASIS_TOKENS}
+        rows = [{"token": token, "day_volume": float(volumes[token])}
+                for token in liquid if token not in mapped and token not in excluded]
+        rows.sort(key=lambda r: (-r["day_volume"], r["token"]))
+        return rows
 
     def _perp_sz_decimals(self, dex: Optional[str] = None) -> Dict[str, int]:
         """

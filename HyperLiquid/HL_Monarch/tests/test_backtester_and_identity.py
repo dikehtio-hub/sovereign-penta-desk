@@ -147,18 +147,84 @@ class TestSpotBacking(unittest.TestCase):
         from analytics.funding_arbitrage import SPOT_SYMBOL_ALIASES, spot_symbol_candidates
         self.assertEqual(spot_symbol_for("FARTCOIN", {"UFART"}), "UFART")
         self.assertEqual(spot_symbol_for("XMR", {"XMR1", "FXMR"}), "XMR1")          # table order without volumes
-        self.assertEqual(spot_symbol_for("xyz:NVDA", {"NVDAX"}), "NVDAX")
         self.assertIsNone(spot_symbol_for("FARTCOIN", {"HYPE"}))                     # an alias not listed is no hedge
-        self.assertEqual(spot_symbol_candidates("XMR"), ["XMR", "UXMR", "XMR1", "FXMR"])
+        self.assertEqual(spot_symbol_candidates("XMR"), ["UXMR", "XMR", "XMR1", "FXMR"])   # Round 41: wrapper first
         for base, aliases in SPOT_SYMBOL_ALIASES.items():
             for alias in aliases:
                 self.assertEqual(spot_symbol_for(base, {alias}), alias)
 
+    def test_tokenised_equities_are_quarantined_unless_allowed(self):
+        """
+        Round 41 (Ruling 41-1). NVDAX prices a stock that trades five days a week
+        against a perp that trades seven: the hedge carries the weekend gap and
+        the market-hours liquidity cliff. Off by default, and the switch is a
+        setting, not a call-site choice.
+        """
+        from config.settings import ALLOW_SYNTHETIC_EQUITY_BASIS
+        from analytics.funding_arbitrage import SPOT_SYMBOL_ALIASES, SYNTHETIC_EQUITY_ALIASES
+        self.assertFalse(ALLOW_SYNTHETIC_EQUITY_BASIS)
+        self.assertEqual(set(SYNTHETIC_EQUITY_ALIASES), {"NVDA", "TSLA"})
+        self.assertTrue(set(SYNTHETIC_EQUITY_ALIASES).isdisjoint(SPOT_SYMBOL_ALIASES))
+        self.assertIsNone(spot_symbol_for("xyz:NVDA", {"NVDAX"}))
+        self.assertIsNone(spot_symbol_for("xyz:TSLA", {"TSLAX", "EQTSLA"}, {"TSLAX": 1e6, "EQTSLA": 2e6}))
+        self.assertEqual(spot_symbol_for("xyz:NVDA", {"NVDAX"}, allow_synthetic_equity=True), "NVDAX")
+        for base, aliases in SYNTHETIC_EQUITY_ALIASES.items():
+            for alias in aliases:
+                self.assertIsNone(spot_symbol_for(base, {alias}))
+                self.assertEqual(spot_symbol_for(base, {alias}, allow_synthetic_equity=True), alias)
+        # The scan inherits the quarantine: a liquid NVDAX does not make xyz:NVDA a basis trade.
+        engine = FundingArbitrageEngine(client=FakeSpotClient(["NVDAX", "UBTC"]))
+        res = engine.scan_funding_opportunities(
+            min_apr_pct=10.0, snapshots=[_snap("xyz:NVDA", 0.001), _snap("BTC", 0.001)])
+        by_coin = {i["coin"]: i for i in res["short_harvest"]}
+        self.assertFalse(by_coin["xyz:NVDA"]["is_spot_backed"])
+        self.assertTrue(by_coin["BTC"]["is_spot_backed"])
+
+    def test_the_spot_floor_scales_with_the_configured_leg(self):
+        """Round 41 (Ruling 41-3): max(SPOT_MIN_DAY_VOLUME, 5 x notional) - a $25k leg needs a $125k/day pair."""
+        from analytics.funding_arbitrage import effective_spot_min_volume
+        from config.settings import SPOT_MIN_DAY_VOLUME, SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE
+
+        class Cfg:
+            def __init__(self, notional):
+                self.basis_notional_usd = notional
+
+        self.assertEqual(SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE, 5.0)
+        self.assertEqual(effective_spot_min_volume(Cfg(10_000.0)), 50_000.0)
+        self.assertEqual(effective_spot_min_volume(Cfg(25_000.0)), 125_000.0)
+        self.assertEqual(effective_spot_min_volume(Cfg(1_000.0)), SPOT_MIN_DAY_VOLUME)     # the floor of the floor
+        self.assertEqual(effective_spot_min_volume(Cfg(None)), SPOT_MIN_DAY_VOLUME)
+        self.assertEqual(effective_spot_min_volume(object()), SPOT_MIN_DAY_VOLUME)
+        # The default universe uses the floor in force; an explicit floor overrides it.
+        engine = FundingArbitrageEngine(client=FakeSpotClient(["A", "B"], volumes={"A": 60_000.0, "B": 200_000.0}))
+        self.assertEqual(engine.get_spot_universe(), engine.get_spot_universe(min_spot_volume=effective_spot_min_volume()))
+        self.assertEqual(engine.get_spot_universe(min_spot_volume=effective_spot_min_volume(Cfg(25_000.0))), {"B"})
+
+    def test_unmapped_liquid_spot_lists_wrappers_no_perp_resolves_to(self):
+        """
+        Round 41 (Ruling 41-4). A hand-kept alias table goes stale silently, so
+        the engine reports liquid tokens nothing maps to. A quarantined equity
+        alias is mapped-but-blocked, not missing; stablecoins are never a leg.
+        """
+        client = FakeSpotClient(["UBTC", "UFART", "NVDAX", "HFUN", "USDC", "THIN", "FXMR"],
+                                volumes={"THIN": 100.0, "HFUN": 300_000.0, "FXMR": 80_000.0})
+        engine = FundingArbitrageEngine(client=client)
+        rows = engine.get_unmapped_liquid_spot(perp_coins=["BTC", "FARTCOIN", "xyz:NVDA", "XMR"],
+                                               min_spot_volume=50_000.0)
+        self.assertEqual(rows, [{"token": "HFUN", "day_volume": 300_000.0}])
+        # With only a BTC perp, every other liquid token surfaces - NVDAX included, since
+        # nothing maps to it now - most liquid first, ties by name.
+        rows = engine.get_unmapped_liquid_spot(perp_coins=["BTC"], min_spot_volume=50_000.0)
+        self.assertEqual([r["token"] for r in rows], ["NVDAX", "UFART", "HFUN", "FXMR"])
+        self.assertEqual(engine.get_unmapped_liquid_spot(perp_coins=[], min_spot_volume=1e12), [])
+
     def test_the_most_liquid_hedge_wins_when_several_exist(self):
         """Round 40 (Ruling 40-2). para:ANSEM was booked against ANSEM ($1.5k/day) while UANSEM did $928k."""
         universe = {"ANSEM", "UANSEM"}
-        self.assertEqual(spot_symbol_for("para:ANSEM", universe), "ANSEM")            # precedence without volumes
+        self.assertEqual(spot_symbol_for("para:ANSEM", universe), "UANSEM")           # Round 41: the wrapper leads
         self.assertEqual(spot_symbol_for("para:ANSEM", universe, {"ANSEM": 1_515.0, "UANSEM": 927_818.0}), "UANSEM")
+        self.assertEqual(spot_symbol_for("para:ANSEM", universe, {"ANSEM": 927_818.0, "UANSEM": 1_515.0}), "ANSEM")
+        self.assertEqual(spot_symbol_for("para:ANSEM", universe, {"ANSEM": 5.0, "UANSEM": 5.0}), "UANSEM")  # tie: wrapper
         wrappers = {"XMR1", "FXMR"}
         self.assertEqual(spot_symbol_for("XMR", wrappers, {"XMR1": 15_995_011.0, "FXMR": 10_743.0}), "XMR1")
         self.assertEqual(spot_symbol_for("XMR", wrappers, {"XMR1": 1.0, "FXMR": 2.0}), "FXMR")

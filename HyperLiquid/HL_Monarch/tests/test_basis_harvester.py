@@ -119,6 +119,26 @@ class TestOpening(HarvesterCase):
         self.h.close_position("para:AVGO")
         self.assertIsNotNone(self.h.open_position(opp(coin="xyz:AVGO", spot="AVGO"), notional_per_leg=10_000.0))
 
+    def test_the_report_tags_positions_whose_spot_leg_is_dead(self):
+        """
+        Round 41 (Ruling 41-2). Three of five live paper positions are hedged on
+        spot pairs doing under $2k/day. The book prints the hedge it booked; with
+        volumes it now says whether that hedge could have been filled.
+        """
+        from execution.basis_harvester import format_report
+        self.h.open_position(opp(coin="para:AVGO", spot="AVGO"), notional_per_leg=10_000.0)
+        self.h.open_position(opp(coin="XPL", spot="UXPL"), notional_per_leg=10_000.0)
+        text = format_report(self.h, spot_volumes={"UXPL": 1_355_437.0}, min_spot_volume=50_000.0)
+        avgo = next(line for line in text.splitlines() if line.strip().startswith("para:AVGO"))
+        xpl = next(line for line in text.splitlines() if line.strip().startswith("XPL"))
+        self.assertIn("[ILLIQUID SPOT] $0/day < $50,000 floor", avgo)     # no pair at all counts as zero
+        self.assertNotIn("ILLIQUID", xpl)
+        self.assertIn("could not be filled at size", text)
+        # Without volumes nothing is claimed either way.
+        self.assertNotIn("ILLIQUID", format_report(self.h))
+        self.assertNotIn("ILLIQUID", format_report(self.h, spot_volumes={"AVGO": 60_000.0, "UXPL": 1e6},
+                                                   min_spot_volume=50_000.0))
+
     def test_the_report_shows_the_cap_in_force_not_the_code_default(self):
         from execution.basis_harvester import format_report
         self.assertIn(f"Open 0/{self.h.effective_max_positions()}", format_report(self.h))

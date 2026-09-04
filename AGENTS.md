@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 41 complete: SYNTHETIC EQUITY QUARANTINE, DYNAMIC SPOT FLOOR, ILLIQUID-LEG
+REPORTING & UNMAPPED-SPOT TELEMETRY. Tokenised equities (NVDAX, TSLAX, EQ*)
+live in `SYNTHETIC_EQUITY_ALIASES` and are ignored while
+`ALLOW_SYNTHETIC_EQUITY_BASIS = False`; the spot floor is
+`effective_spot_min_volume() = max($50k, 5 x basis_notional_usd)`; the "U"
+wrapper now outranks the bare name on ties and in no-volume calls; the paper
+book tags positions whose spot leg is under the floor `[ILLIQUID SPOT]` (three
+of five live); `python main.py basis --unmapped-spot` lists liquid spot tokens
+no perp resolves to (13 live). 4 new tests.
+
 Round 40 complete: SPOT ALIASES, LIQUIDITY-MAXIMISING HEDGE SELECTION & SPOT
 DECIMALS FIX. `SPOT_SYMBOL_ALIASES` (hand-kept, verified against live
 fullNames) lets `spot_symbol_for` see wrappers that are not "U" + name (UFART,
@@ -93,7 +103,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1058 passed |
+| HL_Monarch (pytest) | 1062 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -116,6 +126,26 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 41 findings
+
+- **Wrapper-first precedence applies everywhere, not only on volume ties**
+  (deviation from the ruling's wording). A call without volumes is an all-ties
+  call; two different orders would make the answer depend on whether volumes
+  were supplied. para:ANSEM -> UANSEM even before volumes are known.
+- **Live `--unmapped-spot` (floor $50k):** KNTQ $1.77M, XAUT0 $1.74M, FLOCK,
+  DRV, SEDA, SPCXD, MUX, HSEI, HPL, UUUSPX, HFUN, KHYPE, LIQD. Most are assets
+  with no perp. XAUT0 (gold) and UUUSPX (S&P) are commodity/index wrappers the
+  xyz:GOLD / index perps could hedge with - the same 5-day-market question as
+  the equity quarantine. Ruling asked; nothing added.
+- **The quarantine covers aliases only.** A bare-named liquid equity token
+  (none exists today: NVDA/TSLA bare tokens are dead Wagyu.xyz shells) would
+  still resolve through the bare-name path. Noted, not built.
+- `python main.py basis --harvest` now makes ONE spot-context request so dead
+  legs are tagged; a failed lookup prints the book untagged. Live: xyz:HOOD
+  ($402/day), para:AVGO and xyz:AVGO ($0/day) tagged; UANSEM and UXPL clean.
+- Stablecoins (SPOT_NON_BASIS_TOKENS) are excluded from the telemetry so it
+  reports missing aliases, not quote assets.
 
 ## Round 40 findings
 

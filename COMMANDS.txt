@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1058 passed as of Round 40)
+                        (1062 passed as of Round 41)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,18 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 41 - SYNTHETIC EQUITY QUARANTINE, DYNAMIC FLOOR, ILLIQUID LEGS, TELEMETRY
+     config/settings.py: ALLOW_SYNTHETIC_EQUITY_BASIS = False (NVDAX/TSLAX/EQ* in
+         SYNTHETIC_EQUITY_ALIASES are ignored: a stock trades 5 days, the perp 7);
+         SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE = 5.0; SPOT_NON_BASIS_TOKENS (stables).
+     effective_spot_min_volume(cfg=None) = max(SPOT_MIN_DAY_VOLUME, 5 x
+         Bot_Config basis_notional_usd) - the default floor for get_spot_universe().
+     spot_symbol_for precedence: "U" wrapper > bare > aliases (> equities if allowed).
+     python main.py basis --harvest        -> [ILLIQUID SPOT] $n/day < floor on dead legs
+     python main.py basis --unmapped-spot  -> liquid spot tokens no perp resolves to
+         (a wrapper missing from SPOT_SYMBOL_ALIASES, or nothing to harvest).
+         Verify a token's fullName on the live list before adding an alias.
 
      ROUND 40 - SPOT ALIASES, MOST-LIQUID HEDGE, SPOT DECIMALS FIX
      analytics/funding_arbitrage.py SPOT_SYMBOL_ALIASES: FARTCOIN->UFART,

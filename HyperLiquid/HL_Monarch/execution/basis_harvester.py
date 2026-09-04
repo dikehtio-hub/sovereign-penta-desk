@@ -517,8 +517,35 @@ class BasisHarvester:
         return True
 
 
-def format_report(h: BasisHarvester) -> str:
+def format_report(h: BasisHarvester, spot_volumes: Optional[Dict[str, float]] = None,
+                  min_spot_volume: Optional[float] = None) -> str:
+    """
+    The paper book. With `spot_volumes` (token -> 24h pair notional) a position
+    whose spot leg turns over less than the floor is tagged [ILLIQUID SPOT]
+    (Ruling 41-2): the hedge is booked, but it could not have been filled at
+    size. Without volumes nothing is claimed either way.
+    """
     s = h.summary()
+    floor = None
+    if spot_volumes is not None:
+        if min_spot_volume is not None:
+            floor = float(min_spot_volume)
+        else:
+            from analytics.funding_arbitrage import effective_spot_min_volume
+            floor = effective_spot_min_volume()
+
+    def illiquid_tag(position: Dict[str, Any]) -> str:
+        spot = position.get("spot_symbol")
+        if floor is None or not spot:
+            return ""
+        try:
+            volume = float(spot_volumes.get(str(spot).upper(), 0.0) or 0.0)
+        except (TypeError, ValueError):
+            volume = 0.0
+        if volume >= floor:
+            return ""
+        return f"  [ILLIQUID SPOT] ${volume:,.0f}/day < ${floor:,.0f} floor"
+
     lines = [
         "",
         "DELTA-NEUTRAL BASIS HARVESTER (paper)",
@@ -542,9 +569,12 @@ def format_report(h: BasisHarvester) -> str:
                 f"{p['entry_funding_apr']:>10.1f}%{p['hours_held']:>7.0f}h"
                 f"{p['funding_accrued']:>11,.2f}"
                 f"{(f'{realised:.1f}%' if realised is not None else 'n/a'):>14}"
+                f"{illiquid_tag(p)}"
             )
         lines.append("")
         lines.append("  [realised APR is what the rate ACTUALLY paid; entry APR was only a quote]")
+        if any(illiquid_tag(p) for p in h.positions.values()):
+            lines.append("  [ILLIQUID SPOT: the spot leg's 24h turnover is under the floor - this hedge could not be filled at size]")
     else:
         lines.append("  No open positions.")
     lines.append("")
