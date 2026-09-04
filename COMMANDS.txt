@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1071 passed as of Round 43)
+                        (1072 passed as of Round 44)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,13 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 44 - TRADFI_DEXES + mkts/io, CONFIG CLAMP FLOOR, MALFORMED-FIELD FALLBACK
+     TRADFI_DEXES = {xyz, km, cash, flx, mkts, io}. Live perpDexs also lists vntl,
+         hyna, abcd (unclassified) and para (mixed). Only ACTIVE_DEXES are polled.
+     dynamic_config: spot_min_day_volume clamps to $10k..$10M; _config_number /
+         _config_flag return the settings default with a WARNING when a Bot_Config
+         field will not parse (the other fields still fail the whole reload).
 
      ROUND 43 - DEX-LEVEL QUARANTINE, CANONICAL GUARD, ONE VOLUME MAP, VAULT FIX
      config/settings.py TRADFI_DEXES = {xyz, km, cash, flx}: is_synthetic_tradfi(coin)

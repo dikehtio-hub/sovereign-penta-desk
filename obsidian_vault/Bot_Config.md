@@ -58,7 +58,7 @@ tags:
 | **`alert_cooldown_seconds`** | **`60s`** | `5 - 600 seconds` | Minimum seconds between duplicate liquidation cascade webhooks |
 | **`allow_synthetic_tradfi_basis`** | **`false`** | `true / false` | Allow basis hedges on stock, index, commodity, bond and FX perps (weekend-gap risk; keep false) |
 | **`spot_min_volume_notional_multiple`** | **`10.0x`** | `1 - 100x` | Spot pair must turn over this many times the per-leg notional per day (10x = one fill is 10% of ADV) |
-| **`spot_min_day_volume`** | **`$50,000`** | `$1,000 - $10,000,000` | Absolute floor on the spot pair's 24h notional, whatever the notional multiple gives |
+| **`spot_min_day_volume`** | **`$50,000`** | `$10,000 - $10,000,000` | Absolute floor on the spot pair's 24h notional, whatever the notional multiple gives |
 
 ---
 

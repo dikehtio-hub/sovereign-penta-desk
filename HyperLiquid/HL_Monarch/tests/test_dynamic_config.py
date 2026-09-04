@@ -46,6 +46,28 @@ def test_bot_config_validation_and_clamping():
     assert cfg.max_spread_bps == 2.0
 
 
+def test_malformed_spot_fields_fall_back_to_settings_defaults(tmp_path, caplog):
+    """Round 44 (Ruling 44-4): one bad field falls back with a warning; the rest of the config still loads."""
+    from config.settings import SPOT_MIN_DAY_VOLUME, SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE
+    vault_dir = tmp_path / "obsidian_vault"
+    vault_dir.mkdir()
+    (vault_dir / "Bot_Config.md").write_text(
+        "---\nbasis_notional_usd: 12000.0\nmax_concurrent_positions: 3\n"
+        "spot_min_day_volume: abc\nspot_min_volume_notional_multiple: lots\n"
+        "allow_synthetic_tradfi_basis: maybe\n---\n# Bot Config\n", encoding="utf-8")
+    mgr = DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json")
+    cfg = mgr.get_config()
+    assert cfg.basis_notional_usd == 12000.0 and cfg.max_concurrent_positions == 3
+    assert cfg.spot_min_day_volume == SPOT_MIN_DAY_VOLUME
+    assert cfg.spot_min_volume_notional_multiple == SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE
+    assert cfg.allow_synthetic_tradfi_basis is False
+    assert cfg.emergency_killswitch is False                     # a bad field is not a corrupt config
+    assert sum("settings default" in r.message for r in caplog.records) == 3
+    # A floor under $10k clamps up rather than passing through (Ruling 44-4).
+    (vault_dir / "Bot_Config.md").write_text("---\nspot_min_day_volume: 1\n---\n", encoding="utf-8")
+    assert mgr.reload().spot_min_day_volume == 10_000.0
+
+
 def test_dynamic_config_manager_file_sync(tmp_path):
     vault_dir = tmp_path / "obsidian_vault"
     json_path = tmp_path / "data" / "bot_config.json"

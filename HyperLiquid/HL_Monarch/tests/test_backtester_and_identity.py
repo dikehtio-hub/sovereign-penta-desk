@@ -203,10 +203,11 @@ class TestSpotBacking(unittest.TestCase):
         """
         from config.settings import TRADFI_DEXES
         from analytics.funding_arbitrage import is_synthetic_tradfi, perp_dex, spot_symbol_candidates
-        self.assertEqual(TRADFI_DEXES, frozenset({"xyz", "km", "cash", "flx"}))
+        self.assertEqual(TRADFI_DEXES, frozenset({"xyz", "km", "cash", "flx", "mkts", "io"}))
         self.assertEqual(perp_dex("xyz:GOLD"), "xyz")
         self.assertEqual(perp_dex("BTC"), "main")
-        for coin in ("xyz:NEWCO", "km:WHATEVER", "cash:X", "flx:GAS", "XYZ:UPPER"):
+        # Round 44: mkts (Kinetiq index perps) and io (EntropyIO pre-IPO equities) by address too.
+        for coin in ("xyz:NEWCO", "km:WHATEVER", "cash:X", "flx:GAS", "XYZ:UPPER", "mkts:US500", "io:OAI", "io:ANTHROPIC"):
             self.assertTrue(is_synthetic_tradfi(coin), coin)
             self.assertEqual(spot_symbol_candidates(coin), [], coin)
             self.assertIsNone(spot_symbol_for(coin, {"NEWCO", "UNEWCO", "WHATEVER", "X", "GAS", "UPPER"}), coin)
@@ -243,7 +244,7 @@ class TestSpotBacking(unittest.TestCase):
         self.assertEqual(effective_spot_min_volume(cfg), 400_000.0)               # the floor wins
         cfg.basis_notional_usd = 25_000.0
         self.assertEqual(effective_spot_min_volume(cfg), 500_000.0)               # 20 x 25k beats it
-        self.assertEqual(BotConfig(spot_min_day_volume=1.0).validate_and_clamp().spot_min_day_volume, 1_000.0)
+        self.assertEqual(BotConfig(spot_min_day_volume=1.0).validate_and_clamp().spot_min_day_volume, 10_000.0)  # Round 44 floor
         # An explicit override always wins over the config.
         self.assertTrue(allow_synthetic_tradfi_basis(True))
         self.assertFalse(allow_synthetic_tradfi_basis(False))

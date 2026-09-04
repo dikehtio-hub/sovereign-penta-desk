@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+Round 44 complete: TRADFI_DEXES GAINS mkts AND io; CONFIG CLAMP FLOOR $10k;
+MALFORMED FIELDS FALL BACK WITH A WARNING. `TRADFI_DEXES` now covers xyz, km,
+cash, flx, mkts (Markets By Kinetiq) and io (EntropyIO pre-IPO equities), all
+verified against the live perpDexs payload. `spot_min_day_volume` clamps to
+$10k minimum; a Bot_Config field that will not parse falls back to its settings
+default with a logged warning instead of failing the whole reload. The
+Penta-Desk header was already in place from Round 43. 1 new test, 1 extended.
+
 Round 43 complete: DEX-LEVEL TRADFI QUARANTINE, CANONICAL DUPLICATE GUARD, ONE
 VOLUME MAP PER CYCLE, VAULT FIX & HOT-RELOADED THRESHOLDS. `TRADFI_DEXES`
 (xyz, km, cash, flx) quarantines whatever lists there; the symbol set covers
@@ -125,7 +133,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1071 passed |
+| HL_Monarch (pytest) | 1072 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -148,6 +156,20 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 44 findings
+
+- **perpDexs lists ten dexes**: xyz, flx, vntl (Ventuals), hyna (HyENA), km,
+  abcd (ABCDEx), cash, para, mkts, io. Six are quarantined by name; para is
+  mixed (symbol set); vntl, hyna and abcd are UNCLASSIFIED. None of mkts, io,
+  vntl, hyna or abcd is in ACTIVE_DEXES, so nothing from them reaches the
+  scan today - the dex quarantine on mkts/io is pre-emptive, and a future
+  widening of ACTIVE_DEXES must classify the other three first.
+- **Per-field fallback vs whole-reload failure.** Before this round a single
+  unparseable number anywhere in Bot_Config raised inside reload(); get_config
+  caught it and kept the last cached config silently. The three spot fields
+  now fall back individually with a warning; the older fields still take the
+  whole-reload path. Worth unifying - ruling asked.
 
 ## Round 43 findings
 

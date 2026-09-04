@@ -244,7 +244,9 @@ ALLOW_SYNTHETIC_TRADFI_BASIS = False
 # the moment it appears without anyone editing the symbol set. The symbol set
 # below stays as the override for the mixed dexes (para: holds ANSEM and TOTAL2
 # beside AVGO, AAOI and the 2Y/10Y/30Y rates) and for the main dex.
-TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx"})
+# Round 44 (Ruling 44-1): "mkts" (Kinetiq index perps) and "io" (EntropyIO pre-IPO
+# synthetic equities: Anthropic, OpenAI) added from the live perpDexs payload.
+TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx", "mkts", "io"})
 SYNTHETIC_TRADFI_SYMBOLS = frozenset({
     # Ruling 42-1, as issued.
     "NVDA", "TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "COIN", "HOOD", "AVGO",

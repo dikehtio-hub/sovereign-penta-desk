@@ -94,8 +94,40 @@ BOUNDS = {
     "alert_cooldown_seconds": (5.0, 600.0),
     # Round 43 (Ruling 43-6): spot-leg liquidity thresholds, hot-reloadable.
     "spot_min_volume_notional_multiple": (1.0, 100.0),
-    "spot_min_day_volume": (1_000.0, 10_000_000.0),
+    "spot_min_day_volume": (10_000.0, 10_000_000.0),      # Round 44: $1k was too low a floor
 }
+
+
+def _config_number(config_dict: Dict[str, Any], key: str, default: float) -> float:
+    """
+    A numeric Bot_Config field, or `default` with a warning when it is absent or
+    unparseable (Round 44, Ruling 44-4). One bad field must not take the whole
+    config down with it - and must not silently become something else.
+    """
+    raw = config_dict.get(key)
+    if raw is None:
+        return float(default)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        logger.warning(f"Bot_Config {key}={raw!r} is not a number; using the settings default {default}")
+        return float(default)
+
+
+def _config_flag(config_dict: Dict[str, Any], key: str, default: bool) -> bool:
+    """A boolean Bot_Config field; anything but true/false falls back with a warning."""
+    raw = config_dict.get(key)
+    if raw is None:
+        return bool(default)
+    if isinstance(raw, bool):
+        return raw
+    text = str(raw).strip().lower()
+    if text in ("true", "yes", "1"):
+        return True
+    if text in ("false", "no", "0"):
+        return False
+    logger.warning(f"Bot_Config {key}={raw!r} is not true/false; using the settings default {default}")
+    return bool(default)
 
 
 @dataclass
@@ -268,12 +300,12 @@ class DynamicConfigManager:
                 emergency_killswitch=bool(config_dict.get("emergency_killswitch", False)),
                 pause_new_entries=bool(config_dict.get("pause_new_entries", False)),
                 active_preset=str(config_dict.get("active_preset", "custom")),
-                allow_synthetic_tradfi_basis=bool(config_dict.get(
-                    "allow_synthetic_tradfi_basis", _SETTINGS_ALLOW_SYNTHETIC_TRADFI_BASIS)),
-                spot_min_volume_notional_multiple=float(config_dict.get(
-                    "spot_min_volume_notional_multiple", _SETTINGS_SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE)),
-                spot_min_day_volume=float(config_dict.get(
-                    "spot_min_day_volume", _SETTINGS_SPOT_MIN_DAY_VOLUME)),
+                allow_synthetic_tradfi_basis=_config_flag(
+                    config_dict, "allow_synthetic_tradfi_basis", _SETTINGS_ALLOW_SYNTHETIC_TRADFI_BASIS),
+                spot_min_volume_notional_multiple=_config_number(
+                    config_dict, "spot_min_volume_notional_multiple", _SETTINGS_SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE),
+                spot_min_day_volume=_config_number(
+                    config_dict, "spot_min_day_volume", _SETTINGS_SPOT_MIN_DAY_VOLUME),
             )
             self._cached_config = cfg.validate_and_clamp()
         else:
@@ -411,7 +443,7 @@ tags:
 | **`alert_cooldown_seconds`** | **`{cfg.alert_cooldown_seconds:.0f}s`** | `5 - 600 seconds` | Minimum seconds between duplicate liquidation cascade webhooks |
 | **`allow_synthetic_tradfi_basis`** | **`{str(cfg.allow_synthetic_tradfi_basis).lower()}`** | `true / false` | Allow basis hedges on stock, index, commodity, bond and FX perps (weekend-gap risk; keep false) |
 | **`spot_min_volume_notional_multiple`** | **`{cfg.spot_min_volume_notional_multiple:.1f}x`** | `1 - 100x` | Spot pair must turn over this many times the per-leg notional per day (10x = one fill is 10% of ADV) |
-| **`spot_min_day_volume`** | **`${cfg.spot_min_day_volume:,.0f}`** | `$1,000 - $10,000,000` | Absolute floor on the spot pair's 24h notional, whatever the notional multiple gives |
+| **`spot_min_day_volume`** | **`${cfg.spot_min_day_volume:,.0f}`** | `$10,000 - $10,000,000` | Absolute floor on the spot pair's 24h notional, whatever the notional multiple gives |
 
 ---
 
