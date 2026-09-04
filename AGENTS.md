@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 45 complete: PER-FIELD CONFIG FALLBACK FOR EVERY FIELD & UNCLASSIFIED-DEX
+FAIL-CLOSED. Every Bot_Config field now parses on its own through
+`_config_number` / `_config_int` / `_config_flag`: a corrupt value warns and
+takes that field's default while its neighbours load; the whole-file kill-switch
+path fires only when the note cannot be read or yields no fields. The two safety
+flags fail ARMED on a malformed value (deviation, see findings).
+`UNCLASSIFIED_DEXES` (vntl, hyna, abcd) is documented as excluded from
+ACTIVE_DEXES and `spot_symbol_candidates` returns [] for a perp on one, with no
+runtime switch. 3 new tests.
+
 Round 44 complete: TRADFI_DEXES GAINS mkts AND io; CONFIG CLAMP FLOOR $10k;
 MALFORMED FIELDS FALL BACK WITH A WARNING. `TRADFI_DEXES` now covers xyz, km,
 cash, flx, mkts (Markets By Kinetiq) and io (EntropyIO pre-IPO equities), all
@@ -133,7 +143,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1072 passed |
+| HL_Monarch (pytest) | 1075 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -156,6 +166,26 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 45 findings
+
+- **Safety flags fail armed, not off** (deviation from "fall back to the
+  field's default"). `emergency_killswitch: maybe` or `pause_new_entries: 7`
+  now reads as True with a warning; an ABSENT flag is still False, because
+  absence is not corruption. A malformed safety value must stop trading, never
+  enable it. The spot policy flag falls back to its default (False) as ruled.
+- **Integers read through float**: `max_concurrent_positions: 3.0` is 3; "2.5"
+  would be 2. Clamping is unchanged - `validate_and_clamp` still runs on the
+  assembled config against BOUNDS, so per-field parsing and clamping are two
+  passes, not one.
+- **Unclassified dexes are refused with no switch**: `is_unclassified_dex`
+  gates `spot_symbol_candidates` before the TradFi test, so the scan, the
+  sampler and the resolver all see [] regardless of `allow_synthetic_tradfi`.
+  Admission is a settings edit after a human looks at the dex.
+- Ruling 45-3 named `sample_orderbooks()` / `_spot_universe_cache`; the real
+  names are `_sample_pass` / `_spot_universe_cached`, and the cold-start path
+  is already pinned by `test_the_spot_universe_is_cached_refreshed_and_never_
+  guessed` (failed lookup -> zero candidates, retry, stale copy survives).
 
 ## Round 44 findings
 

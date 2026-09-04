@@ -68,6 +68,62 @@ def test_malformed_spot_fields_fall_back_to_settings_defaults(tmp_path, caplog):
     assert mgr.reload().spot_min_day_volume == 10_000.0
 
 
+NUMERIC_FIELDS = ("basis_notional_usd", "max_drawdown_limit_pct", "basis_min_funding_apr",
+                  "basis_min_net_apr", "basis_holding_days", "max_spread_bps", "whale_danger_zone_pct",
+                  "alert_cooldown_seconds", "spot_min_volume_notional_multiple", "spot_min_day_volume")
+INT_FIELDS = ("max_concurrent_positions",)
+FLAG_FIELDS = ("emergency_killswitch", "pause_new_entries", "allow_synthetic_tradfi_basis")
+
+
+def _write(vault_dir, body):
+    vault_dir.mkdir(exist_ok=True)
+    (vault_dir / "Bot_Config.md").write_text("---\n" + body + "---\n# Bot Config\n", encoding="utf-8")
+
+
+def test_every_field_falls_back_on_its_own_and_the_others_still_load(tmp_path, caplog):
+    """
+    Round 45 (Ruling 45-1). One corrupt field used to abort the whole reload,
+    which get_config() swallowed by keeping the last cached config - silently.
+    Now each field warns and takes its own default while its neighbours load.
+    """
+    from config.dynamic_config import BotConfig
+    d = BotConfig()
+    vault_dir = tmp_path / "obsidian_vault"
+    for field in NUMERIC_FIELDS + INT_FIELDS:
+        caplog.clear()
+        _write(vault_dir, f"basis_min_net_apr: 33.0\nmax_spread_bps: 9.0\n{field}: garbage\n")
+        cfg = DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config()
+        assert getattr(cfg, field) == getattr(d, field), field                 # its own default
+        if field != "basis_min_net_apr":
+            assert cfg.basis_min_net_apr == 33.0, field                          # the neighbours loaded
+        if field != "max_spread_bps":
+            assert cfg.max_spread_bps == 9.0, field
+        assert cfg.emergency_killswitch is False, field                          # a bad field is not a corrupt file
+        assert sum("using the" in r.message for r in caplog.records) == 1, field
+    # An integer field accepts 3.0 and "3" and rejects 2.5-as-text? No: int(float("2.5")) is 2, by design.
+    _write(vault_dir, "max_concurrent_positions: 3.0\n")
+    assert DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config().max_concurrent_positions == 3
+
+
+def test_malformed_safety_flags_fail_armed_not_off(tmp_path, caplog):
+    """A kill-switch that reads "maybe" stops trading; a spot policy flag that reads "maybe" stays at its default."""
+    vault_dir = tmp_path / "obsidian_vault"
+    _write(vault_dir, "emergency_killswitch: maybe\npause_new_entries: 7\nallow_synthetic_tradfi_basis: perhaps\n")
+    cfg = DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config()
+    assert cfg.emergency_killswitch is True
+    assert cfg.pause_new_entries is True
+    assert cfg.allow_synthetic_tradfi_basis is False
+    assert sum("using the" in r.message for r in caplog.records) == 3
+    # Absent safety flags are simply off - absence is not corruption.
+    _write(vault_dir, "basis_notional_usd: 5000.0\n")
+    cfg = DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config()
+    assert cfg.emergency_killswitch is False and cfg.pause_new_entries is False
+    # And a well-formed "false" is honoured.
+    _write(vault_dir, "emergency_killswitch: false\npause_new_entries: FALSE\n")
+    cfg = DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config()
+    assert cfg.emergency_killswitch is False and cfg.pause_new_entries is False
+
+
 def test_dynamic_config_manager_file_sync(tmp_path):
     vault_dir = tmp_path / "obsidian_vault"
     json_path = tmp_path / "data" / "bot_config.json"

@@ -218,6 +218,38 @@ class TestSpotBacking(unittest.TestCase):
         self.assertFalse(is_synthetic_tradfi("xyz:NEWCO", allow_synthetic_tradfi=True))
         self.assertEqual(spot_symbol_candidates("xyz:ANSEM", allow_synthetic_tradfi=True), ["UANSEM", "ANSEM"])
 
+    def test_unclassified_dexes_fail_closed_with_no_switch(self):
+        """
+        Round 45 (Ruling 45-2). vntl, hyna and abcd are on the live perpDexs list
+        and nobody has looked at what trades there. Not polled, not a basis leg,
+        not a sampling candidate - and no runtime flag changes that; only an
+        edit to settings after a human has classified the dex.
+        """
+        from config.settings import ACTIVE_DEXES, TRADFI_DEXES, UNCLASSIFIED_DEXES
+        from analytics.funding_arbitrage import is_unclassified_dex, is_synthetic_tradfi, spot_symbol_candidates
+        from collectors.orderbook_sampler import top_funding_candidates
+        self.assertEqual(UNCLASSIFIED_DEXES, frozenset({"vntl", "hyna", "abcd"}))
+        self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint(TRADFI_DEXES))
+        self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint({str(d).lower() for d in ACTIVE_DEXES}))
+        for coin in ("vntl:SPACEX", "hyna:HYPE", "abcd:BTC"):
+            self.assertTrue(is_unclassified_dex(coin), coin)
+            self.assertFalse(is_synthetic_tradfi(coin), coin)                    # unclassified, not TradFi
+            self.assertEqual(spot_symbol_candidates(coin), [], coin)
+            self.assertEqual(spot_symbol_candidates(coin, allow_synthetic_tradfi=True), [], coin)
+            self.assertIsNone(spot_symbol_for(coin, {"HYPE", "UBTC", "SPACEX"}, {"HYPE": 1e9}), coin)
+        self.assertFalse(is_unclassified_dex("BTC"))
+        self.assertFalse(is_unclassified_dex("para:ANSEM"))
+        # The scan and the sampler inherit it.
+        engine = FundingArbitrageEngine(client=FakeSpotClient(["HYPE", "UBTC"]))
+        res = engine.scan_funding_opportunities(
+            min_apr_pct=10.0, snapshots=[_snap("abcd:BTC", 0.001), _snap("BTC", 0.001)])
+        by_coin = {i["coin"]: i for i in res["short_harvest"]}
+        self.assertFalse(by_coin["abcd:BTC"]["is_spot_backed"])
+        self.assertTrue(by_coin["BTC"]["is_spot_backed"])
+        snaps = [{"coin": "hyna:HYPE", "funding_rate": 0.01, "notional_oi": 1e7, "day_ntl_vlm": 1e7},
+                 {"coin": "HYPE", "funding_rate": 0.001, "notional_oi": 1e7, "day_ntl_vlm": 1e7}]
+        self.assertEqual(top_funding_candidates(snaps, n=5, spot_universe={"HYPE"}), ["HYPE"])
+
     def test_canonical_spot_base_names_the_underlying(self):
         """Round 43 (Ruling 43-2): ANSEM and UANSEM are one asset; so are FARTCOIN, UFART; XMR, XMR1, FXMR."""
         from analytics.funding_arbitrage import canonical_spot_base

@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1072 passed as of Round 44)
+                        (1075 passed as of Round 45)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,16 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 45 - PER-FIELD CONFIG FALLBACK (ALL FIELDS), UNCLASSIFIED DEXES FAIL CLOSED
+     dynamic_config.reload(): every field via _config_number / _config_int /
+         _config_flag -> a corrupt value WARNS and takes that field's default; the
+         others load. Kill-switch / pause: malformed -> TRUE (armed); absent -> false.
+         Whole-file fail-closed (killswitch armed) only when the note is unreadable
+         or its frontmatter yields no fields. validate_and_clamp still clamps after.
+     settings.UNCLASSIFIED_DEXES = {vntl, hyna, abcd}: not in ACTIVE_DEXES, and
+         spot_symbol_candidates() is [] for any perp there - no runtime switch.
+         To admit one: classify it (TRADFI_DEXES or crypto) and edit settings.
 
      ROUND 44 - TRADFI_DEXES + mkts/io, CONFIG CLAMP FLOOR, MALFORMED-FIELD FALLBACK
      TRADFI_DEXES = {xyz, km, cash, flx, mkts, io}. Live perpDexs also lists vntl,

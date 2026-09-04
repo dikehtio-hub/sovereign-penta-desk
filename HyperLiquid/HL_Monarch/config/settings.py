@@ -247,6 +247,12 @@ ALLOW_SYNTHETIC_TRADFI_BASIS = False
 # Round 44 (Ruling 44-1): "mkts" (Kinetiq index perps) and "io" (EntropyIO pre-IPO
 # synthetic equities: Anthropic, OpenAI) added from the live perpDexs payload.
 TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx", "mkts", "io"})
+# Round 45 (Ruling 45-2): dexes the live perpDexs payload lists that nobody has
+# classified - vntl (Ventuals), hyna (HyENA), abcd (ABCDEx). They are NOT in
+# ACTIVE_DEXES (never polled) and, fail closed, a perp on one of them is refused
+# as a basis leg and as a sampling candidate until someone classifies the dex
+# here: move it to TRADFI_DEXES, or remove it from this set once verified crypto.
+UNCLASSIFIED_DEXES = frozenset({"vntl", "hyna", "abcd"})
 SYNTHETIC_TRADFI_SYMBOLS = frozenset({
     # Ruling 42-1, as issued.
     "NVDA", "TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "COIN", "HOOD", "AVGO",

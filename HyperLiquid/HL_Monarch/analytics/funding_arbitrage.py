@@ -25,6 +25,7 @@ from config.settings import (
     ALLOW_SYNTHETIC_TRADFI_BASIS,
     SYNTHETIC_TRADFI_SYMBOLS,
     TRADFI_DEXES,
+    UNCLASSIFIED_DEXES,
     SPOT_NON_BASIS_TOKENS,
 )
 
@@ -124,6 +125,16 @@ def allow_synthetic_tradfi_basis(override: Optional[bool] = None) -> bool:
     return bool(_dynamic_value("allow_synthetic_tradfi_basis", ALLOW_SYNTHETIC_TRADFI_BASIS))
 
 
+def is_unclassified_dex(coin: str) -> bool:
+    """
+    True when the perp lives on a dex nobody has classified (Round 45, Ruling
+    45-2). Fail closed: no switch turns this off - the dex is admitted only by
+    editing settings.UNCLASSIFIED_DEXES after someone has looked at what trades
+    there. Such a perp is never a basis leg and never a sampling candidate.
+    """
+    return perp_dex(coin) in UNCLASSIFIED_DEXES
+
+
 def is_synthetic_tradfi(coin: str, allow_synthetic_tradfi: Optional[bool] = None) -> bool:
     """
     True when this perp prices a stock, index, commodity, bond or FX pair AND the
@@ -153,7 +164,7 @@ def spot_symbol_candidates(coin: str, allow_synthetic_tradfi: Optional[bool] = N
     quarantine covered only the equity aliases, which left the bare-name and
     wrapper paths open; this closes the perp, not the token.
     """
-    if is_synthetic_tradfi(coin, allow_synthetic_tradfi):
+    if is_unclassified_dex(coin) or is_synthetic_tradfi(coin, allow_synthetic_tradfi):
         return []
     allow = allow_synthetic_tradfi_basis(allow_synthetic_tradfi)
     base = perp_base_symbol(coin).upper()

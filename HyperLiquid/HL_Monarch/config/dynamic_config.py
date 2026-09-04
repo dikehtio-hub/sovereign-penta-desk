@@ -114,6 +114,18 @@ def _config_number(config_dict: Dict[str, Any], key: str, default: float) -> flo
         return float(default)
 
 
+def _config_int(config_dict: Dict[str, Any], key: str, default: int) -> int:
+    """An integer Bot_Config field ("3", 3, 3.0 all read as 3); else `default` with a warning."""
+    raw = config_dict.get(key)
+    if raw is None:
+        return int(default)
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        logger.warning(f"Bot_Config {key}={raw!r} is not an integer; using the default {default}")
+        return int(default)
+
+
 def _config_flag(config_dict: Dict[str, Any], key: str, default: bool) -> bool:
     """A boolean Bot_Config field; anything but true/false falls back with a warning."""
     raw = config_dict.get(key)
@@ -287,18 +299,28 @@ class DynamicConfigManager:
 
         if read_success and config_dict:
             self._last_mtime = mtime
+            # Round 45 (Ruling 45-1): every field parses on its own. A corrupt,
+            # missing or unparseable value logs a warning and takes that field's
+            # default; the other fields load normally. The whole-file fail-closed
+            # path below is reached only when the note cannot be read or its
+            # frontmatter yields nothing at all. The two SAFETY flags are the one
+            # deliberate asymmetry: a kill-switch that reads "maybe" is armed, not
+            # off - a malformed safety value must stop trading, never enable it.
+            d = BotConfig()
             cfg = BotConfig(
-                basis_notional_usd=float(config_dict.get("basis_notional_usd", 10000.0)),
-                max_concurrent_positions=int(config_dict.get("max_concurrent_positions", 2)),
-                max_drawdown_limit_pct=float(config_dict.get("max_drawdown_limit_pct", 10.0)),
-                basis_min_funding_apr=float(config_dict.get("basis_min_funding_apr", 25.0)),
-                basis_min_net_apr=float(config_dict.get("basis_min_net_apr", 20.0)),
-                basis_holding_days=float(config_dict.get("basis_holding_days", 7.0)),
-                max_spread_bps=float(config_dict.get("max_spread_bps", 25.0)),
-                whale_danger_zone_pct=float(config_dict.get("whale_danger_zone_pct", 5.0)),
-                alert_cooldown_seconds=float(config_dict.get("alert_cooldown_seconds", 60.0)),
-                emergency_killswitch=bool(config_dict.get("emergency_killswitch", False)),
-                pause_new_entries=bool(config_dict.get("pause_new_entries", False)),
+                basis_notional_usd=_config_number(config_dict, "basis_notional_usd", d.basis_notional_usd),
+                max_concurrent_positions=_config_int(config_dict, "max_concurrent_positions", d.max_concurrent_positions),
+                max_drawdown_limit_pct=_config_number(config_dict, "max_drawdown_limit_pct", d.max_drawdown_limit_pct),
+                basis_min_funding_apr=_config_number(config_dict, "basis_min_funding_apr", d.basis_min_funding_apr),
+                basis_min_net_apr=_config_number(config_dict, "basis_min_net_apr", d.basis_min_net_apr),
+                basis_holding_days=_config_number(config_dict, "basis_holding_days", d.basis_holding_days),
+                max_spread_bps=_config_number(config_dict, "max_spread_bps", d.max_spread_bps),
+                whale_danger_zone_pct=_config_number(config_dict, "whale_danger_zone_pct", d.whale_danger_zone_pct),
+                alert_cooldown_seconds=_config_number(config_dict, "alert_cooldown_seconds", d.alert_cooldown_seconds),
+                emergency_killswitch=_config_flag(config_dict, "emergency_killswitch", True)
+                if "emergency_killswitch" in config_dict else d.emergency_killswitch,
+                pause_new_entries=_config_flag(config_dict, "pause_new_entries", True)
+                if "pause_new_entries" in config_dict else d.pause_new_entries,
                 active_preset=str(config_dict.get("active_preset", "custom")),
                 allow_synthetic_tradfi_basis=_config_flag(
                     config_dict, "allow_synthetic_tradfi_basis", _SETTINGS_ALLOW_SYNTHETIC_TRADFI_BASIS),
