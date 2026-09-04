@@ -521,6 +521,7 @@ class MarketCollector:
         """
         from execution.basis_harvester import BasisHarvester
         from execution.strategies.basis_strategy import scan_basis_opportunities
+        from analytics.funding_arbitrage import FundingArbitrageEngine
         from config.dynamic_config import get_dynamic_config
         from strategies.funding_harvester import FundingHarvester
 
@@ -561,16 +562,27 @@ class MarketCollector:
 
                     funding_aprs = {coin: rate * 8760.0 * 100.0 for coin, rate in rates.items()}
                     closed = harvester.sweep_exits(funding_aprs)
+                    # Round 43 (Ruling 43-3): ONE volume map per cycle. The engine
+                    # built here feeds the illiquid sweep, the scan (scanner=) and
+                    # the sampler's cache, so all three agree on what "liquid"
+                    # means this hour. A failed lookup leaves None: the sweep
+                    # fails closed and the scan claims no spot backing.
+                    engine = FundingArbitrageEngine(client=self.rest_client)
+                    volumes = engine.get_spot_volumes()
+                    if volumes:
+                        self._spot_volumes_map = dict(volumes)
+                        self._spot_universe = engine.get_spot_universe()
+                        self._spot_universe_at = time.time()
                     # Round 42 (Ruling 42-2): a hedge that could not be filled is
-                    # not a hedge. Uses the sampler's cached volume map; with no
-                    # map yet, nothing closes (fail closed inside the sweep).
-                    closed += harvester.sweep_illiquid_exits(getattr(self, "_spot_volumes_map", None))
+                    # not a hedge.
+                    closed += harvester.sweep_illiquid_exits(volumes)
 
                     opened = []
                     cfg = get_dynamic_config()
                     effective_max = cfg.max_concurrent_positions if cfg.max_concurrent_positions else BASIS_MAX_CONCURRENT
                     if not (cfg.emergency_killswitch or cfg.pause_new_entries) and len(harvester.positions) < effective_max:
                         scan = scan_basis_opportunities(
+                            scanner=engine,
                             min_funding_apr=cfg.basis_min_funding_apr if cfg.basis_min_funding_apr is not None else BASIS_MIN_FUNDING_APR,
                             min_net_apr=cfg.basis_min_net_apr if cfg.basis_min_net_apr is not None else BASIS_MIN_NET_APR,
                             notional_usd=cfg.basis_notional_usd if cfg.basis_notional_usd is not None else BASIS_NOTIONAL_USD,

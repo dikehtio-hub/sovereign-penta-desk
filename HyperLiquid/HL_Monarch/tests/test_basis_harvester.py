@@ -111,9 +111,13 @@ class TestOpening(HarvesterCase):
         self.assertIsNone(self.h.open_position(opp(coin="xyz:AVGO", spot="AVGO"), notional_per_leg=10_000.0))
         self.assertEqual(self.h.last_refusal, "spot AVGO already hedges para:AVGO")
         self.assertFalse(self.h.can_open("xyz:AVGO", 10_000.0, spot_symbol="AVGO"))
-        self.assertTrue(self.h.can_open("xyz:AVGO", 10_000.0, spot_symbol="UAVGO"))
-        self.assertTrue(self.h.can_open("xyz:AVGO", 10_000.0))            # no symbol given: nothing to compare
+        # Round 43: the wrapper is the same underlying, and so is the perp base with no symbol at all.
+        self.assertFalse(self.h.can_open("xyz:AVGO", 10_000.0, spot_symbol="UAVGO"))
+        self.assertFalse(self.h.can_open("xyz:AVGO", 10_000.0))
+        self.assertTrue(self.h.can_open("MON", 10_000.0, spot_symbol="UMON"))
         self.assertEqual(self.h.holds_spot("AVGO"), "para:AVGO")
+        self.assertEqual(self.h.holds_spot("UAVGO"), "para:AVGO")
+        self.assertEqual(self.h.holds_spot(None, coin="xyz:AVGO"), "para:AVGO")
         self.assertIsNone(self.h.holds_spot(None))
         # Closing the first frees the underlying.
         self.h.close_position("para:AVGO")
@@ -187,6 +191,26 @@ class TestOpening(HarvesterCase):
         h.positions["MON"]["spot_symbol"] = None
         self.assertEqual([c["coin"] for c in h.sweep_illiquid_exits({**liquid, "TSLAX": 1e6}, min_spot_volume=100_000.0,
                                                                      allow_synthetic_tradfi=True)], ["MON"])
+
+    def test_bare_and_wrapped_spot_names_are_one_underlying(self):
+        """
+        Round 43 (Ruling 43-2). After the wrapper-first precedence a new position
+        could book under UANSEM beside an older one under ANSEM. Canonical bases
+        close that: aliases too (FARTCOIN / UFART), and the perp base regardless
+        of which spot name the resolver chose.
+        """
+        h = self.h
+        self.assertIsNotNone(h.open_position(opp(coin="para:ANSEM", spot="ANSEM"), notional_per_leg=10_000.0))
+        self.assertIsNone(h.open_position(opp(coin="xyz:ANSEM", spot="UANSEM"), notional_per_leg=10_000.0))
+        self.assertEqual(h.last_refusal, "spot UANSEM already hedges para:ANSEM")
+        self.assertIsNotNone(h.open_position(opp(coin="FARTCOIN", spot="UFART"), notional_per_leg=10_000.0))
+        self.assertEqual(h.holds_spot("FARTCOIN"), "FARTCOIN")
+        self.assertIsNone(h.open_position(opp(coin="para:FARTCOIN", spot="FARTCOIN"), notional_per_leg=10_000.0))
+        # Different underlyings that merely share letters stay distinct.
+        self.assertIsNone(h.holds_spot("UNI"))
+        self.assertIsNone(h.holds_spot("XMR1"))
+        self.assertIsNotNone(h.open_position(opp(coin="XMR", spot="XMR1"), notional_per_leg=10_000.0))
+        self.assertEqual(h.holds_spot("FXMR"), "XMR")
 
     def test_the_report_shows_the_cap_in_force_not_the_code_default(self):
         from execution.basis_harvester import format_report

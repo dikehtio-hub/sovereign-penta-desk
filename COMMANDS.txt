@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1065 passed as of Round 42)
+                        (1071 passed as of Round 43)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,24 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 43 - DEX-LEVEL QUARANTINE, CANONICAL GUARD, ONE VOLUME MAP, VAULT FIX
+     config/settings.py TRADFI_DEXES = {xyz, km, cash, flx}: is_synthetic_tradfi(coin)
+         = dex in TRADFI_DEXES OR base in SYNTHETIC_TRADFI_SYMBOLS (para: and main
+         rely on the symbol set). perp_dex("xyz:GOLD") == "xyz"; bare coins are "main".
+     canonical_spot_base(sym): alias -> base (UFART->FARTCOIN, XMR1->XMR, UUUSPX->SPX),
+         else strip "U" when 3+ chars remain (UANSEM->ANSEM, UBTC->BTC; UNI/UMA/UP
+         untouched). BasisHarvester.holds_spot(spot, coin=None) compares canonical
+         bases AND perp bases - one position per underlying, whatever the spot name.
+     Hourly accrual cycle: one FundingArbitrageEngine -> get_spot_volumes() feeds
+         sweep_illiquid_exits, scan_basis_opportunities(scanner=engine) and the
+         sampler's _spot_universe/_spot_volumes_map cache.
+     Bot_Config.md (hot-reload, no restart): allow_synthetic_tradfi_basis,
+         spot_min_volume_notional_multiple, spot_min_day_volume. Code changes still
+         need stop_collector.bat / start_collector.bat.
+     Trading_Terminal.md closed-trades table: reads net_pnl / hours_held (was
+         realized_pnl / hold_duration_hours -> $0.00 / 0.0h for every trade).
+         python main.py obsidian --once   refreshes the vault.
 
      ROUND 42 - PERP-LEVEL TRADFI QUARANTINE, ILLIQUID-LEG SWEEP, 10x ADV FLOOR
      config/settings.py: ALLOW_SYNTHETIC_TRADFI_BASIS = False (replaces the Round 41

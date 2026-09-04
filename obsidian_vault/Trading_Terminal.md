@@ -5,46 +5,49 @@ tags:
   - trading-terminal
   - hurdle-tracker
   - execution-telemetry
-last_synced: "2026-09-03 18:57:26 UTC"
+last_synced: "2026-09-04 20:23:15 UTC"
 ---
 
 # 📈 Monarch Trading Terminal & 50-Trade Hurdle Tracker
 
-> [!INFO] **Account Telemetry Snapshot**
-> - **Total Account Equity**: **`$100.2K`** (Starting: `$100.0K`)
-> - **Available Cash Balance**: **`$181.39`** • Deployed Collateral: **`$100.0K`**
-> - **Net Realized Yield / PnL**: **`+$172.01`**
-> - **Accrued Funding Yield**: **`+$207.00`**
-> - **Total Execution Fees Paid**: `$35.00` (Net of maker/taker accounting)
-> - **Last Synchronized**: `2026-09-03 18:57:26 UTC`
+> [!INFO] **Live Delta-Neutral Harvester Telemetry**
+> - **Total Account Equity**: **`$100.3K`** (Starting: `$100.0K`)
+> - **Available Cash Balance**: **`$60.3K`** • Deployed Collateral: **`$40.0K`**
+> - **Net Realized Yield / PnL**: **`+$310.41`**
+> - **Accrued Funding Yield**: **`+$351.40`** (52 accrual cycles)
+> - **Total Execution Fees Paid**: `$41.00` (Net of maker/taker accounting)
+> - **Active Basis Pairs**: `2 pairs deployed`
+> - **Last Synchronized**: `2026-09-04 20:23:15 UTC`
 
 ---
 
 ## 🎯 Pre-Registered 50-Trade Hurdle Validation Deck
 
-> [!IMPORTANT] **Rigorous Statistical Hurdle Bar**
-> To prevent deploying curve-fitted strategies to live capital, the engine must satisfy our pre-registered acceptance criteria over **50 discrete closed trades**:
-> - **Hurdle 1**: Win Rate **`>= 54.0%`** (Net of fees)
-> - **Hurdle 2**: Profit Factor **`>= 1.25`**
-> - **Current Verdict**: 🔵 **IN PROGRESS (0/50 TRADES COMPLETED)**
+> [!WARNING] **Directional Liquidation Fade: Terminated Early at N=12 & Retired**
+> The pre-registered 50-trade hurdle on the **Reactive Liquidation Fade Strategy** was committed on 2026-08-31 to evaluate directional edge under strict maker/taker fees (1.0 bps / 3.5 bps):
+> - **Pre-Registered Bar**: Win Rate **`>= 54.0%`** (Net of fees) **AND** Profit Factor **`>= 1.25`** over 50 closed trades.
+> - **Archived Baseline ($N=12$)**: Win Rate **`25.0%`** (3 Wins / 9 Losses) • Profit Factor **`0.12`** • Net PnL **`-$536.74`** (Gross: `-$482.76`, Fees: `$53.98`).
+> - **Excursion Benchmark (`wick_benchmark.py`)**: Empirical MFE/MAE ratio measured at **`0.513`** vs. random control **`1.092`** ($p = 0.0259$ at 30m). Forced liquidations are momentum drivers that continue running against the position, not mean-reverting wicks.
+> - **Current Verdict**: 🔴 **FAIL / RETIRED (TERMINATED EARLY AT N=12 / 50)**
+> - **Operational State**: Directional trading is halted ([`FADE_STRATEGY_ENABLED = False`](file:///C:/Users/ixis1/Desktop/DEV/HyperLiquid/HL_Monarch/config/settings.py)). Placed in **PASSIVE Re-benchmarking Mode** (telemetry logs sweeps without placing orders; requires 7d window, >=500 events, $P(\text{ratio} \ge 1.25) > 0.90$ under cluster bootstrap to reopen).
+> - **Archive Reference**: `HL_Monarch/data/experiments/baseline_unfiltered_N12_2026-09-01.meta.json`
 
-| Hurdle Metric     | Current Value  | Required PASS Floor | Validation Progress               |
-| :---------------- | :------------: | :-----------------: | :-------------------------------- |
-| **Sample Size**   | **`0 trades`** |     `50 trades`     | `░░░░░░░░░░░░░░░` **0.0%** (0/50) |
-| **Win Rate**      |   **`0.0%`**   |     `>= 54.0%`      | `░░░░░░░░░░` **0.0%** (0/100)     |
-| **Profit Factor** |   **`0.00`**   |      `>= 1.25`      | `Gross: $0.00 / Loss: $0.00`      |
+| Hurdle Metric | Archived Baseline (N=12) | Required PASS Floor | Verdict / Progress |
+| :--- | :---: | :---: | :--- |
+| **Sample Size** | **`12 trades`** | `50 trades` | `████░░░░░░░░░░░` **24.0%** (12/50) (Archived early at N=12) |
+| **Win Rate** | **`25.0%`** | `>= 54.0%` | `██░░░░░░░░` **25.0%** (25/100) 🔴 **FAIL** (3W / 9L) |
+| **Profit Factor** | **`0.12`** | `>= 1.25` | `Gross: $75.30 / Loss: $612.04` 🔴 **FAIL** |
+| **Signal MFE/MAE** | **`0.513`** | `>= 1.250` | Control: `1.092` 🔴 **ADVERSE MOMENTUM** |
 
 ---
 
 ## 📊 Active Delta-Neutral Basis Positions
+*Capital redeployed to delta-neutral cash-and-carry funding rate harvesting (Long Spot + Short Perp).*
 
-| Asset | Leg Size | Spot Entry | Perp Entry | Entry APR | Funding Accrued | Duration |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`para:ANSEM`** | $10.0K | `$0.2996` | `$0.2996` | `+2924.75%` | **`+$188.55`** | `60.2h` |
-| **`xyz:HOOD`** | $10.0K | `$109.21` | `$109.21` | `+55.91%` | **`+$11.90`** | `60.2h` |
-| **`para:AVGO`** | $10.0K | `$362.37` | `$362.37` | `+77.93%` | **`+$3.69`** | `17.3h` |
-| **`xyz:AVGO`** | $10.0K | `$362.23` | `$362.23` | `+33.51%` | **`+$0.87`** | `17.3h` |
-| **`XPL`** | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | **`+$1.99`** | `17.3h` |
+| Asset | Spot Pair | Leg Notional | Spot Entry | Perp Entry | Entry APR | Realised APR | Funding Accrued | Duration |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`para:ANSEM`** | `UANSEM` | $10.0K | `$0.2996` | `$0.2996` | `+2924.75%` | `+545.07%` | **`+$323.56`** | `85.7h` |
+| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+20.07%` | **`+$3.89`** | `42.7h` |
 
 ---
 
@@ -52,7 +55,7 @@ last_synced: "2026-09-03 18:57:26 UTC"
 
 | Asset | Side | Limit Price | Units | Notional | Order Expiration |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| — | — | — | — | — | *No resting limit orders active.* |
+| — | — | — | — | — | *No resting limit orders active (FADE_STRATEGY_ENABLED = False).* |
 
 ---
 
@@ -60,7 +63,9 @@ last_synced: "2026-09-03 18:57:26 UTC"
 
 | Asset | Net Realized PnL | Holding Period | Exit Classification |
 | :--- | :---: | :---: | :--- |
-| — | — | *No closed trades logged yet.* | — |
+| **`xyz:HOOD`** | 🟢 **$4.09** | `51.0h` | `ILLIQUID_SPOT_LEG: HOOD is synthetic TradFi (quarantined)` |
+| **`para:AVGO`** | 🟢 **$0.15** | `16.0h` | `ILLIQUID_SPOT_LEG: AVGO is synthetic TradFi (quarantined)` |
+| **`xyz:AVGO`** | 🔴 **-$7.28** | `16.0h` | `ILLIQUID_SPOT_LEG: AVGO is synthetic TradFi (quarantined)` |
 
 ---
 

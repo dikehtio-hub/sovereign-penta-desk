@@ -377,9 +377,19 @@ def generate_trading_terminal_note(vault_path: Path, synced_at: str) -> Tuple[Pa
     closed_rows = []
     for t in closed_basis_trades[-10:]:
         coin = t.get("coin", "")
-        pnl = format_usd(float(t.get("realized_pnl", 0.0)))
-        pnl_badge = f"🟢 **{pnl}**" if float(t.get("realized_pnl", 0.0)) > 0 else f"🔴 **{pnl}**"
-        dur = f"{float(t.get('hold_duration_hours', 0.0)):.1f}h"
+        # Round 43 (Ruling 43-4): the harvester's closed record carries net_pnl and
+        # hours_held; this read realized_pnl / hold_duration_hours, so every swept
+        # trade rendered as $0.00 over 0.0h. The old keys stay as fallbacks.
+        net = t.get("net_pnl")
+        if net is None:
+            net = t.get("realized_pnl", 0.0)
+        net = float(net or 0.0)
+        hours = t.get("hours_held")
+        if hours is None:
+            hours = t.get("hold_duration_hours", 0.0)
+        pnl = format_usd(net)
+        pnl_badge = f"🟢 **{pnl}**" if net > 0 else f"🔴 **{pnl}**"
+        dur = f"{float(hours or 0.0):.1f}h"
         reason = t.get("exit_reason", "normal_close")
         closed_rows.append(f"| **`{coin}`** | {pnl_badge} | `{dur}` | `{reason}` |")
     closed_table = "\n".join(closed_rows) if closed_rows else "| — | — | *No closed basis pairs logged yet (positions held delta-neutral for funding yield).* | — |"

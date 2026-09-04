@@ -28,6 +28,17 @@ exact in notional at entry, not thereafter), liquidation of the perp leg if marg
 is not shared with the spot leg, transfer frictions between spot and perp wallets,
 and the borrow that would be needed to run this in reverse (which is why only
 positive-funding markets are ever opened - see basis_strategy.build_position).
+
+WHAT THE RETURNS LOOK LIKE (Round 43, Ruling 43-5). Funding income is heavy in the
+right tail. Measured on the paper book on 2026-09-04: five positions, one of them
+(para:ANSEM, quoted 2,925% APR at entry) realised 554% over 51 hours and paid
+$322 of the book's $350; the other four realised 9% to 50%. That is the shape of
+this strategy, not an anomaly: most entries pay a little, a few pay for the book.
+Two consequences. A mean realised APR is a poor summary - report the median and
+the top position's share. And the entry bar stays at 25% gross / 20% net: at the
+~11% baseline funding of the liquid large caps, fee-plus-spread drag over a 7-day
+hold is roughly 15%, so the expectancy is negative and idle cash at 0% outranks
+churning it.
 """
 
 import json
@@ -104,13 +115,26 @@ class BasisHarvester:
         configured = getattr(cfg, "max_concurrent_positions", None)
         return int(configured) if configured else BASIS_MAX_CONCURRENT
 
-    def holds_spot(self, spot_symbol: Optional[str]) -> Optional[str]:
-        """The coin already hedged against `spot_symbol`, or None."""
-        if not spot_symbol:
-            return None
-        for coin, pos in self.positions.items():
-            if pos.get("spot_symbol") == spot_symbol:
-                return coin
+    def holds_spot(self, spot_symbol: Optional[str], coin: Optional[str] = None) -> Optional[str]:
+        """
+        The open position on the SAME UNDERLYING as `spot_symbol`, or None.
+
+        Round 43 (Ruling 43-2): compared on canonical_spot_base, so ANSEM and
+        UANSEM - or FARTCOIN and UFART - are one asset, not two. The Round 41
+        wrapper-first precedence made the string comparison this replaced a
+        loophole: an older position booked under a bare name could sit beside a
+        new one under the wrapper. When the candidate's perp `coin` is known its
+        base is compared too; the perp names the underlying directly, whatever
+        spot name the resolver picked.
+        """
+        from analytics.funding_arbitrage import canonical_spot_base, perp_base_symbol
+        want = canonical_spot_base(spot_symbol)
+        want_base = perp_base_symbol(coin).upper() if coin else None
+        for held_coin, pos in self.positions.items():
+            if want and canonical_spot_base(pos.get("spot_symbol")) == want:
+                return held_coin
+            if want_base and perp_base_symbol(held_coin).upper() == want_base:
+                return held_coin
         return None
 
     def can_open(self, coin: str, notional_per_leg: Optional[float] = None,
@@ -128,7 +152,7 @@ class BasisHarvester:
         effective_notional = notional_per_leg if notional_per_leg is not None else cfg.basis_notional_usd
         if coin in self.positions or len(self.positions) >= self.effective_max_positions(cfg):
             return False
-        if self.holds_spot(spot_symbol) is not None:
+        if self.holds_spot(spot_symbol, coin=coin) is not None:
             return False
         return self.capital_required(effective_notional) <= self.cash
 
@@ -166,7 +190,7 @@ class BasisHarvester:
         if not coin:
             return self._refuse("no coin")
         spot_symbol = opportunity.get("spot_symbol")
-        held_by = self.holds_spot(spot_symbol)
+        held_by = self.holds_spot(spot_symbol, coin=coin)
         if held_by is not None:
             return self._refuse(f"spot {spot_symbol} already hedges {held_by}")
         if not self.can_open(coin, notional_per_leg, spot_symbol=spot_symbol):

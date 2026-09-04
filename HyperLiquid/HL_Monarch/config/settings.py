@@ -239,6 +239,12 @@ SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE = 10.0
 # NOTHING for a perp whose base is in SYNTHETIC_TRADFI_SYMBOLS - bare name, "U"
 # wrapper and alias alike - and the harvester closes any such position it holds.
 ALLOW_SYNTHETIC_TRADFI_BASIS = False
+# Round 43 (Ruling 43-1): defence in depth. Every perp on these HIP-3 dexes prices a
+# stock, index, commodity, bond or FX pair, so a NEW listing there is quarantined
+# the moment it appears without anyone editing the symbol set. The symbol set
+# below stays as the override for the mixed dexes (para: holds ANSEM and TOTAL2
+# beside AVGO, AAOI and the 2Y/10Y/30Y rates) and for the main dex.
+TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx"})
 SYNTHETIC_TRADFI_SYMBOLS = frozenset({
     # Ruling 42-1, as issued.
     "NVDA", "TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "COIN", "HOOD", "AVGO",

@@ -194,6 +194,60 @@ class TestSpotBacking(unittest.TestCase):
         rows = engine.get_unmapped_liquid_spot(perp_coins=["xyz:GOLD", "xyz:NVDA", "BTC"], min_spot_volume=50_000.0)
         self.assertEqual(rows, [])
 
+    def test_the_dex_itself_quarantines_whatever_lists_there(self):
+        """
+        Round 43 (Ruling 43-1). Everything on xyz, km, cash and flx prices a
+        stock, index, commodity, bond or FX pair, so a name nobody has put in
+        the symbol set is caught by its address. The symbol set still covers
+        the mixed para dex and the main dex.
+        """
+        from config.settings import TRADFI_DEXES
+        from analytics.funding_arbitrage import is_synthetic_tradfi, perp_dex, spot_symbol_candidates
+        self.assertEqual(TRADFI_DEXES, frozenset({"xyz", "km", "cash", "flx"}))
+        self.assertEqual(perp_dex("xyz:GOLD"), "xyz")
+        self.assertEqual(perp_dex("BTC"), "main")
+        for coin in ("xyz:NEWCO", "km:WHATEVER", "cash:X", "flx:GAS", "XYZ:UPPER"):
+            self.assertTrue(is_synthetic_tradfi(coin), coin)
+            self.assertEqual(spot_symbol_candidates(coin), [], coin)
+            self.assertIsNone(spot_symbol_for(coin, {"NEWCO", "UNEWCO", "WHATEVER", "X", "GAS", "UPPER"}), coin)
+        self.assertTrue(is_synthetic_tradfi("para:AVGO"))                      # mixed dex: the symbol set
+        self.assertTrue(is_synthetic_tradfi("para:10Y"))
+        self.assertFalse(is_synthetic_tradfi("para:ANSEM"))
+        self.assertFalse(is_synthetic_tradfi("UNI"))
+        self.assertFalse(is_synthetic_tradfi("xyz:NEWCO", allow_synthetic_tradfi=True))
+        self.assertEqual(spot_symbol_candidates("xyz:ANSEM", allow_synthetic_tradfi=True), ["UANSEM", "ANSEM"])
+
+    def test_canonical_spot_base_names_the_underlying(self):
+        """Round 43 (Ruling 43-2): ANSEM and UANSEM are one asset; so are FARTCOIN, UFART; XMR, XMR1, FXMR."""
+        from analytics.funding_arbitrage import canonical_spot_base
+        for sym, base in (("UFART", "FARTCOIN"), ("XMR1", "XMR"), ("FXMR", "XMR"), ("UUUSPX", "SPX"),
+                          ("NVDAX", "NVDA"), ("EQTSLA", "TSLA"), ("UANSEM", "ANSEM"), ("UBTC", "BTC"),
+                          ("ANSEM", "ANSEM"), ("HYPE", "HYPE"), ("uanem", "ANEM"), ("UNI", "UNI"),
+                          ("UMA", "UMA"), ("UP", "UP")):
+            self.assertEqual(canonical_spot_base(sym), base, sym)
+        self.assertIsNone(canonical_spot_base(None))
+        self.assertIsNone(canonical_spot_base(""))
+
+    def test_thresholds_read_the_hot_reloaded_config_first(self):
+        """Round 43 (Ruling 43-6): Bot_Config fields override the settings constants without a restart."""
+        from analytics.funding_arbitrage import effective_spot_min_volume, allow_synthetic_tradfi_basis
+        from config.dynamic_config import BotConfig
+        from config.settings import SPOT_MIN_DAY_VOLUME, SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE
+
+        cfg = BotConfig()
+        self.assertFalse(cfg.allow_synthetic_tradfi_basis)
+        self.assertEqual(cfg.spot_min_volume_notional_multiple, SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE)
+        self.assertEqual(cfg.spot_min_day_volume, SPOT_MIN_DAY_VOLUME)
+        self.assertEqual(effective_spot_min_volume(cfg), 100_000.0)
+        cfg.spot_min_volume_notional_multiple, cfg.spot_min_day_volume = 20.0, 400_000.0
+        self.assertEqual(effective_spot_min_volume(cfg), 400_000.0)               # the floor wins
+        cfg.basis_notional_usd = 25_000.0
+        self.assertEqual(effective_spot_min_volume(cfg), 500_000.0)               # 20 x 25k beats it
+        self.assertEqual(BotConfig(spot_min_day_volume=1.0).validate_and_clamp().spot_min_day_volume, 1_000.0)
+        # An explicit override always wins over the config.
+        self.assertTrue(allow_synthetic_tradfi_basis(True))
+        self.assertFalse(allow_synthetic_tradfi_basis(False))
+
     def test_spx_is_the_memecoin_and_resolves_to_its_unit_wrapper(self):
         """
         Round 42. UUUSPX is "Unit SPX6900" - the main-dex SPX perp prices it

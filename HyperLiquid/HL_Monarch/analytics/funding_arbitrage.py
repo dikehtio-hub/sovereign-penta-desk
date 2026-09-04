@@ -24,6 +24,7 @@ from config.settings import (
     SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE,
     ALLOW_SYNTHETIC_TRADFI_BASIS,
     SYNTHETIC_TRADFI_SYMBOLS,
+    TRADFI_DEXES,
     SPOT_NON_BASIS_TOKENS,
 )
 
@@ -66,15 +67,77 @@ def perp_base_symbol(coin: str) -> str:
     return coin.split(":", 1)[1] if ":" in coin else coin
 
 
+def perp_dex(coin: str) -> str:
+    """The dex a perp lives on: 'xyz:GOLD' -> 'xyz', 'BTC' -> 'main'."""
+    return coin.split(":", 1)[0].lower() if ":" in coin else "main"
+
+
+# Alias -> canonical base, for both tables: UFART -> FARTCOIN, XMR1 -> XMR, UUUSPX -> SPX,
+# NVDAX -> NVDA. Built once; the tables are module constants.
+_INVERSE_ALIASES: Dict[str, str] = {
+    alias: base
+    for table in (SPOT_SYMBOL_ALIASES, SYNTHETIC_TRADFI_ALIASES)
+    for base, aliases in table.items()
+    for alias in aliases
+}
+
+
+def canonical_spot_base(symbol: Optional[str]) -> Optional[str]:
+    """
+    The underlying a spot name stands for (Round 43, Ruling 43-2): ANSEM and
+    UANSEM are one asset, so are FARTCOIN and UFART, XMR1 and FXMR. Aliases map
+    through the tables; a "U" wrapper is stripped when what remains is at least
+    three characters (so UNI, UMA and UP stay themselves). Pure string logic -
+    USDC canonicalises to SDC, which is harmless because a stablecoin is never
+    a basis leg - and the harvester also compares perp bases, which need no
+    table at all.
+    """
+    if not symbol:
+        return None
+    sym = str(symbol).upper()
+    if sym in _INVERSE_ALIASES:
+        return _INVERSE_ALIASES[sym]
+    for prefix in SPOT_WRAPPER_PREFIXES:
+        if sym.startswith(prefix) and len(sym) - len(prefix) >= 3:
+            return sym[len(prefix):]
+    return sym
+
+
+def _dynamic_value(name: str, fallback: Any) -> Any:
+    """A Bot_Config field if the hot-reloaded config carries it, else the settings constant."""
+    try:
+        from config.dynamic_config import get_dynamic_config
+        value = getattr(get_dynamic_config(), name, None)
+    except Exception:
+        value = None
+    return fallback if value is None else value
+
+
+def allow_synthetic_tradfi_basis(override: Optional[bool] = None) -> bool:
+    """
+    Whether TradFi perps may be hedged at all. An explicit `override` wins;
+    otherwise the hot-reloaded Bot_Config (Round 43, Ruling 43-6), else
+    settings.ALLOW_SYNTHETIC_TRADFI_BASIS.
+    """
+    if override is not None:
+        return bool(override)
+    return bool(_dynamic_value("allow_synthetic_tradfi_basis", ALLOW_SYNTHETIC_TRADFI_BASIS))
+
+
 def is_synthetic_tradfi(coin: str, allow_synthetic_tradfi: Optional[bool] = None) -> bool:
     """
     True when this perp prices a stock, index, commodity, bond or FX pair AND the
     quarantine is in force (Round 42, Ruling 42-1). The underlying trades on an
     exchange with a weekend and a closing bell; the perp trades 24/7. A basis
     hedge across that seam is not the delta-neutral trade this strategy makes.
+
+    Round 43 (Ruling 43-1): two tests, either suffices. The DEX - everything on
+    xyz, km, cash and flx is TradFi, so a stock listed there tomorrow is caught
+    today - and the SYMBOL set, which covers the mixed para dex and the main dex.
     """
-    allow = ALLOW_SYNTHETIC_TRADFI_BASIS if allow_synthetic_tradfi is None else bool(allow_synthetic_tradfi)
-    return (not allow) and perp_base_symbol(coin).upper() in SYNTHETIC_TRADFI_SYMBOLS
+    if allow_synthetic_tradfi_basis(allow_synthetic_tradfi):
+        return False
+    return perp_dex(coin) in TRADFI_DEXES or perp_base_symbol(coin).upper() in SYNTHETIC_TRADFI_SYMBOLS
 
 
 def spot_symbol_candidates(coin: str, allow_synthetic_tradfi: Optional[bool] = None) -> List[str]:
@@ -92,7 +155,7 @@ def spot_symbol_candidates(coin: str, allow_synthetic_tradfi: Optional[bool] = N
     """
     if is_synthetic_tradfi(coin, allow_synthetic_tradfi):
         return []
-    allow = ALLOW_SYNTHETIC_TRADFI_BASIS if allow_synthetic_tradfi is None else bool(allow_synthetic_tradfi)
+    allow = allow_synthetic_tradfi_basis(allow_synthetic_tradfi)
     base = perp_base_symbol(coin).upper()
     ordered = [prefix + base for prefix in SPOT_WRAPPER_PREFIXES] + [base]
     ordered += list(SPOT_SYMBOL_ALIASES.get(base, ()))
@@ -141,10 +204,11 @@ def spot_symbol_for(coin: str, spot_universe: Set[str],
 def effective_spot_min_volume(cfg: Any = None) -> float:
     """
     The spot-leg volume floor in force (Ruling 41-3): the larger of
-    SPOT_MIN_DAY_VOLUME and SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE x the configured
-    per-leg notional. A $10k leg needs a $50k/day pair; a $25k leg $125k. Reads
-    the hot-reloaded Bot_Config when no `cfg` is given; falls back to the
-    constant if the config is unreadable.
+    the day-volume floor and the notional multiple x the configured per-leg
+    notional. A $10k leg needs a $100k/day pair; a $25k leg $250k. Reads the
+    hot-reloaded Bot_Config when no `cfg` is given (Round 43: the floor and the
+    multiple are Bot_Config fields too), falling back to the settings constants
+    for anything the config does not carry.
     """
     if cfg is None:
         try:
@@ -152,11 +216,18 @@ def effective_spot_min_volume(cfg: Any = None) -> float:
             cfg = get_dynamic_config()
         except Exception:
             cfg = None
-    try:
-        notional = float(getattr(cfg, "basis_notional_usd", 0.0) or 0.0)
-    except (TypeError, ValueError):
-        notional = 0.0
-    return max(float(SPOT_MIN_DAY_VOLUME), notional * float(SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE))
+
+    def number(name: str, fallback: float) -> float:
+        try:
+            value = getattr(cfg, name, None)
+            return float(fallback if value is None else value)
+        except (TypeError, ValueError):
+            return float(fallback)
+
+    notional = number("basis_notional_usd", 0.0)
+    floor = number("spot_min_day_volume", SPOT_MIN_DAY_VOLUME)
+    multiple = number("spot_min_volume_notional_multiple", SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE)
+    return max(floor, notional * multiple)
 
 
 class FundingArbitrageEngine:

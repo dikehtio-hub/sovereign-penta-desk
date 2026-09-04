@@ -16,6 +16,12 @@ from typing import Dict, Any, Optional, Tuple
 
 logger = logging.getLogger("DynamicConfig")
 
+from config.settings import (  # noqa: E402 - settings imports nothing from here
+    ALLOW_SYNTHETIC_TRADFI_BASIS as _SETTINGS_ALLOW_SYNTHETIC_TRADFI_BASIS,
+    SPOT_MIN_DAY_VOLUME as _SETTINGS_SPOT_MIN_DAY_VOLUME,
+    SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE as _SETTINGS_SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE,
+)
+
 MONARCH_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = MONARCH_DIR / "data"
 DEFAULT_JSON_PATH = DEFAULT_DATA_DIR / "bot_config.json"
@@ -86,6 +92,9 @@ BOUNDS = {
     "max_spread_bps": (2.0, 100.0),
     "whale_danger_zone_pct": (1.0, 30.0),
     "alert_cooldown_seconds": (5.0, 600.0),
+    # Round 43 (Ruling 43-6): spot-leg liquidity thresholds, hot-reloadable.
+    "spot_min_volume_notional_multiple": (1.0, 100.0),
+    "spot_min_day_volume": (1_000.0, 10_000_000.0),
 }
 
 
@@ -103,6 +112,11 @@ class BotConfig:
     emergency_killswitch: bool = False
     pause_new_entries: bool = False
     active_preset: str = "balanced"
+    # Round 43 (Ruling 43-6): the spot-leg rules that used to need a service
+    # restart. Defaults are the settings constants; Bot_Config.md overrides live.
+    allow_synthetic_tradfi_basis: bool = _SETTINGS_ALLOW_SYNTHETIC_TRADFI_BASIS
+    spot_min_volume_notional_multiple: float = _SETTINGS_SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE
+    spot_min_day_volume: float = _SETTINGS_SPOT_MIN_DAY_VOLUME
 
     def validate_and_clamp(self) -> 'BotConfig':
         """Clamp parameters to strictly safe operating boundaries."""
@@ -254,6 +268,12 @@ class DynamicConfigManager:
                 emergency_killswitch=bool(config_dict.get("emergency_killswitch", False)),
                 pause_new_entries=bool(config_dict.get("pause_new_entries", False)),
                 active_preset=str(config_dict.get("active_preset", "custom")),
+                allow_synthetic_tradfi_basis=bool(config_dict.get(
+                    "allow_synthetic_tradfi_basis", _SETTINGS_ALLOW_SYNTHETIC_TRADFI_BASIS)),
+                spot_min_volume_notional_multiple=float(config_dict.get(
+                    "spot_min_volume_notional_multiple", _SETTINGS_SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE)),
+                spot_min_day_volume=float(config_dict.get(
+                    "spot_min_day_volume", _SETTINGS_SPOT_MIN_DAY_VOLUME)),
             )
             self._cached_config = cfg.validate_and_clamp()
         else:
@@ -340,6 +360,9 @@ alert_cooldown_seconds: {cfg.alert_cooldown_seconds}
 emergency_killswitch: {str(cfg.emergency_killswitch).lower()}
 pause_new_entries: {str(cfg.pause_new_entries).lower()}
 active_preset: "{cfg.active_preset}"
+allow_synthetic_tradfi_basis: {str(cfg.allow_synthetic_tradfi_basis).lower()}
+spot_min_volume_notional_multiple: {cfg.spot_min_volume_notional_multiple}
+spot_min_day_volume: {cfg.spot_min_day_volume}
 tags:
   - monarch
   - bot-config
@@ -386,6 +409,9 @@ tags:
 | **`max_spread_bps`** | **`{cfg.max_spread_bps:.1f} bps`** | `2.0 - 100.0 bps` | Maximum allowable top-of-book bid/ask spread on spot & perp |
 | **`whale_danger_zone_pct`** | **`{cfg.whale_danger_zone_pct:.1f}%`** | `1.0% - 30.0%` | Liquidation distance threshold for high-risk whale account alerts |
 | **`alert_cooldown_seconds`** | **`{cfg.alert_cooldown_seconds:.0f}s`** | `5 - 600 seconds` | Minimum seconds between duplicate liquidation cascade webhooks |
+| **`allow_synthetic_tradfi_basis`** | **`{str(cfg.allow_synthetic_tradfi_basis).lower()}`** | `true / false` | Allow basis hedges on stock, index, commodity, bond and FX perps (weekend-gap risk; keep false) |
+| **`spot_min_volume_notional_multiple`** | **`{cfg.spot_min_volume_notional_multiple:.1f}x`** | `1 - 100x` | Spot pair must turn over this many times the per-leg notional per day (10x = one fill is 10% of ADV) |
+| **`spot_min_day_volume`** | **`${cfg.spot_min_day_volume:,.0f}`** | `$1,000 - $10,000,000` | Absolute floor on the spot pair's 24h notional, whatever the notional multiple gives |
 
 ---
 

@@ -1,9 +1,20 @@
-# DEV — Sovereign Quad-Desk Trading Ecosystem
+# DEV — Sovereign Penta-Desk Trading Ecosystem
 
 Handoff log between Claude Code and Antigravity. Terse by design; git history has
 the detail.
 
 ## Status
+
+Round 43 complete: DEX-LEVEL TRADFI QUARANTINE, CANONICAL DUPLICATE GUARD, ONE
+VOLUME MAP PER CYCLE, VAULT FIX & HOT-RELOADED THRESHOLDS. `TRADFI_DEXES`
+(xyz, km, cash, flx) quarantines whatever lists there; the symbol set covers
+para: and main. `canonical_spot_base` makes ANSEM/UANSEM and FARTCOIN/UFART one
+underlying for the duplicate guard, and the guard compares perp bases too. The
+hourly cycle builds ONE engine whose volume map feeds the sweep, the scan and
+the sampler cache. The Trading Terminal's closed-trades table read keys the
+harvester never writes (every swept trade showed $0.00 / 0.0h) - fixed and the
+vault refreshed. `allow_synthetic_tradfi_basis`, `spot_min_volume_notional_
+multiple` and `spot_min_day_volume` are Bot_Config fields now. 6 new tests.
 
 Round 42 complete: PERP-LEVEL TRADFI QUARANTINE, ILLIQUID-LEG SWEEP & 10x ADV
 FLOOR. `ALLOW_SYNTHETIC_TRADFI_BASIS = False` with `SYNTHETIC_TRADFI_SYMBOLS`
@@ -114,7 +125,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1065 passed |
+| HL_Monarch (pytest) | 1071 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -137,6 +148,30 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 43 findings
+
+- **The vault had been wrong for every closed trade.** `generate_trading_
+  terminal_note` read `realized_pnl` and `hold_duration_hours`; the harvester
+  writes `net_pnl` and `hours_held`. No test covered the table. Now one does,
+  and the three swept trades render +$4.09 / +$0.15 / -$7.28 with their hours
+  and `ILLIQUID_SPOT_LEG` reasons.
+- **canonical_spot_base is string logic with known edges.** Aliases map via the
+  tables; a "U" prefix is stripped only when 3+ characters remain (UNI, UMA, UP
+  stay themselves); USDC canonicalises to SDC, harmless for a quote asset. The
+  harvester ALSO compares perp bases (`holds_spot(spot, coin=)`), which needs
+  no table: para:AVGO and xyz:AVGO collide on AVGO whatever spot name resolved.
+- **One engine per hourly cycle** (`FundingArbitrageEngine(client=rest_client)`)
+  now serves the illiquid sweep, the scan (`scanner=`) and refreshes the
+  sampler's universe + volume cache, so the 6h/1h divergence is gone and a pair
+  that dies is swept within the hour.
+- **Hot-reload boundary:** the three new Bot_Config fields take effect live
+  through `_dynamic_value()` (a getattr on the cached config; the file is
+  stat-ed per call). CODE changes still need a restart - this round restarted
+  for the dex quarantine, the canonical guard and the unified volume map.
+- Ruling 43-5 recorded in the harvester docstring: returns are right-tail
+  heavy (one of five positions paid $322 of $350); report median and top share,
+  hold the 25%/20% bar - baseline large-cap funding nets negative after drag.
 
 ## Round 42 findings
 
