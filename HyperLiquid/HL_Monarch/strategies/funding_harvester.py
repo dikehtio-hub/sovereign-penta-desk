@@ -63,6 +63,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from execution.risk_manager import STRATEGY_BASIS_HARVEST
+from config.settings import (BASIS_DEFAULT_PERP_LEVERAGE,
+                             BASIS_LEVERAGE_EXCEPTIONS,
+                             BASIS_MAX_PERP_LEVERAGE)
 
 HOURS_PER_YEAR = 24.0 * 365.0
 
@@ -78,6 +81,28 @@ DEFAULT_RISK_FREE_APR = 5.0
 
 class GateUnavailable(RuntimeError):
     """The bankroll could not be consulted, so no size can be authorised."""
+
+
+def max_leverage_for(coin: str) -> float:
+    """
+    The leverage ceiling for one market, per the Round 31 policy.
+
+    1.0x everywhere, with a 2.0x exception for BTC, ETH and SOL only. The
+    exception is a statement about BOOK DEPTH, not about those assets being
+    safer: at 2x the perp leg liquidates on a ~48.8% adverse move, and the case
+    for tolerating that rests on being able to add margin before it arrives -
+    which needs a book that will still be there in a cascade.
+
+    A coin absent from the table gets the default, so a NEW listing is 1x until
+    somebody decides otherwise rather than inheriting a ceiling by accident.
+    """
+    ceiling = BASIS_LEVERAGE_EXCEPTIONS.get(str(coin or "").upper().strip())
+    return float(ceiling if ceiling is not None else BASIS_MAX_PERP_LEVERAGE)
+
+
+def clamp_leverage(coin: str, requested: float) -> float:
+    """Requested leverage, clamped to this market's ceiling and never below 1x."""
+    return max(1.0, min(float(requested), max_leverage_for(coin)))
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +378,7 @@ class FundingHarvester:
 
     def __init__(self, harvester: Any = None, gate: Optional[BucketGate] = None,
                  hook: Any = None, risk_free_apr: float = DEFAULT_RISK_FREE_APR,
-                 perp_leverage: float = 1.0,
+                 perp_leverage: float = BASIS_DEFAULT_PERP_LEVERAGE,
                  min_excess_apr: float = 0.0):
         self.gate = gate if gate is not None else BucketGate(hook=hook)
         self.hook = hook if hook is not None else self.gate.hook
@@ -391,13 +416,17 @@ class FundingHarvester:
             quoted = opportunity.get("funding_apr")
         quoted = float(quoted or 0.0)
 
+        # CLAMPED PER COIN. A constructor-wide leverage would apply a BTC ceiling
+        # to a microcap the moment the two were scanned in the same pass, which is
+        # exactly the accident the exception list exists to prevent.
+        leverage = clamp_leverage(coin, self.perp_leverage)
         economics = harvest_economics(
-            quoted, hook=self.hook, perp_leverage=self.perp_leverage,
+            quoted, hook=self.hook, perp_leverage=leverage,
             risk_free_apr=self.risk_free_apr, rates=self._rates)
 
         if notional_per_leg is None:
             notional_per_leg = self._default_notional()
-        gate = self.gate.check(notional_per_leg, perp_leverage=self.perp_leverage,
+        gate = self.gate.check(notional_per_leg, perp_leverage=leverage,
                                already_deployed=self.deployed_capital(),
                                price=opportunity.get("mark_price"))
 

@@ -41,6 +41,8 @@ from config.dynamic_config import get_dynamic_config
 from execution.risk_manager import STRATEGY_BASIS_HARVEST
 from config.settings import (
     BASIS_EXIT_APR_FLOOR,
+    BASIS_EXIT_STALE_APR,
+    BASIS_EXIT_STALE_DAYS,
     BASIS_MAX_CONCURRENT,
     BASIS_MIN_HOLD_DAYS,
     BASIS_NOTIONAL_USD,
@@ -258,7 +260,9 @@ class BasisHarvester:
         )
 
     def should_exit(self, coin: str, current_apr: Optional[float],
-                    floor_apr: float = BASIS_EXIT_APR_FLOOR) -> Optional[str]:
+                    floor_apr: float = BASIS_EXIT_APR_FLOOR,
+                    stale_days: float = BASIS_EXIT_STALE_DAYS,
+                    stale_apr: float = BASIS_EXIT_STALE_APR) -> Optional[str]:
         """
         Why this position should close, or None to hold.
 
@@ -269,6 +273,18 @@ class BasisHarvester:
         A boring position still pays; an exit always costs.
 
         An unknown rate is NOT an exit signal - a data gap is not a reversal.
+
+        ROUND 31 ADDS THE SECOND EXIT, AND ONLY THE SECOND. Reversal alone left a
+        position earning 2% APR held indefinitely: never a loss, so nothing ever
+        fired, and the capital sat there. The stale leg closes it once the hold
+        has run long enough to have paid its own round trip AND the rate has
+        fallen well below the entry bar.
+
+        THE TWO THRESHOLDS ARE DELIBERATELY NOT THE ENTRY BAR. Exiting the moment
+        funding dips under the 20% entry threshold would make the strategy thrash
+        - a rate oscillating around 20% reopens the same position repeatedly and
+        pays the full round trip each time to buy back what it just sold. Entry
+        at 20%, exit at 10%-after-7-days, is hysteresis, not inconsistency.
         """
         if coin not in self.positions:
             return None
@@ -276,14 +292,22 @@ class BasisHarvester:
             return None
         if current_apr < floor_apr:
             return f"funding turned adverse ({current_apr:.1f}% < {floor_apr:.1f}%)"
+        position = self.positions[coin]
+        held_days = float(position.get("hours_held", 0.0) or 0.0) / 24.0
+        if held_days >= stale_days and current_apr < stale_apr:
+            return (f"stale: held {held_days:.1f}d at {current_apr:.1f}% "
+                    f"(< {stale_apr:.1f}% after {stale_days:.0f}d)")
         return None
 
     def sweep_exits(self, funding_aprs: Dict[str, float],
-                    floor_apr: float = BASIS_EXIT_APR_FLOOR) -> List[Dict[str, Any]]:
-        """Close every position whose funding has turned against it."""
+                    floor_apr: float = BASIS_EXIT_APR_FLOOR,
+                    stale_days: float = BASIS_EXIT_STALE_DAYS,
+                    stale_apr: float = BASIS_EXIT_STALE_APR) -> List[Dict[str, Any]]:
+        """Close every position that has reversed or gone stale."""
         out = []
         for coin in list(self.positions):
-            reason = self.should_exit(coin, funding_aprs.get(coin), floor_apr)
+            reason = self.should_exit(coin, funding_aprs.get(coin), floor_apr,
+                                      stale_days, stale_apr)
             if reason:
                 closed = self.close_position(coin, reason=reason)
                 if closed:

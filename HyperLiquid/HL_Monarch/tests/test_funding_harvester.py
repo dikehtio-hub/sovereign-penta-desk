@@ -26,6 +26,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from execution.risk_manager import STRATEGY_BASIS_HARVEST
 from strategies.funding_harvester import (
     DEFAULT_RISK_FREE_APR,
+    clamp_leverage,
+    max_leverage_for,
     BucketGate,
     FundingHarvester,
     HarvestEconomics,
@@ -363,3 +365,129 @@ def test_the_gross_funding_apr_is_used_when_no_net_rate_was_measured():
                                     hook=hook)
     verdict = orchestrator.evaluate({"coin": "BTC", "funding_apr": 40.0})
     assert verdict.economics.quoted_apr == pytest.approx(40.0)
+
+
+# ---------------------------------------------------------------------------
+# Round 31 Target E: the leverage policy
+# ---------------------------------------------------------------------------
+
+def test_the_leverage_ceiling_is_one_except_for_the_three_deepest_books():
+    for coin in ("BTC", "ETH", "SOL", "btc", " eth "):
+        assert max_leverage_for(coin) == pytest.approx(2.0), coin
+    for coin in ("DOGE", "CASHCAT", "PONS", "ARB", ""):
+        assert max_leverage_for(coin) == pytest.approx(1.0), coin
+
+
+def test_an_unlisted_coin_gets_the_default_rather_than_inheriting_a_ceiling():
+    """
+    A NEW listing is 1x until somebody decides otherwise. Defaulting the other
+    way would hand a fresh microcap the ceiling reserved for the deepest books,
+    by accident and silently.
+    """
+    assert max_leverage_for("SOMECOIN-LISTED-TODAY") == pytest.approx(1.0)
+
+
+def test_a_leverage_request_is_clamped_per_coin_and_never_below_one():
+    assert clamp_leverage("BTC", 5.0) == pytest.approx(2.0)
+    assert clamp_leverage("DOGE", 5.0) == pytest.approx(1.0)
+    assert clamp_leverage("BTC", 0.2) == pytest.approx(1.0)
+
+
+def test_the_orchestrator_clamps_per_coin_not_once_per_constructor():
+    """
+    THE ACCIDENT THIS PREVENTS. A constructor-wide leverage applies a BTC ceiling
+    to a microcap the moment the two are scanned in the same pass - which is the
+    normal case, since the scanner returns a mixed universe.
+    """
+    hook = FakeHook()
+    orchestrator = FundingHarvester(harvester=FakeHarvester(), gate=_gate(hook),
+                                    hook=hook, perp_leverage=2.0)
+    btc = orchestrator.evaluate({"coin": "BTC", "net_funding_apr": 40.0})
+    doge = orchestrator.evaluate({"coin": "DOGE", "net_funding_apr": 40.0})
+    assert btc.economics.perp_leverage == pytest.approx(2.0)
+    assert doge.economics.perp_leverage == pytest.approx(1.0)
+    # And the bucket is asked for the correspondingly different capital.
+    assert hook.calls[0]["desired_notional"] < hook.calls[1]["desired_notional"]
+
+
+def test_the_default_leverage_is_one():
+    hook = FakeHook()
+    orchestrator = FundingHarvester(harvester=FakeHarvester(), gate=_gate(hook),
+                                    hook=hook)
+    assert orchestrator.evaluate(_opportunity()).economics.perp_leverage == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# Round 31 Target D: exit hysteresis
+# ---------------------------------------------------------------------------
+
+def _harvester_with(coin="BTC", hours_held=0.0):
+    from execution.basis_harvester import BasisHarvester
+    harvester = BasisHarvester()
+    harvester.positions = {coin: {"coin": coin, "hours_held": hours_held,
+                                  "capital": 20_000.0}}
+    return harvester
+
+
+def test_a_dip_below_the_entry_bar_does_not_close_the_position():
+    """
+    HYSTERESIS. Entry is 20%; exiting the moment funding dips under it makes the
+    strategy thrash - a rate oscillating around 20% reopens the same position
+    repeatedly and pays the full round trip each time to buy back what it just
+    sold.
+    """
+    harvester = _harvester_with(hours_held=24.0)
+    for apr in (19.0, 15.0, 11.0, 0.5):
+        assert harvester.should_exit("BTC", apr) is None, apr
+
+
+def test_funding_turning_negative_closes_immediately_at_any_age():
+    """A reversal is an exit at one hour old; we are now PAYING to hold."""
+    assert _harvester_with(hours_held=1.0).should_exit("BTC", -0.1) is not None
+    assert "adverse" in _harvester_with(hours_held=1.0).should_exit("BTC", -5.0)
+
+
+def test_a_stale_position_closes_only_after_seven_days_and_under_ten_percent():
+    """
+    Both conditions, not either. Without the stale leg a position earning 2% APR
+    is held indefinitely - never a loss, so nothing ever fires, and the capital
+    sits there at unbounded opportunity cost.
+    """
+    assert _harvester_with(hours_held=7 * 24.0).should_exit("BTC", 5.0) is not None
+    # Under 10% but too young: hold.
+    assert _harvester_with(hours_held=6 * 24.0).should_exit("BTC", 5.0) is None
+    # Old enough but still paying well: hold.
+    assert _harvester_with(hours_held=30 * 24.0).should_exit("BTC", 15.0) is None
+
+
+def test_the_stale_exit_states_the_age_and_the_rate():
+    reason = _harvester_with(hours_held=10 * 24.0).should_exit("BTC", 4.0)
+    assert "stale" in reason and "10.0d" in reason and "4.0%" in reason
+
+
+def test_a_data_gap_is_never_an_exit_signal():
+    """An unknown rate is not a reversal, at any age."""
+    assert _harvester_with(hours_held=90 * 24.0).should_exit("BTC", None) is None
+
+
+def test_sweep_exits_applies_both_rules_across_the_book():
+    from execution.basis_harvester import BasisHarvester
+    harvester = BasisHarvester()
+    harvester.positions = {
+        "REVERSED": {"coin": "REVERSED", "hours_held": 2.0, "capital": 1.0,
+                     "notional_per_leg": 1.0, "funding_accrued": 0.0, "entry_fee": 0.0, "size": 1.0,
+                     "entry_funding_apr": 40.0, "spot_symbol": None},
+        "STALE": {"coin": "STALE", "hours_held": 8 * 24.0, "capital": 1.0,
+                  "notional_per_leg": 1.0, "funding_accrued": 0.0, "entry_fee": 0.0, "size": 1.0,
+                  "entry_funding_apr": 40.0, "spot_symbol": None},
+        "HEALTHY": {"coin": "HEALTHY", "hours_held": 8 * 24.0, "capital": 1.0,
+                    "notional_per_leg": 1.0, "funding_accrued": 0.0, "entry_fee": 0.0, "size": 1.0,
+                    "entry_funding_apr": 40.0, "spot_symbol": None},
+        "DIPPED": {"coin": "DIPPED", "hours_held": 2.0, "capital": 1.0,
+                   "notional_per_leg": 1.0, "funding_accrued": 0.0, "entry_fee": 0.0, "size": 1.0,
+                   "entry_funding_apr": 40.0, "spot_symbol": None},
+    }
+    closed = harvester.sweep_exits({"REVERSED": -3.0, "STALE": 4.0,
+                                    "HEALTHY": 25.0, "DIPPED": 12.0})
+    assert {c["coin"] for c in closed} == {"REVERSED", "STALE"}
+    assert set(harvester.positions) == {"HEALTHY", "DIPPED"}

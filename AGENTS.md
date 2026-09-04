@@ -5,7 +5,10 @@ the detail.
 
 ## Status
 
-Round 29 complete: Item 8, the funding harvester's BUCKET GATE and after-tax
+Round 31 complete: Targets D (exit hysteresis) and E (leverage policy) applied,
+and **Item 14 built as a GATED, NON-TRADING module** - see findings. 38 new tests.
+
+Round 29 before it: Item 8, the funding harvester's BUCKET GATE and after-tax
 economics (`HL_Monarch/strategies/funding_harvester.py`). The delta-neutral
 engine already existed and was left alone; what was missing was the layer
 between it and the bankroll. 24 new tests.
@@ -22,7 +25,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market (11 modules) | 738 OK |
-| HL_Monarch (pytest) | 928 passed |
+| HL_Monarch (pytest) | 966 passed |
 | Sports_Desk master + bridges (9 modules) | 680 OK |
 | Tax_Reserve_Agent (4 modules) | 524 OK |
 
@@ -46,6 +49,33 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 31 findings
+
+- **Item 14 is the retired liquidation fade.** Same signal (liquidation
+  clusters), same thesis (wick rebound), same mechanism (pre-positioned limits).
+  It was measured and killed in Round 16: **MFE/MAE 0.513 vs a random-entry
+  control of 1.092**, n=466, t=-10.52, MAE > MFE in 72.7% of events, 0/20,000
+  bootstrap resamples non-negative. Below the control means *worse than random*.
+  `config/settings.py` records: "no filter or geometry fixes a sign error" and
+  "do not re-enable without a new pre-registered excursion result".
+- **Forced liquidations are momentum drivers, not mean-reverting wicks.** The
+  spec's "tight post-fill trailing stops" is the worst possible configuration
+  against that - it converts adverse excursion from paper into realised loss,
+  and is exactly what rounds 9-15 kept retrying.
+- **A live pre-registration already exists**: `data/experiments/
+  passive_fade_rebenchmark.meta.json`, status PASSIVE, reopening bar
+  `P(ratio >= 1.25) > 0.90` under a **cluster** bootstrap, >=500 events, >=20
+  coins, top coin <=20%. Building Item 14 as specified would have violated the
+  project's own protocol.
+- **The retirement is weaker than the headline**, and the registration says so:
+  0.513 was substantially a two-microcap artifact (83% of events, HHI 0.360);
+  broad-market effect was 0.849. Only the 30m horizon clears p<0.05. So: probably
+  no edge, *not proven* across the broad market, under active re-measurement.
+- **What I built instead**: `strategies/whale_sweeper.py` with cluster geometry,
+  zone maths, the `hl_whale_sweep` bucket, and `EvidenceGate` holding execution
+  shut until the pre-registered bar clears. Two independent locks; both must
+  open. The path is wired and tested, not stubbed.
 
 ## Round 29 findings
 

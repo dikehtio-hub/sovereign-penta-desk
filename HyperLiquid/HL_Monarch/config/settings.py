@@ -378,5 +378,30 @@ BASIS_MIN_HOLD_DAYS = 7.0           # do not open what we would not hold a week
 #
 # So we exit when the position turns against us, not when it merely gets boring.
 BASIS_EXIT_APR_FLOOR = 0.0          # exit when funding goes NEGATIVE (we start paying)
+
+# --- Round 31 Target D: exit HYSTERESIS ---------------------------------------
+# A position does not close on a dip below the 20% entry bar. Entry and exit are
+# deliberately different thresholds, because a single bar makes the strategy
+# thrash: a rate oscillating around 20% would open and close the same position
+# repeatedly, paying the full round trip each time to re-acquire what it just sold.
+#
+# So there are exactly two exits: funding REVERSES (below), or the position has
+# gone stale - held long enough to have paid for itself, at a rate no longer worth
+# the capital. Without the stale leg a position at 2% APR is held forever, which
+# is not a loss but is an unbounded opportunity cost the engine never notices.
+BASIS_EXIT_STALE_DAYS = 7.0         # only after the hold has earned its round trip
+BASIS_EXIT_STALE_APR = 10.0         # below this, the capital is better used elsewhere
+
+# --- Round 31 Target E: leverage policy, locked --------------------------------
+# 1.0x everywhere. The perp leg's liquidation cushion is (1/L - maintenance
+# margin), so 1x dies on a ~98.8% move and 2x on ~48.8%. The exception list is
+# limited to the three deepest books, where a 48.8% adverse move without an
+# intervening chance to add margin is a genuinely remote event. It is NOT a
+# view that leverage is free: it buys capital efficiency by moving the
+# liquidation price closer, and a liquidated perp leg leaves the position
+# DIRECTIONAL at the worst possible moment.
+BASIS_DEFAULT_PERP_LEVERAGE = 1.0
+BASIS_MAX_PERP_LEVERAGE = 1.0
+BASIS_LEVERAGE_EXCEPTIONS = {"BTC": 2.0, "ETH": 2.0, "SOL": 2.0}
 # A switch must pay for its own round trip, with margin, before it is worth doing.
 BASIS_SWITCH_MIN_GAIN_APR = 25.0

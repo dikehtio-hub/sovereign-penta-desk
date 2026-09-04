@@ -28,11 +28,11 @@ last_synced: "2026-09-03 18:57:26 UTC"
 > - **Hurdle 2**: Profit Factor **`>= 1.25`**
 > - **Current Verdict**: 🔵 **IN PROGRESS (0/50 TRADES COMPLETED)**
 
-| Hurdle Metric | Current Value | Required PASS Floor | Validation Progress |
-| :--- | :---: | :---: | :--- |
-| **Sample Size** | **`0 trades`** | `50 trades` | `░░░░░░░░░░░░░░░` **0.0%** (0/50) |
-| **Win Rate** | **`0.0%`** | `>= 54.0%` | `░░░░░░░░░░` **0.0%** (0/100) |
-| **Profit Factor** | **`0.00`** | `>= 1.25` | `Gross: $0.00 / Loss: $0.00` |
+| Hurdle Metric     | Current Value  | Required PASS Floor | Validation Progress               |
+| :---------------- | :------------: | :-----------------: | :-------------------------------- |
+| **Sample Size**   | **`0 trades`** |     `50 trades`     | `░░░░░░░░░░░░░░░` **0.0%** (0/50) |
+| **Win Rate**      |   **`0.0%`**   |     `>= 54.0%`      | `░░░░░░░░░░` **0.0%** (0/100)     |
+| **Profit Factor** |   **`0.00`**   |      `>= 1.25`      | `Gross: $0.00 / Loss: $0.00`      |
 
 ---
 

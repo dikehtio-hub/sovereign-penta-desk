@@ -2319,6 +2319,15 @@ esults_drops\.
      Master suite is now EIGHT modules:
        python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher          Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist          Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark          Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
+                        (966 passed as of Round 31)
+
+     HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
+     cascade zones and accumulates them passively; it places no orders.
+     The thesis was measured at MFE/MAE 0.513 against a 1.092 random-
+     entry control and retired. Reopening needs a NEW pre-registered
+     excursion result clearing P(ratio >= 1.25) > 0.90 under a cluster
+     bootstrap, on >=500 events across >=20 coins with no coin > 20%.
+     See data/experiments/passive_fade_rebenchmark.meta.json.
 
        NOTE: test_bridges was added in Round 26k and is missing from the older
        8-module version of this command that still circulates. Without it the
