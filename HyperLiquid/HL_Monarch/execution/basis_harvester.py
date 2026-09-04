@@ -364,6 +364,48 @@ class BasisHarvester:
                     out.append(closed)
         return out
 
+    def sweep_illiquid_exits(self, spot_volumes: Optional[Dict[str, float]],
+                             min_spot_volume: Optional[float] = None,
+                             now: Optional[float] = None,
+                             allow_synthetic_tradfi: Optional[bool] = None) -> List[Dict[str, Any]]:
+        """
+        Close every position whose hedge is not real (Round 42, Ruling 42-2):
+        the spot leg's 24h turnover is under the floor, or the perp is a
+        quarantined synthetic TradFi market.
+
+        WHY THIS EXIT EXISTS BESIDE THE YIELD EXITS. Ruling 39-1 held that a wide
+        spread is a cost paid on exit and never a reason to leave. A dead spot
+        leg is different in kind: the position was never delta-neutral, because
+        the hedge it books could not have been filled. Three such positions
+        locked $60k of the paper book while liquid pairs went unopened.
+
+        FAILS CLOSED. No volume map, or an empty one, closes nothing: an outage
+        in the spot lookup must not liquidate the book. The reason string starts
+        with ILLIQUID_SPOT_LEG so the closed record is greppable.
+        """
+        if not spot_volumes:
+            return []
+        from analytics.funding_arbitrage import (effective_spot_min_volume, is_synthetic_tradfi,
+                                                 perp_base_symbol)
+        floor = float(min_spot_volume) if min_spot_volume is not None else effective_spot_min_volume()
+        out: List[Dict[str, Any]] = []
+        for coin in list(self.positions):
+            spot = self.positions[coin].get("spot_symbol")
+            try:
+                volume = float(spot_volumes.get(str(spot).upper(), 0.0) or 0.0) if spot else 0.0
+            except (TypeError, ValueError):
+                volume = 0.0
+            reason = None
+            if is_synthetic_tradfi(coin, allow_synthetic_tradfi):
+                reason = f"ILLIQUID_SPOT_LEG: {perp_base_symbol(coin).upper()} is synthetic TradFi (quarantined)"
+            elif volume < floor:
+                reason = f"ILLIQUID_SPOT_LEG: {spot or '-'} ${volume:,.0f}/day < ${floor:,.0f} floor"
+            if reason:
+                closed = self.close_position(coin, now=now, reason=reason)
+                if closed:
+                    out.append(closed)
+        return out
+
     # ---------------------------------------------------------------- close
 
     def close_position(self, coin: str, now: Optional[float] = None,

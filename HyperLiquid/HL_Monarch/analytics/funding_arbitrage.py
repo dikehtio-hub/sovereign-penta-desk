@@ -22,7 +22,8 @@ from config.settings import (
     ARB_FUNDING_INTERVAL_HOURS,
     SPOT_MIN_DAY_VOLUME,
     SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE,
-    ALLOW_SYNTHETIC_EQUITY_BASIS,
+    ALLOW_SYNTHETIC_TRADFI_BASIS,
+    SYNTHETIC_TRADFI_SYMBOLS,
     SPOT_NON_BASIS_TOKENS,
 )
 
@@ -43,14 +44,18 @@ SPOT_SYMBOL_ALIASES: Dict[str, Tuple[str, ...]] = {
     "PENGU": ("HPENGU",),
     "XMR": ("XMR1", "FXMR"),
     "XRP": ("FXRP", "IXRP", "WXRP"),
+    # Round 42 (Ruling 42-1): UUUSPX is "Unit SPX6900" - the memecoin the main-dex
+    # SPX perp prices ($0.6009 beside $0.6007), NOT the S&P 500 (that is km:US500).
+    "SPX": ("UUUSPX",),
 }
 
 # Round 41 (Ruling 41-1): tokenised EQUITIES. NVDAX "Wrapped NVIDIA xStock",
 # TSLAX "Wrapped Tesla xStock", EQNVDA/EQTSLA "EQX Tokenized". They price a stock
-# that trades five days a week while the HIP-3 perp trades seven, so the hedge
-# carries the weekend gap and the market-hours liquidity cliff. Used only while
-# settings.ALLOW_SYNTHETIC_EQUITY_BASIS is True.
-SYNTHETIC_EQUITY_ALIASES: Dict[str, Tuple[str, ...]] = {
+# that trades five days a week while the HIP-3 perp trades seven. Reachable only
+# while settings.ALLOW_SYNTHETIC_TRADFI_BASIS is True - and since Round 42 the
+# perp itself is quarantined first (see is_synthetic_tradfi), so these matter
+# only once that switch is on.
+SYNTHETIC_TRADFI_ALIASES: Dict[str, Tuple[str, ...]] = {
     "NVDA": ("NVDAX", "EQNVDA"),
     "TSLA": ("TSLAX", "EQTSLA"),
 }
@@ -61,7 +66,18 @@ def perp_base_symbol(coin: str) -> str:
     return coin.split(":", 1)[1] if ":" in coin else coin
 
 
-def spot_symbol_candidates(coin: str, allow_synthetic_equity: Optional[bool] = None) -> List[str]:
+def is_synthetic_tradfi(coin: str, allow_synthetic_tradfi: Optional[bool] = None) -> bool:
+    """
+    True when this perp prices a stock, index, commodity, bond or FX pair AND the
+    quarantine is in force (Round 42, Ruling 42-1). The underlying trades on an
+    exchange with a weekend and a closing bell; the perp trades 24/7. A basis
+    hedge across that seam is not the delta-neutral trade this strategy makes.
+    """
+    allow = ALLOW_SYNTHETIC_TRADFI_BASIS if allow_synthetic_tradfi is None else bool(allow_synthetic_tradfi)
+    return (not allow) and perp_base_symbol(coin).upper() in SYNTHETIC_TRADFI_SYMBOLS
+
+
+def spot_symbol_candidates(coin: str, allow_synthetic_tradfi: Optional[bool] = None) -> List[str]:
     """
     Every spot name that could hedge this perp, in precedence order, deduplicated.
 
@@ -69,13 +85,19 @@ def spot_symbol_candidates(coin: str, allow_synthetic_equity: Optional[bool] = N
     canonical bridged assets; a bare-named token of the same symbol is usually a
     third-party deployment (ANSEM $1.5k/day beside UANSEM $928k). Then the
     crypto-native aliases, then - only if allowed - the tokenised equities.
+
+    Round 42: a quarantined TradFi perp has NO candidates at all. The Round 41
+    quarantine covered only the equity aliases, which left the bare-name and
+    wrapper paths open; this closes the perp, not the token.
     """
-    allow = ALLOW_SYNTHETIC_EQUITY_BASIS if allow_synthetic_equity is None else bool(allow_synthetic_equity)
+    if is_synthetic_tradfi(coin, allow_synthetic_tradfi):
+        return []
+    allow = ALLOW_SYNTHETIC_TRADFI_BASIS if allow_synthetic_tradfi is None else bool(allow_synthetic_tradfi)
     base = perp_base_symbol(coin).upper()
     ordered = [prefix + base for prefix in SPOT_WRAPPER_PREFIXES] + [base]
     ordered += list(SPOT_SYMBOL_ALIASES.get(base, ()))
     if allow:
-        ordered += list(SYNTHETIC_EQUITY_ALIASES.get(base, ()))
+        ordered += list(SYNTHETIC_TRADFI_ALIASES.get(base, ()))
     out: List[str] = []
     for sym in ordered:
         if sym and sym not in out:
@@ -85,7 +107,7 @@ def spot_symbol_candidates(coin: str, allow_synthetic_equity: Optional[bool] = N
 
 def spot_symbol_for(coin: str, spot_universe: Set[str],
                     spot_volumes: Optional[Dict[str, float]] = None,
-                    allow_synthetic_equity: Optional[bool] = None) -> Optional[str]:
+                    allow_synthetic_tradfi: Optional[bool] = None) -> Optional[str]:
     """
     The spot ticker that could hedge this perp, or None when none exists.
 
@@ -98,10 +120,10 @@ def spot_symbol_for(coin: str, spot_universe: Set[str],
     the hedge - para:ANSEM resolves to UANSEM ($928k/day), not the bare ANSEM
     ($1.5k/day) it was first booked against. Ties, and calls without volumes,
     follow the precedence order: "U" wrapper, bare name, aliases (Round 41).
-    Tokenised equities are ignored unless `allow_synthetic_equity` (default:
-    settings.ALLOW_SYNTHETIC_EQUITY_BASIS) says otherwise.
+    A synthetic TradFi perp has no hedge at all unless `allow_synthetic_tradfi`
+    (default: settings.ALLOW_SYNTHETIC_TRADFI_BASIS) says otherwise.
     """
-    candidates = spot_symbol_candidates(coin, allow_synthetic_equity=allow_synthetic_equity)
+    candidates = spot_symbol_candidates(coin, allow_synthetic_tradfi=allow_synthetic_tradfi)
     present = [sym for sym in candidates if sym in spot_universe]
     if not present:
         return None
@@ -226,7 +248,7 @@ class FundingArbitrageEngine:
         for coin in perp_coins:
             if not coin:
                 continue
-            for sym in spot_symbol_candidates(coin, allow_synthetic_equity=True):
+            for sym in spot_symbol_candidates(coin, allow_synthetic_tradfi=True):
                 if sym in liquid:
                     mapped.add(sym)
         excluded = {str(t).upper() for t in SPOT_NON_BASIS_TOKENS}

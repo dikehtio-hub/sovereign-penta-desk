@@ -227,14 +227,33 @@ ARB_SPREAD_CHECK_LIMIT = 8         # max live l2Book checks per direction (weigh
 # 2026-09-04 (46 at $10k, 25 at $100k) - the liquid wrappers stay, the shells go.
 SPOT_MIN_DAY_VOLUME = 50_000.0     # USD 24h notional floor for the SPOT leg's pair (>= 5x a $10k leg)
 # Round 41 (Ruling 41-3): the floor scales with the leg. effective_spot_min_volume()
-# in analytics/funding_arbitrage.py returns max(SPOT_MIN_DAY_VOLUME, notional x this),
-# so a $25k leg needs a $125k/day pair. The constant above is the floor of the floor.
-SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE = 5.0
-# Round 41 (Ruling 41-1): tokenised equities (NVDAX, TSLAX, EQNVDA...) are liquid spot
-# tokens that price a stock which trades five days a week. A basis hedge on one
-# carries the weekend gap and the market-hours liquidity cliff the perp does not.
-# Quarantined: spot_symbol_for ignores SYNTHETIC_EQUITY_ALIASES while this is False.
-ALLOW_SYNTHETIC_EQUITY_BASIS = False
+# in analytics/funding_arbitrage.py returns max(SPOT_MIN_DAY_VOLUME, notional x this).
+# Round 42 (Ruling 42-3) raised the multiple 5 -> 10: a $10k leg needs a $100k/day
+# pair, so one fill is at most 10% of the day's turnover. 25 tokens qualify live.
+SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE = 10.0
+# Round 41 (Ruling 41-1) quarantined tokenised EQUITY aliases; Round 42 (Ruling 42-1)
+# widened it to every synthetic TradFi PERP. A stock, a commodity, an index, a bond
+# or an FX pair trades on an exchange with a weekend and a closing bell; the HIP-3
+# perp trades 24/7. A basis hedge across that seam carries the weekend gap and the
+# market-hours liquidity cliff. While this is False, spot_symbol_candidates() returns
+# NOTHING for a perp whose base is in SYNTHETIC_TRADFI_SYMBOLS - bare name, "U"
+# wrapper and alias alike - and the harvester closes any such position it holds.
+ALLOW_SYNTHETIC_TRADFI_BASIS = False
+SYNTHETIC_TRADFI_SYMBOLS = frozenset({
+    # Ruling 42-1, as issued.
+    "NVDA", "TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "COIN", "HOOD", "AVGO",
+    "CRCL", "MU", "SPCXD", "GOLD", "SILVER", "OIL", "USOIL", "BRENTOIL", "US500", "SPY", "QQQ",
+    # Observed live on the cash:, flx:, km:, xyz: and para: dexes on 2026-09-04 -
+    # the same asset classes, so the same seam. Equities:
+    "INTC", "PLTR", "MSTR", "ORCL", "NFLX", "RIVN", "AMD", "BABA", "BMNR", "AAOI",
+    "RTX", "TENCENT", "XIAOMI", "CAR", "GLDMINE", "SEMI",
+    # Indices and ETFs:
+    "USA500", "USA100", "USTECH", "USENERGY", "SMALL2000", "JPN225", "EWY", "KWEB",
+    # Commodities:
+    "WTI", "COPPER", "GAS", "PALLADIUM", "PLATINUM",
+    # Rates and FX:
+    "USBOND", "10Y", "2Y", "30Y", "EUR",
+})
 # Round 41 (Ruling 41-4): liquid spot tokens that can never be a basis leg because
 # they are the quote/settlement asset, not something a perp prices. Excluded from
 # the unmapped-spot telemetry so it reports missing aliases, not stablecoins.

@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1062 passed as of Round 41)
+                        (1065 passed as of Round 42)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,22 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 42 - PERP-LEVEL TRADFI QUARANTINE, ILLIQUID-LEG SWEEP, 10x ADV FLOOR
+     config/settings.py: ALLOW_SYNTHETIC_TRADFI_BASIS = False (replaces the Round 41
+         equity flag); SYNTHETIC_TRADFI_SYMBOLS = ruled set + live-observed TradFi
+         bases (equities, indices, commodities, rates, FX). While False,
+         spot_symbol_candidates(coin) is [] for any perp whose base is in the set -
+         no bare-name, wrapper or alias path. is_synthetic_tradfi(coin) says so.
+         SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE = 10.0 -> $100k floor at $10k/leg.
+     SPOT_SYMBOL_ALIASES["SPX"] = ("UUUSPX",)  - "Unit SPX6900", the memecoin, not the S&P.
+     BasisHarvester.sweep_illiquid_exits(spot_volumes, min_spot_volume=None, now=None,
+         allow_synthetic_tradfi=None): closes positions with spot volume under the
+         floor or a quarantined perp, reason "ILLIQUID_SPOT_LEG: ...". Fails closed
+         without a volume map. Runs every accrual cycle from the sampler's cache.
+     python main.py basis --sweep-illiquid  -> on-demand sweep + accounting + invariant
+         check. REFUSES while a service collector is alive: stop_collector.bat first,
+         sweep, start_collector.bat. (The running harvester rewrites the state file.)
 
      ROUND 41 - SYNTHETIC EQUITY QUARANTINE, DYNAMIC FLOOR, ILLIQUID LEGS, TELEMETRY
      config/settings.py: ALLOW_SYNTHETIC_EQUITY_BASIS = False (NVDAX/TSLAX/EQ* in

@@ -561,6 +561,10 @@ class MarketCollector:
 
                     funding_aprs = {coin: rate * 8760.0 * 100.0 for coin, rate in rates.items()}
                     closed = harvester.sweep_exits(funding_aprs)
+                    # Round 42 (Ruling 42-2): a hedge that could not be filled is
+                    # not a hedge. Uses the sampler's cached volume map; with no
+                    # map yet, nothing closes (fail closed inside the sweep).
+                    closed += harvester.sweep_illiquid_exits(getattr(self, "_spot_volumes_map", None))
 
                     opened = []
                     cfg = get_dynamic_config()

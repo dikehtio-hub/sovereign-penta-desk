@@ -5,6 +5,17 @@ the detail.
 
 ## Status
 
+Round 42 complete: PERP-LEVEL TRADFI QUARANTINE, ILLIQUID-LEG SWEEP & 10x ADV
+FLOOR. `ALLOW_SYNTHETIC_TRADFI_BASIS = False` with `SYNTHETIC_TRADFI_SYMBOLS`
+(the ruled set plus every TradFi base observed live across the cash/flx/km/xyz/
+para dexes): a quarantined perp has NO spot candidates - bare, wrapper or alias.
+SPX -> UUUSPX ("Unit SPX6900", the memecoin). `BasisHarvester.sweep_illiquid_
+exits` closes positions whose spot leg is under the floor or whose perp is
+quarantined; hooked into the hourly accrual cycle and `basis --sweep-illiquid`
+(refuses while a service collector is alive). The three dead-leg paper positions
+were swept with the service stopped. Floor multiple 5x -> 10x ($100k at $10k).
+3 new tests.
+
 Round 41 complete: SYNTHETIC EQUITY QUARANTINE, DYNAMIC SPOT FLOOR, ILLIQUID-LEG
 REPORTING & UNMAPPED-SPOT TELEMETRY. Tokenised equities (NVDAX, TSLAX, EQ*)
 live in `SYNTHETIC_EQUITY_ALIASES` and are ignored while
@@ -103,7 +114,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1062 passed |
+| HL_Monarch (pytest) | 1065 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -126,6 +137,28 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 42 findings
+
+- **The TradFi perp list is much longer than the ruled set.** Live dexes carry
+  cash:AMZN/INTC/KWEB/USA500/WTI, flx:COPPER/PALLADIUM/USA100, km:JPN225/
+  USBOND/EUR/TENCENT, para:2Y/10Y/30Y and more. The ruled 21 symbols were kept
+  as issued and extended with every TradFi base observed on 2026-09-04 (34
+  more), labelled separately in settings. A hand-kept symbol set will drift as
+  dexes list; a structural rule (dex metadata or an asset-class field) is the
+  next question.
+- **Sweep accounting, live:** capital returned $59,990.67 (HOOD $20,000.00,
+  para:AVGO $19,995.58, xyz:AVGO $19,995.10), maker exit fees $6.00 (0.01% x
+  notional x 2 legs x 3), cash $324.30 -> ~$60,309, realised $314.92 ->
+  ~$308.92, invariant equity - starting == realised exact. Antigravity's
+  estimate ($9.00 fees, $60,305.98) used a different fee assumption.
+- **The sweep is a different KIND of exit.** Ruling 39-1 (spread is a cost, not
+  a reason to leave) stands; a dead spot leg means the position was never
+  delta-neutral. Fails closed on a missing/empty volume map.
+- **Operational trap avoided:** the CLI sweep refuses while `collector.pid`
+  names a live collector - the running harvester would overwrite the file on
+  its next hourly save. The hourly cycle runs the same sweep from the sampler's
+  cached volume map, so a future dead leg closes within the hour.
 
 ## Round 41 findings
 

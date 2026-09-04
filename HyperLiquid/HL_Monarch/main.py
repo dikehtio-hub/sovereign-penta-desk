@@ -91,6 +91,7 @@ def main():
     basis_parser.add_argument("--harvest", action="store_true", help="Show the paper harvester book instead of a fresh scan")
     basis_parser.add_argument("--no-spreads", action="store_true", help="Skip live L2 spread checks (net APR then equals gross - the net bar becomes a no-op)")
     basis_parser.add_argument("--unmapped-spot", action="store_true", help="List liquid spot tokens no perp resolves to (a wrapper missing from SPOT_SYMBOL_ALIASES, or nothing to harvest)")
+    basis_parser.add_argument("--sweep-illiquid", action="store_true", help="Close paper positions whose spot leg is under the volume floor or whose perp is quarantined TradFi (service must be stopped)")
 
     # Command: excursion (MFE/MAE benchmark on the liquidation entry signal)
     exc_parser = subparsers.add_parser("excursion", help="MFE/MAE excursion benchmark: does the liquidation entry signal have edge?")
@@ -503,6 +504,40 @@ def main():
             print("  A row is either a wrapper missing from SPOT_SYMBOL_ALIASES (verify its fullName on the")
             print("  live token list before adding it) or an asset with no perp - nothing to harvest.")
             print()
+            return
+        if args.sweep_illiquid:
+            from execution.basis_harvester import BasisHarvester, format_report as harvest_report
+            from analytics.funding_arbitrage import FundingArbitrageEngine, effective_spot_min_volume
+            from collectors.market_collector import service_collector_alive, read_service_pid
+            # The running harvester rewrites its state file from memory every hour;
+            # a sweep applied beside it would be overwritten. Refuse rather than race.
+            if service_collector_alive():
+                print(f"Refusing: a service collector is alive (PID {read_service_pid()}). Stop it first "
+                      "(scripts/launchers/stop_collector.bat), sweep, then start it again.")
+                return
+            h = BasisHarvester()
+            h.load()
+            volumes = FundingArbitrageEngine().get_spot_volumes()
+            if not volumes:
+                print("Spot volume lookup failed - nothing closed (the sweep fails closed).")
+                return
+            before = h.summary()
+            closed = h.sweep_illiquid_exits(volumes)
+            h.save()
+            after = h.summary()
+            print(f"\nILLIQUID-LEG SWEEP  (floor ${effective_spot_min_volume():,.0f}/day)")
+            if not closed:
+                print("  nothing to close: every open position has a liquid, crypto-native hedge")
+            for c in closed:
+                print(f"  closed {c['coin']:<12} spot {str(c.get('spot_symbol') or '-'):<8} "
+                      f"capital ${c['capital']:,.2f}  exit fee ${c['exit_fee']:,.2f}  "
+                      f"net ${c['net_pnl']:+,.2f}  {c['exit_reason']}")
+            print(f"  cash ${before['cash']:,.2f} -> ${after['cash']:,.2f}   "
+                  f"open {before['open_positions']} -> {after['open_positions']}   "
+                  f"realised ${before['realized_pnl']:,.2f} -> ${after['realized_pnl']:,.2f}")
+            drift = (after['equity'] - h.starting_cash) - after['realized_pnl']
+            print(f"  invariant equity - starting == realised: {'holds' if abs(drift) < 1e-6 else f'BROKEN by {drift:+.6f}'}")
+            print(harvest_report(h, spot_volumes=volumes))
             return
         if args.harvest:
             from execution.basis_harvester import BasisHarvester, format_report as harvest_report

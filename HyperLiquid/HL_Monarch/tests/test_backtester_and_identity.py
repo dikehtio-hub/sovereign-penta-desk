@@ -153,32 +153,59 @@ class TestSpotBacking(unittest.TestCase):
             for alias in aliases:
                 self.assertEqual(spot_symbol_for(base, {alias}), alias)
 
-    def test_tokenised_equities_are_quarantined_unless_allowed(self):
+    def test_synthetic_tradfi_perps_have_no_hedge_unless_allowed(self):
         """
-        Round 41 (Ruling 41-1). NVDAX prices a stock that trades five days a week
-        against a perp that trades seven: the hedge carries the weekend gap and
-        the market-hours liquidity cliff. Off by default, and the switch is a
-        setting, not a call-site choice.
+        Round 42 (Ruling 42-1). A stock, index, commodity, bond or FX perp prices
+        an underlying with a weekend and a closing bell against a perp that
+        trades 24/7. Round 41 quarantined the equity ALIASES, which left the
+        bare-name and wrapper paths open; the quarantine is now on the PERP.
         """
-        from config.settings import ALLOW_SYNTHETIC_EQUITY_BASIS
-        from analytics.funding_arbitrage import SPOT_SYMBOL_ALIASES, SYNTHETIC_EQUITY_ALIASES
-        self.assertFalse(ALLOW_SYNTHETIC_EQUITY_BASIS)
-        self.assertEqual(set(SYNTHETIC_EQUITY_ALIASES), {"NVDA", "TSLA"})
-        self.assertTrue(set(SYNTHETIC_EQUITY_ALIASES).isdisjoint(SPOT_SYMBOL_ALIASES))
-        self.assertIsNone(spot_symbol_for("xyz:NVDA", {"NVDAX"}))
-        self.assertIsNone(spot_symbol_for("xyz:TSLA", {"TSLAX", "EQTSLA"}, {"TSLAX": 1e6, "EQTSLA": 2e6}))
-        self.assertEqual(spot_symbol_for("xyz:NVDA", {"NVDAX"}, allow_synthetic_equity=True), "NVDAX")
-        for base, aliases in SYNTHETIC_EQUITY_ALIASES.items():
-            for alias in aliases:
-                self.assertIsNone(spot_symbol_for(base, {alias}))
-                self.assertEqual(spot_symbol_for(base, {alias}, allow_synthetic_equity=True), alias)
-        # The scan inherits the quarantine: a liquid NVDAX does not make xyz:NVDA a basis trade.
-        engine = FundingArbitrageEngine(client=FakeSpotClient(["NVDAX", "UBTC"]))
+        from config.settings import ALLOW_SYNTHETIC_TRADFI_BASIS, SYNTHETIC_TRADFI_SYMBOLS
+        from analytics.funding_arbitrage import (SPOT_SYMBOL_ALIASES, SYNTHETIC_TRADFI_ALIASES,
+                                                 is_synthetic_tradfi, spot_symbol_candidates)
+        self.assertFalse(ALLOW_SYNTHETIC_TRADFI_BASIS)
+        for base in ("NVDA", "TSLA", "GOLD", "US500", "USOIL", "SPY", "QQQ", "HOOD", "AVGO", "MU", "10Y", "EUR"):
+            self.assertIn(base, SYNTHETIC_TRADFI_SYMBOLS)
+        self.assertTrue(set(SYNTHETIC_TRADFI_ALIASES).isdisjoint(SPOT_SYMBOL_ALIASES))
+        # No candidates at all - bare, wrapper or alias - regardless of what spot lists.
+        everything = {"NVDA", "UNVDA", "NVDAX", "EQNVDA", "GOLD", "UGOLD", "XAUT0", "US500", "UUS500"}
+        for coin in ("xyz:NVDA", "km:NVDA", "NVDA", "xyz:GOLD", "flx:GOLD", "km:US500", "cash:USA500"):
+            self.assertEqual(spot_symbol_candidates(coin), [], coin)
+            self.assertIsNone(spot_symbol_for(coin, everything, {t: 1e6 for t in everything}), coin)
+            self.assertTrue(is_synthetic_tradfi(coin), coin)
+        # Crypto-native perps are untouched, dex prefix or not.
+        self.assertFalse(is_synthetic_tradfi("para:ANSEM"))
+        self.assertEqual(spot_symbol_candidates("BTC"), ["UBTC", "BTC"])
+        # Allowed: the perp resolves through every path, equity aliases last.
+        self.assertEqual(spot_symbol_candidates("xyz:NVDA", allow_synthetic_tradfi=True),
+                         ["UNVDA", "NVDA", "NVDAX", "EQNVDA"])
+        self.assertEqual(spot_symbol_for("xyz:NVDA", {"NVDAX"}, allow_synthetic_tradfi=True), "NVDAX")
+        self.assertEqual(spot_symbol_for("xyz:GOLD", {"GOLD"}, allow_synthetic_tradfi=True), "GOLD")
+        self.assertFalse(is_synthetic_tradfi("xyz:GOLD", allow_synthetic_tradfi=True))
+        # The scan inherits the quarantine: a liquid bare GOLD token does not make xyz:GOLD a basis trade.
+        engine = FundingArbitrageEngine(client=FakeSpotClient(["GOLD", "NVDAX", "UBTC"]))
         res = engine.scan_funding_opportunities(
-            min_apr_pct=10.0, snapshots=[_snap("xyz:NVDA", 0.001), _snap("BTC", 0.001)])
+            min_apr_pct=10.0, snapshots=[_snap("xyz:GOLD", 0.001), _snap("xyz:NVDA", 0.001), _snap("BTC", 0.001)])
         by_coin = {i["coin"]: i for i in res["short_harvest"]}
+        self.assertFalse(by_coin["xyz:GOLD"]["is_spot_backed"])
         self.assertFalse(by_coin["xyz:NVDA"]["is_spot_backed"])
         self.assertTrue(by_coin["BTC"]["is_spot_backed"])
+        # Telemetry still counts a quarantined perp's tokens as mapped (blocked is not missing).
+        rows = engine.get_unmapped_liquid_spot(perp_coins=["xyz:GOLD", "xyz:NVDA", "BTC"], min_spot_volume=50_000.0)
+        self.assertEqual(rows, [])
+
+    def test_spx_is_the_memecoin_and_resolves_to_its_unit_wrapper(self):
+        """
+        Round 42. UUUSPX is "Unit SPX6900" - the main-dex SPX perp prices it
+        ($0.6009 beside $0.6007). It is not the S&P 500; that is km:US500, which
+        is quarantined. The alias must not leak across.
+        """
+        from analytics.funding_arbitrage import SPOT_SYMBOL_ALIASES
+        self.assertEqual(SPOT_SYMBOL_ALIASES["SPX"], ("UUUSPX",))
+        self.assertEqual(spot_symbol_for("SPX", {"UUUSPX"}), "UUUSPX")
+        self.assertEqual(spot_symbol_for("SPX", {"USPX", "UUUSPX"}, {"USPX": 1.0, "UUUSPX": 70_447.0}), "UUUSPX")
+        self.assertIsNone(spot_symbol_for("km:US500", {"UUUSPX", "US500"}))
+        self.assertIsNone(spot_symbol_for("cash:USA500", {"UUUSPX"}, allow_synthetic_tradfi=True))
 
     def test_the_spot_floor_scales_with_the_configured_leg(self):
         """Round 41 (Ruling 41-3): max(SPOT_MIN_DAY_VOLUME, 5 x notional) - a $25k leg needs a $125k/day pair."""
@@ -189,16 +216,17 @@ class TestSpotBacking(unittest.TestCase):
             def __init__(self, notional):
                 self.basis_notional_usd = notional
 
-        self.assertEqual(SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE, 5.0)
-        self.assertEqual(effective_spot_min_volume(Cfg(10_000.0)), 50_000.0)
-        self.assertEqual(effective_spot_min_volume(Cfg(25_000.0)), 125_000.0)
+        self.assertEqual(SPOT_MIN_VOLUME_NOTIONAL_MULTIPLE, 10.0)                        # Round 42: 10x, <= 10% ADV
+        self.assertEqual(effective_spot_min_volume(Cfg(10_000.0)), 100_000.0)
+        self.assertEqual(effective_spot_min_volume(Cfg(25_000.0)), 250_000.0)
         self.assertEqual(effective_spot_min_volume(Cfg(1_000.0)), SPOT_MIN_DAY_VOLUME)     # the floor of the floor
         self.assertEqual(effective_spot_min_volume(Cfg(None)), SPOT_MIN_DAY_VOLUME)
         self.assertEqual(effective_spot_min_volume(object()), SPOT_MIN_DAY_VOLUME)
         # The default universe uses the floor in force; an explicit floor overrides it.
-        engine = FundingArbitrageEngine(client=FakeSpotClient(["A", "B"], volumes={"A": 60_000.0, "B": 200_000.0}))
+        engine = FundingArbitrageEngine(client=FakeSpotClient(["A", "B"], volumes={"A": 60_000.0, "B": 300_000.0}))
         self.assertEqual(engine.get_spot_universe(), engine.get_spot_universe(min_spot_volume=effective_spot_min_volume()))
         self.assertEqual(engine.get_spot_universe(min_spot_volume=effective_spot_min_volume(Cfg(25_000.0))), {"B"})
+        self.assertEqual(engine.get_spot_universe(min_spot_volume=effective_spot_min_volume(Cfg(40_000.0))), set())
 
     def test_unmapped_liquid_spot_lists_wrappers_no_perp_resolves_to(self):
         """

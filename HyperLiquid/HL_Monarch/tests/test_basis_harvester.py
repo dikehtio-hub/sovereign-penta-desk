@@ -139,6 +139,55 @@ class TestOpening(HarvesterCase):
         self.assertNotIn("ILLIQUID", format_report(self.h, spot_volumes={"AVGO": 60_000.0, "UXPL": 1e6},
                                                    min_spot_volume=50_000.0))
 
+    def test_illiquid_and_tradfi_legs_are_swept_with_exact_accounting(self):
+        """
+        Round 42 (Ruling 42-2). Three live paper positions held TradFi equities
+        against spot pairs doing $0-$402/day, locking $60k while liquid pairs
+        went unopened. The sweep closes what has no real hedge, charges the
+        maker exit on both legs, and leaves the cash invariant exact.
+        """
+        h = self.h
+        for coin, spot in (("para:AVGO", "AVGO"), ("xyz:HOOD", "HOOD"), ("XPL", "UXPL"), ("MON", "UMON")):
+            self.assertIsNotNone(h.open_position(opp(coin=coin, spot=spot), notional_per_leg=10_000.0), coin)
+        cash_before, realised_before = h.cash, h.realized_pnl
+        volumes = {"UXPL": 1_355_437.0, "UMON": 400_000.0, "HOOD": 402.0}       # AVGO: no pair at all
+        closed = h.sweep_illiquid_exits(volumes, min_spot_volume=100_000.0, now=1_788_000_000.0)
+        self.assertEqual([c["coin"] for c in closed], ["para:AVGO", "xyz:HOOD"])
+        self.assertEqual(set(h.positions), {"XPL", "MON"})
+        for c in closed:
+            self.assertTrue(c["exit_reason"].startswith("ILLIQUID_SPOT_LEG"), c["exit_reason"])
+            self.assertAlmostEqual(c["exit_fee"], MAKER_FEE_PCT * 10_000.0 * 2, places=9)
+        self.assertIn("synthetic TradFi", closed[0]["exit_reason"])                  # AVGO: quarantined perp
+        exit_fees = sum(c["exit_fee"] for c in closed)
+        self.assertAlmostEqual(h.cash, cash_before + 40_000.0 - exit_fees, places=9)
+        self.assertAlmostEqual(h.realized_pnl, realised_before - exit_fees, places=9)
+        self.assertAlmostEqual(h.summary()["equity"] - h.starting_cash, h.realized_pnl, places=9)
+        self.assertEqual(len(h.closed), 2)
+        # Idempotent: a second sweep finds nothing.
+        self.assertEqual(h.sweep_illiquid_exits(volumes, min_spot_volume=100_000.0), [])
+
+    def test_the_illiquid_sweep_fails_closed_and_honours_the_quarantine_switch(self):
+        h = self.h
+        h.open_position(opp(coin="xyz:NVDA", spot="NVDAX"), notional_per_leg=10_000.0)
+        h.open_position(opp(coin="MON", spot="UMON"), notional_per_leg=10_000.0)
+        # No volume map, or an empty one: an outage must not liquidate the book.
+        self.assertEqual(h.sweep_illiquid_exits(None, min_spot_volume=100_000.0), [])
+        self.assertEqual(h.sweep_illiquid_exits({}, min_spot_volume=100_000.0), [])
+        self.assertEqual(len(h.positions), 2)
+        liquid = {"NVDAX": 1_000_000.0, "UMON": 1_000_000.0}
+        # A quarantined TradFi perp closes even on a liquid spot leg ...
+        closed = h.sweep_illiquid_exits(liquid, min_spot_volume=100_000.0)
+        self.assertEqual([c["coin"] for c in closed], ["xyz:NVDA"])
+        self.assertIn("synthetic TradFi", closed[0]["exit_reason"])
+        # ... and would have stayed with the switch on.
+        h.open_position(opp(coin="xyz:TSLA", spot="TSLAX"), notional_per_leg=10_000.0)
+        self.assertEqual(h.sweep_illiquid_exits({**liquid, "TSLAX": 1e6}, min_spot_volume=100_000.0,
+                                                allow_synthetic_tradfi=True), [])
+        # A position with no spot symbol at all has no hedge and closes.
+        h.positions["MON"]["spot_symbol"] = None
+        self.assertEqual([c["coin"] for c in h.sweep_illiquid_exits({**liquid, "TSLAX": 1e6}, min_spot_volume=100_000.0,
+                                                                     allow_synthetic_tradfi=True)], ["MON"])
+
     def test_the_report_shows_the_cap_in_force_not_the_code_default(self):
         from execution.basis_harvester import format_report
         self.assertIn(f"Open 0/{self.h.effective_max_positions()}", format_report(self.h))
