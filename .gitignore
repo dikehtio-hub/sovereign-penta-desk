@@ -106,3 +106,12 @@ obsidian_vault/.obsidian/
 # ---------------------------------------------------------------------------
 *.pid
 *.jsonl
+
+# Runtime paper state, discovered-user lists, caches and backups (Round 37).
+# All of these are rewritten by running processes and were tracked only because
+# the Round 26 baseline was a snapshot of a live working tree.
+basis_paper_state.json
+paper_trading_state.json
+hyperliquidusers.txt
+**/data/cache/*
+*.bak

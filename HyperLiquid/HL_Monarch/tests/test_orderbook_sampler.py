@@ -14,7 +14,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from collectors.orderbook_sampler import sample_orderbooks, select_sample_coins
+from collectors.orderbook_sampler import (sample_orderbooks, select_sample_coins,
+                                          top_funding_candidates)
 from storage import incremental_persistence as ip
 from storage.db import DatabaseManager
 from storage.repository import MarketRepository
@@ -59,6 +60,33 @@ def test_coin_selection_is_prioritised_deduplicated_and_capped():
     assert select_sample_coins(["BTC"], set(), cap=0) == []
 
 
+def test_candidates_sit_between_held_positions_and_the_rotation():
+    """Round 37: held > candidates > rotated > core, deduplicated, capped."""
+    picked = select_sample_coins(core=["BTC", "ETH"], rotated={"PUMP"}, cap=5,
+                                 extra=["SOL"], candidates=["FART", "ETH"])
+    assert picked == ["SOL", "FART", "ETH", "PUMP", "BTC"]
+    # A held coin that is also a candidate keeps its first place and appears once.
+    picked = select_sample_coins(core=["BTC"], rotated=set(), cap=5, extra=["SOL"], candidates=["SOL", "WIF"])
+    assert picked == ["SOL", "WIF", "BTC"]
+
+
+def test_top_funding_candidates_rank_positive_main_dex_funding_deterministically():
+    snapshots = [
+        {"coin": "BTC", "funding_rate": 0.0001},
+        {"coin": "ETH", "funding_rate": -0.0002},          # negative: the spot-backed harvester cannot collect it
+        {"coin": "xyz:TSLA", "funding_rate": 0.001},        # HIP-3: no spot leg, excluded by default
+        {"coin": "PUMP", "funding_rate": 0.0005},
+        {"coin": "AAA", "funding_rate": 0.0005},            # ties break on the name
+        {"coin": "WIF", "funding_rate": None},
+        {"coin": "ZERO", "funding_rate": 0.0},
+        {"coin": "", "funding_rate": 0.9},
+    ]
+    assert top_funding_candidates(snapshots, n=3) == ["AAA", "PUMP", "BTC"]
+    assert top_funding_candidates(snapshots, n=2, spot_backed_only=False) == ["xyz:TSLA", "AAA"]
+    assert top_funding_candidates([], n=5) == []
+    assert top_funding_candidates(snapshots, n=0) == []
+
+
 def test_open_positions_are_sampled_even_when_the_cap_is_tight():
     """
     Round 36: a held basis position must never lose its spread series because
@@ -88,14 +116,43 @@ def test_the_collector_samples_held_positions_first_and_copes_without_a_harveste
     collector = mc.MarketCollector.__new__(mc.MarketCollector)
     collector._rotated_coins = {"PUMP", "FARTCOIN"}
     collector.basis_harvester = Harvester()
-    picked = collector._sample_coins()
-    assert picked[:2] == ["FARTCOIN", "xyz:SILVER"]
+    snapshots = [{"coin": "HOT", "funding_rate": 0.002}, {"coin": "WARM", "funding_rate": 0.001},
+                 {"coin": "xyz:TSLA", "funding_rate": 0.01}]
+    picked = collector._sample_coins(snapshots)
+    assert picked[:4] == ["FARTCOIN", "xyz:SILVER", "HOT", "WARM"]   # held, then candidates, then PUMP...
+    assert picked[4] == "PUMP"
+    assert "xyz:TSLA" not in picked[:5]
     assert picked.count("FARTCOIN") == 1
     assert len(picked) <= mc.ORDERBOOK_SAMPLE_MAX_COINS
 
     bare = mc.MarketCollector.__new__(mc.MarketCollector)
     bare._rotated_coins = set()
-    assert bare._sample_coins()[0] == mc.ALL_CORE_WATCHLIST[0]      # no harvester yet: core first
+    assert bare._sample_coins()[0] == mc.ALL_CORE_WATCHLIST[0]      # no harvester, no snapshots: core first
+
+
+def test_a_sampling_pass_reads_current_state_and_samples_the_candidates(repo):
+    """_sample_pass runs on the hl-l2 thread: latest_snapshots -> coins -> sample_orderbooks."""
+    import collectors.market_collector as mc
+
+    class Repo:
+        def __init__(self, inner):
+            self.inner = inner
+            self.rows = []
+
+        def get_latest_snapshots(self, coins=None):
+            return [{"coin": "HOT", "funding_rate": 0.002}, {"coin": "COLD", "funding_rate": -0.001}]
+
+        def insert_orderbook_snapshots(self, rows):
+            self.rows.extend(rows)
+
+    collector = mc.MarketCollector.__new__(mc.MarketCollector)
+    collector._rotated_coins = set()
+    collector.repo = Repo(repo)
+    collector.rest_client = FakeClient({"HOT": book(10.0, 3.0)})
+    stats = collector._sample_pass()
+    assert collector.rest_client.calls[0] == "HOT"                 # the candidate is sampled first
+    assert stats["written"] >= 1
+    assert collector.repo.rows[0]["coin"] == "HOT"
 
 
 def test_a_pass_writes_one_row_per_coin_and_isolates_failures(repo):

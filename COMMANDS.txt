@@ -2322,7 +2322,7 @@ esults_drops\.
           cross_market.tests.test_obsidian_exporter
           cross_market.tests.test_polymarket_fetcher
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1033 passed as of Round 36)
+                        (1038 passed as of Round 37)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2358,6 +2358,16 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 37 - STALLED-SERVICE DETECTION, CANDIDATE SAMPLING, UNTRACKING
+     Dashboard header, 5th state: "Service: STALLED (PID n) · No snapshots written
+         in Ns; restart service" (RED) when the service process is alive but the
+         newest snapshot is older than 45s. A hung child looks alive to a PID probe.
+     Order book sampling priority: held positions > top-5 positive-funding main-dex
+         candidates > rotated > core (ORDERBOOK_SAMPLE_CANDIDATES = 5).
+     Untracked and ignored: basis_paper_state.json, paper_trading_state.json,
+         hyperliquidusers.txt, **/data/cache/*, *.bak. git status now shows only
+         code, docs and the vault notes the sync rewrites.
 
      ROUND 36 - READ-ONLY DASHBOARD, POSITION-FIRST SAMPLING, REPO CLEANUP
      python main.py dashboard

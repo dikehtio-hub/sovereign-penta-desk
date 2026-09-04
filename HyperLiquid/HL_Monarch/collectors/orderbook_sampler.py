@@ -22,21 +22,52 @@ not sampled here; the drag formula's two legs use the perp figure for both.
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from analytics.liquidation_engine import LiquidationEngine
 
 
-def select_sample_coins(core: Sequence[str], rotated: Iterable[str], cap: int,
-                        extra: Sequence[str] = ()) -> List[str]:
+def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
+                           spot_backed_only: bool = True) -> List[str]:
     """
-    Which coins to sample this pass, in priority order, deduplicated, capped.
+    The coins quoting the highest POSITIVE funding right now - what the
+    spot-backed harvester would open next (Round 37, cross-check 3.3). Sampling
+    them BEFORE the entry means a measured spread exists at the instant a grid
+    window opens, not only after the position is held.
 
-    Explicit extras first (positions actually held), then the volume-rotated
-    coins (where the funding candidates live), then the core watchlist.
+    Main-dex perps only by default: a HIP-3 perp (`xyz:TSLA`) has no spot leg
+    to hedge with, so its funding is not a candidate for this strategy however
+    high it prints. Ties break on the coin name so the list is deterministic.
+    """
+    ranked: List[Tuple[float, str]] = []
+    for s in snapshots or ():
+        coin = str((s.get("coin") if isinstance(s, dict) else "") or "")
+        if not coin or (spot_backed_only and ":" in coin):
+            continue
+        try:
+            rate = float(s.get("funding_rate"))
+        except (TypeError, ValueError):
+            continue
+        if rate <= 0.0:
+            continue
+        ranked.append((rate, coin))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return [coin for _, coin in ranked[: max(0, int(n))]]
+
+
+def select_sample_coins(core: Sequence[str], rotated: Iterable[str], cap: int,
+                        extra: Sequence[str] = (), candidates: Sequence[str] = ()) -> List[str]:
+    """
+    Which coins to sample this pass, in priority order, deduplicated, capped:
+
+        held positions (extra) > funding candidates > volume-rotated > core
+
+    A held position must never lose its spread series to a rank change; a
+    candidate must have a spread on record before its entry instant; the
+    rotated set is where volume lives; the core watchlist takes what is left.
     """
     ordered: List[str] = []
-    for coin in list(extra) + sorted(set(rotated)) + list(core):
+    for coin in list(extra) + list(candidates) + sorted(set(rotated)) + list(core):
         if coin and coin not in ordered:
             ordered.append(coin)
     return ordered[: max(0, int(cap))]

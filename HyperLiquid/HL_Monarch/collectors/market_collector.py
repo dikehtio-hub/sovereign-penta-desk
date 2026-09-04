@@ -9,10 +9,10 @@ import time
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Callable, Dict, Any, List, Optional, Set, Tuple
+from typing import Callable, Dict, Any, List, Optional, Sequence, Set, Tuple
 from config.settings import (
     ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST, COLLECTOR_LOCK_PATH,
-    ORDERBOOK_SAMPLE_INTERVAL, ORDERBOOK_SAMPLE_MAX_COINS,
+    ORDERBOOK_SAMPLE_INTERVAL, ORDERBOOK_SAMPLE_MAX_COINS, ORDERBOOK_SAMPLE_CANDIDATES,
     DB_FLUSH_INTERVAL, DB_MAINTENANCE_INTERVAL,
     ROTATION_INTERVAL, ROTATION_MAX_COINS,
     ROTATION_COOLDOWN_SECONDS, ROTATION_MIN_DAY_VOLUME,
@@ -31,7 +31,8 @@ from storage.repository import MarketRepository
 from analytics.liquidation_engine import LiquidationEngine
 from analytics.whale_tracker import WhaleTracker
 from analytics.alerter import WebhookAlerter
-from collectors.orderbook_sampler import sample_orderbooks, select_sample_coins
+from collectors.orderbook_sampler import (sample_orderbooks, select_sample_coins,
+                                          top_funding_candidates)
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 
@@ -349,17 +350,32 @@ class MarketCollector:
             self._yield_logged = False
         return True
 
-    def _sample_coins(self) -> List[str]:
+    def _sample_coins(self, snapshots: Sequence[Dict[str, Any]] = ()) -> List[str]:
         """
-        Which coins this pass samples: HELD basis positions first (Round 36,
-        cross-check 5.3 - an open position must never lose its spread series
-        because its volume rank slipped out of the rotation), then the rotated
-        high-volume set, then the core watchlist, capped.
+        Which coins this pass samples, capped:
+
+            held positions > top funding candidates > rotated > core
+
+        Held positions (Round 36) must never lose their spread series to a rank
+        change; the top positive-funding candidates (Round 37) get a spread on
+        record BEFORE their entry instant, so a persisted window is measured at
+        the moment it opens rather than only after the position is held.
         """
         harvester = getattr(self, "basis_harvester", None)
         held = list(getattr(harvester, "positions", {}).keys()) if harvester is not None else []
+        candidates = top_funding_candidates(snapshots, n=ORDERBOOK_SAMPLE_CANDIDATES)
         return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
-                                   cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held)
+                                   cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held, candidates=candidates)
+
+    def _sample_pass(self) -> Dict[str, Any]:
+        """Blocking: read current state, choose coins, sample. Runs on the hl-l2 thread."""
+        try:
+            snapshots = self.repo.get_latest_snapshots()
+        except Exception as e:                              # noqa: BLE001 - sample without candidates
+            logger.warning(f"Could not read latest snapshots for candidate selection: {e}")
+            snapshots = []
+        coins = self._sample_coins(snapshots)
+        return sample_orderbooks(self.rest_client, self.repo, coins)
 
     async def _orderbook_sample_loop(self):
         """Round 35: sample top-of-book spreads for a bounded coin set (Ruling 5.C)."""
@@ -370,10 +386,8 @@ class MarketCollector:
                 return
             if not self._owns_maintenance():
                 continue
-            coins = self._sample_coins()
             try:
-                stats = await loop.run_in_executor(
-                    self._io_executor, sample_orderbooks, self.rest_client, self.repo, coins)
+                stats = await loop.run_in_executor(self._io_executor, self._sample_pass)
                 logger.info(
                     "Order book sample: %d/%d coins written, median spread %s bps%s",
                     stats["written"], stats["requested"],

@@ -34,18 +34,46 @@ def format_coin_name(coin: str) -> str:
         return coin[4:]
     return coin
 
-def ingestion_badge(alive: bool, pid, started_read_only):
+STALLED_AFTER_SECONDS = 45.0   # the service polls every ~10s; four misses is a stall, not jitter
+
+
+def newest_snapshot_age_seconds(snapshots, now: Optional[float] = None) -> Optional[float]:
+    """
+    Seconds since the newest row in `snapshots` (millisecond timestamps), or
+    None when there are no rows to age - a fresh database is not a stall.
+    """
+    newest = 0.0
+    for s in snapshots or ():
+        try:
+            ts = float(s.get("timestamp") or 0.0)
+        except (TypeError, ValueError, AttributeError):
+            continue
+        newest = max(newest, ts)
+    if newest <= 0:
+        return None
+    return max(0.0, (now if now is not None else time.time()) - newest / 1000.0)
+
+
+def ingestion_badge(alive: bool, pid, started_read_only, newest_snapshot_age_s: Optional[float] = None):
     """
     (mode, badge markup) for the dashboard header - Round 36, Ruling 3.A.
 
     `started_read_only` is what the dashboard decided at start-up: None while
     deciding, True if it started as a viewer, False if it started ingesting.
-    The four states are deliberately distinct: a read-only dashboard whose
-    service has DIED is showing stale tables with nothing ingesting, and that
-    must not look calm; a standalone dashboard that a service has since joined
-    is double-polling until restarted, and must say so.
+    The states are deliberately distinct: a read-only dashboard whose service
+    has DIED is showing stale tables with nothing ingesting, and that must not
+    look calm; a standalone dashboard that a service has since joined is
+    double-polling until restarted, and must say so.
+
+    Round 37 (cross-check 3.1): a service that is ALIVE BUT NOT WRITING - a hung
+    child, a dead socket - is the state a process probe cannot see. It shows as
+    STALLED when the newest snapshot is older than STALLED_AFTER_SECONDS, and it
+    outranks read-only, because a calm badge over stale tables is the failure.
     """
     if alive:
+        if newest_snapshot_age_s is not None and newest_snapshot_age_s > STALLED_AFTER_SECONDS:
+            return ("stalled", "[bold red]Service: STALLED (PID %s) · No snapshots written in %ds; "
+                               "restart service[/bold red]" % (pid, int(newest_snapshot_age_s)))
         if started_read_only is False:
             return ("dual", "[bold yellow]Service: RUNNING (PID %s) · Standalone ingestion still running - "
                             "restart the dashboard for read-only[/bold yellow]" % pid)

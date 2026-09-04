@@ -153,7 +153,10 @@ def write_drop(rows: Sequence[Dict[str, Any]], drop_folder: Path = DEFAULT_DROP_
     drop_folder = Path(drop_folder)
     drop_folder.mkdir(parents=True, exist_ok=True)
     now = now or datetime.now(timezone.utc)
-    target = drop_folder / (name or now.strftime("odds_%Y%m%dT%H%M%SZ.csv"))
+    # Microseconds in the default name: two drops inside one second (a poller
+    # whose source moved twice quickly, or a test) must be two files, not one
+    # overwriting the other. The watcher globs *.csv and does not parse the name.
+    target = drop_folder / (name or now.strftime("odds_%Y%m%dT%H%M%S_%fZ.csv"))
     target.write_text(rows_to_csv(rows), encoding="utf-8")
     return target
 

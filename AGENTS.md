@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+Round 37 complete: STALLED-SERVICE DETECTION, CANDIDATE SPREAD SAMPLING & REPO
+UNTRACKING. The dashboard header has a fifth state - a live service that has
+written nothing for 45s shows STALLED in red; order book sampling now runs
+held positions > top-5 positive-funding candidates > rotated > core, so a
+spread exists before an entry instant; five more runtime/cache/backup files
+are untracked and ignored. A latent Round 34 flake (same-second drop filenames
+overwriting) is fixed. 5 new tests.
+
 Round 36 complete: READ-ONLY DASHBOARD, POSITION-FIRST SAMPLING & REPO CLEANUP.
 `main.py dashboard` no longer starts a collector while a service collector is
 alive (Ruling 3.A) - it is a read-only viewer with a live header badge, and
@@ -58,7 +66,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules) | 793 OK |
-| HL_Monarch (pytest) | 1033 passed |
+| HL_Monarch (pytest) | 1038 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -81,6 +89,27 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 37 findings
+
+- **Stalled is an ALIVE-service state.** The process probe cannot see a hung
+  child or a dead socket; the newest row in latest_snapshots can. Built AFTER
+  the snapshot fetch in the render path (the Round 36 order had the badge
+  first), cached probe every 5s, badge rebuilt every frame. Stalled outranks
+  the dual warning; a dead service is orphaned/standalone regardless of age.
+- **Candidates before entries.** `top_funding_candidates` ranks POSITIVE
+  funding on main-dex perps only - a HIP-3 perp has no spot leg to hedge, so
+  its funding is not a candidate for the spot-backed harvester however high it
+  prints. Ties break on the name. `_sample_pass` runs on the hl-l2 thread:
+  latest_snapshots -> `_sample_coins` -> `sample_orderbooks`.
+- **The ledger backup that was tracked held demo data** (8 option transactions
+  from 2026-01-05, opt_buy_BTC-90K-CALL). Untracked and ignored; history keeps
+  a demo file, not a real position. No rewrite needed.
+- **A latent flake, found by the suite.** `write_drop`'s default filename had
+  one-second resolution; two drops within a second overwrote each other. It
+  surfaced as 1 file where a test expected 2. Microseconds now.
+- Antigravity's own query: 13.2M rows, 82.2h span, 98.33% 60-minute continuity
+  with one poller (Round 34 measured 78% with two).
 
 ## Round 36 findings
 

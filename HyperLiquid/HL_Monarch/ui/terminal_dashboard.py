@@ -34,7 +34,7 @@ from analytics.funding_arbitrage import FundingArbitrageEngine
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 from collectors.market_collector import MarketCollector, read_service_pid, service_collector_alive
-from ui.components import ingestion_badge
+from ui.components import ingestion_badge, newest_snapshot_age_seconds
 from ui.components import (
     build_header_panel, build_tradfi_table, build_liquidations_panel,
     build_clusters_panel, build_top_wallets_panel, build_funding_arb_panel,
@@ -63,6 +63,7 @@ class TerminalDashboard:
         # viewer over the service's database; False = standalone ingestion.
         self.service_mode: Optional[bool] = None
         self.service_pid: Optional[int] = None
+        self._service_alive: bool = False
         self._service_badge: str = ""
         self._service_checked_at: float = 0.0
         self.focus_asset = focus_asset
@@ -112,28 +113,36 @@ class TerminalDashboard:
         else:
             return ALL_CORE_WATCHLIST
 
-    def _refresh_service_badge(self, force: bool = False, ttl: float = 5.0) -> str:
+    def _refresh_service_badge(self, force: bool = False, ttl: float = 5.0,
+                               newest_snapshot_age_s: Optional[float] = None) -> str:
         """
         Re-check the service every few seconds so the header tells the truth:
         a read-only dashboard whose service has died is showing STALE data, and
         a standalone dashboard that a service has since joined is double-polling
-        until it is restarted. Cheap - one file read and one process probe.
+        until it is restarted. The process probe is cached for `ttl`; the badge
+        itself is rebuilt every frame because the snapshot age (Round 37's
+        STALLED state) moves every frame and costs nothing.
         """
         now = time.monotonic()
         if force or now - self._service_checked_at >= ttl:
             self._service_checked_at = now
-            alive = service_collector_alive()
-            self.service_pid = read_service_pid() if alive else self.service_pid
-            _, self._service_badge = ingestion_badge(alive, self.service_pid, self.service_mode)
+            self._service_alive = service_collector_alive()
+            if self._service_alive:
+                self.service_pid = read_service_pid()
+        _, self._service_badge = ingestion_badge(self._service_alive, self.service_pid, self.service_mode,
+                                                 newest_snapshot_age_s=newest_snapshot_age_s)
         return self._service_badge
 
     def generate_layout(self) -> Layout:
         """Construct a sleek, responsive UI layout fitting any terminal window."""
         term_width = console.width or 100
-        service_badge = self._refresh_service_badge()
 
         # Fetch latest data
         all_snapshots = self.repo.get_latest_snapshots()
+        # Round 37: the service badge needs the newest snapshot age, so it is
+        # built AFTER the fetch - a live process writing nothing is a stall.
+        service_badge = self._refresh_service_badge(
+            newest_snapshot_age_s=newest_snapshot_age_seconds(all_snapshots))
         active_coins = self._get_active_watchlist_coins()
         filtered_snapshots = [s for s in all_snapshots if s.get("coin") in active_coins]
         if not filtered_snapshots and all_snapshots and self.active_tab not in ("WHALES", "ARB", "PAPER"):

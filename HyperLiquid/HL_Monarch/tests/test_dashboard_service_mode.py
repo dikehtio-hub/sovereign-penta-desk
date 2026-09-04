@@ -15,7 +15,8 @@ from rich.console import Console
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from collectors.market_collector import read_service_pid
-from ui.components import build_header_panel, ingestion_badge
+from ui.components import (STALLED_AFTER_SECONDS, build_header_panel, ingestion_badge,
+                           newest_snapshot_age_seconds)
 
 
 def test_read_service_pid_is_none_when_absent_or_junk(tmp_path):
@@ -53,6 +54,32 @@ def test_a_standalone_dashboard_joined_by_a_service_asks_for_a_restart():
     mode, badge = ingestion_badge(alive=True, pid=99, started_read_only=False)
     assert mode == "dual"
     assert "PID 99" in badge and "restart" in badge.lower()
+
+
+def test_a_live_service_that_writes_nothing_is_stalled_not_calm():
+    """Round 37 (cross-check 3.1): the state a process probe cannot see."""
+    mode, badge = ingestion_badge(alive=True, pid=4242, started_read_only=True, newest_snapshot_age_s=120.4)
+    assert mode == "stalled"
+    assert badge == "[bold red]Service: STALLED (PID 4242) · No snapshots written in 120s; restart service[/bold red]"
+    # Fresh data, or no data yet to age, is not a stall.
+    assert ingestion_badge(True, 4242, True, newest_snapshot_age_s=30.0)[0] == "read_only"
+    assert ingestion_badge(True, 4242, True, newest_snapshot_age_s=None)[0] == "read_only"
+    assert ingestion_badge(True, 4242, True, newest_snapshot_age_s=STALLED_AFTER_SECONDS)[0] == "read_only"
+    # A stall outranks the dual warning: stale tables matter more than a restart nag.
+    assert ingestion_badge(True, 4242, False, newest_snapshot_age_s=100.0)[0] == "stalled"
+    # A dead service is orphaned/standalone regardless of age - stall is an ALIVE-service state.
+    assert ingestion_badge(False, 4242, True, newest_snapshot_age_s=999.0)[0] == "orphaned"
+    assert ingestion_badge(False, None, None, newest_snapshot_age_s=999.0)[0] == "standalone"
+
+
+def test_newest_snapshot_age_reads_millisecond_timestamps_and_tolerates_junk():
+    now = 1_788_000_100.0
+    rows = [{"timestamp": 1_788_000_000_000}, {"timestamp": 1_788_000_040_000}, {"timestamp": None},
+            {"coin": "no-ts"}, "junk"]
+    assert newest_snapshot_age_seconds(rows, now=now) == 60.0
+    assert newest_snapshot_age_seconds([], now=now) is None
+    assert newest_snapshot_age_seconds([{"timestamp": 0}], now=now) is None
+    assert newest_snapshot_age_seconds([{"timestamp": 1_788_000_200_000}], now=now) == 0.0   # never negative
 
 
 def test_the_header_panel_carries_the_badge():

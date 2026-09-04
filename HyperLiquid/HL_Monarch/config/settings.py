@@ -106,7 +106,8 @@ ORDERBOOK_POLL_INTERVAL = 5.0  # Order book snapshot interval (dashboard live vi
 # inside the remaining headroom, with room left for wallet and whale scans. Do
 # not raise the cap or shorten the interval without redoing that arithmetic.
 ORDERBOOK_SAMPLE_INTERVAL = 120.0   # seconds between sampling passes
-ORDERBOOK_SAMPLE_MAX_COINS = 24     # rotated (high-volume) coins first, then the core watchlist
+ORDERBOOK_SAMPLE_MAX_COINS = 24     # held positions > funding candidates > rotated > core watchlist
+ORDERBOOK_SAMPLE_CANDIDATES = 5     # top positive-funding main-dex perps sampled ahead of their entry (Round 37)
 DB_FLUSH_INTERVAL = 2.0        # Database batch insert flush interval
 
 # Database maintenance / retention.
