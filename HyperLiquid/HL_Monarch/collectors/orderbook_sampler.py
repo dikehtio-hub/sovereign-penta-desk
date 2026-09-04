@@ -128,6 +128,20 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
     return out
 
 
+def candidate_rotation_message(previous: Optional[Sequence[str]], current: Sequence[str]) -> Optional[str]:
+    """
+    One log line when the candidate set changes (Round 48, Ruling 48-3), or
+    None when it did not. The first pass after a start is a rotation from
+    nothing, so it logs too - that is the pass an operator most wants to see.
+    """
+    current = list(current)
+    if previous is not None and list(previous) == current:
+        return None
+    before = ", ".join(previous) if previous else "-"
+    after = ", ".join(current) if current else "-"
+    return f"Candidate set rotated: [{before}] -> [{after}]"
+
+
 def select_sample_coins(core: Sequence[str], rotated: Iterable[str], cap: int,
                         extra: Sequence[str] = (), candidates: Sequence[str] = ()) -> List[str]:
     """

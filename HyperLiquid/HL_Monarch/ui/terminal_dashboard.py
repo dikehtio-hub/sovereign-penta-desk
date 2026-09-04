@@ -34,7 +34,8 @@ from analytics.funding_arbitrage import FundingArbitrageEngine
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 from collectors.market_collector import MarketCollector, read_service_pid, service_collector_alive
-from ui.components import ingestion_badge, newest_snapshot_age_seconds
+from ui.components import (ingestion_badge, newest_snapshot_age_seconds, novel_dex_badge,
+                           read_collector_status)
 from ui.components import (
     build_header_panel, build_tradfi_table, build_liquidations_panel,
     build_clusters_panel, build_top_wallets_panel, build_funding_arb_panel,
@@ -112,6 +113,14 @@ class TerminalDashboard:
             return WATCHLIST_CRYPTO_BENCHMARKS
         else:
             return ALL_CORE_WATCHLIST
+
+    def _header_status(self, service_badge: str) -> str:
+        """The service badge plus, when the collector's status file names a dex no
+        settings set knows, the amber NOVEL DEX badge (Round 48, Ruling 48-2)."""
+        from config.settings import COLLECTOR_STATUS_PATH
+        status = read_collector_status(COLLECTOR_STATUS_PATH)
+        drift = novel_dex_badge(status.get("unclassified_dexs"))
+        return "  ".join(part for part in (service_badge, drift) if part)
 
     def _refresh_service_badge(self, force: bool = False, ttl: float = 5.0,
                                newest_snapshot_age_s: Optional[float] = None) -> str:
@@ -208,7 +217,7 @@ class TerminalDashboard:
         # Populate components
         layout["header"].update(
             build_header_panel(summary["total_oi"], summary["total_volume_24h"], dex_oi,
-                               active_tab=self.active_tab, status=service_badge)
+                               active_tab=self.active_tab, status=self._header_status(service_badge))
         )
 
         if self.active_tab == "WHALES":

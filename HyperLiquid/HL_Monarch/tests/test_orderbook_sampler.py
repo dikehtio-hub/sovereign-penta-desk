@@ -14,8 +14,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from collectors.orderbook_sampler import (sample_orderbooks, select_sample_coins,
-                                          top_funding_candidates)
+from collectors.orderbook_sampler import (candidate_rotation_message, sample_orderbooks,
+                                          select_sample_coins, top_funding_candidates)
 from storage import incremental_persistence as ip
 from storage.db import DatabaseManager
 from storage.repository import MarketRepository
@@ -144,12 +144,15 @@ def test_the_latest_spread_per_coin_within_a_day_feeds_candidate_ranking(repo):
     assert repo.get_latest_orderbook_spreads(within_hours=24.0, now_ms=T0 + 25 * H) == {}   # a day old is history
 
 
-def test_one_candidate_slot_per_underlying_across_dexes():
+def test_one_candidate_slot_per_underlying_across_dexes(monkeypatch):
     """
     Round 47 (Ruling 47-1). BTC and para:BTC are one underlying: the harvester
     refuses the second position, so sampling both spends a slot. The best-ranked
     listing keeps it, and a held position's base is skipped outright.
+    (Round 48 made para allow-listed; BTC is admitted here for the fixture only.)
     """
+    import analytics.funding_arbitrage as fa
+    monkeypatch.setitem(fa.MIXED_DEX_CRYPTO_ALLOWLIST, "para", frozenset({"ANSEM", "TOTAL2", "BTCD", "OTHERS", "BTC"}))
     universe = {"UBTC", "UETH", "USOL"}
     snapshots = [snap("BTC", 0.001), snap("para:BTC", 0.002), snap("ETH", 0.0015), snap("SOL", 0.0005)]
     assert top_funding_candidates(snapshots, n=5, spot_universe=universe) == ["para:BTC", "ETH", "SOL"]
@@ -161,6 +164,42 @@ def test_one_candidate_slot_per_underlying_across_dexes():
     assert top_funding_candidates(snapshots, n=2, spot_universe=universe) == ["para:BTC", "ETH"]
     assert top_funding_candidates(snapshots, n=5, spot_universe=universe, exclude=["BTC"]) == ["ETH", "SOL"]
     assert top_funding_candidates(snapshots, n=5, spot_universe=universe, exclude=["xyz:ETH", ""]) == ["para:BTC", "SOL"]
+
+
+def test_candidate_rotation_is_logged_only_when_the_set_changes():
+    """Round 48 (Ruling 48-3): one line per rotation, including the first pass after a start."""
+    assert candidate_rotation_message(None, ["XMR", "BTC"]) == "Candidate set rotated: [-] -> [XMR, BTC]"
+    assert candidate_rotation_message(["XMR", "BTC"], ["XMR", "BTC"]) is None
+    assert candidate_rotation_message(["XMR", "BTC"], ["BTC", "XMR"]) == "Candidate set rotated: [XMR, BTC] -> [BTC, XMR]"
+    assert candidate_rotation_message(["XMR"], []) == "Candidate set rotated: [XMR] -> [-]"
+    assert candidate_rotation_message([], []) is None
+
+
+def test_a_sampling_pass_logs_the_rotation_once(repo, caplog):
+    import logging
+    import collectors.market_collector as mc
+    caplog.set_level(logging.INFO, logger="HL_Collector")      # basicConfig is a no-op under pytest
+
+    class Repo:
+        def get_latest_snapshots(self, coins=None):
+            return [snap("HOT", 0.002), snap("WARM", 0.001)]
+
+        def get_latest_orderbook_spreads(self, **kwargs):
+            return {}
+
+        def insert_orderbook_snapshots(self, rows):
+            pass
+
+    collector = mc.MarketCollector.__new__(mc.MarketCollector)
+    collector._rotated_coins = set()
+    collector._spot_universe, collector._spot_universe_at = {"HOT", "WARM"}, time.time()
+    collector.repo = Repo()
+    collector.rest_client = FakeClient({})
+    collector._sample_pass()
+    collector._sample_pass()
+    rotations = [r.message for r in caplog.records if "Candidate set rotated" in r.message]
+    assert rotations == ["Candidate set rotated: [-] -> [HOT, WARM]"]
+    assert collector._last_candidates == ["HOT", "WARM"]
 
 
 def test_candidates_under_the_liquidity_floors_are_not_worth_a_sampling_slot():

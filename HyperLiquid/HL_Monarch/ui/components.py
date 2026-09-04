@@ -55,6 +55,41 @@ def newest_snapshot_age_seconds(snapshots, now: Optional[float] = None) -> Optio
     return max(0.0, (now if now is not None else time.time()) - newest / 1000.0)
 
 
+def read_collector_status(path, max_age_s: Optional[float] = None,
+                          now: Optional[float] = None) -> Dict[str, Any]:
+    """
+    The collector's status file as a dict, or {} when absent, unreadable, or
+    older than `max_age_s` by its own checked_at stamp (Round 48). Never raises.
+    """
+    import json
+    try:
+        data = json.loads(open(path, encoding="utf-8").read())
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    if max_age_s is not None:
+        try:
+            age = (now if now is not None else time.time()) - float(data.get("checked_at") or 0.0)
+        except (TypeError, ValueError):
+            return {}
+        if age > max_age_s:
+            return {}
+    return data
+
+
+def novel_dex_badge(unclassified_dexs) -> str:
+    """
+    Amber header badge naming dexes the settings do not know (Round 48, Ruling
+    48-2), or "" when there are none. They are already refused by construction;
+    the badge exists so a human classifies them.
+    """
+    names = sorted({str(n).strip().lower() for n in (unclassified_dexs or ()) if n and str(n).strip()})
+    if not names:
+        return ""
+    return "[bold dark_orange]⚠ NOVEL DEX: %s · refused until classified[/bold dark_orange]" % ", ".join(names)
+
+
 def ingestion_badge(alive: bool, pid, started_read_only, newest_snapshot_age_s: Optional[float] = None):
     """
     (mode, badge markup) for the dashboard header - Round 36, Ruling 3.A.

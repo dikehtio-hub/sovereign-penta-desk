@@ -260,7 +260,18 @@ TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx", "mkts", "io", "vntl"})
 # CLOSED: a perp on any dex that is in neither this set nor TRADFI_DEXES is
 # refused as unclassified, so a dex HyperLiquid launches tomorrow is refused
 # today without anyone editing anything.
-CRYPTO_DEXES = frozenset({"main", "para"})
+CRYPTO_DEXES = frozenset({"main"})
+# Round 48 (Ruling 48-1): a MIXED dex is admitted symbol by symbol. para lists 33
+# perps on 2026-09-04 and only four are crypto (TOTAL2, OTHERS, BTCD indices and
+# ANSEM); the rest are equities (SMCI, RDDT, CRWD, MELI...), rates (2Y/10Y/30Y)
+# and pre-IPO names (ANTH). Admitting the dex and quarantining names one by one
+# is whack-a-mole against every new listing, so the logic is inverted: a perp on
+# a mixed dex is TradFi UNLESS its base is on this allow-list. para:NEWSTOCK is
+# refused the day it lists with no edit anywhere.
+MIXED_DEXES = frozenset({"para"})
+MIXED_DEX_CRYPTO_ALLOWLIST = {
+    "para": frozenset({"ANSEM", "TOTAL2", "BTCD", "OTHERS"}),
+}
 # Round 45 (Ruling 45-2): dexes KNOWN to exist and deliberately not admitted -
 # refused like any unclassified dex, listed here so the hourly drift detector
 # (Round 47) does not warn about them every cycle. abcd (ABCDEx) carries one perp
@@ -466,6 +477,10 @@ PAPER_SAVE_INTERVAL = 10.0            # seconds between paper-state flushes
 # supervisor's lockfile: `python main.py collector` bypassed that one entirely,
 # so two collectors could write the paper account concurrently.
 COLLECTOR_LOCK_PATH = DATA_DIR / "collector.pid"
+# Round 48 (Ruling 48-2): the hourly cycle writes what it learned about the dex
+# list here so the dashboard - a separate, read-only process - can show a badge
+# a console warning cannot: a closed window is a warning nobody sees.
+COLLECTOR_STATUS_PATH = DATA_DIR / "collector_status.json"
 
 # WebSocket rotation for REACTIVE execution.
 # Ranked by 24h volume, not squeeze score: the predictive classifier was retired

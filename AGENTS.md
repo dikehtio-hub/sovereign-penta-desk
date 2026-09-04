@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+Round 48 complete: MIXED-DEX CRYPTO ALLOW-LIST, NOVEL-DEX DASHBOARD BADGE,
+CANDIDATE ROTATION LOG. `CRYPTO_DEXES = {main}`, `MIXED_DEXES = {para}`, and a
+perp on a mixed dex is TradFi unless its base is on `MIXED_DEX_CRYPTO_ALLOWLIST`
+(para: ANSEM, TOTAL2, BTCD, OTHERS) - para:NEWSTOCK is refused the day it lists.
+The hourly cycle writes `data/collector_status.json`; the dashboard header shows
+an amber `⚠ NOVEL DEX: ...` badge when it names a dex no settings set knows.
+`_sample_pass` logs "Candidate set rotated: [prev] -> [new]" on change. 4 new
+tests.
+
 Round 47 complete: STRUCTURAL DEX FAIL-CLOSED, HOURLY DRIFT DETECTOR, ONE
 CANDIDATE SLOT PER UNDERLYING. `CRYPTO_DEXES = {main, para}`; a perp on any dex
 in neither CRYPTO_DEXES nor TRADFI_DEXES is refused as unclassified before
@@ -160,7 +169,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1077 passed |
+| HL_Monarch (pytest) | 1081 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -183,6 +192,26 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 48 findings
+
+- **para verified live before inverting the rule**: 33 perps, four crypto
+  (TOTAL2, OTHERS, BTCD, ANSEM), the rest equities (SMCI, RDDT, CRWD, MELI,
+  SOFI, TTWO...), rates (2Y/10Y/30Y) and pre-IPO (ANTH). The allow-list of four
+  is exactly the crypto set. is_mixed_dex_tradfi() is the new test, joined
+  into is_synthetic_tradfi; the TradFi switch still opens it like the others.
+- **The "dashboard status JSON payload" in the ruling did not exist** - the
+  dashboard is a Rich terminal in its own read-only process. Built the channel:
+  MarketCollector.write_collector_status(COLLECTOR_STATUS_PATH, {...}) from the
+  hourly cycle (unclassified_dexs, dexes_listed, checked_at, pid), and
+  ui.components.read_collector_status / novel_dex_badge on the dashboard side,
+  composed into the header by TerminalDashboard._header_status. First write is
+  one hour after a collector start; the file persists across restarts.
+- **Rotation log lives in the collector's _sample_pass** (the sampler's
+  function is pure); candidate_rotation_message() is the pure helper. The first
+  pass after a start logs "[-] -> [...]" on purpose.
+- The Round 47 dedup test needed para:BTC admitted; it now monkeypatches the
+  allow-list for the fixture rather than weakening the rule.
 
 ## Round 47 findings
 

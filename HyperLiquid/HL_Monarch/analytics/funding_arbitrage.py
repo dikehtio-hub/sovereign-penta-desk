@@ -27,6 +27,8 @@ from config.settings import (
     TRADFI_DEXES,
     UNCLASSIFIED_DEXES,
     CRYPTO_DEXES,
+    MIXED_DEXES,
+    MIXED_DEX_CRYPTO_ALLOWLIST,
     SPOT_NON_BASIS_TOKENS,
 )
 
@@ -136,10 +138,22 @@ def is_unclassified_dex(coin: str) -> bool:
     perp is never a basis leg and never a sampling candidate.
     """
     dex = perp_dex(coin)
-    return dex not in CRYPTO_DEXES and dex not in TRADFI_DEXES
+    return dex not in CRYPTO_DEXES and dex not in MIXED_DEXES and dex not in TRADFI_DEXES
 
 
-KNOWN_DEXES: frozenset = CRYPTO_DEXES | TRADFI_DEXES | UNCLASSIFIED_DEXES
+KNOWN_DEXES: frozenset = CRYPTO_DEXES | MIXED_DEXES | TRADFI_DEXES | UNCLASSIFIED_DEXES
+
+
+def is_mixed_dex_tradfi(coin: str) -> bool:
+    """
+    True when the perp is on a MIXED dex and its base is not on that dex's
+    crypto allow-list (Round 48, Ruling 48-1). para:ANSEM passes; para:SMCI,
+    para:RDDT and a para:NEWSTOCK listed tomorrow are TradFi by default.
+    """
+    dex = perp_dex(coin)
+    if dex not in MIXED_DEXES:
+        return False
+    return perp_base_symbol(coin).upper() not in MIXED_DEX_CRYPTO_ALLOWLIST.get(dex, frozenset())
 
 
 def unclassified_dex_names(dex_names) -> List[str]:
@@ -167,11 +181,14 @@ def is_synthetic_tradfi(coin: str, allow_synthetic_tradfi: Optional[bool] = None
 
     Round 43 (Ruling 43-1): two tests, either suffices. The DEX - everything on
     xyz, km, cash and flx is TradFi, so a stock listed there tomorrow is caught
-    today - and the SYMBOL set, which covers the mixed para dex and the main dex.
+    today - and the SYMBOL set, which covers the main dex. Round 48: a MIXED dex
+    (para) is TradFi by default and admits only its allow-listed crypto bases.
     """
     if allow_synthetic_tradfi_basis(allow_synthetic_tradfi):
         return False
-    return perp_dex(coin) in TRADFI_DEXES or perp_base_symbol(coin).upper() in SYNTHETIC_TRADFI_SYMBOLS
+    return (perp_dex(coin) in TRADFI_DEXES
+            or is_mixed_dex_tradfi(coin)
+            or perp_base_symbol(coin).upper() in SYNTHETIC_TRADFI_SYMBOLS)
 
 
 def spot_symbol_candidates(coin: str, allow_synthetic_tradfi: Optional[bool] = None) -> List[str]:

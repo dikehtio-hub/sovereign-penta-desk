@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1077 passed as of Round 47)
+                        (1081 passed as of Round 48)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,17 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 48 - MIXED-DEX ALLOW-LIST, NOVEL-DEX BADGE, CANDIDATE ROTATION LOG
+     settings: CRYPTO_DEXES = {main}; MIXED_DEXES = {para}; MIXED_DEX_CRYPTO_ALLOWLIST
+         = {para: {ANSEM, TOTAL2, BTCD, OTHERS}}. On a mixed dex a perp is TradFi
+         UNLESS allow-listed (is_mixed_dex_tradfi). New para listing -> refused, no edit.
+         To admit a new crypto perp on para: add its base to the allow-list.
+     data/collector_status.json (COLLECTOR_STATUS_PATH): written by the hourly cycle
+         {unclassified_dexs, dexes_listed, checked_at, pid}. Dashboard header shows
+         "NOVEL DEX: <names> - refused until classified" in amber when non-empty.
+     Collector log: "Candidate set rotated: [prev] -> [new]" whenever the five
+         candidate slots change (first pass logs from "-").
 
      ROUND 47 - STRUCTURAL DEX FAIL-CLOSED, DRIFT DETECTOR, ONE SLOT PER UNDERLYING
      settings.CRYPTO_DEXES = {main, para}. is_unclassified_dex(coin): dex not in

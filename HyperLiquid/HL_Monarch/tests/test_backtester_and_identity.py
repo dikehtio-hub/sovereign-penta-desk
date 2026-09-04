@@ -230,13 +230,16 @@ class TestSpotBacking(unittest.TestCase):
         from config.settings import ACTIVE_DEXES, TRADFI_DEXES, UNCLASSIFIED_DEXES
         from analytics.funding_arbitrage import is_unclassified_dex, is_synthetic_tradfi, spot_symbol_candidates
         from collectors.orderbook_sampler import top_funding_candidates
-        from config.settings import CRYPTO_DEXES
-        self.assertEqual(CRYPTO_DEXES, frozenset({"main", "para"}))                # Round 47: the ONLY admitted crypto dexes
+        from config.settings import CRYPTO_DEXES, MIXED_DEXES
+        self.assertEqual(CRYPTO_DEXES, frozenset({"main"}))                        # Round 48: main is the only crypto-wide dex
+        self.assertEqual(MIXED_DEXES, frozenset({"para"}))                         # admitted symbol by symbol
         self.assertEqual(UNCLASSIFIED_DEXES, frozenset({"abcd", "hyna"}))         # known, deliberately refused
-        self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint(TRADFI_DEXES) and UNCLASSIFIED_DEXES.isdisjoint(CRYPTO_DEXES))
-        self.assertTrue(CRYPTO_DEXES.isdisjoint(TRADFI_DEXES))
+        sets = (CRYPTO_DEXES, MIXED_DEXES, TRADFI_DEXES, UNCLASSIFIED_DEXES)
+        for i, a in enumerate(sets):
+            for b in sets[i + 1:]:
+                self.assertTrue(a.isdisjoint(b))
         self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint({str(d).lower() for d in ACTIVE_DEXES}))
-        self.assertTrue({str(d).lower() for d in ACTIVE_DEXES} <= CRYPTO_DEXES | TRADFI_DEXES)   # everything polled is classified
+        self.assertTrue({str(d).lower() for d in ACTIVE_DEXES} <= CRYPTO_DEXES | MIXED_DEXES | TRADFI_DEXES)
         # Round 47: STRUCTURAL - a dex in neither set is refused before anyone has heard of it.
         for coin in ("abcd:BTC", "abcd:HYPE", "novel:TOKEN", "launched_today:BTC", "hyna:HYPE"):
             self.assertTrue(is_unclassified_dex(coin), coin)
@@ -246,6 +249,7 @@ class TestSpotBacking(unittest.TestCase):
             self.assertIsNone(spot_symbol_for(coin, {"HYPE", "UBTC", "SPACEX"}, {"HYPE": 1e9}), coin)
         self.assertFalse(is_unclassified_dex("BTC"))
         self.assertFalse(is_unclassified_dex("para:ANSEM"))
+        self.assertFalse(is_unclassified_dex("para:SMCI"))                         # mixed dex: classified, refused by allow-list
         self.assertFalse(is_unclassified_dex("xyz:GOLD"))                          # TradFi is classified, just refused elsewhere
         # hyna is mixed like para but NOT admitted: refused structurally, while its GOLD is TradFi by symbol too.
         self.assertTrue(is_unclassified_dex("hyna:HYPE"))
@@ -266,6 +270,43 @@ class TestSpotBacking(unittest.TestCase):
         snaps = [{"coin": "abcd:HYPE", "funding_rate": 0.01, "notional_oi": 1e7, "day_ntl_vlm": 1e7},
                  {"coin": "HYPE", "funding_rate": 0.001, "notional_oi": 1e7, "day_ntl_vlm": 1e7}]
         self.assertEqual(top_funding_candidates(snaps, n=5, spot_universe={"HYPE"}), ["HYPE"])
+
+    def test_a_mixed_dex_admits_only_its_crypto_allow_list(self):
+        """
+        Round 48 (Ruling 48-1). para lists 33 perps and four are crypto (TOTAL2,
+        OTHERS, BTCD, ANSEM); the rest are equities, rates and pre-IPO names.
+        Quarantining names one at a time loses to every new listing, so the
+        logic is inverted: on a mixed dex a perp is TradFi unless allow-listed.
+        """
+        from config.settings import MIXED_DEX_CRYPTO_ALLOWLIST
+        from analytics.funding_arbitrage import is_mixed_dex_tradfi, is_synthetic_tradfi, spot_symbol_candidates
+        self.assertEqual(MIXED_DEX_CRYPTO_ALLOWLIST, {"para": frozenset({"ANSEM", "TOTAL2", "BTCD", "OTHERS"})})
+        for coin in ("para:ANSEM", "para:TOTAL2", "para:BTCD", "para:OTHERS"):
+            self.assertFalse(is_mixed_dex_tradfi(coin), coin)
+            self.assertFalse(is_synthetic_tradfi(coin), coin)
+            self.assertTrue(spot_symbol_candidates(coin), coin)
+        self.assertEqual(spot_symbol_candidates("para:ANSEM"), ["UANSEM", "ANSEM"])
+        self.assertEqual(spot_symbol_for("para:ANSEM", {"UANSEM"}), "UANSEM")
+        # Everything else on the dex - listed today or tomorrow - is TradFi with no edit.
+        for coin in ("para:SMCI", "para:RDDT", "para:CRWD", "para:ANTH", "para:10Y", "para:UNKNOWN", "para:NEWSTOCK"):
+            self.assertTrue(is_mixed_dex_tradfi(coin), coin)
+            self.assertTrue(is_synthetic_tradfi(coin), coin)
+            self.assertEqual(spot_symbol_candidates(coin), [], coin)
+            self.assertIsNone(spot_symbol_for(coin, {"SMCI", "USMCI", "RDDT", "ANTH", "UNKNOWN", "NEWSTOCK"}), coin)
+        # The allow-list is dex-scoped: SMCI on the main dex is judged by the symbol set alone.
+        self.assertFalse(is_mixed_dex_tradfi("SMCI"))
+        self.assertFalse(is_mixed_dex_tradfi("xyz:SMCI"))
+        # The TradFi switch still opens the door, as for every other quarantine.
+        self.assertFalse(is_synthetic_tradfi("para:SMCI", allow_synthetic_tradfi=True))
+        self.assertEqual(spot_symbol_candidates("para:SMCI", allow_synthetic_tradfi=True), ["USMCI", "SMCI"])
+        # The scan inherits it.
+        engine = FundingArbitrageEngine(client=FakeSpotClient(["UANSEM", "SMCI"]))
+        res = engine.scan_funding_opportunities(
+            min_apr_pct=10.0, snapshots=[_snap("para:ANSEM", 0.001), _snap("para:SMCI", 0.001)])
+        by_coin = {i["coin"]: i for i in res["short_harvest"]}
+        self.assertTrue(by_coin["para:ANSEM"]["is_spot_backed"])
+        self.assertEqual(by_coin["para:ANSEM"]["spot_symbol"], "UANSEM")
+        self.assertFalse(by_coin["para:SMCI"]["is_spot_backed"])
 
     def test_canonical_spot_base_names_the_underlying(self):
         """Round 43 (Ruling 43-2): ANSEM and UANSEM are one asset; so are FARTCOIN, UFART; XMR, XMR1, FXMR."""

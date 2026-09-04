@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable, Dict, Any, List, Optional, Sequence, Set, Tuple
 from config.settings import (
-    ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST, COLLECTOR_LOCK_PATH,
+    ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST, COLLECTOR_LOCK_PATH, COLLECTOR_STATUS_PATH,
     ORDERBOOK_SAMPLE_INTERVAL, ORDERBOOK_SAMPLE_MAX_COINS, ORDERBOOK_SAMPLE_CANDIDATES,
     SPOT_UNIVERSE_REFRESH_SECONDS, ARB_MAX_SPREAD_BPS,
     DB_FLUSH_INTERVAL, DB_MAINTENANCE_INTERVAL,
@@ -32,8 +32,8 @@ from storage.repository import MarketRepository
 from analytics.liquidation_engine import LiquidationEngine
 from analytics.whale_tracker import WhaleTracker
 from analytics.alerter import WebhookAlerter
-from collectors.orderbook_sampler import (sample_orderbooks, select_sample_coins,
-                                          top_funding_candidates)
+from collectors.orderbook_sampler import (candidate_rotation_message, sample_orderbooks,
+                                          select_sample_coins, top_funding_candidates)
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 
@@ -113,6 +113,24 @@ def service_collector_alive(lock_path: Optional[Path] = None,
     return "collector" in cmdline.lower()
 
 
+def write_collector_status(path, payload: Dict[str, Any]) -> bool:
+    """
+    Atomically write the collector's status file (Round 48, Ruling 48-2). The
+    dashboard reads it; nothing else does. Never raises - status is telemetry.
+    """
+    import json
+    try:
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_suffix(target.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.replace(target)
+        return True
+    except Exception as e:                                  # noqa: BLE001 - telemetry only
+        logger.debug(f"collector status not written: {e}")
+        return False
+
+
 class MarketCollector:
     def __init__(self, maintenance: bool = True, yield_to_service: bool = False):
         # Whether THIS collector may prune, measure and sample order books at all.
@@ -136,6 +154,8 @@ class MarketCollector:
         self._spot_universe_at: float = 0.0
         self._spot_universe_warned = False
         self._arb_engine = None
+        self._current_candidates: List[str] = []
+        self._last_candidates: Optional[List[str]] = None
         self.running = False
         self._current_marks: Dict[str, float] = {}
 
@@ -420,6 +440,7 @@ class MarketCollector:
                                                 spreads=spreads,
                                                 spot_volumes=getattr(self, "_spot_volumes_map", None),
                                                 exclude=held)
+        self._current_candidates = list(candidates)
         return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
                                    cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held, candidates=candidates)
 
@@ -436,6 +457,11 @@ class MarketCollector:
         except Exception as e:                              # noqa: BLE001 - rank on gross instead
             logger.warning(f"Could not read latest spreads for candidate ranking: {e}")
         coins = self._sample_coins(snapshots, spreads)
+        # Round 48 (Ruling 48-3): how often the five candidate slots turn over.
+        rotated = candidate_rotation_message(getattr(self, "_last_candidates", None), self._current_candidates)
+        if rotated:
+            logger.info(rotated)
+        self._last_candidates = list(self._current_candidates)
         return sample_orderbooks(self.rest_client, self.repo, coins)
 
     async def _orderbook_sample_loop(self):
@@ -579,6 +605,13 @@ class MarketCollector:
                         if novel:
                             logger.warning("perpDexs lists dex(es) unknown to settings - refused until "
                                            "classified in CRYPTO_DEXES / TRADFI_DEXES: %s", ", ".join(novel))
+                        # Round 48 (Ruling 48-2): the dashboard shows this as a badge.
+                        write_collector_status(COLLECTOR_STATUS_PATH, {
+                            "unclassified_dexs": novel,
+                            "dexes_listed": sorted(str(n).lower() for n in listed if n),
+                            "checked_at": time.time(),
+                            "pid": os.getpid(),
+                        })
                     except Exception as e:                  # noqa: BLE001 - telemetry only
                         logger.debug(f"perpDexs drift check skipped: {e}")
                     if volumes:

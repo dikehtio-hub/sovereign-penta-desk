@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from collectors.market_collector import read_service_pid
 from ui.components import (STALLED_AFTER_SECONDS, build_header_panel, ingestion_badge,
-                           newest_snapshot_age_seconds)
+                           newest_snapshot_age_seconds, novel_dex_badge, read_collector_status)
 
 
 def test_read_service_pid_is_none_when_absent_or_junk(tmp_path):
@@ -105,3 +105,39 @@ def test_the_header_panel_carries_the_badge():
     assert "Service: RUNNING (PID 4242)" in text and "Read-Only Mode" in text
     # And the header still renders without one.
     build_header_panel(1_000_000.0, 2_000_000.0, {"main": 1_000_000.0}, active_tab="ALL")
+
+
+def test_a_novel_dex_shows_as_an_amber_badge_from_the_collector_status_file(tmp_path, monkeypatch):
+    """
+    Round 48 (Ruling 48-2). The hourly cycle warns in a console window that may
+    be closed or minimised; the dashboard reads the collector's status file and
+    shows the same fact where the operator is looking.
+    """
+    import json
+    from collectors.market_collector import write_collector_status
+    from ui.terminal_dashboard import TerminalDashboard
+    import config.settings as settings
+
+    assert novel_dex_badge([]) == "" and novel_dex_badge(None) == ""
+    assert novel_dex_badge(["newdex", "Other", "newdex", ""]) == \
+        "[bold dark_orange]⚠ NOVEL DEX: newdex, other · refused until classified[/bold dark_orange]"
+
+    path = tmp_path / "collector_status.json"
+    assert read_collector_status(path) == {}                                       # absent: nothing claimed
+    assert write_collector_status(path, {"unclassified_dexs": ["newdex"], "checked_at": 1_788_000_000.0})
+    assert json.loads(path.read_text(encoding="utf-8"))["unclassified_dexs"] == ["newdex"]
+    assert read_collector_status(path)["unclassified_dexs"] == ["newdex"]
+    assert read_collector_status(path, max_age_s=3600.0, now=1_788_000_100.0)["unclassified_dexs"] == ["newdex"]
+    assert read_collector_status(path, max_age_s=60.0, now=1_788_000_100.0) == {}   # stale: nothing claimed
+    path.write_text("{not json", encoding="utf-8")
+    assert read_collector_status(path) == {}
+
+    # The header composes the service badge and the drift badge.
+    monkeypatch.setattr(settings, "COLLECTOR_STATUS_PATH", path)
+    dash = TerminalDashboard.__new__(TerminalDashboard)
+    assert dash._header_status("[dim]Service: RUNNING (PID 1) · Read-Only Mode[/dim]") == \
+        "[dim]Service: RUNNING (PID 1) · Read-Only Mode[/dim]"
+    write_collector_status(path, {"unclassified_dexs": ["newdex"], "checked_at": 1.0})
+    assert dash._header_status("[dim]svc[/dim]") == "[dim]svc[/dim]  " + novel_dex_badge(["newdex"])
+    write_collector_status(path, {"unclassified_dexs": [], "checked_at": 1.0})
+    assert dash._header_status("") == ""
