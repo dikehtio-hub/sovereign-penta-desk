@@ -2322,7 +2322,7 @@ esults_drops\.
           cross_market.tests.test_obsidian_exporter
           cross_market.tests.test_polymarket_fetcher
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1025 passed as of Round 35)
+                        (1033 passed as of Round 36)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2358,6 +2358,19 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 36 - READ-ONLY DASHBOARD, POSITION-FIRST SAMPLING, REPO CLEANUP
+     python main.py dashboard
+         With a service collector alive (data\collector.pid names a live process
+         whose command line says "collector"): READ-ONLY viewer, header badge
+         "Service: RUNNING (PID n) · Read-Only Mode", no second poller.
+         With none: standalone ingestion, badge "Service: STOPPED · Standalone
+         Ingestion Active", yields maintenance the moment a service appears.
+         RED badge = you started read-only and the service died: nothing is
+         ingesting; run start_collector.bat. Yellow "restart the dashboard" = a
+         service joined a standalone dashboard; restart to drop the second poller.
+     Order book sampling order: held basis positions, then rotated, then core.
+     *.pid and *.jsonl are ignored and untracked (runtime state).
 
      ROUND 35 - SPREAD ALIGNMENT, L2 SPREAD SAMPLING, SUPERVISOR HARDENING
      SPREAD FILES: each leg carries its OWN signed handicap (Chiefs -3.5, Ravens +3.5).

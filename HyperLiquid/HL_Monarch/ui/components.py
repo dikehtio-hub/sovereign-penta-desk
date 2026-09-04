@@ -34,16 +34,43 @@ def format_coin_name(coin: str) -> str:
         return coin[4:]
     return coin
 
-def build_header_panel(total_oi: float, total_vol: float, dex_oi: Dict[str, float], active_tab: str = "ALL") -> Panel:
+def ingestion_badge(alive: bool, pid, started_read_only):
+    """
+    (mode, badge markup) for the dashboard header - Round 36, Ruling 3.A.
+
+    `started_read_only` is what the dashboard decided at start-up: None while
+    deciding, True if it started as a viewer, False if it started ingesting.
+    The four states are deliberately distinct: a read-only dashboard whose
+    service has DIED is showing stale tables with nothing ingesting, and that
+    must not look calm; a standalone dashboard that a service has since joined
+    is double-polling until restarted, and must say so.
+    """
+    if alive:
+        if started_read_only is False:
+            return ("dual", "[bold yellow]Service: RUNNING (PID %s) · Standalone ingestion still running - "
+                            "restart the dashboard for read-only[/bold yellow]" % pid)
+        return "read_only", "[dim]Service: RUNNING (PID %s) · Read-Only Mode[/dim]" % pid
+    if started_read_only is True:
+        return ("orphaned", "[bold red]Service: STOPPED · No ingestion - tables are going stale; "
+                            "run start_collector.bat[/bold red]")
+    return "standalone", "[bold yellow]Service: STOPPED · Standalone Ingestion Active[/bold yellow]"
+
+
+def build_header_panel(total_oi: float, total_vol: float, dex_oi: Dict[str, float], active_tab: str = "ALL",
+                       status: str = None) -> Panel:
     """Build compact summary header card with interactive hotkey tabs."""
     now_str = datetime.now().strftime("%H:%M:%S")
-    
+
     header_text = Text()
     header_text.append("👑 HL_MONARCH ", style="bold gold1")
     header_text.append("│ Hyperliquid & HIP3 TradFi Market Intelligence   ", style="bold cyan")
     header_text.append(f"⏱ {now_str}  │ ", style="dim")
     header_text.append(f"TradFi OI: {format_currency(total_oi)}  │ ", style="bold green")
-    header_text.append(f"24h Vol: {format_currency(total_vol)}\n", style="bold yellow")
+    header_text.append(f"24h Vol: {format_currency(total_vol)}", style="bold yellow")
+    if status:
+        header_text.append("  │ ", style="dim")
+        header_text.append(Text.from_markup(status))
+    header_text.append("\n")
     
     # Navigation hotkeys tabs (8 total)
     tabs = [

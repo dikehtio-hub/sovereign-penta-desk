@@ -7,7 +7,7 @@ import time
 import signal
 import threading
 import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Ensure UTF-8 output on Windows console
 if sys.platform == "win32":
@@ -33,7 +33,8 @@ from analytics.position_scanner import PositionScanner
 from analytics.funding_arbitrage import FundingArbitrageEngine
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
-from collectors.market_collector import MarketCollector, service_collector_alive
+from collectors.market_collector import MarketCollector, read_service_pid, service_collector_alive
+from ui.components import ingestion_badge
 from ui.components import (
     build_header_panel, build_tradfi_table, build_liquidations_panel,
     build_clusters_panel, build_top_wallets_panel, build_funding_arb_panel,
@@ -58,6 +59,12 @@ class TerminalDashboard:
         self.paper_trader = PaperTrader.load()
         self.fade_strategy = LiquidationFadeStrategy(self.paper_trader)
         self.running = False
+        # Round 36 (Ruling 3.A): None until start() decides; True = read-only
+        # viewer over the service's database; False = standalone ingestion.
+        self.service_mode: Optional[bool] = None
+        self.service_pid: Optional[int] = None
+        self._service_badge: str = ""
+        self._service_checked_at: float = 0.0
         self.focus_asset = focus_asset
         self.active_tab = "ALL"  # 'ALL', 'STOCKS', 'COMMODITIES', 'INDICES_FX', 'CRYPTO', 'WHALES', 'ARB', 'PAPER'
         self._focus_idx = 0
@@ -105,9 +112,25 @@ class TerminalDashboard:
         else:
             return ALL_CORE_WATCHLIST
 
+    def _refresh_service_badge(self, force: bool = False, ttl: float = 5.0) -> str:
+        """
+        Re-check the service every few seconds so the header tells the truth:
+        a read-only dashboard whose service has died is showing STALE data, and
+        a standalone dashboard that a service has since joined is double-polling
+        until it is restarted. Cheap - one file read and one process probe.
+        """
+        now = time.monotonic()
+        if force or now - self._service_checked_at >= ttl:
+            self._service_checked_at = now
+            alive = service_collector_alive()
+            self.service_pid = read_service_pid() if alive else self.service_pid
+            _, self._service_badge = ingestion_badge(alive, self.service_pid, self.service_mode)
+        return self._service_badge
+
     def generate_layout(self) -> Layout:
         """Construct a sleek, responsive UI layout fitting any terminal window."""
         term_width = console.width or 100
+        service_badge = self._refresh_service_badge()
 
         # Fetch latest data
         all_snapshots = self.repo.get_latest_snapshots()
@@ -175,7 +198,8 @@ class TerminalDashboard:
 
         # Populate components
         layout["header"].update(
-            build_header_panel(summary["total_oi"], summary["total_volume_24h"], dex_oi, active_tab=self.active_tab)
+            build_header_panel(summary["total_oi"], summary["total_volume_24h"], dex_oi,
+                               active_tab=self.active_tab, status=service_badge)
         )
 
         if self.active_tab == "WHALES":
@@ -269,24 +293,31 @@ class TerminalDashboard:
         """Run terminal live dashboard with interactive hotkeys and background collector."""
         self.running = True
 
-        # Start integrated background ingestion collector in daemon thread
-        def run_bg_collector():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            # Round 34: a UI process must not prune underneath the service
-            # collector. This dashboard ran fifteen hours with a stale 72h
-            # retention in memory and deleted history every five minutes while
-            # the service, restarted with 192h, was trying to keep it.
-            # Round 35: the check is re-run every cycle inside the collector, so a
-            # service that starts (or dies) after this dashboard is honoured too.
-            collector = MarketCollector(maintenance=True, yield_to_service=True)
-            try:
-                loop.run_until_complete(collector.run())
-            except Exception:
-                pass
+        # ROUND 36 (Ruling 3.A): ONE INGESTER. While a service collector is alive
+        # this dashboard is a READ-ONLY VIEWER over the database it writes. The
+        # embedded collector it used to start polled contexts alongside the
+        # service - a second 900 weight/min on one IP and ~1.6x the snapshot
+        # rows - and that contention was the likeliest source of the 429s behind
+        # the continuity gaps. With no service alive it falls back to standalone
+        # ingestion (Round 34/35: never pruning underneath a service; yielding
+        # maintenance the moment one appears). The header re-checks every few
+        # seconds so a service that dies under a read-only dashboard is shown.
+        alive = service_collector_alive()
+        self.service_pid = read_service_pid()
+        self.service_mode = alive
+        self._refresh_service_badge(force=True)
+        if not alive:
+            def run_bg_collector():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                collector = MarketCollector(maintenance=True, yield_to_service=True)
+                try:
+                    loop.run_until_complete(collector.run())
+                except Exception:
+                    pass
 
-        collector_thread = threading.Thread(target=run_bg_collector, daemon=True)
-        collector_thread.start()
+            collector_thread = threading.Thread(target=run_bg_collector, daemon=True)
+            collector_thread.start()
 
         # Start keyboard hotkey listener
         self._start_keyboard_listener()

@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+Round 36 complete: READ-ONLY DASHBOARD, POSITION-FIRST SAMPLING & REPO CLEANUP.
+`main.py dashboard` no longer starts a collector while a service collector is
+alive (Ruling 3.A) - it is a read-only viewer with a live header badge, and
+falls back to standalone ingestion only when no service exists. Held basis
+positions are sampled first. Runtime `.pid` / `.jsonl` files are untracked and
+ignored; Antigravity's Trading Terminal note change is committed (4af4f51).
+8 new tests.
+
 Round 35 complete: SPREAD ALIGNMENT, L2 SPREAD SAMPLING & SUPERVISOR HARDENING.
 Each spread leg is stored under its OWN signed handicap (Ruling 5.B) and the
 cross-market sample now matches 7 of 7 questions; the collector that owns
@@ -50,7 +58,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules) | 793 OK |
-| HL_Monarch (pytest) | 1025 passed |
+| HL_Monarch (pytest) | 1033 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -73,6 +81,25 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 36 findings
+
+- **One ingester, measured.** With the dashboard's embedded collector polling
+  beside the service, BTC had 119 snapshot rows per 10 minutes (two 8s pollers
+  would give 150; the shortfall was throttling). Read-only dashboard beside the
+  service: 59 rows per 10 minutes, the single-collector rate (8s sleep plus ~2s of request time gives ~60). The second
+  900 weight/min is gone.
+- **The header tells the truth in four states.** read_only (service alive),
+  standalone (none at start), orphaned (started read-only, service since died:
+  RED, "tables are going stale"), dual (started standalone, service since
+  appeared: restart the dashboard). Re-checked every 5s from a file read and a
+  process probe; nothing is spawned mid-run.
+- **Sampling priority is positions > rotated > core**, via
+  `MarketCollector._sample_coins`; the harvester is created lazily by the
+  accrual loop, so a collector that has not accrued yet samples rotated/core.
+- **Runtime files untracked.** `*.pid` and `*.jsonl` ignored; the three files the
+  Round 26 baseline tracked are `git rm --cached`. `git status` is quiet apart
+  from the vault notes the sync rewrites and the paper-state JSON.
 
 ## Round 35 findings
 
@@ -275,8 +302,6 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 
 ## Next / open questions
 
-- **Stop the dashboard ingesting when the service is alive** (see findings).
-  One REST budget, one writer. Until then the two collectors share 1200 weight.
 - `persist --status` will show `fees_measured` climbing from the next grid
   instant after a sampling pass; the first 7-day windows with a measured fee
   arrive with the first 168h windows (~2026-09-11).

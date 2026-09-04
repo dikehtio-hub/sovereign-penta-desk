@@ -98,3 +98,11 @@ quant_trading_lab/
 
 # Obsidian vault - notes, synced separately, and noisy in a diff.
 obsidian_vault/.obsidian/
+
+# ---------------------------------------------------------------------------
+# Runtime state (Round 36). PID lock files and the supervisor's JSONL log are
+# rewritten on every start; they were tracked by the Round 26 baseline and
+# churned in every diff. Untracked with `git rm --cached` and ignored here.
+# ---------------------------------------------------------------------------
+*.pid
+*.jsonl

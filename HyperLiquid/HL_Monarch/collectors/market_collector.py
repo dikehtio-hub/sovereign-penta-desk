@@ -70,6 +70,15 @@ def _probe_process(pid: int) -> Optional[Tuple[bool, Optional[str]]]:
         return False, None
 
 
+def read_service_pid(lock_path: Optional[Path] = None) -> Optional[int]:
+    """The PID in `data/collector.pid`, or None when absent or unreadable."""
+    path = Path(lock_path) if lock_path is not None else COLLECTOR_LOCK_PATH
+    try:
+        return int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+
+
 def service_collector_alive(lock_path: Optional[Path] = None,
                             probe: Optional[Callable[[int], Optional[Tuple[bool, Optional[str]]]]] = None
                             ) -> bool:
@@ -88,12 +97,8 @@ def service_collector_alive(lock_path: Optional[Path] = None,
     the service rather than risk a second pruner; an absent psutil is treated
     the same way.
     """
-    path = Path(lock_path) if lock_path is not None else COLLECTOR_LOCK_PATH
-    try:
-        pid = int(path.read_text(encoding="utf-8").strip())
-    except (OSError, ValueError):
-        return False
-    if pid == os.getpid():
+    pid = read_service_pid(lock_path)
+    if pid is None or pid == os.getpid():
         return False
     result = (probe or _probe_process)(pid)
     if result is None:
@@ -344,6 +349,18 @@ class MarketCollector:
             self._yield_logged = False
         return True
 
+    def _sample_coins(self) -> List[str]:
+        """
+        Which coins this pass samples: HELD basis positions first (Round 36,
+        cross-check 5.3 - an open position must never lose its spread series
+        because its volume rank slipped out of the rotation), then the rotated
+        high-volume set, then the core watchlist, capped.
+        """
+        harvester = getattr(self, "basis_harvester", None)
+        held = list(getattr(harvester, "positions", {}).keys()) if harvester is not None else []
+        return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
+                                   cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held)
+
     async def _orderbook_sample_loop(self):
         """Round 35: sample top-of-book spreads for a bounded coin set (Ruling 5.C)."""
         loop = asyncio.get_running_loop()
@@ -353,8 +370,7 @@ class MarketCollector:
                 return
             if not self._owns_maintenance():
                 continue
-            coins = select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
-                                        cap=ORDERBOOK_SAMPLE_MAX_COINS)
+            coins = self._sample_coins()
             try:
                 stats = await loop.run_in_executor(
                     self._io_executor, sample_orderbooks, self.rest_client, self.repo, coins)

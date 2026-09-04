@@ -59,6 +59,45 @@ def test_coin_selection_is_prioritised_deduplicated_and_capped():
     assert select_sample_coins(["BTC"], set(), cap=0) == []
 
 
+def test_open_positions_are_sampled_even_when_the_cap_is_tight():
+    """
+    Round 36: a held basis position must never lose its spread series because
+    its volume rank slipped out of the rotation. Positions go in as `extra` and
+    survive a cap that drops both the rotated set and the core watchlist.
+    """
+    held = ["FARTCOIN", "xyz:SILVER"]
+    core = ["BTC", "ETH", "SOL", "xyz:GOLD"]
+    rotated = {"PUMP", "WIF", "AAA"}
+    picked = select_sample_coins(core, rotated, cap=3, extra=held)
+    assert picked[:2] == held
+    assert len(picked) == 3 and picked[2] == "AAA"             # then rotated, sorted; core never reached
+    # A held coin that is also rotated or core is not listed twice.
+    picked = select_sample_coins(core, {"BTC", "ETH"}, cap=10, extra=["ETH"])
+    assert picked.count("ETH") == 1 and picked[0] == "ETH"
+
+
+def test_the_collector_samples_held_positions_first_and_copes_without_a_harvester():
+    """_sample_coins reads the harvester's open positions when one exists - the
+    harvester is created lazily by the accrual loop, so a collector that has not
+    accrued yet has none - and never lists a coin twice."""
+    import collectors.market_collector as mc
+
+    class Harvester:
+        positions = {"FARTCOIN": {}, "xyz:SILVER": {}}
+
+    collector = mc.MarketCollector.__new__(mc.MarketCollector)
+    collector._rotated_coins = {"PUMP", "FARTCOIN"}
+    collector.basis_harvester = Harvester()
+    picked = collector._sample_coins()
+    assert picked[:2] == ["FARTCOIN", "xyz:SILVER"]
+    assert picked.count("FARTCOIN") == 1
+    assert len(picked) <= mc.ORDERBOOK_SAMPLE_MAX_COINS
+
+    bare = mc.MarketCollector.__new__(mc.MarketCollector)
+    bare._rotated_coins = set()
+    assert bare._sample_coins()[0] == mc.ALL_CORE_WATCHLIST[0]      # no harvester yet: core first
+
+
 def test_a_pass_writes_one_row_per_coin_and_isolates_failures(repo):
     client = FakeClient({"BTC": book(50_000.0, 1.0), "ETH": book(3_000.0, 4.0), "DEAD": {"levels": [[], []]}},
                         failing={"PUMP"})
