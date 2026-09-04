@@ -94,6 +94,15 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   to 0.83 (60m) against a persisted control of ~1.05, cluster P(>= 1) 0.000-0.032
   - the fade retirement on 15x the sample. Regimes seen: VOL_MID|FUND_FLAT 18h,
   UNKNOWN 15h (BTC reference gaps); 168h hold: 0 windows until ~2026-09-11.
+- **The machine sleeps, and the service does not survive it.** Windows entered
+  sleep 2026-09-04 02:19 local (06:19 UTC) and resumed 11:12 local; on resume
+  neither the supervisor nor its collector child existed, and the old dashboard
+  was gone too (its 72h pruning stopped with it - oldest row is now 81h). The
+  launcher was re-run 15:22 UTC and the dashboard restarted behind it so the
+  service owns maintenance. A nightly nine-hour sleep caps continuity near 60%
+  and puts an UNKNOWN regime across every gap; Ruling D's 720h cannot be met on
+  a machine that sleeps. Decide: disable sleep for this box, or host the
+  collector elsewhere.
 - **The collector's one `hl-db` thread ran the snapshot poller, the buffer
   flusher AND maintenance.** A two-minute measurement pass queued behind it
   would have created the gaps the measurements are made from. Maintenance now
@@ -225,6 +234,10 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 
 ## Next / open questions
 
+- **Decision needed: the collector host sleeps.** Continuity was 78% before
+  and a nightly sleep makes it worse; the service must be relaunched by hand
+  after every resume (`start_collector.bat`). Either disable sleep on this
+  machine or run the collector on one that stays up.
 - **Ruling needed: spread line convention.** Store the selection's OWN handicap
   (away leg at +3.5) and group markets by |line|, or teach the matcher the
   home-keyed form. Until then no spread hedge can price.
