@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1076 passed as of Round 46)
+                        (1077 passed as of Round 47)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,16 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 47 - STRUCTURAL DEX FAIL-CLOSED, DRIFT DETECTOR, ONE SLOT PER UNDERLYING
+     settings.CRYPTO_DEXES = {main, para}. is_unclassified_dex(coin): dex not in
+         CRYPTO_DEXES | TRADFI_DEXES -> refused (basis leg AND sampler), no switch.
+         UNCLASSIFIED_DEXES = {abcd, hyna} = known + deliberately refused (keeps the
+         hourly perpDexs drift warning quiet). New dex tomorrow -> refused today.
+     Hourly cycle: WARNING "perpDexs lists dex(es) unknown to settings" names any
+         dex outside CRYPTO | TRADFI | UNCLASSIFIED. Classify it, then edit settings.
+     top_funding_candidates(..., exclude=held): one candidate per perp_base_symbol
+         (best-ranked listing), held bases skipped. n counts underlyings.
 
      ROUND 46 - vntl TRADFI, hyna MIXED, abcd UNCLASSIFIED, PRESET-AWARE FALLBACK
      TRADFI_DEXES = {xyz, km, cash, flx, mkts, io, vntl}; UNCLASSIFIED_DEXES = {abcd}

@@ -418,7 +418,8 @@ class MarketCollector:
             candidates = top_funding_candidates(snapshots, n=ORDERBOOK_SAMPLE_CANDIDATES,
                                                 spot_universe=self._spot_universe_cached(),
                                                 spreads=spreads,
-                                                spot_volumes=getattr(self, "_spot_volumes_map", None))
+                                                spot_volumes=getattr(self, "_spot_volumes_map", None),
+                                                exclude=held)
         return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
                                    cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held, candidates=candidates)
 
@@ -521,7 +522,7 @@ class MarketCollector:
         """
         from execution.basis_harvester import BasisHarvester
         from execution.strategies.basis_strategy import scan_basis_opportunities
-        from analytics.funding_arbitrage import FundingArbitrageEngine
+        from analytics.funding_arbitrage import FundingArbitrageEngine, unclassified_dex_names
         from config.dynamic_config import get_dynamic_config
         from strategies.funding_harvester import FundingHarvester
 
@@ -569,6 +570,17 @@ class MarketCollector:
                     # fails closed and the scan claims no spot backing.
                     engine = FundingArbitrageEngine(client=self.rest_client)
                     volumes = engine.get_spot_volumes()
+                    # Round 47 (Ruling 47-2): dex drift. A dex the settings do not
+                    # know is refused structurally already; this makes it visible
+                    # once an hour so a human classifies it.
+                    try:
+                        listed = [d.get("name") for d in (self.rest_client.get_perp_dexs() or []) if d]
+                        novel = unclassified_dex_names(listed)
+                        if novel:
+                            logger.warning("perpDexs lists dex(es) unknown to settings - refused until "
+                                           "classified in CRYPTO_DEXES / TRADFI_DEXES: %s", ", ".join(novel))
+                    except Exception as e:                  # noqa: BLE001 - telemetry only
+                        logger.debug(f"perpDexs drift check skipped: {e}")
                     if volumes:
                         self._spot_volumes_map = dict(volumes)
                         self._spot_universe = engine.get_spot_universe()

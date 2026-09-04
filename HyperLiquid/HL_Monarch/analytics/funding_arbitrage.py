@@ -26,6 +26,7 @@ from config.settings import (
     SYNTHETIC_TRADFI_SYMBOLS,
     TRADFI_DEXES,
     UNCLASSIFIED_DEXES,
+    CRYPTO_DEXES,
     SPOT_NON_BASIS_TOKENS,
 )
 
@@ -127,12 +128,34 @@ def allow_synthetic_tradfi_basis(override: Optional[bool] = None) -> bool:
 
 def is_unclassified_dex(coin: str) -> bool:
     """
-    True when the perp lives on a dex nobody has classified (Round 45, Ruling
-    45-2). Fail closed: no switch turns this off - the dex is admitted only by
-    editing settings.UNCLASSIFIED_DEXES after someone has looked at what trades
-    there. Such a perp is never a basis leg and never a sampling candidate.
+    True when the perp lives on a dex that is in neither CRYPTO_DEXES nor
+    TRADFI_DEXES (Round 47, Ruling 47-2 - structural fail-closed). A dex that
+    launched this morning is refused before anyone has heard of it; so is a
+    dex on the deliberately-refused list. No switch turns this off - admission
+    is a settings edit after a human has looked at what trades there. Such a
+    perp is never a basis leg and never a sampling candidate.
     """
-    return perp_dex(coin) in UNCLASSIFIED_DEXES
+    dex = perp_dex(coin)
+    return dex not in CRYPTO_DEXES and dex not in TRADFI_DEXES
+
+
+KNOWN_DEXES: frozenset = CRYPTO_DEXES | TRADFI_DEXES | UNCLASSIFIED_DEXES
+
+
+def unclassified_dex_names(dex_names) -> List[str]:
+    """
+    Dex names from a live perpDexs payload that no settings set knows about,
+    sorted (Round 47 drift detector). Empty and None names are ignored - the
+    payload's first entry is the main dex, reported as null.
+    """
+    novel = set()
+    for name in dex_names or ():
+        if not name:
+            continue
+        text = str(name).strip().lower()
+        if text and text not in KNOWN_DEXES:
+            novel.add(text)
+    return sorted(novel)
 
 
 def is_synthetic_tradfi(coin: str, allow_synthetic_tradfi: Optional[bool] = None) -> bool:

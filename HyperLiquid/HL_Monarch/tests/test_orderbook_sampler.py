@@ -144,6 +144,25 @@ def test_the_latest_spread_per_coin_within_a_day_feeds_candidate_ranking(repo):
     assert repo.get_latest_orderbook_spreads(within_hours=24.0, now_ms=T0 + 25 * H) == {}   # a day old is history
 
 
+def test_one_candidate_slot_per_underlying_across_dexes():
+    """
+    Round 47 (Ruling 47-1). BTC and para:BTC are one underlying: the harvester
+    refuses the second position, so sampling both spends a slot. The best-ranked
+    listing keeps it, and a held position's base is skipped outright.
+    """
+    universe = {"UBTC", "UETH", "USOL"}
+    snapshots = [snap("BTC", 0.001), snap("para:BTC", 0.002), snap("ETH", 0.0015), snap("SOL", 0.0005)]
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe) == ["para:BTC", "ETH", "SOL"]
+    # A measured spread can flip which listing wins. These rates are 876% / 1752% APR, so it takes a
+    # 1000 bps spread (10% x 2 legs x 365/7 = 1043% drag) to push para:BTC under BTC.
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe,
+                                  spreads={"para:BTC": 1000.0}) == ["ETH", "BTC", "SOL"]
+    # The cap counts underlyings, not listings, and a held base is excluded whatever its rank.
+    assert top_funding_candidates(snapshots, n=2, spot_universe=universe) == ["para:BTC", "ETH"]
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe, exclude=["BTC"]) == ["ETH", "SOL"]
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe, exclude=["xyz:ETH", ""]) == ["para:BTC", "SOL"]
+
+
 def test_candidates_under_the_liquidity_floors_are_not_worth_a_sampling_slot():
     """Cross-check 3.3: the scan rejects them before reading a spread, so sampling them measures nothing tradeable."""
     universe = {"HOT", "THIN", "DEAD", "NOOI"}
@@ -187,9 +206,11 @@ def test_the_collector_samples_held_positions_first_and_copes_without_a_harveste
     collector.basis_harvester = Harvester()
     collector._spot_universe, collector._spot_universe_at = {"HOT", "WARM", "ANSEM"}, time.time()
     snapshots = [snap("HOT", 0.002), snap("WARM", 0.001), snap("para:ANSEM", 0.0005),
-                 snap("CHIP", 0.01)]                                # highest funding, no spot token: not a candidate
+                 snap("CHIP", 0.01),                                # highest funding, no spot token: not a candidate
+                 snap("para:FARTCOIN", 0.05)]                       # Round 47: same base as a held position - skipped
     picked = collector._sample_coins(snapshots)
     assert picked[:5] == ["FARTCOIN", "xyz:SILVER", "HOT", "WARM", "para:ANSEM"]   # held, then candidates, then PUMP
+    assert "para:FARTCOIN" not in picked
     assert picked[5] == "PUMP"
     assert "CHIP" not in picked
     assert picked.count("FARTCOIN") == 1

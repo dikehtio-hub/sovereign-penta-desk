@@ -254,12 +254,20 @@ TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx", "mkts", "io", "vntl"})
 # memes (BTC, ETH, SOL, HYPE, FARTCOIN, PUMP...) beside GOLD and SILVER. It is not
 # in ACTIVE_DEXES (never polled today); if it ever is, the symbol set quarantines
 # its commodity perps and the rest resolve like any main-dex crypto.
-# Round 45 (Ruling 45-2): a dex nobody has classified is refused outright - not
-# polled, never a basis leg, never a sampling candidate - until a human looks at
-# what trades there and moves it out of this set. abcd (ABCDEx) carries one perp
-# on 2026-09-04 (abcd:USA500, no streaming OI cap) - TradFi by symbol too, so it
-# is refused twice over; it stays here until someone classifies the dex itself.
-UNCLASSIFIED_DEXES = frozenset({"abcd"})
+# Round 47 (Ruling 47-2): the dexes VERIFIED to carry crypto perps a basis trade
+# can use. main is the exchange itself; para is mixed (ANSEM, TOTAL2 beside AVGO
+# and the rates - the symbol set quarantines its TradFi names). STRUCTURAL FAIL
+# CLOSED: a perp on any dex that is in neither this set nor TRADFI_DEXES is
+# refused as unclassified, so a dex HyperLiquid launches tomorrow is refused
+# today without anyone editing anything.
+CRYPTO_DEXES = frozenset({"main", "para"})
+# Round 45 (Ruling 45-2): dexes KNOWN to exist and deliberately not admitted -
+# refused like any unclassified dex, listed here so the hourly drift detector
+# (Round 47) does not warn about them every cycle. abcd (ABCDEx) carries one perp
+# on 2026-09-04 (abcd:USA500); hyna (HyENA) is mixed crypto + GOLD/SILVER and is
+# not polled. To admit one: verify its universe, then add it to CRYPTO_DEXES or
+# TRADFI_DEXES and remove it here.
+UNCLASSIFIED_DEXES = frozenset({"abcd", "hyna"})
 SYNTHETIC_TRADFI_SYMBOLS = frozenset({
     # Ruling 42-1, as issued.
     "NVDA", "TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "COIN", "HOOD", "AVGO",

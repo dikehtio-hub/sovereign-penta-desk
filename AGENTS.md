@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+Round 47 complete: STRUCTURAL DEX FAIL-CLOSED, HOURLY DRIFT DETECTOR, ONE
+CANDIDATE SLOT PER UNDERLYING. `CRYPTO_DEXES = {main, para}`; a perp on any dex
+in neither CRYPTO_DEXES nor TRADFI_DEXES is refused as unclassified before
+anyone has heard of the dex. The hourly cycle reads perpDexs and WARNS on any
+name no settings set knows. `top_funding_candidates` keeps one slot per
+`perp_base_symbol` (best-ranked listing wins) and skips bases already held.
+hyna joins the deliberately-refused list so the detector stays quiet. 1 new
+test, 2 extended.
+
 Round 46 complete: vntl CLASSIFIED TRADFI, hyna DOCUMENTED MIXED, PRESET-AWARE
 CONFIG FALLBACK. `TRADFI_DEXES` gains vntl (Ventuals: ANTHROPIC, OPENAI, SPACEX,
 MAG7, SOY, WHEAT...), `UNCLASSIFIED_DEXES` shrinks to abcd, hyna is documented
@@ -151,7 +160,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1076 passed |
+| HL_Monarch (pytest) | 1077 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -174,6 +183,24 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 47 findings
+
+- **Fail-closed is now structural, not a list.** `is_unclassified_dex` is
+  "dex not in CRYPTO_DEXES and not in TRADFI_DEXES". UNCLASSIFIED_DEXES no
+  longer gates anything; it is the "known and deliberately refused" list the
+  drift detector consults so abcd and hyna do not warn every hour. hyna was
+  added to it for that reason (behaviour unchanged: refused either way).
+- **hyna:HYPE no longer resolves** (Round 46 pinned it resolving). Under the
+  structural rule a mixed dex that is not in CRYPTO_DEXES is refused whole;
+  admitting hyna is a one-line settings edit once someone wants it polled.
+- **Candidate dedup counts underlyings, not listings**: n=5 means five
+  distinct bases. A held position's base is excluded from candidates outright
+  (`exclude=held`) - it already has its spread series and a second listing
+  could never be opened. A measured spread can flip which listing wins.
+- Drift detector: `unclassified_dex_names(perpDexs names)`; the payload's
+  first entry is null (the main dex) and is ignored. Live today: [] (all ten
+  dexes are in some set).
 
 ## Round 46 findings
 

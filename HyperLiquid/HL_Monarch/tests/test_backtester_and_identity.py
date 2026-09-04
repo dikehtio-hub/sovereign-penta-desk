@@ -230,11 +230,15 @@ class TestSpotBacking(unittest.TestCase):
         from config.settings import ACTIVE_DEXES, TRADFI_DEXES, UNCLASSIFIED_DEXES
         from analytics.funding_arbitrage import is_unclassified_dex, is_synthetic_tradfi, spot_symbol_candidates
         from collectors.orderbook_sampler import top_funding_candidates
-        self.assertEqual(UNCLASSIFIED_DEXES, frozenset({"abcd"}))                 # Round 46: vntl -> TradFi, hyna -> mixed
-        self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint(TRADFI_DEXES))
+        from config.settings import CRYPTO_DEXES
+        self.assertEqual(CRYPTO_DEXES, frozenset({"main", "para"}))                # Round 47: the ONLY admitted crypto dexes
+        self.assertEqual(UNCLASSIFIED_DEXES, frozenset({"abcd", "hyna"}))         # known, deliberately refused
+        self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint(TRADFI_DEXES) and UNCLASSIFIED_DEXES.isdisjoint(CRYPTO_DEXES))
+        self.assertTrue(CRYPTO_DEXES.isdisjoint(TRADFI_DEXES))
         self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint({str(d).lower() for d in ACTIVE_DEXES}))
-        self.assertNotIn("hyna", {str(d).lower() for d in ACTIVE_DEXES})           # mixed, documented, not polled
-        for coin in ("abcd:BTC", "abcd:HYPE"):
+        self.assertTrue({str(d).lower() for d in ACTIVE_DEXES} <= CRYPTO_DEXES | TRADFI_DEXES)   # everything polled is classified
+        # Round 47: STRUCTURAL - a dex in neither set is refused before anyone has heard of it.
+        for coin in ("abcd:BTC", "abcd:HYPE", "novel:TOKEN", "launched_today:BTC", "hyna:HYPE"):
             self.assertTrue(is_unclassified_dex(coin), coin)
             self.assertFalse(is_synthetic_tradfi(coin), coin)                    # unclassified, not TradFi
             self.assertEqual(spot_symbol_candidates(coin), [], coin)
@@ -242,11 +246,16 @@ class TestSpotBacking(unittest.TestCase):
             self.assertIsNone(spot_symbol_for(coin, {"HYPE", "UBTC", "SPACEX"}, {"HYPE": 1e9}), coin)
         self.assertFalse(is_unclassified_dex("BTC"))
         self.assertFalse(is_unclassified_dex("para:ANSEM"))
-        # hyna is mixed like para: its crypto resolves, its commodities hit the symbol set.
-        self.assertFalse(is_unclassified_dex("hyna:HYPE"))
-        self.assertEqual(spot_symbol_candidates("hyna:HYPE"), ["UHYPE", "HYPE"])
-        self.assertEqual(spot_symbol_candidates("hyna:GOLD"), [])
+        self.assertFalse(is_unclassified_dex("xyz:GOLD"))                          # TradFi is classified, just refused elsewhere
+        # hyna is mixed like para but NOT admitted: refused structurally, while its GOLD is TradFi by symbol too.
+        self.assertTrue(is_unclassified_dex("hyna:HYPE"))
+        self.assertEqual(spot_symbol_candidates("hyna:HYPE"), [])
         self.assertTrue(is_synthetic_tradfi("hyna:GOLD"))
+        # The drift detector names only dexes NO settings set knows; null is the main dex.
+        from analytics.funding_arbitrage import unclassified_dex_names
+        self.assertEqual(unclassified_dex_names([None, "xyz", "flx", "vntl", "hyna", "km", "abcd", "cash",
+                                                 "para", "mkts", "io"]), [])
+        self.assertEqual(unclassified_dex_names([None, "NEWDEX", "xyz", "", "Other ", "newdex"]), ["newdex", "other"])
         # The scan and the sampler inherit it.
         engine = FundingArbitrageEngine(client=FakeSpotClient(["HYPE", "UBTC"]))
         res = engine.scan_funding_opportunities(

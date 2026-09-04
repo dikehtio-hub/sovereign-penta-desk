@@ -24,7 +24,7 @@ from __future__ import annotations
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
-from analytics.funding_arbitrage import FundingArbitrageEngine, spot_symbol_for
+from analytics.funding_arbitrage import FundingArbitrageEngine, perp_base_symbol, spot_symbol_for
 from analytics.liquidation_engine import LiquidationEngine
 from analytics.market_intelligence import MarketIntelligence
 from config.settings import ARB_MIN_DAY_VOLUME, ARB_MIN_NOTIONAL_OI, BASIS_HOLDING_DAYS
@@ -37,7 +37,8 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
                            min_day_volume: float = ARB_MIN_DAY_VOLUME,
                            spreads: Optional[Dict[str, float]] = None,
                            holding_days: float = BASIS_HOLDING_DAYS,
-                           spot_volumes: Optional[Dict[str, float]] = None) -> List[str]:
+                           spot_volumes: Optional[Dict[str, float]] = None,
+                           exclude: Iterable[str] = ()) -> List[str]:
     """
     The coins quoting the highest POSITIVE funding right now that the
     spot-backed harvester could actually open next (Round 37, cross-check 3.3).
@@ -75,6 +76,13 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
     with the scan: it decides WHICH spot name would hedge a coin (the most
     liquid), never whether the coin is a candidate, and this function returns
     perp coins, so it does not change the ranking.
+
+    ROUND 47 - ONE SLOT PER UNDERLYING (Ruling 47-1). Two dex listings of the
+    same base (BTC and para:BTC) are one underlying: the harvester refuses the
+    second position, so sampling both spends a slot that should be looking at
+    a different asset. The best-ranked listing keeps the slot. `exclude` names
+    coins (held positions) whose bases are skipped for the same reason - a
+    held BTC already has its spread series, and para:BTC could not be opened.
     """
     ranked: List[Tuple[float, str]] = []
     for s in snapshots or ():
@@ -105,7 +113,19 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
                 holding_period_days=holding_days, hedge_legs=2)
         ranked.append((apr, coin))
     ranked.sort(key=lambda item: (-item[0], item[1]))
-    return [coin for _, coin in ranked[: max(0, int(n))]]
+    limit = max(0, int(n))
+    excluded = {perp_base_symbol(str(c)).upper() for c in (exclude or ()) if c}
+    out: List[str] = []
+    seen: set = set()
+    for _, coin in ranked:
+        if len(out) >= limit:
+            break
+        base = perp_base_symbol(coin).upper()
+        if base in seen or base in excluded:
+            continue
+        seen.add(base)
+        out.append(coin)
+    return out
 
 
 def select_sample_coins(core: Sequence[str], rotated: Iterable[str], cap: int,
