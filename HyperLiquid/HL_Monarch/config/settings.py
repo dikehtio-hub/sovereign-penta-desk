@@ -222,9 +222,10 @@ ARB_SPREAD_CHECK_LIMIT = 8         # max live l2Book checks per direction (weigh
 # entry but no pair at all - while their HIP-3 perps trade tens of millions. A
 # basis trade hedged on such a leg has no hedge. Only tokens whose best spot pair
 # clears this 24h notional floor count as spot-backed anywhere in the system
-# (46 of 499 tokens at $10k on that date; 25 at $100k). Note a $10k leg into a
-# $10k/day pair is the whole day's turnover - see the Round 39 handoff.
-SPOT_MIN_DAY_VOLUME = 10_000.0     # USD 24h notional floor for the SPOT leg's pair
+# Round 40 (Ruling 40-3) raised the floor from $10k to $50k: a $10k leg into a
+# $10k/day pair is the whole day's turnover. 32 of 499 tokens clear $50k on
+# 2026-09-04 (46 at $10k, 25 at $100k) - the liquid wrappers stay, the shells go.
+SPOT_MIN_DAY_VOLUME = 50_000.0     # USD 24h notional floor for the SPOT leg's pair (>= 5x a $10k leg)
 
 # Funding harvest modelling.
 # Hyperliquid settles perp funding hourly (verified against the API: the `funding`

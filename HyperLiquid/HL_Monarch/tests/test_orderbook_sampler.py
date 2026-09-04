@@ -100,8 +100,12 @@ def test_candidates_are_grounded_on_the_spot_universe_not_the_prefix():
     """
     snapshots = [snap("CHIP", 0.009), snap("PONS", 0.008), snap("XMR", 0.007), snap("FARTCOIN", 0.006),
                  snap("STABLE", 0.005), snap("para:ANSEM", 0.004), snap("XPL", 0.003), snap("BTC", 0.002)]
-    universe = {"STABLE", "ANSEM", "UXPL", "UBTC"}          # wrapped large caps count, per spot_symbol_for
-    assert top_funding_candidates(snapshots, n=5, spot_universe=universe) == ["STABLE", "para:ANSEM", "XPL", "BTC"]
+    universe = {"STABLE", "ANSEM", "UXPL", "UBTC", "UFART"}  # wrapped large caps and Round 40 aliases count
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe) == ["FARTCOIN", "STABLE", "para:ANSEM", "XPL", "BTC"]
+    # Round 40: FARTCOIN's spot is UFART, an alias rather than "U" + name, and it IS spot-backed in fact ($570k/day).
+    # Volumes only pick WHICH spot name would hedge; they never change membership or rank.
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe,
+                                  spot_volumes={"UFART": 1.0}) == ["FARTCOIN", "STABLE", "para:ANSEM", "XPL", "BTC"]
     # An EMPTY universe is a failed lookup: nothing can be called spot-backed, so nothing is sampled as a candidate.
     assert top_funding_candidates(snapshots, n=5, spot_universe=set()) == []
     # The prefix rule survives only as the no-universe fallback.
@@ -215,14 +219,20 @@ def test_the_spot_universe_is_cached_refreshed_and_never_guessed(monkeypatch):
                 raise answer
             return answer
 
+        def get_spot_volumes(self, refresh=False):
+            return {"ANSEM": 1_515.0, "UANSEM": 927_818.0}       # Round 40: cached alongside, for the liquid hedge
+
     collector = mc.MarketCollector.__new__(mc.MarketCollector)
     collector._spot_universe, collector._spot_universe_at, collector._spot_universe_warned = None, 0.0, False
+    collector._spot_volumes_map = None
     collector._rotated_coins = set()
     collector._arb_engine = Engine([set(), {"ANSEM"}, RuntimeError("429"), {"ANSEM", "NEW"}])
 
     assert collector._spot_universe_cached() == set()                 # lookup failed: nothing is spot-backed
     assert collector._spot_universe_warned
+    assert collector._spot_volumes_map is None
     assert collector._spot_universe_cached() == {"ANSEM"}             # retried on the next pass
+    assert collector._spot_volumes_map == {"ANSEM": 1_515.0, "UANSEM": 927_818.0}
     assert collector._spot_universe_cached() == {"ANSEM"}             # fresh: served from the cache
     assert collector._arb_engine.calls == 2
     collector._spot_universe_at -= mc.SPOT_UNIVERSE_REFRESH_SECONDS + 1

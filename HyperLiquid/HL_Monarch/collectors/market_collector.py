@@ -132,6 +132,7 @@ class MarketCollector:
         # candidates the sampler may treat as spot-backed. Fetched lazily on the
         # sampling thread and refreshed on SPOT_UNIVERSE_REFRESH_SECONDS.
         self._spot_universe: Optional[Set[str]] = None
+        self._spot_volumes_map: Optional[Dict[str, float]] = None
         self._spot_universe_at: float = 0.0
         self._spot_universe_warned = False
         self._arb_engine = None
@@ -380,10 +381,12 @@ class MarketCollector:
             if self._arb_engine is None:
                 self._arb_engine = FundingArbitrageEngine(client=self.rest_client)
             universe = set(self._arb_engine.get_spot_universe(refresh=True) or ())
+            volumes = dict(self._arb_engine.get_spot_volumes() or {})      # cached by the engine, no request
         except Exception as e:                              # noqa: BLE001 - never fail the pass
             logger.warning(f"Spot universe lookup failed: {e}")
         if universe:
             self._spot_universe, self._spot_universe_at = universe, now
+            self._spot_volumes_map = volumes
             self._spot_universe_warned = False
             return universe
         if cached:
@@ -414,7 +417,8 @@ class MarketCollector:
         if snapshots:
             candidates = top_funding_candidates(snapshots, n=ORDERBOOK_SAMPLE_CANDIDATES,
                                                 spot_universe=self._spot_universe_cached(),
-                                                spreads=spreads)
+                                                spreads=spreads,
+                                                spot_volumes=getattr(self, "_spot_volumes_map", None))
         return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
                                    cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held, candidates=candidates)
 

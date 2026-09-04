@@ -8,7 +8,7 @@ near-dead markets where the spread eats the yield and size cannot be filled. Eve
 opportunity is therefore scored against an open-interest floor, a volume floor, and
 (optionally) a live order-book spread check before being called tradeable.
 """
-from typing import List, Dict, Any, Optional, Set
+from typing import List, Dict, Any, Optional, Set, Tuple
 from analytics.market_intelligence import MarketIntelligence
 from storage.repository import MarketRepository
 from api.rest_client import HyperliquidRestClient
@@ -29,28 +29,70 @@ from config.settings import (
 # hedge exists. Both forms are checked before a market is called spot-backed.
 SPOT_WRAPPER_PREFIXES = ("U",)
 
+# Round 40 (Ruling 40-1): wrappers whose spot name is NOT "U" + the perp name.
+# Authoritative and hand-kept - never fuzzy-matched on fullName, because a wrong
+# alias hedges one asset with another. Verified on the live token list on
+# 2026-09-04: UFART "Unit Fartcoin" ($570k/day), HPENGU "Pudgy Penguins", XMR1
+# "XMR - Wagyu.xyz" ($16M/day), FXMR "Freedom XMR", NVDAX "Wrapped NVIDIA
+# xStock", TSLAX "Wrapped Tesla xStock", FXRP. EQNVDA, EQTSLA, IXRP and WXRP
+# exist with no pair today; the volume floor keeps them out until they trade.
+SPOT_SYMBOL_ALIASES: Dict[str, Tuple[str, ...]] = {
+    "FARTCOIN": ("UFART",),
+    "PENGU": ("HPENGU",),
+    "XMR": ("XMR1", "FXMR"),
+    "NVDA": ("NVDAX", "EQNVDA"),
+    "TSLA": ("TSLAX", "EQTSLA"),
+    "XRP": ("FXRP", "IXRP", "WXRP"),
+}
+
 
 def perp_base_symbol(coin: str) -> str:
     """Strip the HIP-3 dex prefix: 'xyz:GOLD' -> 'GOLD', 'BTC' -> 'BTC'."""
     return coin.split(":", 1)[1] if ":" in coin else coin
 
 
-def spot_symbol_for(coin: str, spot_universe: Set[str]) -> Optional[str]:
+def spot_symbol_candidates(coin: str) -> List[str]:
+    """
+    Every spot name that could hedge this perp, in precedence order: the bare
+    name, then the "U" wrapper, then the hand-kept aliases. Deduplicated.
+    """
+    base = perp_base_symbol(coin).upper()
+    ordered = [base] + [prefix + base for prefix in SPOT_WRAPPER_PREFIXES]
+    ordered += list(SPOT_SYMBOL_ALIASES.get(base, ()))
+    out: List[str] = []
+    for sym in ordered:
+        if sym and sym not in out:
+            out.append(sym)
+    return out
+
+
+def spot_symbol_for(coin: str, spot_universe: Set[str],
+                    spot_volumes: Optional[Dict[str, float]] = None) -> Optional[str]:
     """
     The spot ticker that could hedge this perp, or None when none exists.
 
     Without a spot leg the position is not a basis arbitrage at all - it is a
     directional bet that happens to earn funding, which is a materially different
     risk profile and must not be labelled "delta-neutral".
+
+    Round 40 (Ruling 40-2): when several candidates are in the universe and
+    `spot_volumes` (token -> 24h notional) is supplied, the MOST LIQUID one is
+    the hedge - para:ANSEM resolves to UANSEM ($928k/day), not the bare ANSEM
+    ($1.5k/day) it was first booked against. Without volumes the precedence
+    order stands: bare name, "U" wrapper, aliases.
     """
-    base = perp_base_symbol(coin)
-    if base in spot_universe:
-        return base
-    for prefix in SPOT_WRAPPER_PREFIXES:
-        wrapped = f"{prefix}{base}"
-        if wrapped in spot_universe:
-            return wrapped
-    return None
+    present = [sym for sym in spot_symbol_candidates(coin) if sym in spot_universe]
+    if not present:
+        return None
+    if spot_volumes:
+        def liquidity(sym: str):
+            try:
+                volume = float(spot_volumes.get(sym, 0.0) or 0.0)
+            except (TypeError, ValueError):
+                volume = 0.0
+            return (volume, -present.index(sym))            # ties keep the precedence order
+        return max(present, key=liquidity)
+    return present[0]
 
 
 class FundingArbitrageEngine:
@@ -149,7 +191,7 @@ class FundingArbitrageEngine:
             try:
                 for t in (self.client.get_spot_meta().get("tokens") or []):
                     if t.get("name") is not None and t.get("szDecimals") is not None:
-                        self._spot_dec_cache[t["name"]] = int(t["szDecimals"])
+                        self._spot_dec_cache[str(t["name"]).upper()] = int(t["szDecimals"])
             except Exception:
                 self._spot_dec_cache = {}
         return self._spot_dec_cache
@@ -203,6 +245,9 @@ class FundingArbitrageEngine:
         short_harvest: List[Dict[str, Any]] = []
         rejected: List[Dict[str, Any]] = []
         spot_universe = self.get_spot_universe() if classify_spot else set()
+        # The cached volume map behind that universe (None if the lookup failed):
+        # it picks the most liquid of several hedges without a second request.
+        spot_volumes = self._spot_volumes if classify_spot else None
 
         for s in snapshots:
             funding_1h = float(s.get("funding_rate") or 0.0)
@@ -250,12 +295,20 @@ class FundingArbitrageEngine:
             }
 
             if classify_spot:
-                spot = spot_symbol_for(coin, spot_universe)
+                spot = spot_symbol_for(coin, spot_universe, spot_volumes)
                 item["spot_symbol"] = spot
                 item["is_spot_backed"] = spot is not None
                 if spot:
-                    item["spot_sz_decimals"] = self._spot_sz_decimals().get(
-                        perp_base_symbol(coin))
+                    # Round 40 (Ruling 40-4): the SPOT symbol's own precision first.
+                    # This looked up the perp base name, so every wrapped hedge
+                    # (UBTC, UFART, UANSEM) came back None and the sizing guard
+                    # fell back to the perp leg alone. Zero decimals is a real
+                    # answer (whole units), so the test is "is None", not truthiness.
+                    decimals = self._spot_sz_decimals()
+                    found = decimals.get(spot.upper())
+                    if found is None:
+                        found = decimals.get(perp_base_symbol(coin).upper())
+                    item["spot_sz_decimals"] = found
 
             # Liquidity gates. An extreme rate on a market with no OI or no turnover
             # is a quoting artifact, not an edge.

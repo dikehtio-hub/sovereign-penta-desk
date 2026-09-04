@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 40 complete: SPOT ALIASES, LIQUIDITY-MAXIMISING HEDGE SELECTION & SPOT
+DECIMALS FIX. `SPOT_SYMBOL_ALIASES` (hand-kept, verified against live
+fullNames) lets `spot_symbol_for` see wrappers that are not "U" + name (UFART,
+XMR1, NVDAX...); with `spot_volumes` it picks the MOST LIQUID of several hedges
+(para:ANSEM -> UANSEM $928k/day, not ANSEM $1.5k); the spot leg's szDecimals
+is now read for the spot symbol itself (every wrapped hedge came back None
+before); SPOT_MIN_DAY_VOLUME raised to $50k (32 of 499 tokens). The paper
+state's para:ANSEM spot leg was rewritten to UANSEM while the service was
+stopped. 3 new tests.
+
 Round 39 complete: SPOT LIQUIDITY GROUNDING & NET-APR CANDIDATE RANKING. A
 spot TOKEN is no longer a spot MARKET: `get_spot_universe` keeps only tokens
 whose best spot pair turned over >= SPOT_MIN_DAY_VOLUME ($10k) in 24h, read
@@ -83,7 +93,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1055 passed |
+| HL_Monarch (pytest) | 1058 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -106,6 +116,25 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 40 findings
+
+- **Aliases verified before adoption** (live token list, 2026-09-04): UFART
+  "Unit Fartcoin" $570k/day, HPENGU "Pudgy Penguins" $180k, XMR1 "XMR -
+  Wagyu.xyz" $16M, FXMR "Freedom XMR" $10.7k, NVDAX "Wrapped NVIDIA xStock"
+  $131k, TSLAX $0, FXRP $12k; EQNVDA/EQTSLA/IXRP/WXRP exist with no pair. The
+  bare NVDA/TSLA tokens are "Wagyu.xyz" shells with no or dead pairs. Fuzzy
+  fullName matching was ruled out: a wrong alias hedges one asset with another.
+- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP base
+  name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and
+  `matched_leg_size` sized off the perp leg alone. Fixed spot-first with an
+  `is None` test - the suggested `or` would have treated 0 decimals (whole
+  units) as missing.
+- **`spot_volumes` in the sampler changes nothing about ranking** - it only
+  decides which spot name would hedge; passed through for parity with the scan.
+- Paper state: para:ANSEM `spot_symbol` ANSEM -> UANSEM, edited on disk between
+  stop and start (the running harvester would have overwritten a live edit on
+  its next hourly save). Sizing/decimals of the open position untouched.
 
 ## Round 39 findings
 

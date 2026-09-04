@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1055 passed as of Round 39)
+                        (1058 passed as of Round 40)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,19 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 40 - SPOT ALIASES, MOST-LIQUID HEDGE, SPOT DECIMALS FIX
+     analytics/funding_arbitrage.py SPOT_SYMBOL_ALIASES: FARTCOIN->UFART,
+         PENGU->HPENGU, XMR->XMR1/FXMR, NVDA->NVDAX/EQNVDA, TSLA->TSLAX/EQTSLA,
+         XRP->FXRP/IXRP/WXRP. Hand-kept; verify a new alias's fullName on the live
+         token list before adding it - never fuzzy-match.
+     spot_symbol_for(coin, spot_universe, spot_volumes=None): candidates are the
+         bare name, "U"+name, then aliases; with volumes the MOST LIQUID present
+         wins (ties keep that precedence). spot_symbol_candidates(coin) lists them.
+     SPOT_MIN_DAY_VOLUME = 50_000.0 (was 10k). 32 of 499 tokens qualify.
+     Spot szDecimals now read for the spot symbol itself (wrapped hedges were None).
+     Paper state: para:ANSEM hedges UANSEM. To edit basis_paper_state.json by
+         hand, STOP the service first - the harvester rewrites it every hour.
 
      ROUND 39 - SPOT LIQUIDITY GROUNDING, NET-APR CANDIDATE RANKING
      FundingArbitrageEngine.get_spot_universe(min_spot_volume=SPOT_MIN_DAY_VOLUME)

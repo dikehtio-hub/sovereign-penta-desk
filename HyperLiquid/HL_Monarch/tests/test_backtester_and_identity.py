@@ -29,13 +29,15 @@ H = 3_600_000  # one hour in ms
 # --------------------------------------------------------------------------
 
 class FakeSpotClient:
-    def __init__(self, tokens, spreads=None, volumes=None):
+    def __init__(self, tokens, spreads=None, volumes=None, decimals=None):
         self.tokens = tokens
         self.spreads = spreads or {}
         self.volumes = volumes or {}            # token -> 24h pair notional; unlisted tokens are liquid
+        self.decimals = decimals or {}          # token -> szDecimals; unlisted tokens carry none
 
     def get_spot_meta(self):
-        return {"tokens": [{"name": t} for t in self.tokens]}
+        return {"tokens": [({"name": t, "szDecimals": self.decimals[t]} if t in self.decimals else {"name": t})
+                           for t in self.tokens]}
 
     def get_spot_meta_and_asset_ctxs(self):
         """Live shape (Round 39): pair token refs are token INDEX fields, and the
@@ -139,6 +141,44 @@ class TestSpotBacking(unittest.TestCase):
         self.assertFalse(by_coin["xyz:TSLA"]["is_spot_backed"])
         self.assertEqual(by_coin["xyz:TSLA"]["trade_type"], "DIRECTIONAL_FUNDING")
         self.assertTrue(by_coin["HYPE"]["is_spot_backed"])
+
+    def test_aliases_find_wrappers_the_prefix_rule_cannot(self):
+        """Round 40 (Ruling 40-1). FARTCOIN's liquid spot is UFART and XMR's is XMR1 - neither is 'U' + name."""
+        from analytics.funding_arbitrage import SPOT_SYMBOL_ALIASES, spot_symbol_candidates
+        self.assertEqual(spot_symbol_for("FARTCOIN", {"UFART"}), "UFART")
+        self.assertEqual(spot_symbol_for("XMR", {"XMR1", "FXMR"}), "XMR1")          # table order without volumes
+        self.assertEqual(spot_symbol_for("xyz:NVDA", {"NVDAX"}), "NVDAX")
+        self.assertIsNone(spot_symbol_for("FARTCOIN", {"HYPE"}))                     # an alias not listed is no hedge
+        self.assertEqual(spot_symbol_candidates("XMR"), ["XMR", "UXMR", "XMR1", "FXMR"])
+        for base, aliases in SPOT_SYMBOL_ALIASES.items():
+            for alias in aliases:
+                self.assertEqual(spot_symbol_for(base, {alias}), alias)
+
+    def test_the_most_liquid_hedge_wins_when_several_exist(self):
+        """Round 40 (Ruling 40-2). para:ANSEM was booked against ANSEM ($1.5k/day) while UANSEM did $928k."""
+        universe = {"ANSEM", "UANSEM"}
+        self.assertEqual(spot_symbol_for("para:ANSEM", universe), "ANSEM")            # precedence without volumes
+        self.assertEqual(spot_symbol_for("para:ANSEM", universe, {"ANSEM": 1_515.0, "UANSEM": 927_818.0}), "UANSEM")
+        wrappers = {"XMR1", "FXMR"}
+        self.assertEqual(spot_symbol_for("XMR", wrappers, {"XMR1": 15_995_011.0, "FXMR": 10_743.0}), "XMR1")
+        self.assertEqual(spot_symbol_for("XMR", wrappers, {"XMR1": 1.0, "FXMR": 2.0}), "FXMR")
+        self.assertEqual(spot_symbol_for("XMR", wrappers, {}), "XMR1")                # no volumes: precedence
+        self.assertEqual(spot_symbol_for("XMR", wrappers, {"XMR1": 5.0, "FXMR": 5.0}), "XMR1")       # tie: precedence
+        self.assertEqual(spot_symbol_for("XMR", wrappers, {"XMR1": "junk", "FXMR": 5.0}), "FXMR")    # junk counts as 0
+
+    def test_the_scan_hedges_with_the_liquid_wrapper_and_its_own_decimals(self):
+        """Ruling 40-4: spot_sz_decimals looked up the perp base name, so every wrapped hedge came back None."""
+        client = FakeSpotClient(["ANSEM", "UANSEM", "UBTC"],
+                                volumes={"ANSEM": 60_000.0, "UANSEM": 927_818.0},
+                                decimals={"ANSEM": 1, "UANSEM": 0, "UBTC": 5})
+        engine = FundingArbitrageEngine(client=client)
+        res = engine.scan_funding_opportunities(
+            min_apr_pct=10.0, snapshots=[_snap("para:ANSEM", 0.001), _snap("BTC", 0.001)])
+        by_coin = {i["coin"]: i for i in res["short_harvest"]}
+        self.assertEqual(by_coin["para:ANSEM"]["spot_symbol"], "UANSEM")
+        self.assertEqual(by_coin["para:ANSEM"]["spot_sz_decimals"], 0)              # zero is an answer, not a miss
+        self.assertEqual(by_coin["BTC"]["spot_symbol"], "UBTC")
+        self.assertEqual(by_coin["BTC"]["spot_sz_decimals"], 5)
 
     def test_a_token_with_no_pair_at_all_is_a_shell(self):
         """COIN and NVDA have a token entry and no pair - the payload's other trap,

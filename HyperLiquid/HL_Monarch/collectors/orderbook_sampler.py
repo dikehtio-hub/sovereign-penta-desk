@@ -36,7 +36,8 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
                            min_notional_oi: float = ARB_MIN_NOTIONAL_OI,
                            min_day_volume: float = ARB_MIN_DAY_VOLUME,
                            spreads: Optional[Dict[str, float]] = None,
-                           holding_days: float = BASIS_HOLDING_DAYS) -> List[str]:
+                           holding_days: float = BASIS_HOLDING_DAYS,
+                           spot_volumes: Optional[Dict[str, float]] = None) -> List[str]:
     """
     The coins quoting the highest POSITIVE funding right now that the
     spot-backed harvester could actually open next (Round 37, cross-check 3.3).
@@ -69,6 +70,11 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
     coin behind every measured one would leave a new hot market unsampled for as
     long as five measured ones stayed positive, which defeats sampling-before-
     entry (the reason candidates exist).
+
+    `spot_volumes` (Round 40) is passed through to `spot_symbol_for` for parity
+    with the scan: it decides WHICH spot name would hedge a coin (the most
+    liquid), never whether the coin is a candidate, and this function returns
+    perp coins, so it does not change the ranking.
     """
     ranked: List[Tuple[float, str]] = []
     for s in snapshots or ():
@@ -79,7 +85,7 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
             continue
         if spot_backed_only:
             if spot_universe is not None:
-                if spot_symbol_for(coin, spot_universe) is None:
+                if spot_symbol_for(coin, spot_universe, spot_volumes) is None:
                     continue
             elif ":" in coin:
                 continue
