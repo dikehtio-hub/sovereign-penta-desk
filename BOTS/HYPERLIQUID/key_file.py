@@ -1,0 +1,3 @@
+#hyperliquid key
+
+key = 0xD78A1bF07F211f11B08Cc48C4F51D3BE9d2CeeA8

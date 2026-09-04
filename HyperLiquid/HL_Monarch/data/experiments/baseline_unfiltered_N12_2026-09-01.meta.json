@@ -1,0 +1,19 @@
+{
+  "experiment": "baseline_unfiltered",
+  "archived_utc": "2026-09-01T04:39:40.619907+00:00",
+  "status": "TERMINATED EARLY at N=12 of a pre-registered N=50",
+  "why_archived": "Round 15 resets the paper account to test a trend/ATR filter. The pre-registration fixed on 2026-08-31 committed to running to N=50 closed trades with no mid-flight parameter changes. Stopping at N=12 and overwriting would destroy the only unfiltered control we have, and leave the new configuration with nothing to be measured against.",
+  "closed_trades": 12,
+  "wins": 3,
+  "losses": 9,
+  "win_rate_pct": 25.0,
+  "profit_factor": 0.123,
+  "net_pnl": -536.74,
+  "gross_pnl": -482.76,
+  "fees_paid": 53.98,
+  "geometry": "static 0.50% offset / 0.65% TP / 0.65% SL, no regime filter",
+  "rotation": "volume-only, 35 slots (selected >$5M OI exclusively -> exotic tier never fired)",
+  "key_finding": "Loss was GROSS (-$536.74 net of which only $53.98 was fees). The entries were wrong, not the cost model. Every fill was the $10k major tier.",
+  "caveat": "N=12 is far below the N>=30 the acceptance bar requires. This is a directional signal, NOT a verdict. It cannot reject the strategy at any conventional confidence level.",
+  "note_on_fields": "gross_profit/gross_loss in the state file are net-of-fee per-trade buckets; profit_factor is therefore a net ratio."
+}

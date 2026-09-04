@@ -1,0 +1,132 @@
+v1.1-q1-live
+2026-09-03
+
+*** FROZEN FOR Q1 LIVE DEPLOYMENT ***
+
+  1,700 tests, all offline (388 Tax_Reserve_Agent + 237 Polymarket_Monarch
+                           + 904 HL_Monarch + 171 quant_trading_lab)
+  Core ledger baseline     lot_engine.py   a1954770  unchanged since v1.0
+                           database/db.py  d2ffeac6  unchanged since v1.0
+                           tax_calculator  0dd81ed3  CHANGED, see below
+
+  THE LEDGER FREEZE WAS BROKEN, DELIBERATELY, TWICE - AND ONCE UNRECORDED.
+  tax_calculator.py left 665974f0 when Round 21 added the IRC 61 ordinary-income
+  query, and this manifest was not updated to say so. A freeze whose recorded
+  baseline is stale cannot detect the next change, which is the entire point of
+  recording it, so the hash above is now the live one and any future divergence
+  is real. The second change is the escrow fix described under ROUND 24.
+  Re-verify with:
+    python -c "import hashlib;print(hashlib.md5(open(
+      'Tax_Reserve_Agent/engine/tax_calculator.py','rb').read()).hexdigest()[:8])"
+  Transports verified live Polygon RPC, Gamma, CLOB, Data API, fee schedules
+
+VERIFIED AGAINST LIVE DATA
+  chain-sync        85 CTF+CLOB transactions from a real wallet, unique keys
+  resolve-markets   binary, 3-outcome, and fractional (1/3 each) settlements
+  harvest           real CLOB midpoint from a cold cache
+  reorg guard       exactly 64 blocks behind head on every configured endpoint
+  fee schedules     300 open markets: politics 4%, sports 3%, economics 5%,
+                    crypto 7%; 295 of 300 have feesEnabled
+
+OPERATING THE FREEZE
+  Schedule `python -m Tax_Reserve_Agent.main health` (exit 1 = review needed).
+  It fires on an inverted 40-trade category expectancy or an escrow ratio
+  above 15% of liquid cash.
+
+DEFAULTS THAT LOOK CONSERVATIVE BY ACCIDENT AND ARE NOT
+  synchronous=FULL           durability over speed on a tax ledger
+  ledger fee_rate 0          a guessed number in a tax record is a fabrication
+  filter fee 2% assumed      a decision aid may assume; a record may not
+  empirical sizing tightens  a statistic does not raise a limit a human set
+  break-even fails SAFE      an unreachable agent must not disable the filter
+  config errors fail CLOSED  but outages still fail open - see tax_gate.py
+  fee curve = 2p(1-p)        the more conservative of the two candidate shapes
+  round trip charges 2 legs  unless a strategy declares holds_to_resolution
+  rebate NOT applied         it is conditional on maker behaviour we do not model
+
+FEE MODEL VALIDATED ON CHAIN (2026-09-03)
+  Polygon tx 0x904ac954...99b121, CTFExchangeV2, block 93120661.
+  Independently decoded and reconciled by both agents:
+    taker leg   20.83 sh @ $0.495199, notional $10.3150, fee $0.260350
+    actual      2.5240%
+    2p(1-p)x5%  2.4998%     delta +2.42 bps
+    min(p,1-p)  2.4760%     delta +4.80 bps  <- the curve we rejected, 2x worse
+  Implied exact rate 5.048% against a published 5.000%, so a residual remains -
+  the shape is confirmed, the constant is within half a basis point of spec.
+
+  SECOND CONFIRMATION, unclaimed but present in the same transaction: the two
+  MAKER legs in that tx paid exactly zero fee. That is direct evidence for
+  takerOnly:true, which had been an untested assumption behind the whole
+  holds_to_resolution split.
+
+STILL AN ASSUMPTION
+  The two-leg default. A strategy that EXITS AS A MAKER pays nothing on the way
+  out, so its true hurdle is the one-leg figure. We charge two legs unless a
+  strategy sets holds_to_resolution, which over-states the hurdle for any
+  liquidity-providing exit. Conservative, but not measured.
+
+ROUND 24 AUDIT - ORDINARY INCOME WAS REPORTED BUT NEVER RESERVED
+  `calculate_tax_summary` computed `net_ordinary_income` and returned it for the
+  Obsidian card, then built `tax_escrow_reserve` from short- and long-term
+  capital gains ONLY. Funding accruals are IRC 61 ordinary income and the tax is
+  really owed, so a basis harvester earning funding all year had its entire tax
+  bill handed back to it as deployable bankroll. Measured on a probe ledger:
+  $5,000 of funding income produced $0.00 of escrow and $9,965 of "safe"
+  bankroll against $1,785 genuinely owed.
+
+  Now escrowed at the composite ordinary rate, floored at zero, and broken out
+  as escrow_short_term / escrow_long_term / escrow_ordinary so the total is
+  auditable. Capital losses do NOT offset it: IRC 1211 caps that at $3,000/yr
+  for an individual and applying it would move the reserve DOWN on an
+  assumption.
+
+ROUND 25 - SECTION 1256 60/40 IS NOW APPLIED (OPERATOR-AUTHORISED)
+  Futures P&L is carved OUT of the short/long term buckets and escrowed at
+  0.60*lt_rate + 0.40*st_rate. With the configured rates that is 26.0%, versus
+  35% before - $900 released per $10,000 of futures gains.
+
+  This LOWERS the reserve, so it was held back in Round 24 and applied only on
+  an explicit instruction. Three guards, all tested:
+    - futures are removed from st_net/lt_net, so they are not taxed twice;
+    - a net 1256 LOSS reserves nothing and releases nothing (it carries back
+      three years against prior 1256 gains - a filing election, not cash today);
+    - a futures loss does not offset a crypto gain.
+
+  26.0%, NOT the 27.2% quoted in the Round 25 brief. The difference is that
+  `lt_rate` carries no safety_buffer_pct while `st_rate` does; 27.2% assumes a
+  buffered LT leg. That asymmetry predates 1256 and was NOT changed here,
+  because doing so would silently re-rate every long-term gain in the ledger.
+  Decide whether the buffer belongs on lt_rate, then this follows.
+
+STILL NOT MODELLED - SECTION 1256 YEAR-END MARK-TO-MARKET
+  Open 1256 positions on Dec 31 are deemed sold at fair value and the gain is
+  taxable with NO closing trade to trigger it. Nothing models this, and unlike
+  the 60/40 split it UNDER-reserves: carry open CME contracts across a year end
+  and the escrow will not know about the gain. Needs a year-end position
+  snapshot, which the ledger does not currently take.
+
+SIGN-OFF (2026-09-03) - WHAT IS CERTIFIED, AND WHAT IS NOT
+  CERTIFIED: 1,700 offline tests, 0 failures, across four desks. Ledger hashes
+  recorded above. Every defect found in Rounds 24-25 is fixed and covered.
+
+  NOT CERTIFIED, and no test can certify it: this codebase has never been
+  reconciled against a live fill. Round 24 found four silent bugs in code that
+  had passed review and a full suite; Round 25 found two more in Round 24's own
+  fixes. Both rounds found them by RUNNING things - against live endpoints, or
+  against a probe ledger - never by reading. A green suite means the known
+  failures are covered, not that the ecosystem is correct.
+
+  THREE OPEN OPERATOR DECISIONS, none of which are code defects:
+    1. safety_buffer_pct is on st_rate but not lt_rate. This is why 1256 blends
+       to 26.0% and not 27.2%. Unresolved on purpose - it re-rates every
+       long-term gain in the ledger, so it is a decision, not a fix.
+    2. 1256 year-end mark-to-market is not modelled and UNDER-reserves. Only
+       matters if CME contracts are held across Dec 31. If they will be, this
+       needs building BEFORE year end.
+    3. If the basis harvester ever placed a live spot leg before Round 24, that
+       fill may be on the wrong market. Reconcile actual fills before trusting
+       any historical P&L from it.
+
+READ BEFORE CHANGING ANYTHING
+  Tax_Reserve_Agent/AGENTS.md -> "Decisions worth re-litigating" and
+  "Next / open questions".

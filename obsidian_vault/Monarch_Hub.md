@@ -1,0 +1,62 @@
+---
+title: Monarch Intelligence Hub & Executive Command Center
+tags:
+  - monarch
+  - hub
+  - executive-cockpit
+  - dashboard
+last_synced: "2026-09-03 04:16:30 UTC"
+---
+
+# 👑 Monarch Intelligence Hub & Executive Command Center
+
+> [!INFO] **Vault Index**
+> - **Last Refreshed**: `2026-09-03 04:16:30 UTC`
+> - **Suites In This Vault**: `4` of 4
+> - **Vault Root**: `C:\Users\ixis1\Desktop\DEV\obsidian_vault`
+
+> [!TIP] **Both suites share this vault**
+> Wikilinks resolve across suites, so a wallet seen on Hyperliquid and a trader
+> seen on Polymarket can be linked to each other by hand, and Obsidian's graph
+> view shows both intelligence networks as one connected graph.
+
+---
+
+## 🎛️ Command Desks & Intelligence Suites
+
+| Command Desk / Suite | Domain | Covers | Status / Notes |
+| :--- | :--- | :--- | :---: |
+| [[Bot_Control|🎮 Bot Control & Activation Deck]] | Operations / Services | Background daemon telemetry, Windows 1-click launchers, Killswitch | `Active Cockpit` |
+| [[Bot_Config|⚙️ Bot Configuration & Risk Controller]] | Risk & Sizing | Hot-reloadable YAML frontmatter, presets (Conservative/Balanced/Aggressive) | `Live Config` |
+| [[Trading_Terminal|📈 Trading Terminal & 50-Trade Hurdle]] | Execution Telemetry | Paper account equity, active basis positions, resting limits, 50-trade hurdle | `Telemetry` |
+| [[HyperLiquid_Monarch|👑 HyperLiquid Monarch]] | Perp DEX / HIP-3 TradFi | Liquidations, funding arbitrage, whale portfolios, danger zone | `74` whale notes |
+| [[Polymarket_Monarch|👑 Polymarket Monarch]] | Prediction markets | Sharp-trader PnL, whale fills, macro sentiment, consensus radar | `41` trader notes |
+| [[Quant_Trading_Lab|⚡ Quant Trading Lab]] | CME Futures / Microstructure | /NQ, /ES, /GC, /CL, 9 Strategy Stacks, ICT Killzones, Risk Sentinel | `Active Desk` |
+| [[Cross_Market_Titans|👑 Cross-Market Titans]] | Multi-Venue Intelligence | Whale entity resolution, logarithmic conviction score, macro co-positioning | `Active Intelligence` |
+
+---
+
+## ⚡ Quick Launcher Deck
+
+| Quick Action | Target Module | Shortcut |
+| :--- | :--- | :---: |
+| 🎮 **Bot Operations** | Service management, daemon PIDs, 1-click execution | [[Bot_Control|Open Bot Control Deck]] |
+| ⚙️ **Risk Configuration** | Capital allocation, funding rate floors, dynamic presets | [[Bot_Config|Open Risk Controller]] |
+| 📈 **Trading Terminal** | Paper balance, active basis pairs, 50-trade hurdle validation | [[Trading_Terminal|Open Trading Terminal]] |
+| 🏛 **HyperLiquid Desk** | Spot-backed basis arb, liquidation waterfall, whale CRM | [[HyperLiquid_Monarch|Open HL Dashboard]] |
+| 🌐 **Polymarket Desk** | Sharp trader PnL, multi-sharp consensus, macro sentiment | [[Polymarket_Monarch|Open Polymarket Desk]] |
+| ⚡ **CME Futures Desk** | /NQ, /ES, /GC, /CL, 9 Strategy Stacks, Killzones | [[Quant_Trading_Lab|Open Quant Lab Desk]] |
+| 👑 **Cross-Market Titans** | Multi-venue entity resolution, macro co-positioning | [[Cross_Market_Titans|Open Titans Desk]] |
+
+---
+
+## 🔗 Connected Ecosystem Topology
+
+Both suites track **wallet addresses** as primary entities, backed by local SQLite databases (`hyperliquid_data.db` and `polymarket_whales.db`).
+- **HyperLiquid**: Discovers whales from live perp fills (>= $25k) and records on-chain portfolio equity and liquidation margin stress.
+- **Polymarket**: Discovers sharp traders from prediction-market fills and tracks 7-day realized/unrealized PnL and consensus convergence.
+- **Quant Trading Lab**: Tracks CME Futures microstructure (/NQ, /ES, /GC, /CL), 9 Strategy Stacks, and real-time ICT Killzone session clocks.
+- **Cross-Market Titans**: An address appearing in both venues is an institutional actor operating across perps and prediction markets.
+
+---
+*Generated automatically by Monarch Intelligence Exporters.*

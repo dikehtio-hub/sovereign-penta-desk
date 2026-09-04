@@ -1,0 +1,223 @@
+//@version=5
+indicator("OP Hull Suite Ribbon Indicator Pro [Moon Dev]", shorttitle="OP-HULL-IND-PRO", overlay=true)
+
+// =============================================================================
+// 🌙 MOON DEV QUANT LAB - INDICATOR #1: OP HULL SUITE RIBBON PRO
+// =============================================================================
+
+// --- 1. ASSET PRESETS ---
+grp_preset    = "=== 1. Mode & Length Configuration ==="
+preset_choice = input.string("Custom", "Preset Profile", options=["Custom", "Solana (SOL-USD 1H/4H)", "Nasdaq (/NQ Futures 15m/1H)", "Bitcoin (BTC-USD 1H/4H)", "Ethereum (ETH-USD 1H)"], group=grp_preset)
+hull_type     = input.string("THMA", "Hull Type", options=["HMA", "EHMA", "THMA"], group=grp_preset)
+src           = input.source(close, "Source Price", group=grp_preset)
+base_length   = input.int(21, "Hull Base Length", minval=2, maxval=500, group=grp_preset)
+length_mult   = input.float(1.0, "Length Multiplier", minval=0.1, step=0.1, group=grp_preset)
+hull_shift    = input.int(2, "Ribbon Offset (Shift)", minval=1, maxval=20, group=grp_preset)
+
+// --- 2. MULTI-TIMEFRAME (MTF) CONFLUENCE ---
+grp_mtf            = "=== 2. Multi-Timeframe (MTF) Confluence ==="
+use_htf_confluence = input.bool(false, "Enable MTF Ribbon Direction Filter", group=grp_mtf)
+htf_res            = input.timeframe("240", "Higher Timeframe Resolution", group=grp_mtf)
+
+// --- 3. TREND REGIME & CONVICTION FILTERS ---
+grp_filter        = "=== 3. Filters ==="
+use_ema_filter    = input.bool(true, "Enable 200 EMA Macro Trend Filter", group=grp_filter)
+ema_filter_len    = input.int(200, "Macro EMA Length", minval=10, group=grp_filter)
+use_weight_filter = input.bool(true, "Enable Swing Weight Conviction Filter", group=grp_filter)
+weight_threshold  = input.float(20.0, "Weight Threshold (Conviction)", minval=0.0, step=5.0, group=grp_filter)
+
+// --- 4. ADX & VOLUME FLOW (CMF) ---
+grp_expand     = "=== 4. ADX & Volume Filters ==="
+use_adx_filter = input.bool(true, "Enable ADX Trend Expansion Filter", group=grp_expand)
+adx_len        = input.int(14, "ADX Period", minval=2, group=grp_expand)
+adx_threshold  = input.float(18.0, "Minimum ADX Level", minval=5.0, step=1.0, group=grp_expand)
+use_cmf_filter = input.bool(false, "Enable Chaikin Money Flow (CMF) Filter", group=grp_expand)
+cmf_period     = input.int(20, "CMF Period", minval=5, group=grp_expand)
+
+// --- 5. RISK LEVELS ---
+grp_risk     = "=== 5. Risk Levels ==="
+atr_period   = input.int(14, "ATR Period", minval=1, group=grp_risk)
+sl_atr_mult  = input.float(3.5, "Stop Loss (x ATR)", minval=0.5, step=0.5, group=grp_risk)
+tp1_atr_mult = input.float(2.0, "TP1 Target (x ATR)", minval=0.5, step=0.5, group=grp_risk)
+
+// --- 6. VISUAL & DASHBOARD ---
+grp_visual      = "=== 6. Visual Styling ==="
+show_ribbon     = input.bool(true, "Display Ribbon Band Fill", group=grp_visual)
+color_candles   = input.bool(true, "Color Chart Candles by Trend", group=grp_visual)
+show_signals    = input.bool(true, "Plot Buy/Sell Entry Signals", group=grp_visual)
+show_sltp_lines = input.bool(true, "Plot Signal SL/TP Projection Levels", group=grp_visual)
+show_dashboard  = input.bool(true, "Display HUD Dashboard", group=grp_visual)
+dashboard_pos   = input.string("Top Right", "Dashboard Position", options=["Top Right", "Bottom Right", "Top Left", "Bottom Left"], group=grp_visual)
+
+// Webhook Configuration
+grp_webhook    = "=== 7. Webhook Config ==="
+bot_auth_token = input.string("MOONDEV_SECRET_TOKEN", "Bot Auth Token", group=grp_webhook)
+
+// =============================================================================
+// PRESETS
+// =============================================================================
+
+var int active_length = base_length
+var float active_weight_thresh = 20.0
+
+if preset_choice == "Solana (SOL-USD 1H/4H)"
+    active_length := 21
+    active_weight_thresh := 20.0
+else if preset_choice == "Nasdaq (/NQ Futures 15m/1H)"
+    active_length := 34
+    active_weight_thresh := 50.0
+else if preset_choice == "Bitcoin (BTC-USD 1H/4H)"
+    active_length := 34
+    active_weight_thresh := 30.0
+else if preset_choice == "Ethereum (ETH-USD 1H)"
+    active_length := 21
+    active_weight_thresh := 25.0
+else
+    active_length := base_length
+    active_weight_thresh := weight_threshold
+
+effective_length = math.max(2, int(active_length * length_mult))
+eff_weight_thresh = preset_choice == "Custom" ? weight_threshold : active_weight_thresh
+
+// =============================================================================
+// CALCULATIONS
+// =============================================================================
+
+calc_hma(_src, _len) =>
+    _half_len = math.floor(_len / 2)
+    _sqrt_len = math.round(math.sqrt(_len))
+    ta.wma(2 * ta.wma(_src, _half_len) - ta.wma(_src, _len), _sqrt_len)
+
+calc_ehma(_src, _len) =>
+    _half_len = math.floor(_len / 2)
+    _sqrt_len = math.round(math.sqrt(_len))
+    ta.ema(2 * ta.ema(_src, _half_len) - ta.ema(_src, _len), _sqrt_len)
+
+calc_thma(_src, _len) =>
+    _third_len = math.floor(_len / 3)
+    _half_len  = math.floor(_len / 2)
+    ta.wma(3 * ta.wma(_src, _third_len) - ta.wma(_src, _half_len) - ta.wma(_src, _len), _len)
+
+calc_selected_hull(_type, _src, _len) =>
+    _type == "HMA" ? calc_hma(_src, _len) : _type == "EHMA" ? calc_ehma(_src, _len) : calc_thma(_src, _len)
+
+raw_hull = calc_selected_hull(hull_type, src, effective_length)
+MHULL = raw_hull
+SHULL = raw_hull[hull_shift]
+
+is_bullish = MHULL > SHULL
+is_bearish = MHULL < SHULL
+ribbon_color = is_bullish ? color.new(#00E676, 30) : color.new(#FF1744, 30)
+ribbon_line_color = is_bullish ? #00E676 : #FF1744
+
+// Normalized Distance Oscillator & Cumulative Conviction Weight
+norm_distance = math.max(MHULL, SHULL) != 0.0 ? ((SHULL - MHULL) / math.max(MHULL, SHULL)) * 1000.0 : 0.0
+
+crossover_event  = ta.crossover(MHULL, SHULL)
+crossunder_event = ta.crossunder(MHULL, SHULL)
+cross_any        = crossover_event or crossunder_event or (MHULL == SHULL)
+
+var float cumulative_weight = 0.0
+var float previous_epoch_weight = 0.0
+
+if cross_any
+    previous_epoch_weight := cumulative_weight
+    cumulative_weight := 0.0
+else
+    cumulative_weight += norm_distance
+
+// MTF Ribbon
+htf_raw_hull = request.security(syminfo.tickerid, htf_res, calc_selected_hull(hull_type, src, effective_length))
+htf_is_bull  = htf_raw_hull > htf_raw_hull[hull_shift]
+htf_is_bear  = htf_raw_hull < htf_raw_hull[hull_shift]
+htf_ok_long  = not use_htf_confluence or htf_is_bull
+htf_ok_short = not use_htf_confluence or htf_is_bear
+
+// 200 EMA Macro Regime
+macro_ema  = ta.ema(close, ema_filter_len)
+trend_bull = not use_ema_filter or (close > macro_ema)
+trend_bear = not use_ema_filter or (close < macro_ema)
+
+// ADX
+[diplus, dimin, adx_val] = ta.dmi(adx_len, adx_len)
+adx_valid = not use_adx_filter or (adx_val >= adx_threshold)
+
+// CMF
+mfv = ((close - low) - (high - close)) / (high - low == 0 ? 1 : high - low) * volume
+cmf_val = ta.sma(mfv, cmf_period) / ta.sma(volume, cmf_period)
+cmf_ok_long  = not use_cmf_filter or (cmf_val > 0.0)
+cmf_ok_short = not use_cmf_filter or (cmf_val < 0.0)
+
+atr_val = ta.atr(atr_period)
+
+// Signals
+long_conviction  = not use_weight_filter or (previous_epoch_weight > eff_weight_thresh)
+short_conviction = not use_weight_filter or (previous_epoch_weight < -eff_weight_thresh)
+
+buy_signal  = crossover_event and long_conviction and trend_bull and adx_valid and cmf_ok_long and htf_ok_long
+sell_signal = crossunder_event and short_conviction and trend_bear and adx_valid and cmf_ok_short and htf_ok_short
+
+// Track SL/TP Levels
+var float last_entry_price = na
+var float last_sl_price    = na
+var float last_tp1_price   = na
+
+if buy_signal
+    last_entry_price := close
+    last_sl_price    := close - (atr_val * sl_atr_mult)
+    last_tp1_price   := close + (atr_val * tp1_atr_mult)
+else if sell_signal
+    last_entry_price := close
+    last_sl_price    := close + (atr_val * sl_atr_mult)
+    last_tp1_price   := close - (atr_val * tp1_atr_mult)
+
+// =============================================================================
+// PLOTS
+// =============================================================================
+
+p_mhull = plot(MHULL, "Master Hull (MHULL)", color=ribbon_line_color, linewidth=2)
+p_shull = plot(show_ribbon ? SHULL : na, "Shifted Hull (SHULL)", color=color.new(ribbon_line_color, 40), linewidth=1)
+fill(p_mhull, p_shull, title="Hull Ribbon Band", color=show_ribbon ? ribbon_color : na)
+
+barcolor(color_candles ? (is_bullish ? #00E676 : #FF1744) : na)
+
+plotshape(show_signals and buy_signal, "Buy Signal", shape.diamond, location.belowbar, color.new(#00E676, 0), size=size.small, text="PRO BUY", textcolor=color.white)
+plotshape(show_signals and sell_signal, "Sell Signal", shape.diamond, location.abovebar, color.new(#FF1744, 0), size=size.small, text="PRO SELL", textcolor=color.white)
+
+plot(show_sltp_lines ? last_entry_price : na, "Last Signal Entry", color=color.silver, style=plot.style_linebr, linewidth=1)
+plot(show_sltp_lines ? last_sl_price : na, "Stop Loss", color=#FF5252, style=plot.style_linebr, linewidth=2)
+plot(show_sltp_lines ? last_tp1_price : na, "TP1 Target", color=#00E676, style=plot.style_linebr, linewidth=2)
+
+// =============================================================================
+// ALERT CONDITIONS
+// =============================================================================
+
+alertcondition(buy_signal, title="[OP Hull Pro] Long Buy Signal", message='{"token":"{{ticker}}","action":"BUY","price":{{close}},"strategy":"OP_HULL_PRO","timestamp":"{{time}}"}')
+alertcondition(sell_signal, title="[OP Hull Pro] Short Sell Signal", message='{"token":"{{ticker}}","action":"SELL","price":{{close}},"strategy":"OP_HULL_PRO","timestamp":"{{time}}"}')
+alertcondition(crossover_event, title="[OP Hull Pro] Ribbon Bullish Flip", message='{"action":"RIBBON_BULLISH_CROSS","ticker":"{{ticker}}","price":{{close}}}')
+alertcondition(crossunder_event, title="[OP Hull Pro] Ribbon Bearish Flip", message='{"action":"RIBBON_BEARISH_CROSS","ticker":"{{ticker}}","price":{{close}}}')
+
+// =============================================================================
+// HUD DASHBOARD
+// =============================================================================
+
+var table hud = table.new(position.top_right, 6, 7, bgcolor=color.new(#131722, 15), border_color=color.new(#2A2E39, 0), border_width=1)
+
+if barstate.islast and show_dashboard
+    _table_pos = dashboard_pos == "Top Right" ? position.top_right : dashboard_pos == "Bottom Right" ? position.bottom_right : dashboard_pos == "Top Left" ? position.top_left : position.bottom_left
+    table.set_position(hud, _table_pos)
+    
+    table.cell(hud, 0, 0, "🌙 MOON DEV QUANT LAB", 0, 0, color.white, color.new(#2962FF, 20), text_size=size.small)
+    table.cell(hud, 1, 0, "OP HULL PRO", 0, 0, color.yellow, color.new(#2962FF, 20), text_size=size.small)
+    
+    table.cell(hud, 0, 1, "Mode / Length", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 1, hull_type + " (" + str.tostring(effective_length) + ")", 0, 0, color.white, text_size=size.small)
+    
+    table.cell(hud, 0, 2, "Trend / ADX", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 2, (is_bullish ? "🟢 BULL" : "🔴 BEAR") + " (" + str.tostring(adx_val, "#.#") + ")", 0, 0, adx_valid ? color.green : color.gray, text_size=size.small)
+    
+    table.cell(hud, 0, 3, "Epoch Weight", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 3, str.tostring(cumulative_weight, "#.##") + " / " + str.tostring(eff_weight_thresh), 0, 0, math.abs(cumulative_weight) >= eff_weight_thresh ? color.green : color.orange, text_size=size.small)
+    
+    table.cell(hud, 0, 4, "Current ATR(14)", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 4, str.tostring(atr_val, "#.##"), 0, 0, color.white, text_size=size.small)

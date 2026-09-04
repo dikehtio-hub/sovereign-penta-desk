@@ -1,0 +1,8 @@
+@echo off
+ECHO --- Activating KID3 environment and running the backtest... ---
+
+C:\Users\ixis1\anaconda3\envs\KID3\python.exe flag_backtest.py
+
+ECHO.
+ECHO --- Backtest has finished. Press any key to close this window. ---
+pause

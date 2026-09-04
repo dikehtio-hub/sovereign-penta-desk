@@ -1,0 +1,87 @@
+# ---------------------------------------------------------------------------
+# SECRETS. Nothing here ever enters history.
+#
+# `Keys/` holds a SCREENSHOT of a HyperLiquid API key. A committed secret is not
+# removed by deleting it later - it stays in every clone of the history - so it
+# is excluded before the first commit rather than cleaned up after one.
+# ---------------------------------------------------------------------------
+Keys/
+.env
+*.env
+!*.env.example
+!.env.example
+*.key
+*.pem
+*.p12
+*credential*
+*secret*
+!.conda/Lib/secrets.py
+
+# ---------------------------------------------------------------------------
+# THE LEDGERS. Derived, private, and rebuildable.
+#
+# `transactions` is the immutable source of truth, but these files also carry a
+# real financial position. Version-controlling them would put balances into a
+# history that may one day be pushed somewhere, and would conflict on every run.
+# Back them up; do not commit them.
+# ---------------------------------------------------------------------------
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Broker and exchange exports - trade history, account identifiers.
+data/imports/
+data/processed/
+data/failed/
+data/odds_drops/
+data/results_drops/
+*_trades.csv
+*_liquidations.csv
+binance*.csv
+binanceus*.csv
+
+# ---------------------------------------------------------------------------
+# Environments and caches. `.conda` alone is large enough to hang `du`.
+# ---------------------------------------------------------------------------
+.conda/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# ---------------------------------------------------------------------------
+# Editor, OS and agent scratch
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
+scratch/
+.agents/
+.claude/
+
+# ---------------------------------------------------------------------------
+# `quant_trading_lab` HAS ITS OWN GIT REPOSITORY.
+#
+# Staged from here it becomes a gitlink - a bare pointer - and its 171-test
+# codebase is NOT tracked by this repo at all. That is the worst outcome: it
+# looks version-controlled and is not. It already versions itself, so this repo
+# stays out of its way rather than shadowing it with an empty reference.
+# ---------------------------------------------------------------------------
+quant_trading_lab/
+
+# Obsidian vault - notes, synced separately, and noisy in a diff.
+obsidian_vault/.obsidian/

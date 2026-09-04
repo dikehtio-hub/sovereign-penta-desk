@@ -1,0 +1,81 @@
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+
+# 1. LOAD HISTORICAL DATA (e.g., from nflverse / CSV)
+# Data must have: home_team, away_team, home_score, away_score, 
+#                 closing_spread, home_epa, away_epa, date
+data = pd.read_csv("nfl_historical_data.csv")
+data['actual_margin'] = data['home_score'] - data['away_score'] # positive = home win
+data['epa_diff'] = data['home_epa_diff'] - data['away_epa_diff'] # custom metric
+
+# 2. SETUP BACKTEST PARAMETERS
+initial_bankroll = 10000.0
+bankroll = initial_bankroll
+records = []
+MIN_TRAIN_GAMES = 100  # Warmup period before placing bets
+
+# 3. EXPANDING WINDOW SIMULATION
+for i in range(MIN_TRAIN_GAMES, len(dat  
+    test_game = data.iloc[i]
+    
+    # Simple linear regression baseline: Margin ~ EPA_Diff
+    X_train = sm.add_constant(train_data['epa_diff'])
+    y_train = train_data['actual_margin']
+    model = sm.OLS(y_train, X_train).fit()
+    
+    # Predict projected margin for upcoming game
+    X_test = [1.0, test_game['epa_diff']]
+    projected_margin = model.predict(X_test)[0]
+    
+    market_spread = test_game['closing_spread'] # e.g., -3.5 (Home -3.5)
+    model_edge = projected_margin - (-market_spread) # Model margin vs Market line
+    
+    # 4. BETTING LOGIC (Trigger if edge > 1.5 points)
+    bet_placed = None
+    bet_size = 0
+    payout = 0
+    
+    if model_edge > 1.5:  # Model likes Home team against the spread
+        bet_placed = 'HOME'
+        # Standard -110 juice = 1.91 decimal odds
+        bet_size = bankroll * 0.02  # 2% flat stake or Fractional Kelly
+        
+        # Did home cover? (actual_margin + spread > 0)
+        if test_game['actual_margin'] + market_spread > 0:
+            bankroll += bet_size * (100 / 110)
+            payout = bet_size * (100 / 110)
+        elif test_game['actual_margin'] + market_spread < 0:
+            bankroll -= bet_size
+            payout = -bet_size
+            
+    elif model_edge < -1.5:  # Model likes Away team against the spread
+        bet_placed = 'AWAY'
+        bet_size = bankroll * 0.02
+        
+        # Did away cover?
+        if test_game['actual_margin'] + market_spread < 0:
+            bankroll += bet_size * (100 / 110)
+            payout = bet_size * (100 / 110)
+        elif test_game['actual_margin'] + market_spread > 0:
+            bankroll -= bet_size
+            payout = -bet_size
+            
+    if bet_placed:
+        records.append({
+            'date': test_game['date'],
+            'bet': bet_placed,
+            'edge': model_edge,
+            'payout': payout,
+            'bankroll': bankroll
+        })
+
+# 5. OUTPUT PERFORMANCE METRICS
+results = pd.DataFrame(records)
+roi = ((bankroll - initial_bankroll) / (results['bet'].count() * (initial_bankroll * 0.02))) * 100
+win_rate = (results['payout'] > 0).mean() * 100
+
+print(f"Total Bets: {len(results)}")
+print(f"Win Rate: {win_rate:.2f}% (Breakeven at -110 is 52.38%)")
+print(f"Final Bankroll: ${bankroll:,.2f}")
+print(f"ROI: {roi:.2f}%")

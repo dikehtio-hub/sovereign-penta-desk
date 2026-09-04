@@ -1,0 +1,3 @@
+timestamp,symbol,side,quantity,price,fee,tx_hash
+2026-01-10 09:00:00,SOL/USDC,BUY,10,150.00,1.50,
+2026-02-20 15:30:00,SOL/USDC,SELL,10,210.00,1.50,

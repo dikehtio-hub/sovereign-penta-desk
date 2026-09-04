@@ -1,0 +1,41 @@
+{
+  "experiment": "regime_filtered_v1",
+  "registered_utc": "2026-09-01T04:40:14.107981+00:00",
+  "control": "data/experiments/baseline_unfiltered_N12_2026-09-01.json",
+  "changes_vs_control": [
+    "EMA-50/RSI-14 trend gate on 15m buckets; blocks fades leaning into a strong trend unless RSI is stretched past 32/68",
+    "ATR-scaled geometry: offset max(0.40%, 0.50xATR), TP/SL max(0.30%, 1.0xATR), still 1:1",
+    "Dual rotation pool: 20 volume-ranked majors + 15 exotics (<$5M OI, >$100k vol)",
+    "Unknown regime BLOCKS rather than permits"
+  ],
+  "acceptance_bar": {
+    "min_closed_trades": 50,
+    "PASS": "win rate >= 54.0% AND profit factor >= 1.25",
+    "RETUNE": "win rate 48.0-54.0%",
+    "FAIL": "win rate < 48.0%",
+    "note": "Unchanged from the standing hurdle. Fixed before any data is collected."
+  },
+  "commitments": [
+    "No mid-flight parameter changes before N=50.",
+    "The control is archived, not overwritten - the two runs are comparable.",
+    "Four variables changed at once, so a PASS identifies the BUNDLE, not which component earned it. Attribution needs a follow-up ablation."
+  ],
+  "amendments": [
+    {
+      "utc": "2026-09-01T05:00:10.535537+00:00",
+      "closed_trades_at_amendment": 0,
+      "change": "ATR switched from close-to-close proxy to sampled true range (intra-bucket high/low from ~67 samples per 15m bucket).",
+      "why": "Measurement correction, not a tuning change. The close-to-close proxy understated measured true range by a median 1.59x across the watchlist. Antigravity proposed a flat 1.25x multiplier; that was rejected because 1.25 understated the real ratio in 35/35 markets and the ratio spans 1.39-1.98, so no single constant fits.",
+      "legitimacy": "Made at N=0 closed trades, so no result could have influenced it. A change after data existed would have required a fresh registration.",
+      "effect": "Targets widen; fee burden falls from ~15% of gross to ~8-11% on volatile markets. Offset floor still binds on 27/35 markets, target floor on 15/35."
+    }
+  ],
+  "known_defect_not_fixed": {
+    "issue": "Targets are sized off a 15-minute ATR bar but positions are force-closed after FADE_POSITION_MAX_HOLD_SECONDS=600s.",
+    "measured": "Median time to reach a 1.0xATR target is 1,224s. The target is reached inside the 600s window in <50% of cases in 35/35 markets (median 16.5%; BTC 3.4%; xyz:SP500 ~0%).",
+    "consequence": "Most positions will exit TIME_STOP at the mid, not at TP or SL. The 1:1 geometry is largely decorative, and the run measures a near coin-flip minus fees rather than whether the trend filter works.",
+    "retrodiction": "This also explains the archived control: 25% win rate and PF 0.123 is what a fee-laden time-stop coin flip looks like.",
+    "status": "NOT changed unilaterally - max hold is a frozen strategy parameter. Needs an explicit decision before this run can answer its own question.",
+    "suggested_fix": "FADE_POSITION_MAX_HOLD_SECONDS 600 -> ~1800, or halve the ATR target multiplier. Either requires a fresh registration."
+  }
+}

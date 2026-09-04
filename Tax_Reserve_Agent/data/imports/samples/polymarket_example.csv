@@ -1,0 +1,3 @@
+timestamp,symbol,side,quantity,price,fee,tx_hash
+2026-02-10 14:00:00,FED_RATE_CUT_SEPT_YES,BUY,2000,0.40,0,
+2026-03-01 18:00:00,FED_RATE_CUT_SEPT_YES,REDEEM,2000,1.00,0,

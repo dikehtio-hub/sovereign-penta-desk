@@ -1,0 +1,551 @@
+====================================================================================================
+                        QUANT TRADING LAB & DEV MASTER RUN GUIDE
+                  (Step-by-Step Beginner Commands & Execution Handbook)
+====================================================================================================
+
+HOW TO USE THIS FILE:
+1. Open PowerShell on Windows (press Windows Key, type "powershell", press Enter).
+2. Follow Step 0 below FIRST (navigate to the project folder).
+3. Copy and paste the exact command you want into PowerShell and press Enter.
+
+====================================================================================================
+STEP 0: THE ESSENTIAL FIRST STEP (DO THIS EVERY TIME YOU OPEN A NEW TERMINAL)
+====================================================================================================
+
+Before running ANY command for the Quant Trading Lab, you MUST navigate into the project folder:
+
+    cd C:\Users\ixis1\Desktop\DEV\quant_trading_lab
+
+Your terminal prompt will change to:
+    PS C:\Users\ixis1\Desktop\DEV\quant_trading_lab>
+
+(Note: Once you are inside `quant_trading_lab`, you do NOT need to activate an environment.
+Using `.\venv\Scripts\python.exe` directly handles all packages automatically.)
+
+
+====================================================================================================
+SECTION 1: RUNNING ALL 9 STRATEGY STACKS INDIVIDUALLY (ISOLATED BACKTESTS)
+====================================================================================================
+Run any individual stack to test its logic on real 5-minute historical market data.
+
+----------------------------------------------------------------------------------------------------
+STACK 0: Hybrid Timeline (Phase 1 Sweep + Phase 2 Silver Bullet FVG)
+----------------------------------------------------------------------------------------------------
+Trades: Micro Nasdaq (MNQ)
+Hours: 08:30 - 11:00 EST
+Command:
+    .\venv\Scripts\python.exe backtesters/test_stack0_hybrid.py --symbol MNQ --csv data/NQ_5m.csv
+
+----------------------------------------------------------------------------------------------------
+STACK 1: Auction Core (Initial Balance Breakout + VWAP/HVN Reload)
+----------------------------------------------------------------------------------------------------
+Trades: Micro Nasdaq (MNQ)
+Hours: 09:30 - 15:00 EST
+Command:
+    .\venv\Scripts\python.exe backtesters/test_stack1_auction.py --symbol MNQ --csv data/NQ_5m.csv
+
+----------------------------------------------------------------------------------------------------
+STACK 2: Liquidity Hunt (CVD Absorption at VAH/VAL + Poor High/Low Repair)
+----------------------------------------------------------------------------------------------------
+Trades: Micro Nasdaq (MNQ)
+Hours: 09:30 - 16:00 EST
+Command:
+    .\venv\Scripts\python.exe backtesters/test_stack2_liquidity.py --symbol MNQ --csv data/NQ_5m.csv
+
+----------------------------------------------------------------------------------------------------
+STACK 3: Microstructure Imbalance (Single-Print Low-Volume Node Vacuum)
+----------------------------------------------------------------------------------------------------
+Trades: Micro Nasdaq (MNQ)
+Hours: 09:30 - 15:30 EST
+Command:
+    .\venv\Scripts\python.exe backtesters/test_stack3_microstructure.py --symbol MNQ --csv data/NQ_5m.csv
+
+----------------------------------------------------------------------------------------------------
+STACK 4: Liquidity Void Suite (Velocity Void Continuation + Double Distribution Trap)
+----------------------------------------------------------------------------------------------------
+Trades: Micro Nasdaq (MNQ)
+Hours: 09:30 - 15:45 EST
+Command:
+    .\venv\Scripts\python.exe backtesters/test_stack4_void.py --symbol MNQ --csv data/NQ_5m.csv
+
+----------------------------------------------------------------------------------------------------
+STACK 5: All-Weather Turtle Trend (Macro 20-Day Donchian Breakout + ATR Trailing Stop)
+----------------------------------------------------------------------------------------------------
+Trades: Bitcoin Perpetual Swap (BTCUSDT) or Micro Gold Futures (MGC)
+Hours: 24/7 (Crypto) / 24/5 (Gold)
+Commands:
+    # Test on Bitcoin (1-Hour Data):
+    .\venv\Scripts\python.exe backtesters/test_stack5_all_weather.py --symbol BTCUSDT --csv data/BTC_PERP_1h.csv
+
+    # Test on Gold (1-Hour Data):
+    .\venv\Scripts\python.exe backtesters/test_stack5_all_weather.py --symbol MGC --csv data/GC_1h.csv
+
+----------------------------------------------------------------------------------------------------
+STACK 6: SMT Intermarket Divergence (Dual-Asset Pivot Divergence)
+----------------------------------------------------------------------------------------------------
+Trades: Correlated Pairs (MNQ vs MES, or BTC vs ETH)
+Hours: 09:30 - 16:00 EST
+Commands:
+    # Test on Equities (MNQ vs MES 5-minute):
+    .\venv\Scripts\python.exe backtesters/test_stack6_smt.py --primary-symbol MNQ --csv-primary data/NQ_5m.csv --correlated-symbol MES --csv-correlated data/ES_5m.csv
+
+    # Test on Crypto (BTC vs ETH 15-minute continuous):
+    .\venv\Scripts\python.exe backtesters/test_stack6_smt.py --primary-symbol BTCUSDT --csv-primary data/continuous/BTC_15m_continuous.csv --correlated-symbol ETHUSDT --csv-correlated data/continuous/ETH_15m_continuous.csv
+
+----------------------------------------------------------------------------------------------------
+STACK 7: Judas Swing (London / NY Session Open Opening-Range Trap)
+----------------------------------------------------------------------------------------------------
+Trades: Micro Nasdaq (MNQ)
+Hours: 08:00 - 09:30 EST (Pre-market sweep) & 13:30 - 14:30 EST
+Commands:
+    # Test on MNQ (RTH mode, single NY-open block):
+    .\venv\Scripts\python.exe backtesters/test_stack7_judas_swing.py --symbol MNQ --csv data/NQ_5m.csv
+
+    # Test on Crypto (BTCUSDT auto-selects ALL_SESSIONS -- adds an independent
+    # London block, narrowed 2026-08-29 to 02:30-04:30 EST w/ min 1.0x ATR
+    # Asian-session sweep depth required; see AGENTS.md item 114):
+    .\venv\Scripts\python.exe backtesters/test_stack7_judas_swing.py --symbol BTCUSDT --csv data/BTC_PERP_5m.csv --source-tz UTC
+
+----------------------------------------------------------------------------------------------------
+STACK 8: Optimal Trade Entry (Fractal Pivot + 62-79% Fib Retracement + FVG)
+----------------------------------------------------------------------------------------------------
+Trades: Micro Nasdaq (MNQ)
+Hours: 09:30 - 11:30 EST
+Command:
+    .\venv\Scripts\python.exe backtesters/test_stack8_ote.py --symbol MNQ --csv data/NQ_5m.csv
+
+
+====================================================================================================
+SECTION 2: RUNNING MULTIPLE STACKS TOGETHER (CONCURRENT PORTFOLIO ENGINE)
+====================================================================================================
+This simulates a real trading account managing margin, risk limits, and circuit breakers simultaneously.
+
+----------------------------------------------------------------------------------------------------
+1. RUN THE CORE 3 LIVE PORTFOLIO (Stack 0, Stack 4, Stack 5-BTC) [VERIFIED BASELINE]
+----------------------------------------------------------------------------------------------------
+Runs our top-performing, walk-forward validated 3-strategy portfolio with live circuit breakers:
+Command:
+    .\venv\Scripts\python.exe backtesters/test_portfolio_concurrent.py --tier core
+
+Expected Baseline Output (as of 2026-08-28, restored -- see below):
+    - 150 trades
+    - +$8,636.18 Net PnL
+    - $1,678.12 Max Drawdown
+    - 8.8% Peak Margin Utilization ($8,800 on $100k equity)
+    - Zero permanent circuit breaker halts
+
+Note: Stack 0 and Stack 4 briefly defaulted to trailing their stop to breakeven at +1.0R profit
+(AGENTS.md item 111), which real portfolio testing found cut into profit rather than protecting it --
+Antigravity's own live comparative backtest independently confirmed the same finding, and the feature
+was reverted the same day (item 112). The macro-news blackout gate (CPI/NFP/FOMC) tested as genuinely
+low-cost and stays ON -- that's why this number is still slightly below the original 152 trades /
++$8,845.16 baseline from before either feature existed, not a full return to it. The breakeven-trail
+mechanism itself remains fully built and available (a single class-attribute flip on Stack 0/4,
+strategies/stack0_hybrid_timeline.py and strategies/stack4_liquidity_void.py) for a future, better-
+tuned attempt -- e.g. a higher trigger than +1.0R.
+
+----------------------------------------------------------------------------------------------------
+2. RUN ALL 9 STACKS SIMULTANEOUSLY (FULL RESEARCH BENCHMARK)
+----------------------------------------------------------------------------------------------------
+Runs all 9 strategies concurrently on a single shared $100,000 risk sentinel:
+Command:
+    .\venv\Scripts\python.exe backtesters/test_portfolio_concurrent.py --tier all
+
+----------------------------------------------------------------------------------------------------
+3. SEEING RESULTS WITHOUT CIRCUIT BREAKERS (PURE STRATEGY PERFORMANCE)
+----------------------------------------------------------------------------------------------------
+There is no separate flag for this -- running either command in items 1, 2, or 3b above/below already
+prints TWO reports back-to-back in the same run: first "REAL CIRCUIT BREAKERS (matches live behavior)",
+then "CIRCUIT BREAKERS DISABLED (isolates aggregate/correlation/combined-contract caps)". Just scroll
+down in the output to see the disabled-circuit-breaker report.
+
+----------------------------------------------------------------------------------------------------
+3b. FULL-SIZE NQ/ES/CL SLEEVE AT $500K (MILESTONE 14C -- STREAMLINED, GC DROPPED)
+----------------------------------------------------------------------------------------------------
+Runs a pure full-size sleeve -- Stack 0 (P1+P2) on NQ+ES, Stack 4 on NQ+ES+CL, Stack 5 on BTCUSDT --
+sized against a $500,000 account (config/portfolio_config.yaml's account_equity_tiers: scaled_500k).
+No more MNQ/MES "core tier alongside" legs and no more Stack 4 GC leg -- both dropped in Milestone
+14C after real numbers (AGENTS.md items 106/107) showed GC trading roughly breakeven while adding
+real portfolio drag (margin, circuit-breaker-relevant losing trades, contract-cap pressure) for no
+measurable edge:
+Command:
+    .\venv\Scripts\python.exe backtesters/test_portfolio_concurrent.py --tier scaled_full
+
+Restored real result as of 2026-08-28 (item 112 -- breakeven trail reverted, news blackout stays on):
+    - 382 trades, +$58,246.34 Net PnL, hwm_halted: False, ~16.7% Peak Margin Utilization
+
+Context: Stack 0/4 briefly defaulted to trailing their stop to breakeven at +1.0R (AGENTS.md item 111)
+-- at this tier that caused a severe ~93% profit collapse (+$56,984.99 -> +$4,196.04) AND a PERMANENT
+safety halt (hwm_halted: TRUE, requires manual_resume()). Antigravity's own live comparative backtest
+independently confirmed this finding, and the feature was reverted the same day (item 112) -- this
+tier is safe to run again. The breakeven-trail mechanism itself remains fully built and available for
+a future, better-tuned attempt (see item 1's note above) -- it should not be re-enabled here without
+first re-verifying against this tier specifically, since its cost was far more severe here than at the
+smaller core tier.
+
+As always, this command prints a second report with circuit breakers disabled, isolating the
+aggregate/correlation/combined-contract caps -- see AGENTS.md items 111-112 for those numbers too, and
+for the full reasoning behind dropping GC and the MNQ/MES legs (a separate, earlier, unrelated change).
+
+----------------------------------------------------------------------------------------------------
+4. RUN THE WEBHOOK SERVER (DRY-RUN PAPER MODE, OR LIVE TRADOVATE/HYPERLIQUID)
+----------------------------------------------------------------------------------------------------
+Starts the FastAPI webhook alert server (listens on port 8000 for TradingView alerts). A real .env
+file already exists in this folder with WEBHOOK_PASSPHRASE, HMAC_SECRET, and all Tradovate/Hyperliquid
+credentials filled in -- the server will not start without those keys present.
+
+IMPORTANT -- check DRY_RUN in .env before running:
+    DRY_RUN=true   -> paper mode. Uses the in-memory MockBrokerAdapter for both Tradovate and
+                      Hyperliquid symbols (simulates 50ms fill latency, no real orders sent anywhere).
+                      This is the safe default for testing.
+    DRY_RUN=false  -> LIVE mode. Connects to the real Tradovate adapter (adapters/tradovate_adapter.py)
+                      and real Hyperliquid adapter (adapters/hyperliquid_adapter.py) using the
+                      credentials in .env, and places REAL orders on whatever account those
+                      credentials point to (demo/sim account, unless you've pointed it at a live one).
+
+Command:
+    .\venv\Scripts\python.exe main.py
+
+----------------------------------------------------------------------------------------------------
+4b. RUN THE PAPER-TRADING DAEMON (MILESTONE 14C -- REAL DEMO/TESTNET, PLUS POSITION RECONCILIATION)
+----------------------------------------------------------------------------------------------------
+Same webhook server as item 4 above (same endpoints, same port, same .env credentials) -- this script
+is the recommended way to actually paper-trade, not an alternative system. Two differences from
+running main.py directly:
+    1. Always forces DRY_RUN=false, regardless of what .env says -- "paper trading" here specifically
+       means real network calls to Tradovate's demo API and Hyperliquid's testnet (fake/demo money,
+       real broker acknowledgments), NOT main.py's in-memory MockBrokerAdapter simulation. If you just
+       want the safe, no-network simulation, use item 4 with DRY_RUN=true instead.
+    2. Adds a background check every 30 seconds that asks both brokers directly for their real account
+       equity and open positions, and compares that against what this system's own internal bookkeeping
+       expects. If they ever disagree (a missed webhook, a manual trade placed directly on the broker's
+       own platform, a bug), it's logged loudly instead of silently going unnoticed.
+Command:
+    .\venv\Scripts\python.exe scripts/run_paper_trading.py
+
+Real orders get placed against whatever account your .env's TRADOVATE_URL / HYPERLIQUID_TESTNET
+credentials point at -- confirm those are your demo/sim account before running this, not a live one.
+Stop with Ctrl+C -- same graceful shutdown (state journal flushed, brokers disconnected cleanly) as
+item 4.
+
+----------------------------------------------------------------------------------------------------
+5. TEST WEBHOOK DISPATCH (SEND A SIMULATED TRADINGVIEW SIGNAL)
+----------------------------------------------------------------------------------------------------
+Sends a test webhook payload into the running server (from item 4) to verify order routing, risk
+validation, position tracking, and take-profit exits.
+
+STEP-BY-STEP LOCAL TESTING INSTRUCTIONS:
+Step 1: Open PowerShell Window 1 and start the server (leave it running):
+    .\venv\Scripts\python.exe main.py
+
+Step 2: Open PowerShell Window 2 and send a simulated BUY signal:
+    .\venv\Scripts\python.exe -c "import requests; print(requests.post('http://127.0.0.1:8000/api/v1/webhook', json={'strategy_id':'STACK_0_HYBRID_TIMELINE','symbol':'MNQ','action':'BUY','entry_price':18500.0,'stop_loss':18450.0,'take_profit':18625.0,'passphrase':'PRO_QUANT_SECRET_KEY_CHANGE_ME'}).json())"
+    Expected Output: {'ticket_id': 'MNQ-00000001', 'risk_decision': 'routed', 'risk_amount_usd': 200.0, 'order_status': 'FILLED', 'broker_order_id': 'MOCK-00001'}
+
+Step 3: In PowerShell Window 2, send a simulated FLATTEN (Take-Profit Exit) signal:
+    .\venv\Scripts\python.exe -c "import requests; print(requests.post('http://127.0.0.1:8000/api/v1/webhook', json={'strategy_id':'STACK_0_HYBRID_TIMELINE','symbol':'MNQ','action':'FLATTEN','entry_price':18625.0,'stop_loss':18450.0,'passphrase':'PRO_QUANT_SECRET_KEY_CHANGE_ME'}).json())"
+    Expected Output: {'ticket_id': None, 'risk_decision': 'flattened 1 ticket(s)', 'risk_amount_usd': None, 'order_status': 'FILLED', 'broker_order_id': 'MOCK-00002'}
+
+Note: If you send an order outside that strategy's active session killzone window (e.g. at 1:00 AM),
+RiskSentinel will intentionally reject it with HTTP 403 ('outside configured session window(s)') to
+protect your capital.
+
+----------------------------------------------------------------------------------------------------
+6. CHECK TRADOVATE / HYPERLIQUID CONNECTIVITY (READ-ONLY -- NO ORDERS PLACED, SAFE TO RUN)
+----------------------------------------------------------------------------------------------------
+Confirms your .env credentials actually authenticate against the demo/testnet API and reads back your
+account equity. This only calls get_account_equity() -- it never places or cancels an order, so it is
+safe to copy-paste even against a real demo account.
+
+    # Tradovate:
+    .\venv\Scripts\python.exe scripts/check_broker_connectivity.py tradovate
+
+    # Hyperliquid:
+    .\venv\Scripts\python.exe scripts/check_broker_connectivity.py hyperliquid
+
+Both adapters read every credential from .env by default (TRADOVATE_* / HYPERLIQUID_* keys) -- see
+AGENTS.md items 99+ for what each adapter does and does not implement yet.
+
+----------------------------------------------------------------------------------------------------
+7. EMERGENCY PANIC FLATTEN (MILESTONE 13 -- CLOSES EVERY OPEN POSITION IMMEDIATELY)
+----------------------------------------------------------------------------------------------------
+Use this if something is going wrong and you need to close EVERY open position across EVERY strategy
+and EVERY broker right now, no questions asked. It cancels every order the server still has an open
+record of, then market-flattens every strategy/symbol combination -- this bypasses all the normal risk
+checks on purpose, since being ABLE to close risk must never depend on those checks passing. Requires
+the webhook server (item 4) to already be running. Replace the passphrase the same way as item 5:
+Command:
+    .\venv\Scripts\python.exe -c "import requests; print(requests.post('http://127.0.0.1:8000/api/v1/panic_flatten', json={'passphrase':'PASTE_YOUR_WEBHOOK_PASSPHRASE_HERE'}).json())"
+
+----------------------------------------------------------------------------------------------------
+8. DISASTER RECOVERY: STATE JOURNAL & CONNECTION HEALTH MONITOR (AUTOMATIC -- NOTHING TO RUN)
+----------------------------------------------------------------------------------------------------
+Two safety nets that run automatically whenever the webhook server (item 4) is running -- there is no
+command for either, this section is here so you know they exist and where to look:
+
+    STATE JOURNAL: every open position, realized PnL, and circuit-breaker cooldown is written to
+    state\runtime_state.json after every processed signal and on every clean shutdown. If the server
+    crashes or is restarted, it reads this file back on startup and picks up exactly where it left off
+    -- open positions are not "forgotten." Override the file's location with the STATE_JOURNAL_PATH
+    environment variable if you ever need to. This folder is intentionally excluded from git (see
+    .gitignore) -- it's live runtime state, not source code.
+
+    CONNECTION HEALTH MONITOR: pings Tradovate and Hyperliquid every 10 seconds in the background. If
+    either one hasn't answered successfully for more than 30 seconds, a CRITICAL line appears in the
+    server's console output naming which broker is down. It logs again when the connection recovers.
+    Just watch the console (or wherever you're piping the server's logs) -- no separate command to run.
+
+
+====================================================================================================
+SECTION 3: RESEARCH & ADVANCED DIAGNOSTICS
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+1. RUN REGIME PERFORMANCE BREAKDOWN (MILESTONE 11)
+----------------------------------------------------------------------------------------------------
+Analyzes how each strategy performs across Trend vs Chop vs Shock market regimes:
+Command:
+    .\venv\Scripts\python.exe scripts/analyze_regime_performance.py
+
+----------------------------------------------------------------------------------------------------
+2. RUN 3-WINDOW WALK-FORWARD ROBUSTNESS ENGINE
+----------------------------------------------------------------------------------------------------
+Tests parameter stability and out-of-sample Walk-Forward Efficiency (WFE):
+Command:
+    .\venv\Scripts\python.exe scripts/run_milestone10_walkforward.py
+
+----------------------------------------------------------------------------------------------------
+3. REFRESH HISTORICAL CONTINUOUS DATASETS (YAHOO FINANCE MULTI-MONTH)
+----------------------------------------------------------------------------------------------------
+Downloads and stitches continuous contracts across 6 symbols:
+Command:
+    .\venv\Scripts\python.exe scripts/fetch_historical_continuous.py
+
+
+====================================================================================================
+SECTION 4: SYSTEM HEALTH & AUTOMATED TEST SUITE (CI VERIFICATION)
+====================================================================================================
+
+Run the automated test suite to confirm all 138 unit tests, golden master fixtures, regime throttles,
+broker adapters (mock, Tradovate, Hyperliquid), disaster recovery (state journal, panic flatten,
+connection health monitor), account equity tiers, pit-session auto-flatten, scaled circuit breakers,
+micro-equivalent contract caps, broker/position reconciliation, breakeven trail, macro news blackout,
+Track 2 institutional gates (Stack 6 SMT divergence delta, Stack 7 Asian sweep depth, Stack 8 institutional anchors),
+and portfolio regression pins are 100% passing:
+Command:
+    .\venv\Scripts\python.exe -m pytest tests/
+
+Expected Output:
+    "158 passed in ~17s"
+
+To run just the Milestone 13 disaster-recovery tests on their own:
+    .\venv\Scripts\python.exe -m pytest tests/test_state_manager.py tests/test_heartbeat.py tests/test_orchestrator_panic_flatten.py -v
+
+To run just the Milestone 14A/14B/14C full-size scaling + paper-trading tests on their own:
+    .\venv\Scripts\python.exe -m pytest tests/test_risk_sentinel_equity_tiers.py tests/test_session_clock.py tests/test_base_strategy_pit_flatten.py tests/test_portfolio_concurrent_scaled_full.py tests/test_risk_sentinel_scaled_breakers.py tests/test_risk_sentinel_micro_equivalent_caps.py tests/test_orchestrator_reconcile.py tests/test_run_paper_trading.py -v
+
+To run just the Institutional Upgrade Pack 1 (breakeven trail + macro news blackout) tests on their own:
+    .\venv\Scripts\python.exe -m pytest tests/test_strategy_breakeven_trail.py tests/test_news_filter.py -v
+
+To run just the Track 2 optimization tests (SMT divergence delta, Judas Asian sweep, OTE institutional anchor):
+    .\venv\Scripts\python.exe -m pytest tests/test_stack6_regime_gate.py tests/test_stack7_asian_sweep.py tests/test_stack8_institutional_anchor.py -v
+
+To run just the Tradovate or Hyperliquid adapter tests on their own (no real network calls made --
+both use in-process fakes, so no .env credentials are needed to run these):
+    .\venv\Scripts\python.exe -m pytest tests/test_tradovate_adapter.py -v
+    .\venv\Scripts\python.exe -m pytest tests/test_hyperliquid_adapter.py -v
+
+To test Moon Dev Quantitative API connectivity (liquidations, HIP3 candles, HLP sentiment):
+    .\venv\Scripts\python.exe -c "from adapters.moondev_adapter import MoonDevClient; c = MoonDevClient(); print(c.verify_auth()); print(c.check_liquidation_spike()); print('CL 5m candle close:', c.get_hip3_candles('CL', interval='5m', limit=1)[-1]['c'])"
+
+
+
+====================================================================================================
+SECTION 5: OTHER DEV REPOSITORIES & SPECIALIZED BOTS (IN C:\Users\ixis1\Desktop\DEV)
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+A. ARBITRAGE AGENT (Base L2 Uniswap v3 vs Aerodrome DEX)
+----------------------------------------------------------------------------------------------------
+Folder: C:\Users\ixis1\Desktop\DEV\AGENTS\Arbitrage Agent\
+Directions:
+    1. Navigate:  cd "C:\Users\ixis1\Desktop\DEV\AGENTS\Arbitrage Agent"
+    2. Paper Run: python agent.py --mode paper --interval 2.0
+    3. Test Run:  python -m pytest test_agent.py -v
+
+----------------------------------------------------------------------------------------------------
+B. FUNDING ARBITRAGE AGENT (Cross-Exchange Crypto Perp Funding Gap)
+----------------------------------------------------------------------------------------------------
+Folder: C:\Users\ixis1\Desktop\DEV\AGENTS\Funding_Arbitrage_Agent\
+Directions:
+    1. Navigate:  cd "C:\Users\ixis1\Desktop\DEV\AGENTS\Funding_Arbitrage_Agent"
+    2. Run Bot:   python main.py
+    3. Test Run:  python test_funding.py
+
+----------------------------------------------------------------------------------------------------
+C. MOONDEV QUANT STRATEGIES (Hull Moving Average Ribbon & Momentum)
+----------------------------------------------------------------------------------------------------
+Folder: C:\Users\ixis1\Desktop\DEV\MoonDev_Quant_Strats\01_ophull_suite_ribbon\
+Directions:
+    1. Navigate:  cd "C:\Users\ixis1\Desktop\DEV\MoonDev_Quant_Strats\01_ophull_suite_ribbon"
+    2. Backtest:  python backtest.py
+
+
+====================================================================================================
+SECTION 6: POLYMARKET TRACKING & INTELLIGENCE SUITE (IN C:\Users\ixis1\Desktop\DEV\Polymarket)
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+A. POLYMARKET MOONDEV (Active Moon Dev API Proxy Reference)
+----------------------------------------------------------------------------------------------------
+Folder: C:\Users\ixis1\Desktop\DEV\Polymarket\Polymarket_Moondev\
+Config: .env (MOONDEV_API_KEY=moongroup_31a630c54125eab9, MOONDEV_API_URL=https://api.moondev.com)
+
+Directions:
+    1. Open PowerShell and navigate into the folder:
+       cd "C:\Users\ixis1\Desktop\DEV\Polymarket\Polymarket_Moondev"
+
+    2. Fetch Top 25 Profitable Prediction Market Traders (7D Net PnL, Volume, Direct Links):
+       python poly_traders_tracker.py --limit 25
+
+    3. Run Continuous Trader Leaderboard (Auto-refreshes every 60s):
+       python poly_traders_tracker.py --loop --interval 60
+
+    4. Stream Live Smart-Money Whale Fills ($1,000+ USD Position Shifts):
+       python poly_whale_monitor.py --min-usd 1000 --poll-interval 5
+
+    5. Stream Mega Whale Alerts Only ($5,000+ USD Fills):
+       python poly_whale_monitor.py --min-usd 5000 --poll-interval 4
+
+    6. 1-Click Interactive Menu Runner:
+       .\run_moondev_poly.bat
+
+
+----------------------------------------------------------------------------------------------------
+B. POLYMARKET MONARCH (100% Free & Native Self-Hosted Intelligence — Zero Paid API Dependence)
+----------------------------------------------------------------------------------------------------
+Folder: C:\Users\ixis1\Desktop\DEV\Polymarket\Polymarket_Monarch\
+Database: data\polymarket_whales.db (Local SQLite)
+Feed: Direct Polymarket Public WebSocket (wss://ws-live-data.polymarket.com) + Public Data/Gamma APIs
+
+Directions:
+    1. Open PowerShell and navigate into the folder:
+       cd "C:\Users\ixis1\Desktop\DEV\Polymarket\Polymarket_Monarch"
+
+    2. Launch Live 3-Panel Terminal Dashboard (Leaderboard + Whales + Macro Sentiment):
+       python terminal_dashboard.py --refresh-rate 2.0 --min-usd 1000
+
+    3. Run Real-Time Whale Trade Collector (Streams fills >= $1,000 to SQLite DB):
+       python whale_collector.py --min-usd 1000
+
+    4. Quick Backfill (Ingests last 100 public trades into SQLite without WebSocket):
+       python whale_collector.py --backfill-only
+
+    5. Run 7-Day PnL & Sharp Trader Scanner (Identifies wallets with $300+ 7D PnL):
+       python pnl_scanner.py --max-wallets 30 --min-pnl 300
+
+    6. Continuous Sharp Trader Scanner Loop (Auto-scans every 2 minutes):
+       python pnl_scanner.py --loop --interval 120 --min-pnl 300
+
+    7. Audit Single Wallet Performance:
+       python pnl_scanner.py --wallet 0xe907a16dbf86da25a2dfef6df9eb5d8c6b22cff6
+
+    8. Display Stored Sharp Money Leaderboard (Instant SQLite view):
+       python pnl_scanner.py --show-only
+
+    9. One-Shot Obsidian Vault Export (Generates Polymarket_Monarch.md & Wallets/0x...md):
+       python obsidian_sync.py --once
+
+    10. Continuous Obsidian Live-Sync Daemon (Real-time watcher with content-hash dirty checking):
+       python obsidian_sync.py --watch --interval 15
+
+    11. 1-Click Interactive Menu Runner:
+       .\run_monarch_poly.bat
+
+
+====================================================================================================
+SECTION 7: MASTER TRI-MARKET ECOSYSTEM & OBSIDIAN SECOND BRAIN (1-CLICK EXECUTION)
+====================================================================================================
+
+The entire DEV ecosystem (HyperLiquid Monarch, Polymarket Monarch, Quant Trading Lab)
+is fully unified into a single shared Obsidian Second Brain with 1-click batch control.
+
+----------------------------------------------------------------------------------------------------
+A. MASTER 1-CLICK LAUNCHERS & CONTROLLERS (RUN FROM C:\Users\ixis1\Desktop\DEV)
+----------------------------------------------------------------------------------------------------
+
+1. Start ALL 3 Telemetry Watchers in Parallel:
+   Double-click `start_all_ecosystem_sync.bat` OR run:
+       cd "C:\Users\ixis1\Desktop\DEV"
+       .\start_all_ecosystem_sync.bat
+   (Launches HyperLiquid, Polymarket, and Quant Trading Lab watchers into separate background windows)
+
+2. Stop ALL 3 Telemetry Watchers:
+   Double-click `stop_all_ecosystem_sync.bat` OR run:
+       cd "C:\Users\ixis1\Desktop\DEV"
+       .\stop_all_ecosystem_sync.bat
+
+3. Emergency Hardware Killswitch / Circuit Breaker Sentinel:
+   - Trip Instant Circuit Breaker (halts all trade entries across all bots immediately):
+       type nul > "C:\Users\ixis1\Desktop\DEV\obsidian_vault\HALT.flag"
+   - Disarm Circuit Breaker & Resume Normal Processing:
+       del "C:\Users\ixis1\Desktop\DEV\obsidian_vault\HALT.flag"
+
+----------------------------------------------------------------------------------------------------
+B. OBSIDIAN SECOND BRAIN NAVIGATION & VAULT TOPOLOGY
+----------------------------------------------------------------------------------------------------
+Target Shared Vault: C:\Users\ixis1\Desktop\DEV\obsidian_vault\
+
+Key Dashboards & Cockpits:
+- `Monarch_Hub.md`         -> Master Executive Index connecting all 3 suites (3 of 3 active)
+- `Bot_Control.md`         -> Operations Deck with clickable 1-click execution triggers
+- `Bot_Config.md`          -> Hot-reloadable fail-closed parameter & risk controller (YAML)
+- `Trading_Terminal.md`    -> Paper account equity, active basis positions, and 50-trade hurdle
+- `HyperLiquid_Monarch.md` -> Perp DEX funding arb, liquidation waterfall, and 0x whale CRM
+- `Polymarket_Monarch.md`  -> Prediction market sharp trader PnL and multi-sharp consensus radar
+- `Quant_Trading_Lab.md`   -> CME Futures microstructure (/NQ, /ES, /GC, /CL), 9 Stacks, Killzones
+- `Canvases/Whale_Network_Graph.canvas` -> 2D Visual Intelligence topology linking all 3 venues
+
+----------------------------------------------------------------------------------------------------
+C. DEXTER MASTER SUPERVISOR COMMANDS (SECOND BRAIN BACKBONE)
+----------------------------------------------------------------------------------------------------
+Folder: C:\Users\ixis1\Desktop\DEV\Dexter\
+
+1. Check Status of All Ecosystem Services:
+   python -m core.cli status
+
+2. One-Click Start Entire Tri-Market Ecosystem (All Daemons):
+   python -m core.cli start-all
+
+3. One-Click Stop Entire Tri-Market Ecosystem:
+   python -m core.cli stop-all
+
+4. Start a Specific Desk Watcher via Dexter:
+   python -m core.cli start quant-trading-lab-sync
+   python -m core.cli start hyperliquid-sync
+   python -m core.cli start polymarket-sync
+   python -m core.cli start titan-correlation-agent
+
+5. Stop a Specific Service:
+   python -m core.cli stop titan-correlation-agent
+
+----------------------------------------------------------------------------------------------------
+D. CROSS-MARKET TITAN & MACRO CORRELATION AGENT
+----------------------------------------------------------------------------------------------------
+Folder: C:\Users\ixis1\Desktop\DEV\cross_market\
+
+1. One-Shot Discovery Scan (Export to Obsidian):
+   python titan_correlator.py --once
+
+2. Continuous Discovery Daemon (Scans every 30s):
+   python titan_correlator.py --interval 30
+
+3. Target Note:
+   C:\Users\ixis1\Desktop\DEV\obsidian_vault\Cross_Market_Titans.md
+
+4. Run Test Suite:
+   python -m pytest tests/ -q
+
+====================================================================================================
+
+

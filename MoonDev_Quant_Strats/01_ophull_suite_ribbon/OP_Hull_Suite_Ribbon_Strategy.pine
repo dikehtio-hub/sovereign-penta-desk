@@ -1,0 +1,336 @@
+//@version=5
+strategy("OP Hull Suite Ribbon Strategy Pro [Moon Dev]", shorttitle="OP-HULL-PRO", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.06, slippage=1, process_orders_on_close=true)
+
+// =============================================================================
+// 🌙 MOON DEV QUANT LAB - STRATEGY #1: OP HULL SUITE RIBBON PRO (OPHULLRIB)
+// Target Assets: /NQ (E-mini Nasdaq Futures), SOL-USD (Solana Crypto), BTC, ETH
+// Production Features:
+//   1. Multi-Hull Ribbon Engine (HMA / EHMA / THMA)
+//   2. Normalized Distance Weight Oscillator (Epoch Conviction Accumulator)
+//   3. 200 EMA Macro Trend Regime Filter
+//   4. ADX Volatility & Trend Expansion Filter
+//   5. Multi-Timeframe (MTF) Ribbon Confluence Confirmation
+//   6. Institutional Volume Flow / CMF Confirmation Filter
+//   7. NY Session / Time-of-Day Filter for Index Futures (/NQ, ES)
+//   8. 3-Stage Exit Engine (TP1 @ 2x ATR for 50%, Breakeven Ratchet, Macro Runner)
+//   9. Production-Grade JSON Webhook Alert Payload ({{strategy.order.alert_message}})
+//  10. Real-Time On-Chart HUD Performance Dashboard
+// =============================================================================
+
+// --- 1. ASSET PRESET PROFILES ---
+grp_preset    = "=== 1. Asset Preset Profile ==="
+preset_choice = input.string("Custom", "Preset Profile", options=["Custom", "Solana (SOL-USD 1H/4H)", "Nasdaq (/NQ Futures 15m/1H)", "Bitcoin (BTC-USD 1H/4H)", "Ethereum (ETH-USD 1H)"], group=grp_preset, tooltip="Quick pre-tuned quantitative presets")
+hull_type     = input.string("THMA", "Hull Type", options=["HMA", "EHMA", "THMA"], group=grp_preset, tooltip="HMA = Standard Weighted Hull, EHMA = Exponential Hull, THMA = Triple Hull (ultra smooth, lowest lag)")
+src           = input.source(close, "Source Price", group=grp_preset)
+base_length   = input.int(21, "Hull Base Length", minval=2, maxval=500, group=grp_preset)
+length_mult   = input.float(1.0, "Length Multiplier", minval=0.1, step=0.1, group=grp_preset)
+hull_shift    = input.int(2, "Ribbon Offset (Shift)", minval=1, maxval=20, group=grp_preset, tooltip="Lookback shift for secondary ribbon line SHULL")
+
+// --- 2. MULTI-TIMEFRAME (MTF) CONFLUENCE ---
+grp_mtf             = "=== 2. Multi-Timeframe (MTF) Confluence ==="
+use_htf_confluence  = input.bool(false, "Enable MTF Ribbon Direction Filter", group=grp_mtf, tooltip="Only takes trades when the Higher Timeframe Ribbon aligns in the same direction")
+htf_res             = input.timeframe("240", "Higher Timeframe Resolution", group=grp_mtf)
+
+// --- 3. TREND REGIME & CONVICTION FILTERS ---
+grp_filter        = "=== 3. Trend Regime & Conviction Filters ==="
+use_ema_filter    = input.bool(true, "Enable 200 EMA Macro Trend Filter", group=grp_filter, tooltip="Only take Longs above 200 EMA, Shorts below 200 EMA")
+ema_filter_len    = input.int(200, "Macro EMA Length", minval=10, group=grp_filter)
+use_weight_filter = input.bool(true, "Enable Swing Weight Conviction Filter", group=grp_filter, tooltip="Requires cumulative distance strain between MHULL and SHULL to exceed threshold prior to zero-cross reversal")
+weight_threshold  = input.float(20.0, "Weight Threshold (Conviction)", minval=0.0, step=5.0, group=grp_filter)
+
+// --- 4. ADX & VOLUME FLOW (CMF) EXPANSION FILTERS ---
+grp_expand      = "=== 4. ADX & Volume Flow Filters ==="
+use_adx_filter  = input.bool(true, "Enable ADX Trend Expansion Filter", group=grp_expand, tooltip="Filters entries when market is in dead consolidation (ADX < threshold)")
+adx_len         = input.int(14, "ADX Period", minval=2, group=grp_expand)
+adx_threshold   = input.float(18.0, "Minimum ADX Level", minval=5.0, step=1.0, group=grp_expand)
+use_cmf_filter  = input.bool(false, "Enable Chaikin Money Flow (CMF) Filter", group=grp_expand, tooltip="Requires positive institutional money flow for Longs, negative for Shorts")
+cmf_period      = input.int(20, "CMF Period", minval=5, group=grp_expand)
+
+// --- 5. SESSION & TIME-OF-DAY FILTER ---
+grp_session     = "=== 5. Session & Time-of-Day Filter ==="
+use_session     = input.bool(false, "Enable Trading Session Filter", group=grp_session, tooltip="Restricts entries to active market sessions (essential for /NQ Futures)")
+trade_session   = input.session("0930-1600:23456", "Active Trading Session (EST)", group=grp_session)
+session_tz      = input.string("America/New_York", "Session Timezone", group=grp_session)
+
+// --- 6. RISK MANAGEMENT & 3-STAGE EXIT MODES ---
+grp_risk         = "=== 6. Risk Management & Multi-Stage Exits ==="
+trade_direction  = input.string("Long Only", "Trade Direction", options=["Both", "Long Only", "Short Only"], group=grp_risk)
+exit_mode        = input.string("Multi-Stage (TP1 + Breakeven + Runner)", "Exit Mode", options=["Multi-Stage (TP1 + Breakeven + Runner)", "Ribbon Reversal Only", "Fixed ATR TP/SL"], group=grp_risk)
+atr_period       = input.int(14, "ATR Period", minval=1, group=grp_risk)
+sl_atr_mult      = input.float(3.5, "Emergency Stop Loss (x ATR)", minval=0.5, step=0.5, group=grp_risk)
+tp1_atr_mult     = input.float(2.0, "Stage 1 Partial TP (x ATR)", minval=0.5, step=0.5, group=grp_risk)
+tp1_qty_percent  = input.float(50.0, "Stage 1 Close Qty (%)", minval=10.0, maxval=90.0, step=10.0, group=grp_risk)
+trail_activation = input.float(2.5, "Trailing Stop Activation (x ATR Profit)", minval=0.5, step=0.5, group=grp_risk)
+
+// --- 7. VISUAL & DASHBOARD INPUTS ---
+grp_visual      = "=== 7. Visual & Dashboard Styling ==="
+show_ribbon     = input.bool(true, "Display Ribbon Band Fill", group=grp_visual)
+color_candles   = input.bool(true, "Color Chart Candles by Trend", group=grp_visual)
+show_signals    = input.bool(true, "Plot Buy/Sell Entry Signals", group=grp_visual)
+show_sltp_lines = input.bool(true, "Plot Signal SL/TP Levels", group=grp_visual)
+show_dashboard  = input.bool(true, "Display HUD Dashboard", group=grp_visual)
+dashboard_pos   = input.string("Top Right", "Dashboard Position", options=["Top Right", "Bottom Right", "Top Left", "Bottom Left"], group=grp_visual)
+
+// Webhook Configuration
+grp_webhook     = "=== 8. Webhook & Automation Config ==="
+bot_auth_token  = input.string("MOONDEV_SECRET_TOKEN", "Bot Auth Token", group=grp_webhook)
+bot_account_id  = input.string("hyperliquid_sol_01", "Bot Account / Client ID", group=grp_webhook)
+
+// =============================================================================
+// PRESET PARAMETER OVERRIDES
+// =============================================================================
+
+var int active_length = base_length
+var float active_weight_thresh = 20.0
+var bool active_long_only = true
+var bool active_use_session = false
+
+if preset_choice == "Solana (SOL-USD 1H/4H)"
+    active_length := 21
+    active_weight_thresh := 20.0
+    active_long_only := true
+    active_use_session := false
+else if preset_choice == "Nasdaq (/NQ Futures 15m/1H)"
+    active_length := 34
+    active_weight_thresh := 50.0
+    active_long_only := true
+    active_use_session := true
+else if preset_choice == "Bitcoin (BTC-USD 1H/4H)"
+    active_length := 34
+    active_weight_thresh := 30.0
+    active_long_only := true
+    active_use_session := false
+else if preset_choice == "Ethereum (ETH-USD 1H)"
+    active_length := 21
+    active_weight_thresh := 25.0
+    active_long_only := true
+    active_use_session := false
+else
+    active_length := base_length
+    active_weight_thresh := weight_threshold
+
+effective_length = math.max(2, int(active_length * length_mult))
+eff_weight_thresh = preset_choice == "Custom" ? weight_threshold : active_weight_thresh
+
+// Effective trade direction & session: preset overrides user input when not "Custom"
+eff_trade_direction = preset_choice != "Custom" and active_long_only ? "Long Only" : trade_direction
+eff_use_session     = preset_choice != "Custom" ? active_use_session : use_session
+
+// =============================================================================
+// INDICATOR & FILTER CALCULATIONS
+// =============================================================================
+
+// Standard Hull Moving Average (HMA)
+calc_hma(_src, _len) =>
+    _half_len = math.floor(_len / 2)
+    _sqrt_len = math.round(math.sqrt(_len))
+    ta.wma(2 * ta.wma(_src, _half_len) - ta.wma(_src, _len), _sqrt_len)
+
+// Exponential Hull Moving Average (EHMA)
+calc_ehma(_src, _len) =>
+    _half_len = math.floor(_len / 2)
+    _sqrt_len = math.round(math.sqrt(_len))
+    ta.ema(2 * ta.ema(_src, _half_len) - ta.ema(_src, _len), _sqrt_len)
+
+// Triple Hull Moving Average (THMA)
+calc_thma(_src, _len) =>
+    _third_len = math.floor(_len / 3)
+    _half_len  = math.floor(_len / 2)
+    ta.wma(3 * ta.wma(_src, _third_len) - ta.wma(_src, _half_len) - ta.wma(_src, _len), _len)
+
+calc_selected_hull(_type, _src, _len) =>
+    _type == "HMA" ? calc_hma(_src, _len) : _type == "EHMA" ? calc_ehma(_src, _len) : calc_thma(_src, _len)
+
+// Primary Chart Hull Ribbon
+raw_hull = calc_selected_hull(hull_type, src, effective_length)
+MHULL = raw_hull
+SHULL = raw_hull[hull_shift]
+
+is_bullish = MHULL > SHULL
+is_bearish = MHULL < SHULL
+ribbon_color = is_bullish ? color.new(#00E676, 30) : color.new(#FF1744, 30)
+ribbon_line_color = is_bullish ? #00E676 : #FF1744
+
+// Normalized Distance Oscillator & Cumulative Conviction Weight
+norm_distance = math.max(MHULL, SHULL) != 0.0 ? ((SHULL - MHULL) / math.max(MHULL, SHULL)) * 1000.0 : 0.0
+
+crossover_event  = ta.crossover(MHULL, SHULL)
+crossunder_event = ta.crossunder(MHULL, SHULL)
+cross_any        = crossover_event or crossunder_event or (MHULL == SHULL)
+
+var float cumulative_weight = 0.0
+var float previous_epoch_weight = 0.0
+
+if cross_any
+    previous_epoch_weight := cumulative_weight
+    cumulative_weight := 0.0
+else
+    cumulative_weight += norm_distance
+
+// Higher Timeframe (MTF) Ribbon
+htf_raw_hull = request.security(syminfo.tickerid, htf_res, calc_selected_hull(hull_type, src, effective_length))
+htf_mhull    = htf_raw_hull
+htf_shull    = htf_raw_hull[hull_shift]
+htf_is_bull  = htf_mhull > htf_shull
+htf_is_bear  = htf_mhull < htf_shull
+htf_ok_long  = not use_htf_confluence or htf_is_bull
+htf_ok_short = not use_htf_confluence or htf_is_bear
+
+// 200 EMA Macro Regime
+macro_ema  = ta.ema(close, ema_filter_len)
+trend_bull = not use_ema_filter or (close > macro_ema)
+trend_bear = not use_ema_filter or (close < macro_ema)
+
+// ADX Trend Expansion Filter
+[diplus, dimin, adx_val] = ta.dmi(adx_len, adx_len)
+adx_valid = not use_adx_filter or (adx_val >= adx_threshold)
+
+// Chaikin Money Flow (CMF)
+mfv = ((close - low) - (high - close)) / (high - low == 0 ? 1 : high - low) * volume
+cmf_val = ta.sma(mfv, cmf_period) / ta.sma(volume, cmf_period)
+cmf_ok_long  = not use_cmf_filter or (cmf_val > 0.0)
+cmf_ok_short = not use_cmf_filter or (cmf_val < 0.0)
+
+// Session Time Window Filter
+in_session = not eff_use_session or not na(time(timeframe.period, trade_session, session_tz))
+
+// Volatility ATR
+atr_val = ta.atr(atr_period)
+
+// =============================================================================
+// CONVICTION ENTRY CONDITIONS
+// =============================================================================
+
+long_conviction  = not use_weight_filter or (previous_epoch_weight > eff_weight_thresh)
+short_conviction = not use_weight_filter or (previous_epoch_weight < -eff_weight_thresh)
+
+enter_long  = crossover_event and long_conviction and trend_bull and adx_valid and cmf_ok_long and htf_ok_long and in_session and (eff_trade_direction == "Both" or eff_trade_direction == "Long Only")
+enter_short = crossunder_event and short_conviction and trend_bear and adx_valid and cmf_ok_short and htf_ok_short and in_session and (eff_trade_direction == "Both" or eff_trade_direction == "Short Only")
+
+// =============================================================================
+// ORDER EXECUTION & MULTI-STAGE EXITS WITH WEBHOOKS
+// =============================================================================
+
+var float entry_price_tracker = na
+var float sl_price_tracker    = na
+var float tp1_price_tracker   = na
+var bool  stage1_tp_hit       = false
+
+// Formatted Webhook Payloads
+long_alert_json = '{"token":"' + bot_auth_token + '","account":"' + bot_account_id + '","strategy":"OP_HULL_PRO","action":"BUY","ticker":"' + syminfo.ticker +
+     '","price":' + str.tostring(close, "#.##") + ',"sl":' + str.tostring(close - (atr_val * sl_atr_mult), "#.##") +
+     ',"tp1":' + str.tostring(close + (atr_val * tp1_atr_mult), "#.##") + ',"atr":' + str.tostring(atr_val, "#.##") +
+     ',"adx":' + str.tostring(adx_val, "#.#") + ',"weight":' + str.tostring(previous_epoch_weight, "#.#") +
+     ',"timestamp":' + str.tostring(time, "#") + '}'
+
+short_alert_json = '{"token":"' + bot_auth_token + '","account":"' + bot_account_id + '","strategy":"OP_HULL_PRO","action":"SELL","ticker":"' + syminfo.ticker +
+     '","price":' + str.tostring(close, "#.##") + ',"sl":' + str.tostring(close + (atr_val * sl_atr_mult), "#.##") +
+     ',"tp1":' + str.tostring(close - (atr_val * tp1_atr_mult), "#.##") + ',"atr":' + str.tostring(atr_val, "#.##") +
+     ',"adx":' + str.tostring(adx_val, "#.#") + ',"weight":' + str.tostring(previous_epoch_weight, "#.#") +
+     ',"timestamp":' + str.tostring(time, "#") + '}'
+
+exit_long_json = '{"token":"' + bot_auth_token + '","account":"' + bot_account_id + '","strategy":"OP_HULL_PRO","action":"CLOSE_LONG","ticker":"' +
+     syminfo.ticker + '","price":' + str.tostring(close, "#.##") + ',"timestamp":' + str.tostring(time, "#") + '}'
+
+exit_short_json = '{"token":"' + bot_auth_token + '","account":"' + bot_account_id + '","strategy":"OP_HULL_PRO","action":"CLOSE_SHORT","ticker":"' +
+     syminfo.ticker + '","price":' + str.tostring(close, "#.##") + ',"timestamp":' + str.tostring(time, "#") + '}'
+
+// Long Entry
+if enter_long
+    strategy.entry("Long", strategy.long, alert_message=long_alert_json)
+    entry_price_tracker := close
+    sl_price_tracker    := close - (atr_val * sl_atr_mult)
+    tp1_price_tracker   := close + (atr_val * tp1_atr_mult)
+    stage1_tp_hit       := false
+
+// Short Entry
+if enter_short
+    strategy.entry("Short", strategy.short, alert_message=short_alert_json)
+    entry_price_tracker := close
+    sl_price_tracker    := close + (atr_val * sl_atr_mult)
+    tp1_price_tracker   := close - (atr_val * tp1_atr_mult)
+    stage1_tp_hit       := false
+
+// Multi-Stage Exit Logic
+if strategy.position_size > 0
+    // 1. Stage 1 Partial TP & Breakeven Ratchet
+    if exit_mode == "Multi-Stage (TP1 + Breakeven + Runner)" and not stage1_tp_hit and high >= tp1_price_tracker
+        strategy.exit("TP1_Long", from_entry="Long", qty_percent=tp1_qty_percent, limit=tp1_price_tracker, alert_message=exit_long_json)
+        sl_price_tracker := entry_price_tracker // Move Stop to Breakeven
+        stage1_tp_hit := true
+        
+    // 2. Trailing Stop Activation
+    if (close - entry_price_tracker) > (atr_val * trail_activation)
+        sl_price_tracker := math.max(sl_price_tracker, close - (atr_val * sl_atr_mult * 0.6))
+        
+    // 3. Ribbon Bearish Flip Exit (Macro Runner Close)
+    if crossunder_event
+        strategy.close("Long", comment="Ribbon Bear Flip", alert_message=exit_long_json)
+    else
+        strategy.exit("SL_Long", from_entry="Long", stop=sl_price_tracker, alert_message=exit_long_json)
+
+if strategy.position_size < 0
+    if exit_mode == "Multi-Stage (TP1 + Breakeven + Runner)" and not stage1_tp_hit and low <= tp1_price_tracker
+        strategy.exit("TP1_Short", from_entry="Short", qty_percent=tp1_qty_percent, limit=tp1_price_tracker, alert_message=exit_short_json)
+        sl_price_tracker := entry_price_tracker // Move Stop to Breakeven
+        stage1_tp_hit := true
+        
+    if (entry_price_tracker - close) > (atr_val * trail_activation)
+        sl_price_tracker := math.min(sl_price_tracker, close + (atr_val * sl_atr_mult * 0.6))
+        
+    if crossover_event
+        strategy.close("Short", comment="Ribbon Bull Flip", alert_message=exit_short_json)
+    else
+        strategy.exit("SL_Short", from_entry="Short", stop=sl_price_tracker, alert_message=exit_short_json)
+
+// Reset Tracker
+if strategy.position_size == 0 and strategy.position_size[1] != 0
+    entry_price_tracker := na
+    sl_price_tracker    := na
+    tp1_price_tracker   := na
+    stage1_tp_hit       := false
+
+// =============================================================================
+// PLOTTING & HUD DASHBOARD
+// =============================================================================
+
+p_mhull = plot(MHULL, "Master Hull (MHULL)", color=ribbon_line_color, linewidth=2)
+p_shull = plot(show_ribbon ? SHULL : na, "Shifted Hull (SHULL)", color=color.new(ribbon_line_color, 40), linewidth=1)
+fill(p_mhull, p_shull, title="Hull Ribbon Band", color=show_ribbon ? ribbon_color : na)
+
+barcolor(color_candles ? (is_bullish ? #00E676 : #FF1744) : na)
+
+plotshape(show_signals and enter_long, "Long Entry Diamond", shape.diamond, location.belowbar, color.new(#00E676, 0), size=size.small, text="HULL PRO BUY", textcolor=color.white)
+plotshape(show_signals and enter_short, "Short Entry Diamond", shape.diamond, location.abovebar, color.new(#FF1744, 0), size=size.small, text="HULL PRO SELL", textcolor=color.white)
+
+plot(show_sltp_lines and strategy.position_size != 0 ? entry_price_tracker : na, "Entry Level", color=color.white, style=plot.style_linebr, linewidth=1)
+plot(show_sltp_lines and strategy.position_size != 0 ? sl_price_tracker : na, "Stop Loss Level", color=#FF5252, style=plot.style_linebr, linewidth=2)
+plot(show_sltp_lines and strategy.position_size != 0 ? tp1_price_tracker : na, "TP1 Level", color=#00E676, style=plot.style_linebr, linewidth=2)
+
+var table hud = table.new(position.top_right, 6, 8, bgcolor=color.new(#131722, 15), border_color=color.new(#2A2E39, 0), border_width=1)
+
+if barstate.islast and show_dashboard
+    _table_pos = dashboard_pos == "Top Right" ? position.top_right : dashboard_pos == "Bottom Right" ? position.bottom_right : dashboard_pos == "Top Left" ? position.top_left : position.bottom_left
+    table.set_position(hud, _table_pos)
+    table.cell(hud, 0, 0, "🌙 MOON DEV QUANT LAB", 0, 0, color.white, color.new(#2962FF, 20), text_size=size.small)
+    table.cell(hud, 1, 0, "OP HULL PRO", 0, 0, color.yellow, color.new(#2962FF, 20), text_size=size.small)
+    
+    table.cell(hud, 0, 1, "Mode / Length", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 1, hull_type + " (" + str.tostring(effective_length) + ")", 0, 0, color.white, text_size=size.small)
+    
+    table.cell(hud, 0, 2, "Trend / ADX", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 2, (is_bullish ? "🟢 BULL" : "🔴 BEAR") + " (ADX " + str.tostring(adx_val, "#.#") + ")", 0, 0, adx_valid ? color.green : color.gray, text_size=size.small)
+    
+    table.cell(hud, 0, 3, "Epoch Conviction", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 3, str.tostring(cumulative_weight, "#.##") + " / " + str.tostring(eff_weight_thresh), 0, 0, math.abs(cumulative_weight) >= eff_weight_thresh ? color.green : color.orange, text_size=size.small)
+    
+    table.cell(hud, 0, 4, "Active Position", 0, 0, color.silver, text_size=size.small)
+    pos_text = strategy.position_size > 0 ? "LONG (" + str.tostring(strategy.position_size) + ")" : strategy.position_size < 0 ? "SHORT (" + str.tostring(strategy.position_size) + ")" : "FLAT"
+    pos_col  = strategy.position_size > 0 ? #00E676 : strategy.position_size < 0 ? #FF1744 : color.gray
+    table.cell(hud, 1, 4, pos_text, 0, 0, pos_col, text_size=size.small)
+    
+    total_trades = strategy.closedtrades
+    win_rate = total_trades > 0 ? (strategy.wintrades / total_trades) * 100.0 : 0.0
+    net_profit_pct = (strategy.netprofit / strategy.initial_capital) * 100.0
+    table.cell(hud, 0, 5, "Net Return / WR", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 5, str.tostring(net_profit_pct, "+#.##") + "% (" + str.tostring(win_rate, "#.#") + "% WR)", 0, 0, net_profit_pct >= 0 ? color.green : color.red, text_size=size.small)

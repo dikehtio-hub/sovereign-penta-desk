@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Real secrets file created from dontshare_template.py — never commit this.
+dontshare.py
+.env

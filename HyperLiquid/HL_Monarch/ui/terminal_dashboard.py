@@ -1,0 +1,316 @@
+"""
+Interactive Real-Time Terminal Dashboard for HL_Monarch.
+Responsive layout, compact density, Windows UTF-8 safe, interactive category hotkeys (1-8, Tab, Q).
+"""
+import sys
+import time
+import signal
+import threading
+import asyncio
+from typing import List, Dict, Any
+
+# Ensure UTF-8 output on Windows console
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
+
+from rich.console import Console
+from rich.live import Live
+from rich.layout import Layout
+from rich.text import Text
+from config.settings import (
+    ALL_CORE_WATCHLIST, WATCHLIST_STOCKS, WATCHLIST_COMMODITIES,
+    WATCHLIST_INDICES, WATCHLIST_FX, WATCHLIST_CRYPTO_BENCHMARKS,
+    DASHBOARD_SCAN_TTL_SECONDS
+)
+from storage.repository import MarketRepository
+from analytics.market_intelligence import MarketIntelligence
+from analytics.liquidation_engine import LiquidationEngine
+from analytics.position_scanner import PositionScanner
+from analytics.funding_arbitrage import FundingArbitrageEngine
+from execution.paper_trader import PaperTrader
+from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
+from collectors.market_collector import MarketCollector
+from ui.components import (
+    build_header_panel, build_tradfi_table, build_liquidations_panel,
+    build_clusters_panel, build_top_wallets_panel, build_funding_arb_panel,
+    build_paper_trading_panel
+)
+
+console = Console()
+
+CYCLE_ASSETS = [
+    "xyz:GOLD", "xyz:XYZ100", "xyz:NVDA", "xyz:TSLA", "xyz:SP500",
+    "xyz:SILVER", "xyz:CL", "BTC", "ETH", "SOL", "HYPE"
+]
+
+class TerminalDashboard:
+    def __init__(self, focus_asset: str = "xyz:GOLD"):
+        self.repo = MarketRepository()
+        self.scanner = PositionScanner()
+        self.arb_engine = FundingArbitrageEngine()
+        # Same persisted account the collector's reactive fade engine writes to,
+        # so the dashboard reflects real strategy activity rather than a blank
+        # in-memory account of its own.
+        self.paper_trader = PaperTrader.load()
+        self.fade_strategy = LiquidationFadeStrategy(self.paper_trader)
+        self.running = False
+        self.focus_asset = focus_asset
+        self.active_tab = "ALL"  # 'ALL', 'STOCKS', 'COMMODITIES', 'INDICES_FX', 'CRYPTO', 'WHALES', 'ARB', 'PAPER'
+        self._focus_idx = 0
+        if focus_asset in CYCLE_ASSETS:
+            self._focus_idx = CYCLE_ASSETS.index(focus_asset)
+        # generate_layout() runs on every rendered frame (~1/s). The whale and
+        # funding scans behind tabs 6 and 7 are REST-backed, so without a TTL
+        # holding one of those tabs issued ~15 requests per second and blocked
+        # the render thread on the rate limiter.
+        self._scan_cache: Dict[str, Any] = {}
+
+    def _cached(self, key: str, producer, ttl: float = DASHBOARD_SCAN_TTL_SECONDS):
+        """Memoize an expensive scan for `ttl` seconds, serving stale data on error."""
+        now = time.monotonic()
+        entry = self._scan_cache.get(key)
+        if entry is not None and (now - entry[0]) < ttl:
+            return entry[1]
+        try:
+            value = producer()
+        except Exception:
+            # Keep the panel populated rather than blanking it on a transient error.
+            return entry[1] if entry is not None else None
+        self._scan_cache[key] = (now, value)
+        return value
+
+    def cycle_focus_asset(self):
+        """Cycle to the next focus asset for the liquidation heatmap."""
+        self._focus_idx = (self._focus_idx + 1) % len(CYCLE_ASSETS)
+        self.focus_asset = CYCLE_ASSETS[self._focus_idx]
+
+    def set_tab(self, tab_name: str):
+        """Set the active category tab."""
+        self.active_tab = tab_name
+
+    def _get_active_watchlist_coins(self) -> List[str]:
+        """Return list of coins corresponding to active tab."""
+        if self.active_tab == "STOCKS":
+            return WATCHLIST_STOCKS
+        elif self.active_tab == "COMMODITIES":
+            return WATCHLIST_COMMODITIES
+        elif self.active_tab == "INDICES_FX":
+            return WATCHLIST_INDICES + WATCHLIST_FX
+        elif self.active_tab == "CRYPTO":
+            return WATCHLIST_CRYPTO_BENCHMARKS
+        else:
+            return ALL_CORE_WATCHLIST
+
+    def generate_layout(self) -> Layout:
+        """Construct a sleek, responsive UI layout fitting any terminal window."""
+        term_width = console.width or 100
+
+        # Fetch latest data
+        all_snapshots = self.repo.get_latest_snapshots()
+        active_coins = self._get_active_watchlist_coins()
+        filtered_snapshots = [s for s in all_snapshots if s.get("coin") in active_coins]
+        if not filtered_snapshots and all_snapshots and self.active_tab not in ("WHALES", "ARB", "PAPER"):
+            filtered_snapshots = all_snapshots[:15]
+
+        summary = MarketIntelligence.summarize_tradfi_metrics(all_snapshots)
+        dex_oi = self.repo.get_total_oi_by_dex()
+        recent_liqs = self.repo.get_recent_liquidations(limit=10)
+        recent_trades = self.repo.get_recent_trades(limit=10)
+        clusters = self.repo.get_latest_clusters(self.focus_asset)
+
+        # Dynamic cluster calculation if not yet in DB
+        if not clusters and all_snapshots:
+            for s in all_snapshots:
+                if s.get("coin") == self.focus_asset:
+                    # Snapshot rows come from SQLite, whose column is open_interest;
+                    # the camelCase API key never matched, so this always fell back
+                    # to the 1000.0 placeholder and reported bogus cluster notionals.
+                    clusters = LiquidationEngine.calculate_liquidation_clusters(
+                        self.focus_asset,
+                        float(s.get("mark_px") or 0.0),
+                        float(s.get("open_interest") or 0.0)
+                    )
+                    break
+
+        # Check for simulated strategy executions from recent large liquidations
+        if recent_liqs and all_snapshots:
+            marks_map = {s["coin"]: float(s.get("mark_px", 0)) for s in all_snapshots}
+            # Settle resting fades against the latest marks. Placement happens in
+            # the collector, off the live trade feed - the dashboard only marks
+            # the book and never opens a position of its own.
+            try:
+                self.paper_trader.check_open_orders(marks_map)
+            except Exception:
+                pass
+
+        # Root Layout
+        layout = Layout(name="root")
+        layout.split(
+            Layout(name="header", size=3),
+            Layout(name="body", ratio=1),
+            Layout(name="footer", size=1)
+        )
+
+        # Split body: Left (Market Watch / Tabs) and Right (Intelligence / Feeds)
+        if term_width >= 125:
+            layout["body"].split_row(
+                Layout(name="left", ratio=3),
+                Layout(name="right", ratio=2)
+            )
+            layout["right"].split(
+                Layout(name="clusters", ratio=1),
+                Layout(name="liquidations", ratio=1)
+            )
+        else:
+            # Full width clean vertical stack for standard terminals
+            layout["body"].split(
+                Layout(name="left", ratio=3),
+                Layout(name="clusters", ratio=2),
+                Layout(name="liquidations", ratio=2)
+            )
+
+        # Populate components
+        layout["header"].update(
+            build_header_panel(summary["total_oi"], summary["total_volume_24h"], dex_oi, active_tab=self.active_tab)
+        )
+
+        if self.active_tab == "WHALES":
+            top_positions = self._cached(
+                "whales",
+                lambda: self.scanner.scan_batch(self.scanner.addresses[:15], min_value_usd=50000.0),
+            ) or []
+            layout["left"].update(build_top_wallets_panel(top_positions))
+        elif self.active_tab == "ARB":
+            arb_data = self._cached(
+                "arb",
+                lambda: self.arb_engine.scan_funding_opportunities(
+                    min_apr_pct=8.0, snapshots=all_snapshots
+                ),
+                ttl=5.0,   # DB-backed and cheap, but still not worth redoing per frame
+            ) or {}
+            layout["left"].update(build_funding_arb_panel(arb_data))
+        elif self.active_tab == "PAPER":
+            prices_map = {s["coin"]: float(s.get("mark_px", 0)) for s in all_snapshots}
+            self.paper_trader = PaperTrader.load()   # pick up collector activity
+            acc_summary = self.paper_trader.get_account_summary(prices_map)
+            layout["left"].update(build_paper_trading_panel(
+                acc_summary, self.paper_trader.positions, self.paper_trader.trade_history,
+                open_orders=self.paper_trader.open_orders,
+            ))
+        else:
+            title = f"{self.active_tab.capitalize()} Watchlist" if self.active_tab != "ALL" else "HIP-3 TradFi Watchlist"
+            layout["left"].update(build_tradfi_table(filtered_snapshots, title=title))
+
+        layout["clusters"].update(
+            build_clusters_panel(self.focus_asset, clusters)
+        )
+        layout["liquidations"].update(
+            build_liquidations_panel(recent_liqs, recent_trades)
+        )
+
+        footer_text = Text(
+            f"⚡ Press [1-8] Tabs │ [Tab/H] Focus: {self.focus_asset} │ [Q] Exit",
+            style="dim italic yellow"
+        )
+        layout["footer"].update(footer_text)
+
+        return layout
+
+    def _start_keyboard_listener(self):
+        """Non-blocking keyboard listener thread for Windows."""
+        if sys.platform == "win32":
+            import msvcrt
+            def listen_keys():
+                while self.running:
+                    try:
+                        if msvcrt.kbhit():
+                            ch = msvcrt.getch()
+                            # Handle special keys / arrows
+                            if ch in (b'\x00', b'\xe0'):
+                                msvcrt.getch()
+                                continue
+                            try:
+                                key = ch.decode("utf-8", errors="ignore").lower()
+                            except Exception:
+                                continue
+
+                            if key == '1':
+                                self.set_tab("ALL")
+                            elif key == '2':
+                                self.set_tab("STOCKS")
+                            elif key == '3':
+                                self.set_tab("COMMODITIES")
+                            elif key == '4':
+                                self.set_tab("INDICES_FX")
+                            elif key == '5':
+                                self.set_tab("CRYPTO")
+                            elif key == '6' or key == 'w':
+                                self.set_tab("WHALES")
+                            elif key == '7' or key == 'a':
+                                self.set_tab("ARB")
+                            elif key == '8' or key == 'p':
+                                self.set_tab("PAPER")
+                            elif key == '\t' or key == 'h':
+                                self.cycle_focus_asset()
+                            elif key == 'q' or key == '\x03':  # Ctrl+C or 'q'
+                                self.running = False
+                                break
+                        time.sleep(0.05)
+                    except Exception:
+                        break
+            t = threading.Thread(target=listen_keys, daemon=True)
+            t.start()
+
+    def start(self, refresh_rate: float = 1.0, fullscreen: bool = True):
+        """Run terminal live dashboard with interactive hotkeys and background collector."""
+        self.running = True
+
+        # Start integrated background ingestion collector in daemon thread
+        def run_bg_collector():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            collector = MarketCollector()
+            try:
+                loop.run_until_complete(collector.run())
+            except Exception:
+                pass
+
+        collector_thread = threading.Thread(target=run_bg_collector, daemon=True)
+        collector_thread.start()
+
+        # Start keyboard hotkey listener
+        self._start_keyboard_listener()
+
+        # Handle graceful shutdown
+        def handle_exit(signum, frame):
+            self.running = False
+
+        signal.signal(signal.SIGINT, handle_exit)
+        signal.signal(signal.SIGTERM, handle_exit)
+
+        try:
+            with Live(self.generate_layout(), console=console, screen=fullscreen, refresh_per_second=4) as live:
+                while self.running:
+                    try:
+                        live.update(self.generate_layout())
+                        time.sleep(refresh_rate)
+                    except KeyboardInterrupt:
+                        break
+                    except Exception:
+                        time.sleep(1.0)
+        finally:
+            self.running = False
+            console.print("\n[bold green]✓ Dashboard exited. Terminal ready for commands.[/bold green]\n")
+
+    def print_snapshot(self):
+        """Print a single clean snapshot to console without taking over the screen."""
+        layout = self.generate_layout()
+        console.print(layout)
+
+if __name__ == "__main__":
+    dashboard = TerminalDashboard()
+    dashboard.start()

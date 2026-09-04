@@ -1,0 +1,274 @@
+# ============================================================
+# Tax & Bankroll Reserve Agent Configuration
+# ============================================================
+
+# Tax Rates (decimal format)
+#
+# UNBUNDLED, AS OF ROUND 26k. These used to be a muddle: `short_term_capital_gains`
+# was documented as "24% Federal + 4% State composite" and `state_tax_rate` was
+# then ADDED on top, so state was counted twice and the 35% composite was wrong.
+# Worse, that composite was the fallback FEDERAL leg for every gambling
+# computation, which made the W-2G credit ceiling too generous and every after-tax
+# hurdle too strict.
+#
+# Each rate below is now exactly one thing. Set them to YOUR marginal rates.
+tax_rates:
+  federal_ordinary_rate: 0.24     # PURE federal ordinary bracket (IRC 1)
+  # NEW JERSEY RESIDENT (Union, 07083). NJ Gross Income Tax is graduated; for a
+  # single filer the bands are 1.4% / 1.75% / 3.5% / 5.525% to $75,000, then
+  # 6.37% to $500,000. Gambling winnings stack on top of wages, so a travel
+  # contract in the $70-100k range puts the MARGINAL dollar at 6.37%. Drop this
+  # to 0.05525 if taxable income stays under $75,000.
+  #
+  # A TRAVELLING CONTRACTOR HAS A MULTI-STATE PROBLEM THIS SINGLE NUMBER DOES
+  # NOT MODEL. NJ taxes residents on income earned anywhere and gives a credit
+  # for tax paid to another jurisdiction, so the effective state rate is roughly
+  # max(NJ, work-state) per dollar - higher in NY (6.85%+), lower in PA (3.07%
+  # flat). Betting while physically in another state can source those winnings
+  # there. The NJ rate is the right single approximation for a NJ resident; it
+  # is not a substitute for a return.
+  state_tax_rate: 0.0637          # PURE state income tax marginal rate
+  safety_buffer_pct: 0.02         # prudent reserve buffer, not a tax
+  short_term_capital_gains: 0.24  # short-term gains are taxed as ordinary income
+  long_term_capital_gains: 0.15   # preferential long-term rate (IRC 1(h))
+  # Composite for escrow = 0.24 + 0.05 + 0.02 = 0.31
+
+# Sports Betting & Wagering Tax Settings (IRC 61, 165(d), 1402; OBBBA 70114)
+#
+# READ THIS BEFORE CHANGING tax_treatment. Under IRC 165(d) gambling losses are a
+# DEDUCTION, and a deduction is worth nothing to someone taking the standard
+# deduction. Win $80,000 and lose $79,000 in a year and you owe ordinary income
+# tax on $80,000. The default mode enforces that, and it is the reason this
+# module exists at all - it is not a conservative fudge, it is the statute.
+gambling:
+  # casual_standard_deduction | casual_itemized | professional_schedule_c | session_netting
+  #
+  # WHICH ONE APPLIES TO A TRAVELLING HEALTHCARE CONTRACTOR:
+  #
+  #   casual_standard_deduction  ALMOST CERTAINLY THIS. The 2026 standard
+  #       deduction is around $16,000 for a single filer. Itemising needs to beat
+  #       that, and a traveller with no mortgage typically has state income tax
+  #       plus a little charity - well short. This is also the expensive one:
+  #       losses deduct NOTHING federally.
+  #   casual_itemized  only if deductions genuinely exceed the standard amount.
+  #   professional_schedule_c  NOT AVAILABLE alongside a full-time job. Groetzinger
+  #       requires gambling pursued full time, in good faith, as a LIVELIHOOD.
+  #       Someone working travel x-ray contracts cannot meet that, and claiming it
+  #       to unlock the SE-tax treatment would be a position with no support.
+  #   session_netting  a measurement convention layered on one of the above; see
+  #       session_netting_itemizes below.
+  tax_treatment: "casual_standard_deduction"
+
+  # Federal and state marginal ORDINARY rates, kept separate on purpose.
+  # tax_rates.short_term_capital_gains is documented above as already blending
+  # federal and state, which makes it the wrong number to cap a FEDERAL
+  # withholding credit against. Leave these blank and we fall back to that blend
+  # (and over-state the federal leg, which over-credits W-2G withholding); set
+  # your true federal marginal rate and the credit becomes exact.
+  federal_ordinary_rate:            # e.g. 0.24 - blank falls back to the composite
+  state_ordinary_rate:              # blank falls back to tax_rates.state_tax_rate
+
+  # Several states (IL, OH, CT, WV, MA on some income) tax gross gambling
+  # winnings and allow no loss deduction even when you itemise federally. With
+  # this false, the state leg is assessed on GROSS winnings.
+  #
+  # NEW JERSEY ALLOWS IT, AND NOT VIA SCHEDULE A. NJ nets gambling losses against
+  # gambling winnings within the same year as a category of income - no
+  # itemisation required, no carry-forward, and losses cannot exceed winnings.
+  # That is why this is true even though the federal treatment below is the
+  # standard deduction: the two elections are independent, and treating them as
+  # one over-stated NJ tax by ~$5,000 on an $80k-won / $79k-lost year.
+  state_allows_loss_deduction: true
+  # The STATE's own haircut. OBBBA 70114 amended IRC 165(d) only - no state
+  # adopted it - so NJ nets at 100%. Leave at 1.0 unless your state says otherwise.
+  state_loss_deduction_pct: 1.0
+
+  # OBBBA 70114: for tax years beginning after 2025 the 165(d) deduction is
+  # limited to 90% of losses (still capped at winnings). Break even at $100k in
+  # and $100k out and $10,000 of phantom income appears. SET THIS TO 1.0 if the
+  # limit is repealed (the FAIR BET Act would do exactly that) - one line, and
+  # pre-2026 behaviour returns.
+  loss_deduction_pct: 0.90
+  loss_haircut_effective_year: 2026
+
+  # Form W-2G withholding, credited against the escrow.
+  track_w2g_withholdings: true
+  # BOTH TESTS ARE CONJUNCTIVE, which is why nearly every sports bet triggers
+  # neither. Reg. 1.6041-10 needs proceeds of $600 AND 300x the wager to require
+  # a W-2G; IRC 3402(q) needs proceeds over $5,000 AND the same 300:1 to require
+  # withholding. A $1,000 winner at 2:1 clears the dollar tests and fails the odds
+  # test, so nothing is reported and nothing is withheld. Proceeds means received
+  # MINUS staked, not the gross payout.
+  w2g_reporting_threshold_usd: 600.0
+  w2g_odds_multiplier_threshold: 300.0
+  w2g_mandatory_withholding_threshold_usd: 5000.0
+  mandatory_withholding_rate: 0.24
+  # federal = credit only against the federal legs the withholding can actually
+  #           pay; any excess is a refund receivable, not released escrow.
+  # total   = net it against state tax and the safety buffer too. That credits
+  #           you with money your state never received. Opt-in only.
+  w2g_credit_scope: "federal"
+
+  # Session netting (IRS AM 2008-011). day_book = one session is one day at ONE
+  # book, which is what the memo describes. day = net across every book in a
+  # calendar day, which is looser and reserves less.
+  session_grouping: "day_book"
+  # Session netting is a MEASUREMENT convention, not a deduction mode. Whether
+  # losing sessions come off still depends on whether you itemise. Defaults to
+  # false - the stricter reading, since allowing the deduction lowers the reserve.
+  session_netting_itemizes: false
+
+  # Professional (Schedule C) self-employment tax. The flat 15.3% below is only
+  # used when use_statutory_seca is false; the statutory path applies the
+  # 92.35% net-earnings factor, caps the Social Security leg at the wage base,
+  # and takes the 164(f) half-SE deduction.
+  self_employment_tax_rate: 0.153
+  use_statutory_seca: true
+  seca:
+    net_earnings_factor: 0.9235
+    social_security_rate: 0.124
+    medicare_rate: 0.029
+    social_security_wage_base: 184500.0   # 2026 ESTIMATE - confirm each January
+    deduct_half_se_tax: true
+
+  # Settles the one price zone the odds parser refuses to guess: a bare `150.0`
+  # is American +150 (decimal 2.50) if a tool formatted an integer as a float,
+  # and decimal 150.0 (American +14900) if your book quotes decimal - a 60x
+  # difference with nothing in the value to tell them apart. Blank means such a
+  # row imports with its dollars intact and no price recorded (odds are metadata
+  # only, so the tax figure is never at risk). Set "american" or "decimal" if
+  # your export trips it. A row's own `odds_format` column always wins.
+  default_odds_format: ""
+
+  # Flags an imported settlement whose payout disagrees with its own odds by
+  # more than this. Cashouts and dead heats legitimately trip it; a $1,910
+  # payout typed as $191 also does, and nothing else would catch that.
+  odds_payout_tolerance_pct: 0.02
+
+
+# Cost-Basis Accounting Method
+#   FIFO - oldest lot first. The conservative default and the IRS fallback.
+#   HIFO - highest cost basis first. Minimises the gain on each sale, but tends to
+#          leave the cheap OLD lots open, so it can turn long-term gains into
+#          short-term ones and defer tax rather than avoid it. Requires that you
+#          can identify the lots sold - this ledger is that record.
+# CHANGING THIS DOES NOT REWRITE HISTORY. Run `python -m Tax_Reserve_Agent.main
+# rebuild` afterwards or the ledger ends up half one method and half the other.
+accounting:
+  method: "FIFO"
+
+# Wallets to Track (Polygon for Polymarket, EVM / Solana for Spot)
+wallets:
+  polygon_wallets:
+    - "0x0000000000000000000000000000000000000000" # Replace with your trading wallet
+  solana_wallets: []
+  evm_wallets: []
+
+# Exchange / API Keys (Optional - only needed if pulling from private CEX/CLOB APIs)
+apis:
+  polymarket_clob:
+    api_key: ""
+    api_secret: ""
+    api_passphrase: ""
+  deribit_options:
+    client_id: ""
+    client_secret: ""
+
+# Portfolio Liquid Balances Override (Optional: manual baseline or auto-detected)
+portfolio:
+  default_cash_balance_usdc: 10000.00
+  tax_year: 2026
+
+# On-Chain Sync (Gnosis CTF logs on Polygon + CLOB order-fill subgraph)
+chain:
+  # Tried in order, with the built-in defaults appended as fallbacks. Leave blank
+  # to use the defaults. NOTE: https://polygon-rpc.com now returns 401 and
+  # https://polygon.llamarpc.com no longer resolves - both verified 2026-09-02.
+  polygon_rpc_endpoints:
+    - "https://polygon-bor-rpc.publicnode.com"
+    - "https://polygon.drpc.org"
+    - "https://1rpc.io/matic"
+  ctf_contract: "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
+  # CLOB fills come from the Polymarket Data API. Set this ONLY if you have a
+  # working orderbook subgraph - the public Goldsky one 404s as of 2026-09-02.
+  orderbook_subgraph_url: ""
+  start_block: 0                               # raise this to skip pre-trading history and sync faster
+  confirmations: 64                            # stay this far behind the chain head; a reorged log
+                                               # that reaches the FIFO engine cannot be un-written
+  include_clob_fills: true
+  # The Data API reports NO fee on any fill, so Polymarket cost basis is gross of
+  # fees by default. That overstates gains and the escrow (safe direction), but on
+  # 1-4% edges it can assess tax on roughly double the real profit. Set a decimal
+  # rate (e.g. 0.02 for 2%) to book an explicit ESTIMATE instead; every affected
+  # row is labelled as estimated in its notes. 0 = off, record measurements only.
+  polymarket_fee_rate: 0
+  # How a $1 CTF split allocates cost basis across the outcome legs.
+  # Blank = equal split (0.50/0.50 on a binary market). Must have one entry per leg.
+  split_basis_allocation: []
+
+# CSV Drop Folder (files dropped here are auto-ingested; see ingestors/csv_watcher.py)
+imports:
+  drop_folder: "data/imports"
+  poll_interval_seconds: 5
+  archive_after_import: true
+
+# Bot Integration Guardrails (interfaces/monarch_hook.py)
+bot_integration:
+  max_position_pct: 0.05      # ceiling per order, as a fraction of the SAFE bankroll
+  min_order_usd: 1.00
+  snapshot_cache_seconds: 60
+  # Let a well-measured category exceed max_position_pct (up to the 8% ceiling).
+  # OFF by default: a win rate estimated from your own past trades is
+  # survivorship-prone and noisy at small N, and letting it raise a limit you set
+  # means it bids hardest right after a hot streak. With this off the empirical
+  # sizer can only tighten.
+  allow_empirical_upsize: false
+  # Most recent completed trades per category used for edge measurement. Older
+  # ones are ignored so a category that worked in a past regime cannot keep its
+  # size while the edge decays.
+  category_window: 40
+  # Below this many closed trades the empirical sizer does not engage at all and
+  # the flat percentage applies. Wilson shrinks a small sample hard, but shrinking
+  # is not abstaining: 3 observations still produce a number that moves real money.
+  min_category_trades: 5
+  # Which payoff ratio b pairs with the measured win rate:
+  #   realized      the self-consistent pair - what this book actually captures
+  #   price         b = (1-q)/q, the contract held to resolution
+  #   conservative  min of the two (default)
+  # p is measured from CLOSED trades, most of which were exited early, so pairing
+  # it with the hold-to-resolution payoff overstates f* for a scalper.
+  payoff_basis: "conservative"
+  # Round-trip fee assumed by the after-tax BREAK-EVEN FILTER only. Never touches
+  # the ledger - it exists so `dutched_arb --min-edge` knows what an edge must
+  # clear. Break-even is fee/(1-tax): 2% at a 35% rate needs a 3.08% gross edge,
+  # so a 2.5% "arbitrage" is an after-tax loss. A measured
+  # chain.polymarket_fee_rate overrides this.
+  assumed_round_trip_fee: 0.02
+  # STRATEGY CAPITAL BUCKETS. Each strategy may only draw on its own fraction of
+  # the SAFE bankroll, so a new or misbehaving strategy cannot reach core capital.
+  # Leave empty to disable bucketing entirely (every strategy sees the whole
+  # bankroll - the pre-Phase-3 behaviour).
+  #
+  # Totals above 100% are scaled down proportionally rather than honoured. A total
+  # below 100% is fine: the remainder is unallocated reserve.
+  #
+  # A strategy NOT listed here - including the unnamed `default` tag - is
+  # QUARANTINED into `sandbox`. Without a `sandbox` entry it gets $0 and its
+  # orders are rejected. That is deliberate: an unbudgeted strategy is by
+  # definition untested.
+  strategies:
+    dutched_arb: 0.25
+    consensus_copy: 0.20
+    hl_basis_harvest: 0.25      # delta-neutral cash & carry (HL Monarch)
+    sports_betting: 0.15        # sports betting bot allocation
+    hl_liquidation_fade: 0.05   # RETIRED strategy - see HL settings
+                                # FADE_STRATEGY_ENABLED = False. Kept at a
+                                # token allocation so that if it is ever
+                                # re-enabled it starts small rather than
+                                # inheriting the sandbox by accident.
+    sandbox: 0.10
+
+# Output Settings
+output:
+  obsidian_vault_path: "c:/Users/ixis1/Desktop/DEV/obsidian_vault"
+  export_to_obsidian: true

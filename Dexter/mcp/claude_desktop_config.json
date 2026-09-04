@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "dexter-obsidian-vault": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:/Users/ixis1/Desktop/Dexter"
+      ]
+    }
+  }
+}

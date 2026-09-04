@@ -1,0 +1,412 @@
+//@version=5
+strategy("7/11 EMA-SMA Fast Crossover System Pro [Moon Dev]", shorttitle="7/11-CROSS-PRO", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.04, slippage=1, process_orders_on_close=true)
+
+// =============================================================================
+// 🌙 MOON DEV QUANT LAB - STRATEGY #2: 7/11 EMA-SMA FAST CROSSOVER SYSTEM PRO
+// Target Assets: /NQ (E-mini Nasdaq), /CL (Crude Oil), SOLUSDT, BTCUSDT
+// 
+// Quantitative Enhancements:
+//   1. Macro Regime & Higher Timeframe (HTF) Filter (HTF 200 EMA + ADX > 20)
+//   2. Volatility-Adaptive Dynamic Stops (2-Bar Swing + ATR buffer + max tick cap)
+//   3. Multi-Stage Profit Taking & Trailing Engine (50% TP1 @ 1.5R -> BE -> TP2 Runner)
+//   4. Volume & Momentum Confirmation (Volume > 1.2x 20-SMA, RSI in 50-70 / 30-50 zone)
+//   5. Time-of-Day Execution Killzones (US Equities NY AM/PM, London/NY Crypto)
+//   6. Institutional JSON Webhook Payload Engine ({{strategy.order.alert_message}})
+//   7. Real-Time On-Chart Performance HUD & Risk Level Lines
+// =============================================================================
+
+// =============================================================================
+// 1. ASSET PRESETS & BASE LOOKBACKS
+// =============================================================================
+grp_base     = "=== 1. Core Fast/Slow Moving Average Engine ==="
+preset_choice = input.string("Custom", "Asset Preset Profile", options=["Custom", "Nasdaq (/NQ 1m/5m/15m)", "Crude Oil (/CL 5m/15m)", "Solana (SOLUSDT 15m/1H)", "Bitcoin (BTCUSDT 15m/1H)"], group=grp_base)
+fast_type    = input.string("EMA", "Fast MA Type", options=["EMA", "SMA", "WMA"], group=grp_base)
+fast_len     = input.int(7, "Fast MA Period", minval=1, group=grp_base)
+slow_type    = input.string("SMA", "Slow MA Type", options=["SMA", "EMA", "WMA"], group=grp_base)
+slow_len     = input.int(11, "Slow MA Period", minval=1, group=grp_base)
+src_price    = input.source(close, "Source Price", group=grp_base)
+
+// =============================================================================
+// 2. MACRO REGIME & HTF FILTER
+// =============================================================================
+grp_htf      = "=== 2. Macro Regime & HTF Trend Bias ==="
+use_htf_bias = input.bool(true, "Enable HTF Macro Trend Bias", group=grp_htf, tooltip="Only take Longs when price > HTF EMA(200); Shorts below")
+htf_timeframe= input.timeframe("60", "HTF Resolution (e.g. 60=1H, 240=4H)", group=grp_htf)
+htf_ema_len  = input.int(200, "HTF Trend EMA Length", minval=10, group=grp_htf)
+use_adx_gate = input.bool(true, "Enable ADX Trend Strength Filter", group=grp_htf, tooltip="Avoids low-volatility chop by requiring ADX > threshold")
+adx_period   = input.int(14, "ADX Period", minval=2, group=grp_htf)
+adx_min_val  = input.float(20.0, "Minimum ADX Threshold", minval=5.0, step=1.0, group=grp_htf)
+
+// =============================================================================
+// 3. VOLUME & MOMENTUM CONFIRMATION GATES
+// =============================================================================
+grp_mom      = "=== 3. Volume & Momentum Confirmation Gates ==="
+use_vol_gate = input.bool(true, "Enable Volume Expansion Gate", group=grp_mom, tooltip="Requires entry bar volume > Multiplier * SMA(Volume, 20)")
+vol_sma_len  = input.int(20, "Volume SMA Length", minval=1, group=grp_mom)
+vol_mult     = input.float(1.2, "Volume Surge Multiplier", minval=0.5, step=0.1, group=grp_mom)
+use_rsi_gate = input.bool(true, "Enable RSI Momentum Zone Gate", group=grp_mom, tooltip="Longs: RSI in 50..70 (momentum without overbought); Shorts: 30..50")
+rsi_len      = input.int(14, "RSI Period", minval=2, group=grp_mom)
+rsi_long_min = input.float(50.0, "Long Min RSI", minval=30.0, maxval=70.0, group=grp_mom)
+rsi_long_max = input.float(70.0, "Long Max RSI (Overbought ceiling)", minval=50.0, maxval=90.0, group=grp_mom)
+rsi_short_min= input.float(30.0, "Short Min RSI (Oversold floor)", minval=10.0, maxval=50.0, group=grp_mom)
+rsi_short_max= input.float(50.0, "Short Max RSI", minval=30.0, maxval=70.0, group=grp_mom)
+
+// =============================================================================
+// 4. TIME-OF-DAY EXECUTION KILLZONES
+// =============================================================================
+grp_session  = "=== 4. Time-of-Day Execution Killzones ==="
+use_session  = input.bool(true, "Enable Session Killzone Filter", group=grp_session)
+session_mode = input.string("US Equities (NY AM + PM)", "Session Preset", options=["US Equities (NY AM + PM)", "Crypto (London + NY Active)", "24/7 All Sessions", "Custom Session"], group=grp_session)
+custom_sess  = input.session("0930-1130,1330-1530:23456", "Custom Session String", group=grp_session)
+session_tz   = input.string("America/New_York", "Timezone", group=grp_session)
+
+// =============================================================================
+// 5. VOLATILITY-ADAPTIVE RISK & DYNAMIC EXITS
+// =============================================================================
+grp_risk     = "=== 5. Volatility-Adaptive Stops & Multi-Stage Exits ==="
+trade_side   = input.string("Both", "Allowed Trade Direction", options=["Both", "Long Only", "Short Only"], group=grp_risk)
+atr_len      = input.int(14, "ATR Lookback Period", minval=1, group=grp_risk)
+atr_buffer   = input.float(0.5, "ATR Buffer Multiplier (for Swing SL)", minval=0.0, step=0.1, group=grp_risk)
+use_max_sl_cap = input.bool(true, "Enforce Hard Max SL Tick/Point Cap", group=grp_risk, tooltip="Protects against freak outsized wick bars")
+max_sl_pts   = input.float(8.75, "Max SL Points (/NQ 35 ticks = 8.75 pts)", minval=0.1, step=0.25, group=grp_risk)
+tp1_ratio    = input.float(1.5, "TP1 Target Ratio (x Initial Risk R)", minval=0.5, step=0.1, group=grp_risk)
+tp1_pct      = input.float(50.0, "TP1 Scale-Out Qty (%)", minval=10.0, maxval=90.0, step=10.0, group=grp_risk)
+be_offset_pts= input.float(0.25, "Breakeven Offset Points (Entry + X)", minval=0.0, step=0.25, group=grp_risk)
+trail_mode   = input.string("11-SMA Cross", "TP2 Runner Exit Mode", options=["11-SMA Cross", "1.5x ATR Trailing Band", "Opposite 7/11 Cross"], group=grp_risk)
+trail_atr_m  = input.float(1.5, "Runner ATR Trailing Distance Multiplier", minval=0.5, step=0.1, group=grp_risk)
+
+// =============================================================================
+// 6. VISUAL & DASHBOARD CONFIG
+// =============================================================================
+grp_ui       = "=== 6. Visual Overlay & Dashboard Styling ==="
+show_ribbon  = input.bool(true, "Show 7/11 MA Ribbon", group=grp_ui)
+show_signals = input.bool(true, "Plot Entry Buy/Sell Signals", group=grp_ui)
+show_levels  = input.bool(true, "Plot Active SL / TP1 / Trailing Levels", group=grp_ui)
+show_hud     = input.bool(true, "Show Performance HUD Dashboard", group=grp_ui)
+hud_pos      = input.string("Top Right", "HUD Dashboard Position", options=["Top Right", "Bottom Right", "Top Left", "Bottom Left"], group=grp_ui)
+
+// =============================================================================
+// 7. WEBHOOK AUTOMATION ENGINE
+// =============================================================================
+grp_bot      = "=== 7. Webhook & Execution Engine Settings ==="
+bot_token    = input.string("MOONDEV_711_SECRET", "Bot Auth Secret Token", group=grp_bot)
+bot_account  = input.string("hyperliquid_algo_01", "Client Account ID", group=grp_bot)
+bot_magic_id = input.int(71101, "Strategy Magic ID", group=grp_bot)
+
+// =============================================================================
+// DYNAMIC PRESET RESOLUTION
+// =============================================================================
+var int eff_fast_len   = fast_len
+var int eff_slow_len   = slow_len
+var float eff_max_sl   = max_sl_pts
+var string eff_session = custom_sess
+
+if preset_choice == "Nasdaq (/NQ 1m/5m/15m)"
+    eff_fast_len   := 7
+    eff_slow_len   := 11
+    eff_max_sl     := 8.75 // 35 ticks * 0.25 pt
+    eff_session    := "0930-1130,1330-1530:23456"
+else if preset_choice == "Crude Oil (/CL 5m/15m)"
+    eff_fast_len   := 7
+    eff_slow_len   := 11
+    eff_max_sl     := 0.40 // 40 ticks * 0.01 pt
+    eff_session    := "0900-1130,1300-1430:23456"
+else if preset_choice == "Solana (SOLUSDT 15m/1H)"
+    eff_fast_len   := 7
+    eff_slow_len   := 11
+    eff_max_sl     := 2.50
+    eff_session    := "0300-1700:1234567"
+else if preset_choice == "Bitcoin (BTCUSDT 15m/1H)"
+    eff_fast_len   := 7
+    eff_slow_len   := 11
+    eff_max_sl     := 850.0
+    eff_session    := "0000-2359:1234567"
+else
+    eff_fast_len   := fast_len
+    eff_slow_len   := slow_len
+    eff_max_sl     := max_sl_pts
+    eff_session    := custom_sess
+
+// =============================================================================
+// MATHEMATICAL COMPUTATIONS & INDICATORS
+// =============================================================================
+
+// Generic MA calculation helper
+calc_ma(_src, _len, _type) =>
+    _type == "EMA" ? ta.ema(_src, _len) : _type == "WMA" ? ta.wma(_src, _len) : ta.sma(_src, _len)
+
+// Core Moving Averages
+fast_ma = calc_ma(src_price, eff_fast_len, fast_type)
+slow_ma = calc_ma(src_price, eff_slow_len, slow_type)
+
+// Crossover Detection
+ma_bull_cross = ta.crossover(fast_ma, slow_ma)
+ma_bear_cross = ta.crossunder(fast_ma, slow_ma)
+
+// Candle Confirmation (Bullish Green / Bearish Red)
+candle_bull = close > open
+candle_bear = close < open
+
+// ATR Volatility
+atr_val = ta.atr(atr_len)
+
+// HTF Macro Trend Bias (200 EMA on Higher Timeframe)
+htf_ema_raw = request.security(syminfo.tickerid, htf_timeframe, ta.ema(close, htf_ema_len), gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+htf_bias_bull = not use_htf_bias or (close > htf_ema_raw)
+htf_bias_bear = not use_htf_bias or (close < htf_ema_raw)
+
+// ADX Strength Gate
+[diplus, dimin, adx_val] = ta.dmi(adx_period, adx_period)
+adx_valid = not use_adx_gate or (adx_val >= adx_min_val)
+
+// Volume Expansion Gate
+vol_sma   = ta.sma(volume, vol_sma_len)
+vol_valid = not use_vol_gate or (volume >= (vol_sma * vol_mult))
+
+// RSI Momentum Gate
+rsi_val   = ta.rsi(close, rsi_len)
+rsi_bull  = not use_rsi_gate or (rsi_val >= rsi_long_min and rsi_val <= rsi_long_max)
+rsi_bear  = not use_rsi_gate or (rsi_val >= rsi_short_min and rsi_val <= rsi_short_max)
+
+// Session Killzone Filter
+var string active_sess_str = ""
+if session_mode == "US Equities (NY AM + PM)"
+    active_sess_str := "0930-1130,1330-1530:23456"
+else if session_mode == "Crypto (London + NY Active)"
+    active_sess_str := "0300-1700:1234567"
+else if session_mode == "24/7 All Sessions"
+    active_sess_str := "0000-2359:1234567"
+else
+    active_sess_str := eff_session
+
+in_session = not use_session or not na(time(timeframe.period, active_sess_str, session_tz))
+
+// =============================================================================
+// COMPREHENSIVE ENTRY CONFLUENCE
+// =============================================================================
+allow_long  = trade_side == "Both" or trade_side == "Long Only"
+allow_short = trade_side == "Both" or trade_side == "Short Only"
+
+entry_signal_long  = ma_bull_cross and candle_bull and htf_bias_bull and adx_valid and vol_valid and rsi_bull and in_session and allow_long
+entry_signal_short = ma_bear_cross and candle_bear and htf_bias_bear and adx_valid and vol_valid and rsi_bear and in_session and allow_short
+
+// =============================================================================
+// DYNAMIC STOP LOSS & PROFIT TARGET CALCULATIONS
+// =============================================================================
+// 2-Bar Swing Low/High with ATR buffer
+swing_low_raw  = math.min(low[1], low[2]) - (atr_val * atr_buffer)
+swing_high_raw = math.max(high[1], high[2]) + (atr_val * atr_buffer)
+
+// Raw initial risk distances
+long_risk_dist_raw  = close - swing_low_raw
+short_risk_dist_raw = swing_high_raw - close
+
+// Cap risk distance by max SL points if enabled
+long_risk_dist  = use_max_sl_cap ? math.min(long_risk_dist_raw, eff_max_sl) : long_risk_dist_raw
+short_risk_dist = use_max_sl_cap ? math.min(short_risk_dist_raw, eff_max_sl) : short_risk_dist_raw
+
+// Bounded Initial Stop Loss Prices
+init_sl_long  = close - long_risk_dist
+init_sl_short = close + short_risk_dist
+
+// Stage 1 Take Profit (1.5R default)
+init_tp1_long  = close + (long_risk_dist * tp1_ratio)
+init_tp1_short = close - (short_risk_dist * tp1_ratio)
+
+// =============================================================================
+// STATE TRACKING VARIABLES
+// =============================================================================
+var float pos_entry_px = na
+var float pos_sl_px    = na
+var float pos_tp1_px   = na
+var float pos_risk_amt = na
+var bool  tp1_hit      = false
+var float runner_trail = na
+
+// Position Flags
+in_long_pos  = strategy.position_size > 0
+in_short_pos = strategy.position_size < 0
+
+// =============================================================================
+// PRODUCTION JSON WEBHOOK ALERTS ({{strategy.order.alert_message}})
+// =============================================================================
+long_entry_json = '{"token":"' + bot_token + '","account":"' + bot_account + '","magic":' + str.tostring(bot_magic_id, "#") +
+     ',"action":"BUY","ticker":"' + syminfo.ticker + '","price":' + str.tostring(close, "#.##") +
+     ',"sl":' + str.tostring(init_sl_long, "#.##") + ',"tp1":' + str.tostring(init_tp1_long, "#.##") +
+     ',"risk":' + str.tostring(long_risk_dist, "#.##") + ',"adx":' + str.tostring(adx_val, "#.#") +
+     ',"rsi":' + str.tostring(rsi_val, "#.#") + ',"time":' + str.tostring(time, "#") + '}'
+
+short_entry_json = '{"token":"' + bot_token + '","account":"' + bot_account + '","magic":' + str.tostring(bot_magic_id, "#") +
+     ',"action":"SELL","ticker":"' + syminfo.ticker + '","price":' + str.tostring(close, "#.##") +
+     ',"sl":' + str.tostring(init_sl_short, "#.##") + ',"tp1":' + str.tostring(init_tp1_short, "#.##") +
+     ',"risk":' + str.tostring(short_risk_dist, "#.##") + ',"adx":' + str.tostring(adx_val, "#.#") +
+     ',"rsi":' + str.tostring(rsi_val, "#.#") + ',"time":' + str.tostring(time, "#") + '}'
+
+tp1_close_json = '{"token":"' + bot_token + '","account":"' + bot_account + '","magic":' + str.tostring(bot_magic_id, "#") +
+     ',"action":"PARTIAL_TP1","ticker":"' + syminfo.ticker + '","price":' + str.tostring(close, "#.##") +
+     ',"qty_pct":' + str.tostring(tp1_pct, "#") + ',"time":' + str.tostring(time, "#") + '}'
+
+be_move_json = '{"token":"' + bot_token + '","account":"' + bot_account + '","magic":' + str.tostring(bot_magic_id, "#") +
+     ',"action":"MOVE_TO_BREAKEVEN","ticker":"' + syminfo.ticker + '","new_sl":' + str.tostring(pos_sl_px, "#.##") +
+     ',"time":' + str.tostring(time, "#") + '}'
+
+full_exit_json = '{"token":"' + bot_token + '","account":"' + bot_account + '","magic":' + str.tostring(bot_magic_id, "#") +
+     ',"action":"CLOSE_POSITION","ticker":"' + syminfo.ticker + '","price":' + str.tostring(close, "#.##") +
+     ',"time":' + str.tostring(time, "#") + '}'
+
+// =============================================================================
+// STRATEGY EXECUTION ENGINE
+// =============================================================================
+
+// LONG ENTRY ORDER
+if entry_signal_long and not in_long_pos
+    strategy.entry("711_Long", strategy.long, alert_message=long_entry_json)
+    pos_entry_px := close
+    pos_sl_px    := init_sl_long
+    pos_tp1_px   := init_tp1_long
+    pos_risk_amt := long_risk_dist
+    tp1_hit      := false
+    runner_trail := init_sl_long
+
+// SHORT ENTRY ORDER
+if entry_signal_short and not in_short_pos
+    strategy.entry("711_Short", strategy.short, alert_message=short_entry_json)
+    pos_entry_px := close
+    pos_sl_px    := init_sl_short
+    pos_tp1_px   := init_tp1_short
+    pos_risk_amt := short_risk_dist
+    tp1_hit      := false
+    runner_trail := init_sl_short
+
+// =============================================================================
+// MULTI-STAGE EXITS & RUNNER TRAILING LOGIC
+// =============================================================================
+
+// Manage Active Long Position
+if in_long_pos
+    // Stage 1: Scale out 50% at TP1
+    if not tp1_hit and high >= pos_tp1_px
+        strategy.exit("TP1_Scale_Long", from_entry="711_Long", qty_percent=tp1_pct, limit=pos_tp1_px, alert_message=tp1_close_json)
+        tp1_hit   := true
+        // Migrate Stop to Breakeven (+ offset points)
+        pos_sl_px := pos_entry_px + be_offset_pts
+    
+    // Stage 2: Trailing Runner Stop
+    if tp1_hit
+        if trail_mode == "11-SMA Cross"
+            if close < slow_ma
+                strategy.close("711_Long", comment="11-SMA Trailing Exit", alert_message=full_exit_json)
+        else if trail_mode == "1.5x ATR Trailing Band"
+            calc_trail = close - (atr_val * trail_atr_m)
+            runner_trail := math.max(nz(runner_trail, pos_sl_px), calc_trail)
+            pos_sl_px    := math.max(pos_sl_px, runner_trail)
+            strategy.exit("Trail_Runner_Long", from_entry="711_Long", stop=pos_sl_px, alert_message=full_exit_json)
+        else if trail_mode == "Opposite 7/11 Cross"
+            if ma_bear_cross
+                strategy.close("711_Long", comment="Opposite 7/11 Flip Exit", alert_message=full_exit_json)
+    else
+        // Initial Stop Loss protection before TP1
+        strategy.exit("Init_SL_Long", from_entry="711_Long", stop=pos_sl_px, alert_message=full_exit_json)
+
+// Manage Active Short Position
+if in_short_pos
+    // Stage 1: Scale out 50% at TP1
+    if not tp1_hit and low <= pos_tp1_px
+        strategy.exit("TP1_Scale_Short", from_entry="711_Short", qty_percent=tp1_pct, limit=pos_tp1_px, alert_message=tp1_close_json)
+        tp1_hit   := true
+        // Migrate Stop to Breakeven (- offset points)
+        pos_sl_px := pos_entry_px - be_offset_pts
+    
+    // Stage 2: Trailing Runner Stop
+    if tp1_hit
+        if trail_mode == "11-SMA Cross"
+            if close > slow_ma
+                strategy.close("711_Short", comment="11-SMA Trailing Exit", alert_message=full_exit_json)
+        else if trail_mode == "1.5x ATR Trailing Band"
+            calc_trail = close + (atr_val * trail_atr_m)
+            runner_trail := math.min(nz(runner_trail, pos_sl_px), calc_trail)
+            pos_sl_px    := math.min(pos_sl_px, runner_trail)
+            strategy.exit("Trail_Runner_Short", from_entry="711_Short", stop=pos_sl_px, alert_message=full_exit_json)
+        else if trail_mode == "Opposite 7/11 Cross"
+            if ma_bull_cross
+                strategy.close("711_Short", comment="Opposite 7/11 Flip Exit", alert_message=full_exit_json)
+    else
+        // Initial Stop Loss protection before TP1
+        strategy.exit("Init_SL_Short", from_entry="711_Short", stop=pos_sl_px, alert_message=full_exit_json)
+
+// Clean State When Flat
+if strategy.position_size == 0 and strategy.position_size[1] != 0
+    pos_entry_px := na
+    pos_sl_px    := na
+    pos_tp1_px   := na
+    pos_risk_amt := na
+    tp1_hit      := false
+    runner_trail := na
+
+// =============================================================================
+// CHART PLOTTING & VISUAL OVERLAYS
+// =============================================================================
+ribbon_bull = fast_ma > slow_ma
+p_fast = plot(fast_ma, title="7 Fast EMA", color=#00E676, linewidth=2)
+p_slow = plot(slow_ma, title="11 Slow SMA", color=#FF5252, linewidth=2)
+fill(p_fast, p_slow, title="7/11 Ribbon Band", color=show_ribbon ? (ribbon_bull ? color.new(#00E676, 75) : color.new(#FF5252, 75)) : na)
+
+// HTF Trend Reference Line
+plot(use_htf_bias ? htf_ema_raw : na, title="HTF 200 EMA Trend Filter", color=color.new(#FFD700, 30), linewidth=2, style=plot.style_stepline)
+
+// Signal Markers
+plotshape(show_signals and entry_signal_long, title="7/11 Long Signal", style=shape.triangleup, location=location.belowbar, color=#00E676, size=size.small, text="7/11 BUY", textcolor=color.white)
+plotshape(show_signals and entry_signal_short, title="7/11 Short Signal", style=shape.triangledown, location=location.abovebar, color=#FF5252, size=size.small, text="7/11 SELL", textcolor=color.white)
+
+// Dynamic Risk/Reward Overlay Lines
+plot(show_levels and (in_long_pos or in_short_pos) ? pos_entry_px : na, title="Entry Price Line", color=color.white, style=plot.style_linebr, linewidth=1)
+plot(show_levels and (in_long_pos or in_short_pos) ? pos_sl_px : na, title="Active Stop Loss Line", color=#FF1744, style=plot.style_linebr, linewidth=2)
+plot(show_levels and (in_long_pos or in_short_pos) ? pos_tp1_px : na, title="Take Profit 1 Line", color=#00E676, style=plot.style_linebr, linewidth=2)
+
+// =============================================================================
+// QUANT PERFORMANCE HUD DASHBOARD
+// =============================================================================
+var table hud = table.new(position.top_right, 6, 9, bgcolor=color.new(#131722, 10), border_color=color.new(#2A2E39, 0), border_width=1)
+
+if barstate.islast and show_hud
+    _pos = hud_pos == "Top Right" ? position.top_right : hud_pos == "Bottom Right" ? position.bottom_right : hud_pos == "Top Left" ? position.top_left : position.bottom_left
+    table.set_position(hud, _pos)
+    
+    // Header
+    table.cell(hud, 0, 0, "🌙 MOON DEV QUANT LAB", 0, 0, color.white, color.new(#2962FF, 10), text_size=size.small)
+    table.cell(hud, 1, 0, "7/11 CROSSOVER PRO", 0, 0, color.yellow, color.new(#2962FF, 10), text_size=size.small)
+    
+    // Core Engine Info
+    table.cell(hud, 0, 1, "MA Config", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 1, fast_type + "(" + str.tostring(eff_fast_len) + ") / " + slow_type + "(" + str.tostring(eff_slow_len) + ")", 0, 0, color.white, text_size=size.small)
+    
+    // HTF Macro & ADX Status
+    table.cell(hud, 0, 2, "HTF Trend / ADX", 0, 0, color.silver, text_size=size.small)
+    htf_status_txt = (close > htf_ema_raw ? "🟢 HTF BULL" : "🔴 HTF BEAR") + " | ADX: " + str.tostring(adx_val, "#.#")
+    table.cell(hud, 1, 2, htf_status_txt, 0, 0, adx_valid ? color.green : color.orange, text_size=size.small)
+    
+    // Volume & RSI Status
+    table.cell(hud, 0, 3, "Vol Surge / RSI", 0, 0, color.silver, text_size=size.small)
+    vol_rsi_txt = (vol_valid ? "🟢 VOL OK" : "⚪ LOW VOL") + " | RSI: " + str.tostring(rsi_val, "#.#")
+    table.cell(hud, 1, 3, vol_rsi_txt, 0, 0, vol_valid ? color.green : color.silver, text_size=size.small)
+    
+    // Session Filter
+    table.cell(hud, 0, 4, "Killzone Session", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 4, in_session ? "🟢 ACTIVE WINDOW" : "🔴 OUT OF SESSION", 0, 0, in_session ? color.green : color.red, text_size=size.small)
+    
+    // Active Position
+    table.cell(hud, 0, 5, "Live Position", 0, 0, color.silver, text_size=size.small)
+    pos_txt = in_long_pos ? "LONG (" + str.tostring(strategy.position_size) + ") " + (tp1_hit ? "[RUNNER]" : "[STAGE 1]") : in_short_pos ? "SHORT (" + str.tostring(strategy.position_size) + ") " + (tp1_hit ? "[RUNNER]" : "[STAGE 1]") : "FLAT"
+    table.cell(hud, 1, 5, pos_txt, 0, 0, in_long_pos ? #00E676 : in_short_pos ? #FF1744 : color.gray, text_size=size.small)
+    
+    // Stats Summary
+    tot_trades = strategy.closedtrades
+    wr_pct = tot_trades > 0 ? (strategy.wintrades / tot_trades) * 100.0 : 0.0
+    net_pnl = (strategy.netprofit / strategy.initial_capital) * 100.0
+    table.cell(hud, 0, 6, "Total Return / WR", 0, 0, color.silver, text_size=size.small)
+    table.cell(hud, 1, 6, str.tostring(net_pnl, "+#.##") + "% (" + str.tostring(wr_pct, "#.#") + "% WR)", 0, 0, net_pnl >= 0 ? color.green : color.red, text_size=size.small)
+    
+    table.cell(hud, 0, 7, "Total Trades / PF", 0, 0, color.silver, text_size=size.small)
+    gross_loss_abs = math.abs(strategy.grossloss)
+    pf_val = gross_loss_abs > 0 ? strategy.grossprofit / gross_loss_abs : (strategy.grossprofit > 0 ? 99.9 : 0.0)
+    table.cell(hud, 1, 7, str.tostring(tot_trades) + " trades | PF: " + str.tostring(pf_val, "#.##"), 0, 0, color.white, text_size=size.small)

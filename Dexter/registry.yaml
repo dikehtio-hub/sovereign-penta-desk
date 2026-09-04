@@ -1,0 +1,97 @@
+# Dexter controllable units — agents and bots that process_manager.py can start/stop.
+#
+# Fields:
+#   id           unique slug, used on the CLI (e.g. `python -m core.cli start <id>`)
+#   name         human label
+#   category     agent | bot | test  (informational only)
+#   cwd          absolute working directory the subprocess runs in
+#   command      exact literal argv — no auto-detection, no flag standardization,
+#                since every project here has its own invocation convention
+#   enabled      hard gate; `start` refuses if false, no bypass flag
+#   description  what it does
+#   notes        optional — why it's disabled, caveats, etc.
+
+- id: arbitrage-agent
+  name: Arbitrage Agent (Base L2 DEX)
+  category: agent
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\AGENTS\\Arbitrage Agent"
+  command: ["python", "agent.py", "--mode", "paper", "--interval", "2.0"]
+  enabled: true
+  description: "Autonomous Base L2 DEX arbitrage agent. Paper mode by default."
+
+- id: funding-arbitrage-agent
+  name: Funding Arbitrage Agent
+  category: agent
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\AGENTS\\Funding_Arbitrage_Agent"
+  command: ["python", "agent.py", "--mode", "dry-run", "--strategy", "all"]
+  enabled: true
+  description: "Async funding-rate arbitrage agent. Dry-run, no --auto-trade by default."
+  notes: "Real-world invocation can add --auto-trade --leverage N; deliberately omitted here as the safe default. Edit command[] directly once reviewed."
+
+- id: hyperliquid-bollinger-bot
+  name: Hyperliquid Bollinger Bot
+  category: bot
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\BOTS\\HYPERLIQUID"
+  command: ["python", "bollinger_bot.py"]
+  enabled: false
+  description: "Uses schedule.every(30).seconds + while True — structurally runnable, unlike most BOTS/ scripts."
+  notes: "File's own header says 'Do not run without making your own strategy.' Left disabled on purpose; flip enabled: true only after reviewing the strategy."
+
+- id: quant-trading-lab-server
+  name: Quant Trading Lab (FastAPI Webhook Server)
+  category: agent
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\quant_trading_lab"
+  command: ["C:\\Users\\ixis1\\Desktop\\DEV\\quant_trading_lab\\venv\\Scripts\\python.exe", "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8000"]
+  enabled: true
+  description: "CME Futures algorithmic execution gateway and TradingView alert receiver on port 8000."
+
+- id: quant-trading-lab-sync
+  name: Quant Trading Lab (Obsidian Sync Exporter)
+  category: bot
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\quant_trading_lab"
+  command: ["C:\\Users\\ixis1\\Desktop\\DEV\\quant_trading_lab\\venv\\Scripts\\python.exe", "telemetry\\obsidian_exporter.py", "--interval", "15"]
+  enabled: true
+  description: "Continuous real-time Obsidian vault exporter syncing CME session clocks, 9 Strategy Stacks, and Risk Sentinel telemetry."
+
+- id: hyperliquid-sync
+  name: HyperLiquid Monarch (Obsidian Sync Daemon)
+  category: bot
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\HyperLiquid\\HL_Monarch"
+  command: ["python", "main.py", "obsidian", "--watch", "--interval", "15"]
+  enabled: true
+  description: "Real-time HyperLiquid intelligence exporter syncing whale CRM, liquidations, and funding arb to Obsidian."
+
+- id: hyperliquid-collector
+  name: HyperLiquid Monarch (WebSocket Collector Daemon)
+  category: bot
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\HyperLiquid\\HL_Monarch"
+  command: ["python", "main.py", "collector"]
+  enabled: true
+  description: "Real-time WebSocket collector streaming raw trade fills, order book snapshots, and liquidations into SQLite."
+
+- id: polymarket-sync
+  name: Polymarket Monarch (Obsidian Sync Daemon)
+  category: bot
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\Polymarket\\Polymarket_Monarch"
+  command: ["python", "obsidian_sync.py", "--watch", "--interval", "15"]
+  enabled: true
+  description: "Continuous Polymarket intelligence exporter syncing sharp trader PnL, consensus radar, and market sentiment."
+
+- id: titan-correlation-agent
+  name: Cross-Market Titan & Macro Correlation Agent
+  category: agent
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\cross_market"
+  command: ["python", "titan_correlator.py", "--interval", "30"]
+  enabled: true
+  description: "Discovers dual-venue institutional whale entities and scans for macro lead/lag co-positioning across perps and prediction markets."
+
+- id: polymarket-collector
+  name: Polymarket Monarch (WebSocket Whale Collector)
+  category: bot
+  cwd: "C:\\Users\\ixis1\\Desktop\\DEV\\Polymarket\\Polymarket_Monarch"
+  command: ["python", "whale_collector.py", "--min-usd", "1000"]
+  enabled: true
+  description: "Continuous real-time WebSocket collector streaming Polymarket whale fills into SQLite."
+
+
+

@@ -1,0 +1,2396 @@
+====================================================================
+COMMANDS — Bots & Strategies Inventory — C:\Users\ixis1\Desktop\DEV
+Generated: 2026-08-26 | Last updated: 2026-08-28 (the decision from the
+previous update is in: turned the "move stop to breakeven" feature back
+off on both strategies — the user/Antigravity independently re-ran the
+same real comparison and confirmed it really was hurting profit, not
+helping. The news-pause-around-major-releases feature stays on, since
+that one tested as genuinely low-cost. Both accounts' expected numbers
+are restored close to (though not byte-for-byte identical to, since the
+news-pause feature's own small cost stays) their original healthy
+baseline — the $500k setup's dangerous full safety-lockout is gone. The
+breakeven-stop code itself wasn't deleted, just switched back off, so
+it's still there if a better-tuned version is wanted later; prior
+updates: built two requested
+"institutional upgrades" — automatically moving a trade's stop-loss to
+breakeven once it's up a decent amount, and automatically pausing new
+trades for a few minutes around major economic news releases (CPI,
+jobs report, Fed rate decisions) — then actually ran the real
+comparison the request itself asked for, and it's NOT good news: the
+"move stop to breakeven" feature, while it protects individual trades
+from turning into losses, measurably HURTS overall real profit by
+cutting winning trades short before they reach their full target —
+real profit down about 29% on the smaller account setup, and a much
+worse roughly 93% profit collapse plus a full safety-system lockout on
+the bigger $500k setup. The news-pause feature on its own is nearly
+free (barely any cost). Both features were still built and turned on
+exactly as asked — not silently reverted — but this needs the user's
+own real decision (keep it, make the trigger less aggressive, or turn
+it off) before the bigger $500k setup should be trusted or used for
+real; prior updates: streamlined the
+$500k full-size test to drop gold (it was trading roughly breakeven
+while adding real overhead — margin used, extra losing trades that
+could trip the safety stops, extra pressure on the shared position
+limit — for no real payoff) and the smaller "alongside" contracts,
+down to a focused Nasdaq/S&P/Oil book; added a real live paper-trading
+launcher that connects to the actual demo accounts (not just an
+in-memory simulation) and, new, automatically double-checks every 30
+seconds that what the broker reports actually matches what this
+system thinks is open — catches a missed signal or a manual trade
+placed directly on the broker's own platform instead of it going
+unnoticed. Built by reusing the existing server setup rather than
+building a second, separate one — the third time that exact shortcut
+has paid off this project; prior updates: resolved both open
+questions from the previous update: the account's safety-stop dollar
+amounts now scale up correctly with the account size instead of
+staying fixed at the smaller account's numbers, and the shared
+position-count limit across full-size and Micro contracts now counts
+them at their real relative weight (1 full-size = 10 Micro) instead of
+treating them as equal. Re-ran the $500k full-size test for real with
+both fixes in place: profit went from a loss of about $1,000 to a real
+gain of about $78,400 on the same data, and the account no longer hits
+its worst-case permanent safety lockout at all. The underlying
+strategies' own real performance (which contract, which product) is
+unchanged — this update only fixed how the account's safety systems
+scale, not the trading logic itself; prior updates: started scaling up
+to full-size futures contracts and a $500k account tier — the
+underlying full-size NQ/ES/GC/CL specs already existed; the real
+missing piece was a way to size trades against a bigger account, since
+full-size contracts need 10x the risk budget micro contracts do for
+the same real stop distance. Ran a first real test at $500k and found
+two genuine open questions worth a decision, not silently fixed: the
+account's safety-stop dollar amounts don't get bigger along with the
+account size (so a $500k account trips its safety stops almost as
+easily as a $100k one would), and a shared position-count limit across
+NQ/ES and their micro versions gets blown way past once full-size
+contracts trade alongside the small ones. Both are real judgment
+calls, not bugs — flagged for review before this configuration is
+treated as ready to use for real; prior updates: added a real
+"panic button" — one command now force-closes every open position
+across every strategy and every broker immediately, for emergencies;
+the account's open positions, profit/loss, and safety-cooldown timers
+now survive a crash or restart instead of being lost — a background
+file is updated automatically and read back on startup; a background
+watchdog now checks the Tradovate/Hyperliquid connections every 10
+seconds and raises a loud alert if either one drops for more than 30
+seconds; also found and fixed a real bug where the documented command
+to start the trading server didn't actually start anything — it was
+silently a no-op the whole time, never caught because the automated
+tests never actually launched it for real; prior updates: found the
+real Tradovate and Hyperliquid broker connections already existed,
+fully built and already wired into the live trading path — a second
+near-miss of building a duplicate from scratch was caught before any
+code was written; added the missing safety-net (46 automated tests
+total now, up from 30) and a safe read-only "check my connection"
+script for both; also fixed several copy-paste commands in the
+beginner run-guide that were pointing at wrong filenames/options and
+would have failed for the user; prior updates: strategy 1 can now
+skip choppy markets on request (verified: win-rate-adjusted PF
+1.73->2.14); the account's safety system can now auto-halve position
+size during a sudden volatility spike; caught a near-miss that would
+have built a duplicate, competing broker-connection system — extended
+the existing one instead; see the quant_trading_lab section; prior
+updates: every real trade now auto-tagged with the market condition it
+fired in, and a new tool breaks down win rate/profit by condition —
+real result is more mixed than the "strategy X wins in trends, loses
+in chop" theory predicted; double-checked the
+market regime classifier and found/fixed a real slowdown it would have
+hit once run continuously on a growing live session, not on fixed-size
+backtests — output unchanged, confirmed byte-identical; new capability added:
+a "market regime" classifier that labels current conditions as
+trending / choppy / a volatility spike / unclear — not yet connected
+to any strategy's actual decisions, just built and tested; strategy 7's sizing bug
+actually fixed now, not just diagnosed — 1 real trade became 10 on
+the same real data; strategy 6 tested on Bitcoin/Ethereum for the
+first time (no clear improvement yet, still too little data); added an automatic test that
+locks in the verified-safe live portfolio numbers so they can't
+silently regress again; fixed a real bug where 2 of the portfolio's
+safety limits were checking the wrong contract names and never
+actually applied; found strategy 7 has a fixable sizing bug — strategy
+8's low trade count is genuinely by design, not a bug; found WHY Stack 1 fails, not just that it does — one of its test
+windows shows the worst training setting was the best testing setting,
+meaning no amount of re-tuning would fix it; Stacks 1/2's overfitting
+confirmed a second time with a
+smarter, more careful re-check; Milestone 10 started — real
+multi-month data now pulled for NQ/ES/MGC/MCL/BTC/ETH, plus a
+walk-forward cross-validation tool; Stack 1's breakout trigger tuned
+with a chop-filtering buffer, real profit factor 1.23->1.75;
+quant_trading_lab section rewritten after a long multi-milestone
+session — all 9 strategies switched from NQ/ES to MNQ/MES/BTCUSDT,
+ATR-based stops, volume filters, crypto trading windows, new
+sizing-check/portfolio tools, and a real automated test suite all
+added; the old "Stacks 4, 6, 7 show 0 trades" note was corrected —
+that's no longer true)
+This file is kept up to date automatically — any new bot, strategy,
+or agent built in this DEV folder gets added here in the same
+session it's created.
+====================================================================
+
+WHO THIS FILE IS FOR
+--------------------
+You're new to coding, so this file explains, for every bot/strategy
+in this DEV folder: what it does in plain English, what it trades,
+what timeframes it uses, how to actually run it on your computer,
+and how finished/safe it is. Read the "BEGINNER BASICS" section at
+the very bottom first if terms like "venv", ".env", or "pip install"
+are unfamiliar — it explains all of that once instead of repeating
+it 20 times.
+
+*** SECURITY WARNING — READ THIS FIRST ***
+--------------------------------------------------------------------
+BOTS\Phemex\Phem_key.py has a plaintext key/secret typed directly
+into the file (not hidden in a .env file). The file's own comment
+calls it a "Phemex API key example," so it's possible this is just
+a tutorial placeholder rather than one of your real keys — reading
+the code alone can't tell us which. Since it's impossible to be
+sure just by looking at it, treat it as sensitive either way.
+
+DO THIS: Log into your actual Phemex account and check whether a
+key matching this value is listed as active. If it is, revoke it,
+generate a new one, and store the new one in a .env file instead
+(see Beginner Basics at the bottom) rather than typed into code. If
+it's not an active key at all, it's safe to ignore — but it's worth
+the two-minute check to be sure.
+
+====================================================================
+TIER 1: FULLY STRUCTURED SYSTEMS — DEV\AGENTS\
+(Most complete code. Still PAPER/DRY-RUN only, not connected to
+real money movement yet.)
+====================================================================
+
+--------------------------------------------------------------------
+1. ARBITRAGE AGENT
+   Folder: DEV\AGENTS\Arbitrage Agent\
+--------------------------------------------------------------------
+WHAT IT DOES:
+  Watches 10 crypto token pairs on the Base blockchain (a
+  low-fee Ethereum network) and compares prices between two
+  decentralized exchanges (Uniswap v3 and Aerodrome). When one
+  exchange's price is far enough from the other's to cover fees
+  and still profit, it "trades" the difference (buy low on one,
+  sell high on the other — classic arbitrage).
+
+INSTRUMENTS TRADED:
+  Base L2 token pairs: WETH/USDC, AERO/USDC, cbBTC/USDC,
+  wstETH/WETH, VIRTUAL/WETH, BRETT/WETH, DEGEN/WETH, EURC/USDC,
+  WELL/WETH, DAI/USDC.
+
+TRADING TIMEFRAME:
+  Not candle-based — it re-checks prices every N seconds (you set
+  this with --interval, e.g. every 2 seconds).
+
+CHART TIMEFRAME FOR ANALYSIS:
+  None. This isn't a chart/indicator strategy — it just compares
+  live spot prices between two exchanges at each check-in.
+
+HOW TO RUN IT:
+  1. Open a terminal in DEV\AGENTS\Arbitrage Agent\
+  2. Install dependencies:      pip install -r requirements.txt
+  3. Run in paper mode:         python agent.py --mode paper --interval 2.0
+  4. Run the test suite:        python -m pytest test_agent.py -v
+  5. Quick smoke test:          python run_agent_test.py
+  6. See projected yield:       python backtest.py
+
+STATUS / CAVEATS:
+  Paper-trading only right now — all prices and fills are
+  simulated/randomized, nothing touches a real blockchain.
+  --mode live exists but refuses to start unless you create a
+  dontshare.py file (copy dontshare_template.py) with real keys,
+  and even then it only prints "LIVE_PENDING" — it will NOT
+  actually place a real trade. Real trading would still need more
+  work (deploying a smart contract that's written but not
+  deployed, real wallet signing, slippage protection wired up).
+  Good project to learn from; not ready to risk real money.
+
+--------------------------------------------------------------------
+2. FUNDING ARBITRAGE AGENT
+   Folder: DEV\AGENTS\Funding_Arbitrage_Agent\
+--------------------------------------------------------------------
+WHAT IT DOES:
+  Crypto perpetual futures ("perps") pay a periodic "funding rate"
+  between long and short traders. This bot finds cases where that
+  rate is unusually high and takes a market-neutral position to
+  collect it without betting on price direction. Two modes:
+    - "cash-carry": buy the coin on the spot market + short the
+      perp on the SAME exchange when funding is rich.
+    - "cross-funding": go long the perp on a cheap exchange and
+      short the same perp on an expensive one, pocketing the gap.
+
+INSTRUMENTS TRADED:
+  Perps/spot across Binance, Hyperliquid, and Aster for: ETH,
+  AERO, BTC, wstETH, VIRTUAL, BRETT, DEGEN, EURC, WELL, DAI.
+
+TRADING TIMEFRAME:
+  Checks/refreshes every 3 seconds (MONITORING_INTERVAL_SEC).
+  Funding itself is paid out every 8 hours (standard for perps).
+
+CHART TIMEFRAME FOR ANALYSIS:
+  None — driven by live funding-rate APR data from the exchanges,
+  not by candlestick indicators.
+
+HOW TO RUN IT:
+  1. Open a terminal in DEV\AGENTS\Funding_Arbitrage_Agent\
+  2. Copy .env.example to .env and fill in your real exchange
+     API keys (only needed once you go beyond dry-run)
+  3. Run dry-run mode:   python agent.py --mode dry-run
+  4. Pick a strategy:    --strategy cash-carry   or
+                         --strategy cross-funding   or
+                         --strategy all
+  5. Actually place dry-run test orders: add --auto-trade
+  6. Run tests:          python -m unittest test_arbitrage_agent.py
+
+STATUS / CAVEATS:
+  Has real exchange-connection code (unlike the Arbitrage Agent
+  above), so it's closer to "real" — but the README only
+  documents and vouches for dry-run mode. Before ever trying
+  --mode live, read execution_manager.py yourself or have it
+  reviewed — don't trust it with real funds untested.
+  Built-in safety limits: minimum 20% APR to trade a single
+  exchange, minimum 12% APR spread to trade cross-exchange,
+  3x leverage by default (10x max), auto stop-loss at -5% and
+  emergency stop at -7.5%.
+
+====================================================================
+TIER 2: MAIN ACTIVE PROJECT — DEV\quant_trading_lab\
+(Your most actively developed project — 9 ICT/futures strategies,
+Python + matching TradingView Pine Script versions, real broker
+hookups behind a DRY_RUN safety switch.)
+====================================================================
+
+OVERALL PURPOSE:
+  A multi-strategy futures/crypto system. Each strategy reads
+  price bars and generates buy/sell signals. Matching Pine Script
+  versions can run on TradingView and send a signal ("webhook
+  alert") to a small local server (main.py) which checks the
+  trade against risk rules before sending it to a real broker
+  (Tradovate for futures, Hyperliquid for crypto) — OR to a fake
+  "MockBrokerAdapter" if DRY_RUN=true is set in the project's .env
+  file. Starting capital assumption: $100,000. Max risk per trade:
+  1%. Max total risk at once: 4.5%. Auto-stop for the day if
+  losses hit $3,500.
+
+SETUP (do this once before running anything below):
+  1. Open a terminal in DEV\quant_trading_lab\
+  2. This project already has its own Python environment folder
+     (venv\) — always run its Python, not your regular Python:
+       ./venv/Scripts/python.exe   (this IS "the command" — use it
+       in place of plain "python" for everything below)
+  3. If you ever need to reinstall packages:
+       ./venv/Scripts/python.exe -m pip install -r requirements.txt
+  4. Run the test suite to confirm everything works:
+       ./venv/Scripts/python.exe -m pytest tests/
+
+THE 9 STRATEGIES ("Stacks"):
+  Each has 3 matching files: strategies\stackN_*.py (the logic),
+  pine_scripts\strategies\stackN_*.pine (TradingView version),
+  backtesters\test_stackN_*.py (script to test it on historical
+  data). "ICT" = Inner Circle Trader, a popular price-action
+  trading style based on liquidity, order flow, and fair value
+  gaps rather than classic indicators.
+
+1. STACK 0 — Hybrid Timeline (stack0_hybrid_timeline.py)
+   What: Three trade windows in one trading day: 8:30-10:00am EST
+   liquidity-sweep reversal, 10:00-11:00am EST "Silver Bullet" fair
+   value gap expansion (its stop and target both scale with recent
+   volatility now, instead of a fixed point distance), 11:30am-1:15pm
+   EST mean-reversion back to the day's average price.
+   Instrument: MNQ (Micro Nasdaq futures — switched from full-size NQ
+   because real position sizing was silently floored to 0 contracts
+   on NQ; every stack below has the same MNQ/MES/BTCUSDT switch for
+   the same reason, see the BIG CAVEAT below).
+   Trading timeframe: 1-minute bars (also runs fine on 5-minute real
+   data, e.g. --csv data/NQ_5m.csv).
+   Run: ./venv/Scripts/python.exe backtesters/test_stack0_hybrid.py --symbol MNQ --sessions 250
+   (add --csv data/NQ_1m.csv to use real saved data)
+
+2. STACK 1 — Auction Core (stack1_auction_core.py)
+   What: Two sub-strategies. "1A" breaks out of the first hour's
+   trading range (9:30-10:30am) aiming for 1.5-2x that range —
+   the breakout now requires price to clear the range edge by a
+   buffer (0.25x volatility) before it counts, added 2026-08-27 to
+   stop wicks that barely poke past the edge from faking out a
+   real breakout (real data result: fewer, better trades — win
+   rate 37%->46%, profit factor 1.23->1.75). "1B" re-enters trades
+   that pull back to VWAP (volume-weighted average price) between
+   11:30am-3:00pm and continue the trend.
+   Instrument: MNQ. In the locked live-deployment tier (see below),
+   but a 2026-08-27 walk-forward cross-validation test found real
+   overfitting in its current settings (a parameter combo that
+   looked great on 15 days of training data did nothing on the
+   next 15 days out-of-sample) — its "strongest performer" reading
+   above was from a single backtest, not cross-validated. **Re-run
+   with a smarter, risk-aware selection method (same day, second
+   pass) picked the exact same settings and got the exact same bad
+   result — confirmed, not just a suspicion. A third check (same day)
+   found WHY: in one of its 3 test windows, the setting that did WORST
+   in training did BEST in testing — a perfect reversal. No amount of
+   re-tuning could ever fix that, since "picking well" would mean
+   deliberately picking the worst option. Recommendation: pull this
+   stack out of the locked live tier rather than keep re-tuning it.**
+   Update (2026-08-28): can now optionally skip trading entirely during
+   choppy market conditions (off by default — pass regime_filter=True
+   to turn it on). Checked against real data before trusting it: with
+   it on, win-rate-adjusted profitability improved from 1.73 to 2.14.
+   Doesn't resolve the overfitting concern above by itself, but a real,
+   verified improvement worth knowing about.
+   Trading timeframe: 1-minute bars.
+   Run: ./venv/Scripts/python.exe backtesters/test_stack1_auction.py --symbol MNQ --sessions 250
+
+3. STACK 2 — Liquidity Hunt (stack2_liquidity_hunt.py)
+   What: Fades price back toward fair value when it snaps to an
+   extreme and volume shows buyers/sellers are "absorbed"
+   (exhausted), plus a second setup that fades weak
+   ("poor") highs/lows. Only takes a trade on above-average volume
+   by default (cuts down on low-conviction noise trades) — turn
+   off with --no-volume-filter. Also gates on the day's own trend
+   bias now (only fades in the direction of that bias) — real data:
+   trades 174->15, win rate 32%->60%, profit factor 1.08->3.52.
+   Instrument: MNQ. In the locked live-deployment tier, but — same
+   caveat as Stack 1 above — a 2026-08-27 walk-forward test found
+   even stronger overfitting here (an in-sample winner with zero
+   losing trades that mostly failed out-of-sample), **also confirmed
+   a second time with a smarter re-check the same day (identical
+   settings re-picked, identical bad result). A third check found a
+   different but equally real problem: most settings simply never
+   traded at all within a 15-day slice, so there often isn't even
+   enough activity to properly judge a setting.** Treat the 3.52
+   profit factor above as unconfirmed. Recommendation: pull this
+   stack out of the locked live tier rather than keep re-tuning it.
+   Trading timeframe: 1-minute bars, 9:30am-4:00pm EST.
+   Run: ./venv/Scripts/python.exe backtesters/test_stack2_liquidity.py --symbol MNQ --sessions 250
+
+4. STACK 3 — Microstructure (stack3_microstructure.py)
+   What: Two setups estimated from candle shape (no real
+   tick-by-tick order data available): a rejection fade off
+   apparent order-flow imbalance, and a continuation trade through
+   a 30-minute "vacuum" zone with almost no trading. Same
+   above-average-volume filter as Stack 2, on by default.
+   Instrument: MNQ.
+   Trading timeframe: 1-minute bars, 9:30am-3:30pm EST.
+   Run: ./venv/Scripts/python.exe backtesters/test_stack3_microstructure.py --symbol MNQ --sessions 250
+
+5. STACK 4 — Liquidity Void (stack4_liquidity_void.py)
+   What: Trades a fast "velocity burst" continuation through a
+   low-volume price zone, plus a range-trap fade when price makes
+   a double top/bottom. The volume filter (see Stack 2) is
+   deliberately NOT applied to the velocity-burst setup — that
+   setup's whole idea is trading on LOW volume, so a "require high
+   volume" filter would cancel out its own logic; it IS applied to
+   the double-top/bottom fade.
+   Instrument: MNQ.
+   Trading timeframe: 1-minute bars, 9:30am-3:45pm EST.
+   Run: ./venv/Scripts/python.exe backtesters/test_stack4_void.py --symbol MNQ --sessions 250
+
+6. STACK 5 — All-Weather (stack5_all_weather.py)
+   What: The classic "Turtle Trading" system — buy/sell breakouts
+   of a rolling price channel (Donchian channel), with a
+   stop-loss based on recent volatility (ATR). This is a
+   multi-day swing strategy, not a same-day one.
+   Instrument: MGC (micro gold futures) — also tested against
+   BTCUSDT real data on Hyperliquid. In the live-deployment tier as
+   configured (both BTCUSDT and MGC), **but this is an OPEN, UNRESOLVED
+   SAFETY PROBLEM as of 2026-08-27**: the gold (MGC) leg's own worst
+   real historical losing stretch ($6,205.60) is bigger than the
+   account's $5,000 daily-loss safety switch — running it live would
+   very likely trip that switch and halt ALL live trading (Stack 0 and
+   Stack 4 included, not just this stack) the first time gold has a
+   rough multi-trade run. This exact problem was found and fixed once
+   already (gold was pulled from the live tier); a later decision put
+   it back in without re-solving this. Needs either pulling gold back
+   out, or a deliberate decision to raise the $5,000 safety limit —
+   don't treat this as settled.
+   Trading timeframe: built from DAILY bars (rolled up internally
+   from the intraday data feed).
+   Run: ./venv/Scripts/python.exe backtesters/test_stack5_all_weather.py --symbol MGC --sessions 250
+   Note (2026-08-27): its channel/volatility/reward settings used to
+   be hardcoded — now adjustable via --donchian-period,
+   --atr-period, --atr-stop-multiple, --reward-multiple.
+
+7. STACK 6 — SMT Divergence (stack6_smt_divergence.py)
+   What: "Smart Money Divergence" — compares two correlated
+   instruments. If one sweeps a high/low but the other fails to
+   confirm the same move, it fades the one that swept (bets the
+   move reverses). Needs two synced price feeds at once. Can now
+   also run on crypto (BTCUSDT vs ETHUSDT) with an expanded trading
+   window (see below).
+   Instrument: MNQ (traded), MES (Micro S&P futures, confirmation
+   only, never actually traded).
+   Trading timeframe: 1-minute bars, 9:30-11:00am EST (NY morning
+   session) by default; automatically switches to a wider window
+   (London Open 2:00-5:00am EST + NY Open 8:00-11:00am EST) if you
+   run it on BTCUSDT/ETHUSDT instead, since crypto trades 24/7 and
+   an equity-hours-only window would miss almost everything.
+   Run: ./venv/Scripts/python.exe backtesters/test_stack6_smt.py --csv-primary data/NQ_5m.csv --csv-correlated data/ES_5m.csv
+   Note (2026-08-27): this was the one stack the automated tuning
+   tools below couldn't check at all (they only knew how to feed one
+   price series, and this stack needs two at once) — fixed. A real
+   check found it has the same problem as Stacks 7/8 below: it
+   doesn't set up often enough on the real data tested to reach a
+   solid conclusion either way yet.
+   Status: now tested against real paired market data (not just
+   made-up data), both NQ/ES and BTC/ETH. Update (2026-08-28): ran a
+   real train/test check on the BTC/ETH pair for the first time —
+   doesn't show any clear improvement over the stock-index version,
+   still too little real trading activity in most test windows to
+   draw a conclusion either way. One eye-catching number from this
+   check turned out to just be a statistical fluke from a single
+   trade, not a real result — worth remembering if this stack's
+   crypto numbers come up again without checking the sample size.
+   Update (2026-08-29): added two opt-in filters aimed at graduating
+   this into a real alpha engine -- a "don't fade against a strong
+   trend" gate (only blocks the downside/short version of the trade,
+   since the trend-detector this borrows from can only ever recognize
+   an uptrend, not a downtrend, by its own design) and a minimum
+   distance-past-the-old-swing requirement so a barely-there breach no
+   longer counts as a real sweep. Checked each piece separately on real
+   NQ/ES data: the minimum-distance piece alone is a real, if modest,
+   improvement; the trend-gate piece alone is worse than doing nothing;
+   turned on together, worse than before (-$490.85 baseline -> -$575.69
+   with both on). Shipped both on anyway, exactly as asked, with the
+   honest result written up rather than walked back -- matches how this
+   project has always handled a sprint's result not matching its goal.
+
+8. STACK 7 — Judas Swing (stack7_judas_swing.py)
+   What: Watches the opening range of a trading session, waits for
+   a "fake-out" move outside that range, then fades it back — one
+   trade per session max. Like Stack 6, can now run on crypto with
+   two independent opening-range windows (London + NY) instead of
+   just one equity-hours window.
+   Instrument: MNQ (or BTCUSDT with --session-mode ALL_SESSIONS,
+   or automatically if you pass --symbol BTCUSDT).
+   Trading timeframe: 1-minute bars, opening range 9:30-9:45am EST,
+   watched for a fake-out 9:45-10:30am EST.
+   Run: ./venv/Scripts/python.exe backtesters/test_stack7_judas_swing.py --symbol MNQ --sessions 250
+   Note: this one won an internal 3-way comparison test against
+   the Order Block and OTE strategies on risk-adjusted profit.
+   Note (2026-08-28): diagnosed AND fixed the sizing bug that was making
+   this barely ever trade — it wasn't that the setup is rare (it
+   generates real signals fairly often), its risk budget was just sized
+   too small for its typical stop distance. Gave it its own dedicated
+   risk budget (checked against real trade data first to pick a sound
+   number, not guessed). Real result: 1 real trade became 10 real
+   trades on the same real data, roughly breakeven so far (net +$106.92,
+   not yet a proven winner, but for the first time an actual sample
+   worth watching instead of one lucky/unlucky trade).
+   Update (2026-08-29): narrowed the crypto London window (2:00-5:00am
+   EST down to 2:30-4:30am EST) and added a rule requiring the fake-out
+   sweep to clear the overnight Asian session's own high/low by a real
+   margin, not just its own tiny 15-minute range -- despite the sprint
+   asking to "widen" this window, the literal times given were actually
+   narrower, so that's what got built and flagged rather than silently
+   built as a widen instead. Real result on the BTCUSDT data this stack
+   actually trades on: a genuine flip from a real loser to a real
+   winner -- 20 trades/-$1,670.88 before, 9 trades/+$296.00 after (5 of
+   the 9 are winners). The MNQ/equity-hours version of this stack is
+   untouched by any of this and performs exactly as before.
+
+9. STACK 8 — Optimal Trade Entry / OTE (stack8_optimal_trade_entry.py)
+   What: Waits for a strong price swing, then enters on a
+   retracement into the 62-79% Fibonacci zone of that swing,
+   confirmed by a fresh 3-candle "fair value gap." Requires at
+   least 2.5x reward for every 1x risked. Same crypto-window
+   auto-switch as Stacks 6/7.
+   Instrument: MNQ (or BTCUSDT).
+   Trading timeframe: 1-minute bars, 9:30-11:00am EST.
+   Run: ./venv/Scripts/python.exe backtesters/test_stack8_ote.py --symbol MNQ --sessions 250
+   Note (2026-08-28): diagnosed too — unlike Stack 7, this one really
+   is a genuinely rare setup by design (it needs several specific
+   conditions to line up at once), confirmed by checking directly:
+   almost no real signals fire even with every filter removed. Not a
+   bug to fix, just an inherently selective strategy.
+   Update (2026-08-29): tried to fix exactly that -- added a rule
+   requiring the entry swing to anchor near a real institutional level
+   (prior day's high/low, or the session's own open) instead of any
+   random 5-minute wiggle, plus a second confirmation gap on a
+   synthetic 15-minute view of the same data. Goal was more trades
+   without giving up quality. Real result: the opposite -- already at
+   just 1 trade before, it dropped to 0 with both filters on. The
+   institutional-anchor half doesn't cost any trades by itself; the
+   15-minute confirmation half is what kills the last one. Shipped as
+   asked and reported honestly rather than walked back, matching the
+   Stack 6/7 write-ups above -- this stack remains a real, inherently
+   rare setup on the data tested, not a bug.
+
+GETTING REAL DATA (instead of made-up/synthetic bars):
+  Crypto (Hyperliquid): ./venv/Scripts/python.exe scripts/download_market_data.py --all-intervals
+  Futures (NQ/ES/GC/CL, Yahoo Finance): ./venv/Scripts/python.exe scripts/fetch_yahoo_futures.py
+  Both of these now ADD new data to what you already have instead of
+  overwriting it, so running them again later grows your real-data
+  history instead of resetting it.
+
+  NEW (2026-08-27) — multi-month "continuous" data for research/
+  walk-forward tools below:
+    ./venv/Scripts/python.exe -m scripts.fetch_historical_continuous
+  Pulls NQ/ES/MGC (micro gold)/MCL (micro crude oil) from Yahoo and
+  BTC/ETH from Hyperliquid, across every timeframe from 1-minute to
+  daily, into data\continuous\ (separate from the folder above).
+  Caveat: the futures files here are Yahoo's spliced-but-not-
+  adjusted continuous series (same limitation the files above
+  already have) — genuinely gap-adjusted per-contract data would
+  need a paid data vendor (Databento) this setup doesn't have
+  credentials for yet.
+
+RE-CHECK WHETHER A STRATEGY'S SETTINGS ARE OVERFIT (new 2026-08-27):
+  ./venv/Scripts/python.exe -m scripts.run_milestone10_walkforward
+  Splits real data into consecutive train/test chunks and checks
+  whether settings that looked good on the "train" chunk still work
+  on the next, unseen "test" chunk — a stronger check than a single
+  backtest, which can just be a lucky fit to one specific stretch of
+  data. First real run of this caught exactly that problem in Stack 1
+  and Stack 2's current settings (see their entries above) — both are
+  in the "locked" live-deployment group but need a re-tune against
+  this test before that status should be trusted.
+  Update (same day): the tool got smarter — it now also checks how a
+  setting's close neighbors perform (rejecting a lucky "one-off spike"
+  in favor of a setting that works well across a whole nearby range)
+  and weighs return against drawdown, not just raw profit. Now covers
+  all 9 strategies (Stack 6 needed a fix to run at all — see its entry
+  above). Re-running it with this smarter method picked the SAME
+  settings for Stack 1 and Stack 2 and got the SAME bad result —
+  confirms it's a real problem with those two, not a fluke of how the
+  first version of this tool happened to pick numbers.
+
+MARKET REGIME CLASSIFIER (engine/regime_detector.py, wired in 2026-08-28):
+  A building block (Python class MarketRegimeDetector) that looks at a
+  recent stretch of price bars and labels the current market
+  condition: strongly trending, choppy/range-bound, a sudden
+  volatility spike, or "unclear" (allowed on purpose, rather than
+  forcing a label that doesn't really fit). Every backtest now
+  automatically tags each trade with the condition it fired in — see
+  the tool below for the breakdown this makes possible. Still not
+  used to actually GATE any strategy's decisions (e.g. "only trade
+  during trends") — that's still an open next step, just now backed
+  by real tagged data instead of a guess.
+
+BREAK DOWN A STRATEGY'S REAL RESULTS BY MARKET CONDITION (new 2026-08-28):
+  ./venv/Scripts/python.exe -m scripts.analyze_regime_performance
+  Runs every strategy's real backtest and shows win rate/profit split
+  by market condition (trending / choppy / volatility spike /
+  unclear) instead of one blended number. First real run found the
+  "strategy X only wins in trends" intuition is too simple — e.g.
+  strategy 4's biggest real dollar contribution actually comes from
+  choppy-market trades, not trending ones, since there are far more
+  of them even though trending trades have a slightly better win
+  rate. Read results with the sample-size caveat printed at the
+  bottom of the output — many buckets are single-digit trade counts.
+
+COMPARE ALL 9 STRATEGIES AT ONCE:
+  ./venv/Scripts/python.exe backtesters/validate_real_edge.py
+  (runs all 9 against a random-entry baseline on real data, so you
+  can see which ones actually beat random guessing)
+
+CHECK IF A STRATEGY CAN EVEN PLACE A TRADE (before running a full backtest):
+  ./venv/Scripts/python.exe scripts/verify_portfolio_sizing.py
+  (a quick sanity check that catches the "sized to 0 contracts"
+  problem described in the big caveat below, for all 9 strategies at
+  once, without needing to run a full backtest first)
+
+RUN ALL 9 STRATEGIES TOGETHER, SHARING ONE ACCOUNT (advanced):
+  ./venv/Scripts/python.exe backtesters/test_portfolio_concurrent.py
+  Simulates all 9 stacks trading at the same time against one shared
+  $100,000 account and its real risk rules (not just each strategy
+  tested alone, which is what every other command above does).
+  Note: not the current plan (still deciding which handful of
+  strategies to actually run together) — this exists as a stress
+  test / sanity check for whenever that decision gets made. As of
+  today it shows that running all 9 at once trips the account's
+  $5,000 daily-loss-limit safety switch fairly quickly, since most
+  of the 9 are still net-losing individually — expected given
+  today's real-data results, not a bug.
+
+RUN THE AUTOMATED TEST SUITE:
+  ./venv/Scripts/python.exe -m pytest tests/
+  Should say "138 passed" (was "13 passed" as of 2026-08-26; grew with
+  every sprint since — regime-classifier tests, the volatility-shock
+  sizing throttle, 16 tests for the real Tradovate/Hyperliquid broker
+  connections, 26 for the disaster-recovery safety net below, 22 for
+  the full-size futures scaling work further below, 15 for the
+  account-size-scaling correction, 10 for the position-reconciliation
+  check and the live paper-trading launcher, and, as of 2026-08-28's
+  breakeven-trail/news-blackout update, 19 more). Includes tests that
+  pin exact known-good results for several strategy+data combinations,
+  so if a future change accidentally breaks one of them, this will
+  fail loudly instead of silently, plus coverage for the continuous-
+  data and walk-forward research tools.
+
+BROKER CONNECTIONS (Tradovate for futures, Hyperliquid for crypto):
+  Both are real, already built, and already used when DRY_RUN=false —
+  not a placeholder. Sanity-check either one is actually authenticating
+  with the credentials in .env (read-only — never places a trade):
+    ./venv/Scripts/python.exe scripts/check_broker_connectivity.py tradovate
+    ./venv/Scripts/python.exe scripts/check_broker_connectivity.py hyperliquid
+
+DISASTER RECOVERY (as of 2026-08-28):
+  - Open positions, profit/loss, and safety-cooldown timers now survive
+    a crash or restart automatically (a state\runtime_state.json file
+    is written after every trade and read back on startup — nothing to
+    run manually).
+  - A background watchdog checks both broker connections every 10
+    seconds and logs a loud alert if either drops for more than 30
+    seconds — also automatic, just watch the server's console output.
+  - Emergency "panic button" — force-closes every open position across
+    every strategy and broker right now (needs the server from above
+    already running; replace the passphrase with the real one from .env):
+      ./venv/Scripts/python.exe -c "import requests; print(requests.post('http://127.0.0.1:8000/api/v1/panic_flatten', json={'passphrase':'YOUR_REAL_PASSPHRASE'}).json())"
+
+FULL-SIZE FUTURES SCALING — $500K TIER (as of 2026-08-28, RESTORED):
+  Runs a focused full-size sleeve — Nasdaq + S&P (two strategies each) and Oil (one
+  strategy), plus Bitcoin — against a simulated $500,000 account:
+    ./venv/Scripts/python.exe backtesters/test_portfolio_concurrent.py --tier scaled_full
+  Gold was dropped from this sleeve — real testing showed it trading roughly breakeven
+  while adding real overhead (margin, extra losing trades, extra pressure on the shared
+  position-count limit) for no real payoff. The smaller "Micro" contracts that used to
+  run alongside the full-size ones were also dropped, for a cleaner, more focused book.
+  Current real result (breakeven-trail feature reverted, see below — this is now healthy
+  again): 382 trades, +$58,246.34 net profit, no permanent safety lockout, ~16.7% margin.
+  Still read both reports this command prints — the second (safety stops off) isolates
+  the position-count and correlation caps on their own.
+
+INSTITUTIONAL UPGRADES — BREAKEVEN TRAIL & NEWS BLACKOUT (as of 2026-08-28, RESOLVED):
+  Two features were added on request: (1) automatically move a trade's stop-loss to
+  breakeven (small guaranteed profit) once it's up about 1x its original risk, so a
+  winning trade can no longer turn into a loss; (2) automatically pause new trades for a
+  few minutes around when major US economic news typically releases (8:30am and 2pm ET
+  weekdays — CPI, jobs reports, Fed rate decisions).
+  Ran the real before/after comparison this required and found the "move stop to
+  breakeven" feature measurably HURT real profit (cutting winning trades short before
+  they reached their full target — about 29% less profit on the smaller account, about
+  93% less plus a full safety lockout on the bigger $500k account), while the news-pause
+  feature cost almost nothing. Shipped both turned on anyway, honestly flagged the finding,
+  and left the decision to the user — who has now confirmed the same result independently
+  and asked to turn the breakeven-stop feature back OFF while keeping the news-pause
+  feature ON. Done — both strategies are back to their original stop-loss behavior, and
+  the account numbers above are restored close to normal (not byte-for-byte identical to
+  the very original numbers, since the news-pause feature's own small real cost stays).
+  The breakeven-stop code itself is still there, just switched off — available again if a
+  less aggressive version (waiting for a bigger profit before locking in breakeven) is
+  wanted later. Full numbers in AGENTS.md items 111-112.
+
+LIVE PAPER TRADING (as of 2026-08-28):
+  Connects to the REAL Tradovate demo account and Hyperliquid testnet (not the
+  in-memory simulation main.py's DRY_RUN=true uses) and runs the full webhook server,
+  plus a new automatic check every 30 seconds that confirms what each broker actually
+  reports matches what this system thinks is open — catches a missed signal or a
+  manual trade placed directly on the broker's own platform:
+    ./venv/Scripts/python.exe scripts/run_paper_trading.py
+  Confirm your .env demo/testnet credentials are pointed at a sim account, not a real
+  one, before running this. Stop with Ctrl+C for a clean, graceful shutdown.
+
+STATUS / BIG CAVEAT (applies to ALL 9 stacks):
+  Free real intraday futures data only goes back 5-7 days (1-minute)
+  to ~70 days (5-minute) (Yahoo's free-tier limit), and real crypto
+  data only goes back a few weeks to ~90 days depending on
+  timeframe. That is NOT enough data to trust any performance
+  number yet — treat every current result as "does this look sane
+  and actually place trades," not "this will make money."
+  A real bug was found and fixed this way: several strategies
+  looked like they were producing "0 trades" on real data, which
+  looked like a data-shortage problem — it was actually that their
+  position-sizing math was rounding down to 0 contracts every time
+  (the strategy wanted to trade full-size NQ/ES futures, but the
+  risk-per-trade budget was too small for that big a contract). All
+  9 strategies now default to the smaller "Micro" version of their
+  instrument (MNQ/MES/BTCUSDT) instead, which fixed it — every
+  strategy above now actually places real trades on real data.
+
+WHAT'S IN pine_scripts\:
+  TradingView versions of all 9 strategies (so you could run them
+  visually on TradingView's charts), a blank strategy template and
+  indicator template for building new ones, and
+  webhook_payload_schema.md explaining exactly what data TradingView
+  sends to main.py when an alert fires.
+
+====================================================================
+TIER 3: DEV\MoonDev_Quant_Strats\
+(A research suite pairing TradingView Pine Script strategies with
+Python backtesters — signal generation only, not connected to a
+live executor by itself. Only 2 of a planned ~30 strategies are
+built; folders 03-06 exist but are empty placeholders.)
+====================================================================
+
+--------------------------------------------------------------------
+1. OP HULL SUITE RIBBON (ophullrib)
+   Folder: DEV\MoonDev_Quant_Strats\01_ophull_suite_ribbon\
+--------------------------------------------------------------------
+WHAT IT DOES:
+  A trend-following strategy. Instead of a normal moving average,
+  it uses a "Triple Hull Moving Average" ribbon (reacts faster
+  with less false signals). Trades are only allowed in the
+  direction of the bigger trend (200-period EMA) and only when the
+  market shows real momentum (ADX indicator above 18-20). Exits in
+  3 stages: takes 50% profit at 2x the recent volatility (ATR),
+  moves stop-loss to breakeven, then lets the rest ride until the
+  ribbon flips direction.
+
+INSTRUMENTS: SOL-USD, /NQ (Nasdaq futures), BTC-USD, ETH-USD.
+
+TRADING TIMEFRAME: 1-hour or 4-hour charts (main); 15-minute usable
+  as a faster scalping mode if you turn on the multi-timeframe filter.
+
+CHART TIMEFRAME FOR ANALYSIS: 4-hour/Daily chart used as a
+  "big picture" trend filter above whatever timeframe you trade.
+
+HOW TO RUN (backtest):
+  python backtest_ophullrib.py --preset sol --tf 1h --years 3 --cash 10000 --plot
+  (--preset can be sol, nq, btc, eth, or custom; add --optimize to
+  auto-search for the best settings)
+
+STATUS / CAVEATS:
+  The README's old 3-year results table doesn't match what the
+  code currently produces — the project's own notes confirm this
+  is because a filter setting (an ADX momentum filter) defaults to
+  "on" now but wasn't when those old numbers were generated. Don't
+  trust the README's numbers, only trust a backtest you run
+  yourself today.
+  Exit mode "reversal_trail" IS a confirmed stub in the Python
+  backtester — it behaves 100% identically to the plain "reversal"
+  mode (no actual trailing logic exists), so picking it does
+  nothing different. However, "Fixed ATR TP/SL" DOES work correctly
+  in the Python backtester (it sets a real stop-loss/take-profit) —
+  an earlier version of this note incorrectly lumped it in as
+  broken too. The "Fixed ATR TP/SL" mix-up is real, but it's in the
+  separate TradingView Pine Script version of this strategy, not
+  the Python backtester — its dropdown mislabels that option.
+
+--------------------------------------------------------------------
+2. 7/11 EMA-SMA FAST CROSSOVER PRO (711_crossover)
+   Folder: DEV\MoonDev_Quant_Strats\02_711_fast_crossover\
+--------------------------------------------------------------------
+WHAT IT DOES:
+  A fast scalping strategy: enters when a 7-period EMA crosses an
+  11-period SMA. The plain version only won 30-37% of trades in
+  choppy markets, so this "Pro" version adds 5 filters: a bigger
+  trend filter (200 EMA + ADX ≥ 20), a stop-loss that adapts to
+  recent volatility, a 3-stage profit-taking exit, a
+  volume-surge + RSI "momentum gate" so it only fires on real
+  moves, and specific time-of-day trading windows.
+
+INSTRUMENTS & recommended settings (from the project's own research notes):
+  - /NQ (Nasdaq futures): 1m/5m/15m charts, trade only 9:30-11:30am
+    and 1:30-3:30pm EST, max stop 35 ticks.
+  - /CL (crude oil futures): 5m/15m charts, trade only 9:00-11:30am
+    and 1:00-2:30pm EST, max stop 40 ticks — avoid Wednesdays
+    10:30am EST (EIA oil inventory report causes wild swings).
+  - SOLUSDT: 15m/1h charts, trade 3:00am-5:00pm EST, max stop $2.50.
+  - BTCUSDT: 15m/1h/4h charts, trades 24/7, max stop $850.
+
+CHART TIMEFRAME FOR ANALYSIS: 1-hour/4-hour chart used to read the
+  200 EMA "big picture" trend, regardless of which timeframe you
+  actually trade on.
+
+HOW TO RUN (backtest):
+  python backtest_711_crossover.py --symbol SOLUSDT --bars 5000
+  (symbol can also be /NQ, /CL, or BTCUSDT; use --data <file.csv>
+  to test on real saved data instead of made-up data; --optimize
+  to auto-search settings)
+
+STATUS / CAVEATS:
+  Both strategies in this folder are built to send TradingView
+  alerts to a "Moon Dev FastAPI execution server" that isn't
+  included in this folder — so as-is, this generates signals only,
+  it does not place real trades by itself.
+
+====================================================================
+TIER 4: DEV\STRATS\ — BACKTEST-ONLY RESEARCH
+(These use the Python "backtesting" library to test an idea on
+historical data and show you a chart of the results. None of these
+connect to a real exchange — they're for learning/testing only.)
+====================================================================
+
+SHARED PATTERN (see strategy_template.py / test_template_strategy.py
+for the full example): load price history from a CSV file, resample
+it to whichever timeframe you want to test, write a small Strategy
+class with an init() function (set up your indicators once) and a
+next() function (your buy/sell rules for each new candle), then run
+it and view an interactive results chart in your browser.
+
+All of the strategies below currently point at the same local file:
+DEV\backtesting\BTC-USD-15m-2020-2-02T00_00.csv (raw 15-minute
+BTC-USD candles from 2020-2025).
+
+1. SMA CROSS (STRATS\sma_cross\sma_cross_backtesting.py)
+   What: Buys when price crosses above a 5-period moving average,
+   sells when it crosses back below.
+   Chart timeframe: resamples the 15m data up to DAILY candles.
+   Run: python STRATS/sma_cross/sma_cross_backtesting.py
+
+2. SMA LOW (STRATS\sma_low\yes_SMA_low.py)
+   What: Buys when price is above its 20-day moving average (and
+   you're not already in a trade); sells when price drops below
+   YESTERDAY's low.
+   Chart timeframe: daily candles.
+   Run: python STRATS/sma_low/yes_SMA_low.py
+
+3. SMA PULLBACK (STRATS\sma_pullback\77_backtesting.py)
+   What: Buys when price is above a 20-period moving average, with
+   a stop-loss at yesterday's low and a take-profit at 1.5x that
+   risk distance.
+   Chart timeframe: uses TA-Lib's SMA function (needs an extra
+   install: pip install TA-Lib — this can be finicky on Windows;
+   you may need to search "TA-Lib Windows wheel install" if plain
+   pip install fails).
+   Run: python STRATS/sma_pullback/77_backtesting.py
+   NOTE: this file is unfinished and has TWO bugs, not one. (1) The
+   part that loads the CSV data is missing entirely (the file ends
+   at a comment saying "test the strategy and pull in the data"
+   with no code after it) — you'd need to copy the CSV-loading code
+   from sma_cross or sma_low into this file first. (2) Even after
+   fixing that, it will still crash: the code compares the FULL
+   price array (not just the latest price) to your stop-loss/
+   take-profit numbers in an "if ... or ..." check, which Python
+   can't evaluate (error: "truth value of an array is ambiguous").
+   That comparison needs to be changed to use just the latest price
+   (e.g. self.data.Close[-1]) before this strategy can run at all.
+
+4. TURTLE (STRATS\turtle\turtle_algo.py)
+   What: The full classic "Turtle Trading" rules from the 1980s —
+   System 1 (buy a 20-day breakout, exit on a 10-day reversal) or
+   System 2 (buy a 55-day breakout, exit on a 20-day reversal),
+   position size based on recent volatility (ATR), and the ability
+   to add up to 4 units to a winning trade (pyramiding).
+   Chart timeframe: daily candles (resampled from the 15m file).
+   Run: python STRATS/turtle/turtle_algo.py
+   This prints System 1 vs. System 2 results and opens a results
+   chart called TurtleStrategy_System1.html. This is the most
+   complete, well-built strategy in the STRATS folder — good one
+   to study first.
+   SETUP NOTE: the file's own header comment says to run
+   "conda activate KID3" first — a specific conda environment that
+   already has TA-Lib installed. If you get a "no module named
+   talib" error, that's why; either activate that environment or
+   install TA-Lib into whichever environment you're using.
+
+5. FLAG (STRATS\flag\flag_backtest.py and strats_26.py)
+   What: Looks for a "flag" chart pattern — a strong price move
+   (5%+ over 20 candles, the "pole") followed by a flat sideways
+   consolidation (10 candles, the "flag"), then buys when price
+   breaks above the top of that flag. Stop-loss 2%, take-profit 5%.
+   Chart timeframe: CONFIRMED BUG — the code takes a timeframe='1h'
+   setting but never actually uses it anywhere; the raw 15-minute
+   data is tested with zero resampling. So despite what it's
+   supposed to do, this is really being backtested on 15-minute
+   candles, not 1-hour ones. Not a maybe — verified in the code.
+   Run: python STRATS/flag/flag_backtest.py
+
+====================================================================
+TIER 5: DEV\BOTS\ — SINGLE-FILE LIVE-EXCHANGE SCRIPTS
+(Bootcamp-quality practice code, several literally say "DO NOT RUN
+YET" in their own comments. Treat everything here as
+learning/practice material, NOT ready to trade real money, unless
+noted otherwise.)
+====================================================================
+
+1. 12_vwap_bot.py (Hyperliquid exchange)
+   What: Trades WIF (a memecoin) on a 5-minute timeframe using a
+   20-period VWAP (volume-weighted average price). IMPORTANT: the
+   actual buy/sell decision is randomized (70% chance to go long
+   when above VWAP, 30% chance to fade it when below) — there is
+   no real trading edge here, it's a coin-flip with extra steps.
+   Checks price every 3 seconds.
+   Run: python BOTS/12_vwap_bot.py
+   Needs: pip install hyperliquid ccxt schedule eth_account, and a
+   dontshare.py file with a real Hyperliquid private key — do NOT
+   run this against a real funded account, the signal is random.
+
+2. bollinger_bot.py (Hyperliquid, folder: BOTS\HYPERLIQUID\)
+   Its own file header says "DONT NOT RUN YET." Trades WIF on a
+   15-minute signal but pulls its Bollinger Bands from BTC 1-minute
+   data — that mismatch looks unfinished. It also has a second,
+   more immediate bug: it calls a function on a variable named df
+   that is never actually created anywhere in the file (only a
+   differently-named variable is set from the data fetch), so this
+   will crash with "name 'df' is not defined" before it even gets
+   to the BTC/WIF mismatch. Skip this one until it's cleaned up.
+
+3. Range_breakout.py (folder: BOTS\discord_code\)
+   What: Trades BTCUSDT, watching the 4-hour trading range formed
+   during the 9:30am-1:30pm EST New York session, then trades
+   breakouts/retracements of that range on 5-minute candles. Uses
+   free Yahoo Finance data (yfinance). Was previously badly broken
+   (missing code, cut off mid-file) and has since been patched
+   just enough to run/parse — treat as backtest research code, not
+   something wired up to a real exchange account.
+   Run: python BOTS/discord_code/Range_breakout.py
+
+4. HYPERLIQUID\ numbered bootcamp scripts (4_algo_orders.py through
+   12_bot3.py) plus the shared helper file nice_funcs.py
+   These are a step-by-step Moon Dev bootcamp learning series, not
+   a finished bot. KNOWN BUG: nice_funcs.py's kill_switch() and
+   pnl_close() functions call a get_position() function that
+   doesn't exist anywhere in the file — running either will crash
+   with a NameError. Good for reading/learning, not for running
+   live as-is.
+
+5. Aster\easy.py (Aster exchange)
+   What: A simplified market-making style bot for BTCUSDT, 30x
+   leverage, using 95% of your account as margin — layered exit
+   levels (take-profit/stop-loss at +45%/-5%, an "emergency" tier
+   at +50%/-5.5%, and a trailing take-profit that kicks in at +5%
+   profit with a 0.5% pullback trigger).
+   Run: python BOTS/Aster/easy.py — needs a .env file with
+   ASTER_API_KEY and ASTER_API_SECRET.
+   CAUTION: 30x leverage and 95% margin usage is very aggressive —
+   this can lose your account balance fast if the market moves
+   against it. Do not run this with real funds until you've
+   backtested the logic and fully understand the exit rules.
+
+6. Phemex\Phem_key.py
+   Not a bot — just an API credentials file. SEE THE SECURITY
+   WARNING AT THE VERY TOP OF THIS DOCUMENT — rotate this key.
+
+====================================================================
+TIER 4b: ONE MORE LOOSE BACKTEST STRATEGY (not inside STRATS\)
+====================================================================
+
+RVI + BOLLINGER BANDS MEAN-REVERSION
+   File: DEV\backtesting\requirements_-_historical_10_07_25_02_48_backtest.py
+   What: A mean-reversion strategy class (RviBollingerBandsStrategy).
+   Computes a custom 4-period Relative Vigor Index (RVI, an
+   indicator that compares how much a candle closed above its open
+   vs. its full range) plus 20-period Bollinger Bands. Goes long
+   when RVI is very low (below 0.2) and just crossed back above its
+   own signal line, while price is still above the middle Bollinger
+   Band — i.e. "oversold bounce." Mirrors this for shorts. Exits
+   when price crosses back over the middle Bollinger Band against
+   the position.
+   Instrument/timeframe: none set — this is a bare, reusable
+   strategy class, not tied to any specific symbol or candle size.
+   How to run: NOT runnable as-is. The bottom of the file has a
+   commented-out "Example usage" block — you'd need to uncomment
+   it, add your own data = pd.read_csv(...) line, then run
+   Backtest(data, RviBollingerBandsStrategy, cash=10000,
+   commission=.002).run()
+   Status: untested template/scaffold, never actually run to
+   completion as far as we can tell — no entrypoint, no saved
+   results.
+
+====================================================================
+TIER 6: DEV\Polymarket\ — PREDICTION-MARKET INTELLIGENCE
+(Read-only market intelligence for Polymarket, a prediction market
+where people bet on real-world outcomes: elections, Fed rate
+decisions, crypto price levels, sports. These tools WATCH the
+market and rank who is winning — none of them place trades.
+100% free: no API keys, no paid data providers.)
+====================================================================
+
+--------------------------------------------------------------------
+1. POLYMARKET MONARCH (the built-out one)
+   Folder: DEV\Polymarket\Polymarket_Monarch--------------------------------------------------------------------
+WHAT IT DOES:
+  Three tools that share one local SQLite database
+  (data\polymarket_whales.db):
+
+  a) whale_collector.py — connects to Polymarket's live public
+     WebSocket feed and records every "whale" trade. A trade counts
+     as a whale if it is worth $1,000+, OR if it is at least $250 AND
+     at least 1% of everything that market traded in the last 24
+     hours — a $400 bet in a quiet market moves the price more than
+     $2,000 does in a busy one. (The $250 part stops near-dead
+     markets turning pocket change into "whale" alerts.) Measured
+     live, that second rule roughly doubles what gets caught. Also
+     remembers which wallets are active so the PnL scanner has a
+     list of people worth analysing.
+
+  b) pnl_scanner.py — for each of those wallets, asks Polymarket's
+     free public API three questions: what did you close and lock
+     in (realized profit), what are you still holding and what is
+     it worth right now (unrealized profit), and how much have you
+     actually traded. Anyone up $300+ is flagged as a "sharp
+     trader".
+
+     The board is ranked by "7D Realized" — money actually banked in
+     the last 7 days. That deliberately excludes wallets sitting on a
+     big paper profit from an old bet they haven't closed: those
+     haven't proven anything this week.
+
+     The "Open Unreal." column beside it is the paper profit/loss on
+     bets still open, shown for context — "+$25k banked" reads very
+     differently next to a "-$38k" open book. "Est. PnL" adds the two
+     together, but note Polymarket doesn't say when an open bet was
+     placed, so that half is lifetime-to-date, not 7 days.
+
+     A "—" in the Win% column means nothing settled this week, so
+     there's no record to score — it does NOT mean they lost every
+     bet. A "—" in ROI% means that wallet trades so often we couldn't
+     fetch all its activity, so the ROI would be misleading.
+
+     On a wide terminal you also get ROI% (profit per dollar traded).
+     It's the difference between someone with a real edge and someone
+     simply betting very large. Sort with --sort realized|roi|volume.
+
+  c) terminal_dashboard.py — a live 3-panel terminal display:
+     top 10 most profitable wallets, the live whale trade stream,
+     and a macro panel showing current odds on the biggest
+     crypto / politics / economics markets by 24h volume.
+
+HOW TO RUN:
+  run_monarch_poly.bat            (menu for all of the above)
+  python terminal_dashboard.py --dry-run    (one static frame)
+  python whale_collector.py --replay        (OFFLINE demo — replays
+      22 recorded real trades instantly, no internet needed. Writes
+      to a separate replay database so it can't contaminate real
+      collected data.)
+  python pnl_scanner.py --wallet 0x...      (audit one wallet)
+  python -m pytest tests\ -q                (169 tests, all offline)
+
+STATUS / CAVEATS:
+  Working and verified against the live APIs. Nothing here trades
+  or holds funds — it is read-only, so there is no live-money risk.
+  Known rough edges are written up in the project's AGENTS.md:
+  wallets scanned before the realized/unrealized split was added
+  show $0 in those two columns until they are re-scanned, and the
+  dashboard still polls the REST API for whale trades instead of
+  reusing the WebSocket the collector already opens.
+
+  One API trap worth knowing if you ever edit this: Polymarket's
+  market-listing API ignores a "tag" filter and quietly returns
+  everything; the parameter that actually works is "tag_slug".
+
+--------------------------------------------------------------------
+2. POLYMARKET MOONDEV (reference only — do not edit)
+   Folder: DEV\Polymarket\Polymarket_Moondev--------------------------------------------------------------------
+WHAT IT DOES:
+  Two smaller standalone scripts (poly_whale_monitor.py and
+  poly_traders_tracker.py) kept as a fixed reference version that
+  Monarch was built from. Treat as read-only.
+
+====================================================================
+TIER 7: DEV\HyperLiquid\ — HYPERLIQUID + TRADFI PERP INTELLIGENCE
+(Market intelligence for Hyperliquid, plus the HIP-3 "TradFi" perp
+DEXes trading stocks, commodities, indices and FX as perpetual
+futures. Watches the market, finds liquidations, tracks whales and
+funding yields. The only trading it does is simulated — no real
+orders, no API keys, no paid data providers.)
+====================================================================
+
+--------------------------------------------------------------------
+1. HL_MONARCH (the built-out one)
+   Folder: DEV\HyperLiquid\HL_Monarch
+--------------------------------------------------------------------
+WHAT IT DOES:
+  One program with several sub-commands, all sharing a local SQLite
+  database (HL_Monarch\data\hyperliquid_data.db). It connects
+  straight to Hyperliquid's free public endpoints — no key, no
+  paid middleman.
+
+  a) collector — the background recorder. Polls every market on all
+     6 DEXes (436 assets: crypto on the main DEX, plus TSLA, NVDA,
+     GOLD, SILVER, oil, SP500, EUR/JPY and friends on the "xyz"
+     TradFi DEX) and simultaneously listens to a live trade feed.
+     Saves prices, open interest, funding rates, trades and detected
+     liquidations. Also prunes and compacts its own database on a
+     timer so it doesn't grow forever.
+
+  b) dashboard — a live full-screen terminal display with 8 tabs you
+     switch with the number keys (1 core watchlist, 2 stocks,
+     3 commodities, 4 indices/FX, 5 crypto, 6 whales, 7 funding arb,
+     8 paper trader). Tab cycles which asset the liquidation heatmap
+     is focused on, Q exits. Runs its own collector in the
+     background, so this one command is enough to get going.
+
+  c) liquidation heatmap — for a given asset, works out where
+     over-leveraged traders would be forcibly closed out (at 5x,
+     10x, 20x, 25x, 30x, 50x leverage, above and below the current
+     price) and draws bars showing where the thickest cluster of
+     those forced exits sits. Those price levels tend to act like
+     magnets.
+
+  d) whale discovery (self-growing) — watches the live trade feed,
+     and any wallet behind a fill of $25,000+ gets recorded, added
+     to data\hyperliquidusers.txt, and has its full on-chain
+     portfolio looked up. The list grows itself the longer you run
+     it. `whales` lists what it found, `inspect <address>` deep-dives
+     one wallet, `scan --danger 5.0` shows positions within 5% of
+     being liquidated.
+
+  e) arb — the funding-rate scanner. Perp traders pay each other a
+     small fee every hour ("funding"); when that fee gets extreme,
+     you can take the paying side's opposite and collect it. This
+     ranks all 436 markets by annualised yield and says which side
+     to take.
+
+  f) paper — a simulated trading account ($100k fake money) running
+     a "liquidation fade" idea: when a big forced sell dumps the
+     price, buy it expecting a bounce (and vice versa). Tracks fake
+     balance, positions and profit. NOTHING REAL IS TRADED.
+
+  g) maintain — housekeeping. Deletes history past its keep-window
+     (3 days of price snapshots, 1 day of liquidation clusters,
+     7 days of trades) and compacts the database. The collector does
+     this automatically; this command is for running it by hand.
+
+HOW TO RUN IT (from DEV\HyperLiquid):
+  python main.py dashboard          <- start here, does everything
+  python main.py collector          <- recorder only, no display
+  python main.py whales --limit 20
+  python main.py inspect 0x<address>
+  python main.py scan --top 20 --danger 5.0
+  python main.py arb --min-apr 10.0
+  python main.py liqs --limit 25
+  python main.py paper
+  python main.py summary --dex xyz
+  python main.py maintain
+  Full reference: DEV\HyperLiquid\COMMANDS_CHEAT_SHEET.txt
+
+STATUS: working and tested — 43 automated tests, all passing.
+  Verified running live against the real Hyperliquid feed.
+  Optional: set DISCORD_WEBHOOK_URL or TELEGRAM_BOT_TOKEN +
+  TELEGRAM_CHAT_ID in the environment to get whale/liquidation
+  alerts pushed to you; without them alerts are just skipped.
+
+--------------------------------------------------------------------
+2. HL_MOONDEV (reference only — do not edit)
+   Folder: DEV\HyperLiquid\HL_MoonDev
+--------------------------------------------------------------------
+WHAT IT DOES:
+  MoonDev's paid-API version (needs a MOONDEV_API_KEY) plus some
+  older standalone liquidation backtests. Kept as the benchmark
+  HL_Monarch was built to replace — the whole point of HL_Monarch is
+  doing the same job for free. Treat as read-only.
+
+====================================================================
+OTHER PROJECTS IN DEV (confirmed NOT trading bots/strategies —
+listed here only so you know what these folders are, in case you
+were wondering)
+====================================================================
+
+SPORTS BETTING MODEL (different domain — NFL, not crypto/futures)
+   File: DEV\backtesting\SPORTS\test  (note: no file extension)
+   What: An NFL point-spread prediction model. Trains a linear
+   regression (predicted game margin from each team's EPA —
+   Expected Points Added — difference) on past games, compares its
+   predicted margin to the actual Vegas betting spread, and would
+   bet when its edge over the market is more than 1.5 points.
+   Status: BROKEN — the file is cut off mid-line (a variable name
+   is truncated) and won't run. Also needs a nfl_historical_data.csv
+   file that isn't included anywhere in this folder. Not a crypto
+   trading bot — separate hobby project, low priority.
+
+DATA-STREAMS\ — live data monitors, NOT trading bots
+   Files: funding.py / funding2.py / fuuuunding.py, huge_trades.py /
+   huuuuuge_trades.py, liqs.py / liqqqqs.py / liqs3.py,
+   recent_trades.py / receeeeent_trades.py / recent_trerwade.py.py,
+   plus check_my_python.py and run_my_script.bat.
+   What they are: read-only Binance websocket scripts that print or
+   log funding rates, large trades, or liquidations to your screen
+   or a CSV file. None of them place orders (checked — zero calls to
+   any buy/sell/place-order function anywhere in this folder). Many
+   of the odd filenames (fuuuunding.py, liqqqqs.py, etc.) are
+   earlier bootcamp practice attempts sitting alongside a cleaner
+   version of the same script — safe to ignore the typo'd ones if
+   you're looking for "the real one."
+
+productivity\MOONDEVprojects\ — unrelated to trading
+   twopoint1.py is just written notes on the "RBI" (Research →
+   Backtest → Implement) methodology used across the Moon Dev
+   bootcamp material, not code that runs. day2project1AI.py /
+   Day2project1 / tasks.json are a generic terminal to-do-list app
+   (no trading content). productivity.py is a near-empty 1-line
+   stub. new.py is empty. Nothing to run here trading-wise.
+
+Tradingview Indicators\ — completely empty folder.
+
+ICT Quantlab notes\ — research materials only (a PDF titled "Quant
+   Lab 02: Hybrid Stack & Master Portfolio," its text summary, and
+   a session-notes file) — background reading for quant_trading_lab,
+   no runnable code here.
+
+DEV\backtesting\ (top-level, not the strategy subfolders) —
+   coinbase_data_2025.py and historical-data-source.py are both
+   pure data-download utilities (pull historical price candles from
+   Coinbase/other sources and save them as CSV) — no trading logic,
+   just fetch-and-save. The .csv files sitting in backtesting\ and
+   in DEV\ root (binance_liquidations.csv, binance_trades.csv,
+   binanceus_trades.csv) are just raw saved data, not code.
+
+Root loose files SmaAndLow.html and SmaCross.html — these are just
+   the interactive results charts the `backtesting` library
+   generates when you run STRATS\sma_low and STRATS\sma_cross (see
+   Tier 4 above) — not separate strategies, just saved output.
+
+====================================================================
+INFRASTRUCTURE (not a strategy itself) — DEV\Dexter\
+====================================================================
+Dexter is a control-panel/orchestrator, not a trading strategy. It
+starts, stops, and health-checks the OTHER bots listed above (it
+doesn't generate any trading signals itself). It currently knows
+about 3 bots, listed in Dexter\registry.yaml:
+  - arbitrage-agent          → runs AGENTS/Arbitrage Agent (paper mode, enabled)
+  - funding-arbitrage-agent  → runs AGENTS/Funding_Arbitrage_Agent (dry-run, enabled)
+  - hyperliquid-bollinger-bot → runs BOTS/HYPERLIQUID/bollinger_bot.py
+                                  (currently DISABLED — that bot says
+                                   "do not run" in its own header)
+
+HOW TO RUN DEXTER:
+  1. cd DEV\Dexter
+  2. pip install -r requirements.txt
+  3. Copy configs\.env.example to configs\.env and fill in your keys
+  4. python -m core.cli list      (see what it can control)
+     python -m core.cli start <id>
+     python -m core.cli status
+     python -m core.cli stop <id>
+  Note: "enabled: true" in the registry just means Dexter is
+  ALLOWED to start that bot — nothing runs automatically on its own.
+
+====================================================================
+EMPTY / NOT STARTED
+====================================================================
+- moondev_bootcamp\bootcamp_projects\ and \my_projects\ — both empty,
+  no work added yet despite the folders existing.
+- moondev_test\ — completely empty.
+- MoonDev_Quant_Strats\03-06 — placeholder folders, not built yet.
+
+====================================================================
+BEGINNER BASICS — READ THIS IF ANY TERM ABOVE WAS UNFAMILIAR
+====================================================================
+
+TERMINAL: A text window where you type commands instead of clicking
+icons. In Windows, search for "PowerShell" or use the terminal
+built into VS Code. You "cd" (change directory) into a project
+folder, then type commands like "python somefile.py".
+
+PYTHON / "python somefile.py": Python is the programming language
+all of this is written in. Typing "python somefile.py" tells your
+computer to run that file's code from top to bottom.
+
+PIP / "pip install -r requirements.txt": pip is Python's package
+installer. Most projects list the extra code libraries they need in
+a file called requirements.txt — running that command downloads and
+installs all of them at once, in one shot.
+
+VENV (virtual environment): A private, isolated copy of Python and
+its installed packages just for one project, so different projects
+can use different versions of things without conflicting. If a
+project has a "venv" folder, always run ITS python.exe inside that
+folder (e.g. ./venv/Scripts/python.exe) instead of your regular
+"python" command — that's what quant_trading_lab expects.
+
+.env FILE: A plain text file (never shared or uploaded anywhere)
+that stores secret values like API keys, formatted like:
+  API_KEY=abc123
+Code reads these secrets from the .env file instead of having them
+typed directly into the source code — this is why the Phemex file
+flagged above is a real problem: its key is typed directly into
+regular code instead of a private .env file.
+
+BACKTEST vs. PAPER vs. LIVE:
+  - Backtest: test a strategy against OLD, already-happened price
+    data. No real or fake money moves — just "would this have
+    worked in the past."
+  - Paper / dry-run: simulate placing real-time trades using fake
+    money, so you can watch it behave in real market conditions
+    without risking anything.
+  - Live: real trades with real money. Nothing in this DEV folder
+    is confirmed safe to run in live mode yet — every project above
+    notes what's still needed before live mode should be trusted.
+
+CANDLE / TIMEFRAME (e.g. "15m", "1h", "1D"): Price charts are cut
+into fixed time chunks called candles — a "15m" chart shows one
+candle per 15 minutes of price action, a "1h" chart shows one
+candle per hour, "1D" is one candle per day. "Chart timeframe for
+analysis" above means which size of candle a strategy's indicators
+(moving averages, etc.) are calculated from — a strategy can trade
+frequently while still reading its trend signal off a much bigger
+candle size (e.g. trade every 15 minutes, but only in the direction
+of the 4-hour trend).
+
+SMA / EMA: Simple/Exponential Moving Average — the average closing
+price over the last N candles, used to spot trend direction.
+
+VWAP: Volume-Weighted Average Price — like a moving average, but
+weighted more heavily by candles that had more trading volume.
+
+ATR: Average True Range — a measure of how much a price typically
+moves per candle, often used to size stop-losses.
+
+RSI: Relative Strength Index — a 0-100 indicator showing whether an
+asset has been bought or sold aggressively recently (used as a
+"don't chase an already-overextended move" filter).
+
+API KEY / SECRET: A username+password pair (but longer, random
+strings) that lets code log into an exchange (Hyperliquid, Phemex,
+Binance, etc.) on your behalf to check prices or place trades.
+Anyone with your key+secret can trade or withdraw as if they were
+you — treat them like your bank password, never put them directly
+in code, always use a .env file, and never share this DEV folder
+publicly without checking every file for keys first.
+
+====================================================================
+END OF FILE
+====================================================================
+
+================================================================================
+ROUND 15 ADDITIONS (2026-09-01)
+================================================================================
+HyperLiquid/HL_Monarch:
+  python main.py basis          Delta-neutral long-spot/short-perp funding scan
+                                (gross APR >=25%, net >15% after both legs' spread)
+  analytics/indicators.py       EMA/RSI/ATR regime engine (NEW) - percents, not fractions
+  Fade strategy now trend-gated (EMA-50/RSI-14, 15m) with ATR-scaled 1:1 geometry.
+  Rotation split 20 majors / 15 exotics - fixes the tier collapse where the
+  exotic tier never fired once across rounds 9-12.
+  Paper account reset to $100k; baseline archived under data/experiments/.
+
+Polymarket/Polymarket_Monarch:
+  python dutched_arb.py         Negative-risk dutching scanner (NEW, standalone -
+                                this project has no main.py). Expect zero hits;
+                                tightest book observed was 1.0100.
+
+  python main.py excursion      MFE/MAE benchmark w/ random-entry control (NEW)
+                                2026-09-01 result: 0.513 vs 1.092 control = NO_ALPHA.
+                                Fading liquidations is wrong-sided; the inverse
+                                (momentum) scores ~1.95 and is worth a pre-registered test.
+
+================================================================================
+ROUND 16 (2026-09-01) — FADE RETIRED, TWO ENGINES LIVE
+================================================================================
+HyperLiquid/HL_Monarch:
+  FADE_STRATEGY_ENABLED = False   The liquidation fade no longer trades.
+                                  Retired on MFE/MAE 0.513 vs 1.092 control,
+                                  t=-10.52, n=466. Module kept as the record.
+  python main.py basis --harvest  Delta-neutral paper book (long spot/short perp).
+                                  Accrues hourly funding in the collector.
+
+Polymarket/Polymarket_Monarch:
+  python consensus_scanner.py [--paper]
+                                  Sharp trader consensus signals. Suppresses
+                                  market makers (same wallets on opposing
+                                  outcomes / high churn) -- all 4 live clusters
+                                  were market making on 5-min BTC binaries.
+                                  Roster is 7 wallets, not 20; see --min-closed.
+
+================================================================================
+ROUND 17 (2026-09-02) — TAX RESERVE & SAFE BANKROLL AGENT
+================================================================================
+Tax_Reserve_Agent/  (run all of these from c:\Users\ixis1\Desktop\DEV)
+  Local-first, zero-token trading accountant. FIFO cost basis across Polymarket,
+  crypto spot and options; sizes a tax escrow and tells you what's actually
+  risk capital. Architecture by Antigravity; chain/CSV/hook layers by Claude Code.
+
+  python -m Tax_Reserve_Agent.main hud
+                                  Terminal HUD: realised P&L by asset class,
+                                  tax escrow to hold, safe deployable bankroll.
+  python -m Tax_Reserve_Agent.main chain-sync --from-block N
+                                  Reads the settlement layer, not the REST API:
+                                  Gnosis CTF PositionSplit / PositionsMerge /
+                                  PayoutRedemption logs on Polygon + CLOB fills
+                                  from the orderbook subgraph. Event topics are
+                                  derived via a bundled pure-Python Keccak-256,
+                                  so there is no web3 dependency.
+                                  UNTESTED against a live wallet - config.yaml
+                                  still holds the 0x000...0 placeholder.
+  python -m Tax_Reserve_Agent.main import
+                                  One sweep of the data/imports/ drop folder.
+                                  Drop a broker CSV in, it lands in the ledger
+                                  and moves to processed/ or failed/. A file
+                                  whose source can't be determined is REJECTED,
+                                  never guessed. Re-drops are idempotent.
+  python -m Tax_Reserve_Agent.main watch
+                                  Same, polling every 5s until Ctrl-C.
+  python -m Tax_Reserve_Agent.main bankroll --check 500
+                                  Bot-facing gate: "can I place a $500 order?"
+  python -m Tax_Reserve_Agent.interfaces.monarch_hook --check 500 --cash 12000 --json
+                                  Standalone sizing gate, exits non-zero when
+                                  rejected so a .bat can gate on it. Fail-closed:
+                                  an unreadable ledger rejects orders rather
+                                  than falling open to unlimited size.
+  python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_new_features
+                                  40 tests, all offline (2 Antigravity, 38 new).
+
+  NOT YET WIRED: Polymarket_Monarch does not call the hook. It is scanner-only,
+  with no order-placement path to gate; dutched_arb.py's --shares is the natural
+  first integration point.
+
+================================================================================
+ROUND 18 (2026-09-02) — TAX GATE WIRED INTO MONARCH, REORG GUARD, RESOLUTIONS
+================================================================================
+Tax_Reserve_Agent/  (run from c:\Users\ixis1\Desktop\DEV)
+
+  python -m Tax_Reserve_Agent.main resolve-markets
+                                  Finds prediction-market lots still open in the
+                                  ledger, checks whether the market actually
+                                  resolved, and settles them: losers at $0.00,
+                                  winners at their payout. DRY RUN by default.
+  python -m Tax_Reserve_Agent.main resolve-markets --apply
+                                  Commits the plan. Gamma finds candidates; the
+                                  CTF contract's payoutNumerators decides. A
+                                  condition's legs always settle TOGETHER --
+                                  writing off only the losing leg of a
+                                  split-and-hold invents a loss, lowers the
+                                  escrow, and leaves the reserve short.
+                                  --trust-gamma  skip on-chain verification (warns)
+                                  --losers-only  write off losers only
+                                  --as-of DATE   date markets Gamma won't date
+
+  chain-sync now stays 64 blocks behind the chain head (or uses the node's
+  `finalized` tag). A --to-block above that horizon is capped, not honoured: a
+  reorged log that reaches the FIFO engine has already minted tax lots that
+  nothing retracts. Tune with chain.confirmations in config.yaml.
+
+Polymarket/Polymarket_Monarch:
+  python tax_gate.py              NEW. Prints the safe bankroll and shows how a
+                                  size gets clamped. The single bridge between
+                                  Monarch and the Tax Reserve Agent.
+  python dutched_arb.py --shares 5000
+                                  --shares is now CLAMPED to deployable capital
+                                  before the book is walked, so the executable
+                                  size and profit figure describe a trade you
+                                  could actually place. New flags:
+                                  --no-tax-gate --cash N --max-position-pct 0.05
+  python terminal_dashboard.py    Header now carries the escrow / safe-bankroll
+                                  line alongside the DB stats.
+
+  NOTE: the Monarch-side gate fails OPEN and prints "UNGATED" when the agent is
+  unavailable -- these are scanners, not order routers. Anything that actually
+  sends an order must call MonarchBankrollHook.check_order() directly, which
+  fails CLOSED.
+
+  Tests: 74 (Tax_Reserve_Agent) + 237 (Monarch), all passing, all offline.
+
+================================================================================
+ROUND 19 (2026-09-02) — V2: WAL, HIFO, LOSS HARVESTING, TAX CALENDAR
+================================================================================
+Tax_Reserve_Agent/  (run from c:\Users\ixis1\Desktop\DEV)
+
+  python -m Tax_Reserve_Agent.main harvest
+                                  Ranks open UNDERWATER lots by the tax they
+                                  would actually save. Needs marks: put them in
+                                  data/marks.csv (symbol,price -- see
+                                  marks.csv.example) or pass --live-marks to
+                                  price Polymarket positions off the CLOB mid.
+                                  An unmarked position is listed as UNMARKED and
+                                  excluded from every total -- an invented mark
+                                  makes an invented loss.
+                                  The saving is NOT loss*rate: real netting order
+                                  (ST vs ST, LT vs LT, crossover, $3k ordinary,
+                                  then carryforward valued at ZERO).
+
+  python -m Tax_Reserve_Agent.main calendar
+                                  Quarterly estimated tax schedule. THE QUARTERS
+                                  ARE NOT QUARTERS: Q2 is Apr1-May31 (2 months),
+                                  Q4 is Sep1-Dec31 and due Jan 15 NEXT year. A
+                                  gain on Jun 1 is due in September; the same
+                                  gain on May 31 is due in June. Splits the
+                                  escrow into past-due (pay now) vs reserved.
+                                  Weekend deadlines roll to Monday; federal
+                                  holidays and safe-harbour are NOT modelled.
+
+  python -m Tax_Reserve_Agent.main rebuild [--method FIFO|HIFO]
+                                  Replays every lot from the transactions table.
+                                  REQUIRED after changing accounting.method in
+                                  config.yaml -- otherwise the ledger is half one
+                                  method and half the other. The HUD warns when
+                                  the config no longer matches what the lots were
+                                  built under.
+
+  config.yaml accounting.method:  "FIFO" (default) or "HIFO". HIFO minimises the
+                                  gain on each sale but leaves the CHEAP OLD lots
+                                  open, so it tends to defer tax rather than
+                                  avoid it and can turn long-term gains into
+                                  short-term ones.
+
+  SQLite now opens in WAL with busy_timeout=5000, so the CSV watcher, a Monarch
+  scanner and a chain-sync write can run at once without "database is locked".
+  synchronous stays at FULL on purpose -- do not "optimise" it to NORMAL.
+
+  Tests: 115 (Tax_Reserve_Agent) + 237 (Monarch) = 352, all passing, all offline.
+
+================================================================================
+ROUND 20 (2026-09-02) — LIVE ENDPOINT FIXES (transports were all untested)
+================================================================================
+Antigravity probed the live endpoints; both dead transports confirmed, and
+probing found three more faults that only appear against real infrastructure.
+
+Tax_Reserve_Agent/
+  POLYGON RPC IS NOW A LIST, NOT A URL (chain.polygon_rpc_endpoints):
+      https://polygon-bor-rpc.publicnode.com   200, 46ms   <- default
+      https://polygon.drpc.org                 200, 79ms
+      https://1rpc.io/matic                    200, 165ms
+    DEAD: polygon-rpc.com = 401 Unauthorized
+    DEAD: polygon.llamarpc.com = does not resolve (do NOT use it)
+    ODD:  rpc.ankr.com/polygon = HTTP 200 with an auth error in the BODY
+    Automatic failover; the working endpoint is pinned for the session.
+
+  REORG GUARD WAS SILENTLY VOID AND IS NOW FIXED.
+    safe_block_number() used to trust the node's `finalized` tag. Live, at one
+    chain head: publicnode said head-4, drpc head-3, 1rpc head-500. A 3-4 block
+    lag is NOT Polygon finality, so the sync would have read to 4 blocks off the
+    tip with the 64-block guard doing nothing. Now takes the MINIMUM of
+    `finalized` and head-minus-confirmations.
+
+  CLOB FILLS NOW COME FROM THE DATA API (Goldsky subgraph 404s).
+    Better source: rows carry slug/outcome/conditionId, so fills name themselves
+    with no Gamma call. Three things measured off 500 live rows:
+      - fills are PRE-AGGREGATED (no tx+asset+side collisions)
+      - outcomeIndex is 999 garbage on 6.4% of rows -- use the outcome STRING
+      - there is NO fee field, so Polymarket cost basis is GROSS of fees
+    `user=` matches your PROXY wallet, not the EOA you sign with.
+
+  Verified live end-to-end for the first time: 85 CTF+CLOB transactions synced
+  from a real wallet, unique keys, readable symbols, idempotent re-import.
+
+  Tests: 147 (Tax_Reserve_Agent) + 237 (Monarch) = 384, all passing, all offline.
+
+================================================================================
+ROUND 21 (2026-09-02) — PAGING RACE, PROXY WALLET WARNING, KECCAK KAT
+================================================================================
+Tax_Reserve_Agent/
+  DATA API PAGING RACE FIXED. Offset paging races a live feed: the feed is
+  newest-first, so a trade landing mid-walk pushes older rows to a higher offset
+  and the next page re-serves them (Antigravity measured 15 repeats in a
+  2,000-trade walk). Rows are now keyed on transactionHash|asset|side and
+  de-duplicated across pages, with the count reported. The drift can only
+  OVERLAP, never gap -- rows shift down because entries are inserted at the head
+  and trades are never deleted.
+
+  PROXY WALLET WARNING. chain-sync now warns when a wallet returns on-chain CTF
+  rows but ZERO CLOB fills. That is the signature of configuring your EOA instead
+  of the Polymarket PROXY (a Gnosis Safe), which /trades?user= matches. Left
+  undetected it builds cost basis from redemptions with no purchases behind them.
+  Find your proxy address on your Polymarket profile page.
+
+  KECCAK MULTI-BLOCK KATs. Three hardcoded digests at 200/430/1024 bytes, each
+  generated by TWO independent C implementations (pycryptodome + eth_hash) that
+  agreed with each other -- not by the implementation under test, which would be
+  circular. Neither library is a runtime dependency.
+
+  RPC endpoints unchanged from Round 20 and re-probed live; order kept as
+  publicnode -> drpc -> 1rpc because drpc measured ~2x faster than 1rpc.
+
+  Live re-verification: 1,586 trades over 8 pages from a real wallet, zero
+  duplicate keys, 1,586 unique ledger rows.
+
+  Tests: 159 (Tax_Reserve_Agent) + 237 (Monarch) = 396, all passing, all offline.
+
+================================================================================
+ROUND 22 (2026-09-02) — GAMMA closed=false BUG; resolve-markets NOW ACTUALLY WORKS
+================================================================================
+Tax_Reserve_Agent/
+  CRITICAL: GAMMA DEFAULTS TO closed=false AND SAYS NOTHING. Looking up a
+  RESOLVED market by condition_ids or clob_token_ids returned 0 rows, so
+  resolve-markets was completely non-functional -- it reported "nothing to
+  settle" no matter what was in the ledger. All 16 of its unit tests passed
+  because they use a fake resolver. Fixed: empty results retry with &closed=true.
+
+  GAMMA PUBLISHES THE LAST TRADE, NOT THE PAYOUT. Across 300 closed markets a
+  resolved winner reads 0.9999989 and the loser 1.01e-06 (chain says 0.0/1.0).
+  "Sums to 1.0" was never a resolution test -- a market that merely stopped
+  trading at 0.97/0.03 sums to 1.0 too, and --trust-gamma would have booked a
+  fabricated 97%/3% settlement. Now requires clean 0/1 within 1e-3, one winner.
+
+  DATA API PATH NEVER FILLED THE METADATA CACHE, so resolve-markets could not map
+  any position back to its condition. Fills now record symbol -> condition. The
+  outcome INDEX is derived at settlement from Gamma's authoritative outcomes
+  order, never from the row's outcomeIndex (garbage 999 on ~6% of rows).
+
+  max_pages truncation now WARNS -- a full final page means missing old history.
+
+  FEES: already handled correctly in lot_engine (basis+fee on buy, proceeds-fee
+  on sell, pro-rated across lots). NOT added to tax_calculator -- that only
+  aggregates realized_pnl and would have double-counted. Pinned with regression
+  tests. New OPT-IN chain.polymarket_fee_rate (default 0) books a labelled
+  ESTIMATE, since the Data API reports no fee at all.
+
+  resolve-markets VERIFIED END-TO-END on a real resolved market for the first
+  time: correct winner, resolution date, tax year, and a split-and-hold netting
+  to exactly $0.00.
+
+  Tests: 185 (Tax_Reserve_Agent) + 237 (Monarch) = 422, all passing, all offline.
+
+================================================================================
+ROUND 23 (2026-09-02) — COLD-CACHE BLINDSPOT (live marks + resolve-markets)
+================================================================================
+Tax_Reserve_Agent/
+  harvest --live-marks and resolve-markets both read resolver._cache and nothing
+  else. On a FRESH RUN (new checkout, CSV-built ledger, cleared cache) that cache
+  is empty, so live marks priced NOTHING and resolve-markets mapped NOTHING.
+  Neither errored -- the reports were just silently blank.
+
+  New PolymarketMarketResolver.resolve_symbol(), three routes cheapest first:
+    1. a recorded symbol: link (free, carries the CLOB token id)
+    2. a CTF-<prefix>-<indexSet> symbol -- the index set is fully encoded in the
+       symbol, so the OUTCOME INDEX needs no lookup at all
+    3. on-demand Gamma ?slug= lookup, trying split points right-to-left because
+       the slug itself contains hyphens
+
+  NOT IMPLEMENTABLE AS BRIEFED: you cannot parse condition_id out of a
+  CTF-<cid>-<indexSet> symbol -- canonical_symbol truncates it to 10 of 64 hex
+  chars, and 40 bits of a 256-bit id are not reversible. The index set IS
+  recoverable. Unknown conditions are reported empty, never guessed.
+
+  remember_symbol now stores the token id and is called from the CTF
+  split/merge/redeem paths too (a wallet that only splits and redeems never
+  produces a CLOB fill).
+
+  Verified live from zero cache: correct condition/outcome/token, resolve-markets
+  settled a CSV-style ledger 2/0, live marks returned a real midpoint 0.0455.
+
+  Tests: 197 (Tax_Reserve_Agent) + 237 (Monarch) = 434, all passing, all offline.
+
+================================================================================
+ROUND 24 (2026-09-02) — CATEGORY EDGE SIZING, NEGATIVE CACHE, MULTI-OUTCOME
+================================================================================
+Tax_Reserve_Agent/
+  python -m Tax_Reserve_Agent.main bankroll
+      Now also prints measured position caps per category:
+      [EDGE] macro: 14/20 wins (p=0.70, conservative 0.59) @ avg $0.40 -> 7.9% cap
+
+  CATEGORY EDGE SIZING (monarch_hook.py). Win rate per category from closed
+  trades, shrunk for uncertainty, converted to a quarter-Kelly position cap
+  clamped to 1%-8%.
+    USES A WILSON LOWER BOUND, NOT p - sqrt(p(1-p)/N). The briefed shrinkage is
+    ZERO-width at p=0 or p=1, so 3 wins from 3 trades reads as CERTAINTY and
+    sizes at the maximum -- worst exactly at small N. Wilson gives 0.75 there and
+    matches the naive answer at large N (70/100: 0.6524 vs 0.6542).
+    Kelly needs a price: f* = (p - q)/(1 - q) for a share at q paying $1.
+    check_order(category=..., price=...) / tax_gate.clamp_shares(category=...)
+    BY DEFAULT THE EMPIRICAL SIZER CAN ONLY TIGHTEN max_position_pct. Set
+    bot_integration.allow_empirical_upsize: true for the full 1-8% band.
+
+  NEGATIVE CACHE is SESSION-SCOPED, deliberately NOT persisted -- writing it to
+  the on-disk cache would permanently blacklist a real market after one Gamma
+  outage.
+
+  LEGACY CTF RECOVERY does not read transactions.notes (it only ever held 12 of
+  64 hex chars). It re-reads the original log from chain via the row's real tx
+  hash + log index. Notes now carry the FULL condition id going forward.
+
+  categorise() matches WHOLE TOKENS -- "SOMETHING" contains "ETH" and would have
+  been filed as crypto, silently sized off the wrong win rate.
+
+  MULTI-OUTCOME VERIFIED LIVE: 28 of 400 closed markets have 3-7 outcomes.
+  Winner-take-all across 3 legs nets exactly 0.0000. A genuinely FRACTIONAL
+  resolution (chauvin charges, 1/3 each) settles exactly via chain; Gamma
+  correctly refuses it. Combinatorial index sets are SKIPPED, never mis-settled.
+
+  Tests: 228 (Tax_Reserve_Agent) + 237 (Monarch) = 465, all passing, all offline.
+
+================================================================================
+ROUND 25 (2026-09-02) — MAGNITUDE KELLY, ROLLING WINDOW, BREAK-EVEN FILTER
+================================================================================
+CORE TAX ENGINE IS FROZEN (Antigravity sign-off, verified against live chain).
+
+Tax_Reserve_Agent/
+  MAGNITUDE-ADJUSTED KELLY. Sizing now uses f* = max(0, (p(b+1)-1)/b) with
+  b = R+/R- measured per dollar of basis risked -- not win rate alone.
+    A book winning 60% at +0.05 and losing 40% at -0.40 has a GOOD win rate and
+    LOSES money. The old sizer grew it; it now sizes to 0.0% and check_order
+    REJECTS it. Same 60% win rate with real payoffs -> 7.6%.
+    b is capped at 10 when a category has no losses yet.
+    A priced order uses the TIGHTER of (1-q)/q and the category's realised b --
+    a 10c share offers b=9, but a book that exits at 15c never captured it.
+
+  ROLLING WINDOW: 40 most recent completed trades per category
+  (bot_integration.category_window). With 60 old wins then 20 recent losses, a
+  40-trade window sizes at 1.4% while an unbounded one sizes at 8.0%.
+
+  VWAP was ALREADY correct (basis/qty = sum value / sum qty). No change needed.
+
+Polymarket/Polymarket_Monarch:
+  python dutched_arb.py --min-edge 0.0308      (default: computed from the agent)
+      AFTER-TAX BREAK-EVEN FILTER. Under gross-of-fees accounting the tax hits the
+      GROSS gain while fees come out of pocket unrecorded:
+          after_tax = e(1-t) - f    ->    break-even e = f/(1-t)
+      2% round trip @ 35% tax = 3.08%, vs 2.00% if fees were recorded. THE 1.08pp
+      GAP IS THE COST OF NOT RECORDING FEES. A 2.5% "arbitrage" clears its fees
+      and still loses after tax. Events below the threshold are shown separately,
+      never as hits.
+
+  TWO FEE NUMBERS ON PURPOSE:
+    chain.polymarket_fee_rate         -> writes to the LEDGER, default 0
+    bot_integration.assumed_round_trip_fee -> filter only, default 0.02
+  A measured ledger rate overrides the assumption.
+
+  Tests: 249 (Tax_Reserve_Agent) + 237 (Monarch) = 486, all passing, all offline.
+
+================================================================================
+ROUND 26 (2026-09-02) — PHASE 2 SIZING: MIN-N GATE, STRATEGY TAG, SCANNER FILTERS
+================================================================================
+Tax_Reserve_Agent/  (core ledger frozen and untouched this sprint)
+  MINIMUM-SAMPLE GATE: below 5 closed trades a category uses the FLAT percentage,
+  not an empirical one (bot_integration.min_category_trades). Wilson shrinks a
+  small sample but shrinking is not abstaining -- 3 trades still produce a number
+  that moves money.
+
+  STRATEGY TAG: check_order(..., strategy="dutched_arb") and size_order(...) now
+  carry a tag through to BankrollDecision.strategy, and tax_gate.clamp_shares
+  passes it. Ready for the multi-strategy plug-in roadmap.
+
+  payoff_basis config: conservative (default) | price | realized.
+    p is measured from CLOSED trades (an exit-behaviour statistic). Pairing it
+    with the hold-to-resolution payoff (1-q)/q overstates sizing for a scalper.
+    "conservative" = min(price-implied, realised). Set "price" for the literal
+    brief behaviour.
+
+Polymarket/Polymarket_Monarch:
+  python consensus_scanner.py --paper [--min-edge 0.0308]
+      NOW FILTERS ON AFTER-TAX BREAK-EVEN. It has no "spread", so the edge is
+      (p - ask)/ask where p is the sharps' aggregate win rate. Copies below the
+      threshold are counted in skipped_below_breakeven. This is DISTINCT from the
+      priced-in guard: a signal can be fresh and still not clear 3.08%.
+      CAVEAT: p is the sharps' overall win rate, and those wallets were selected
+      for having won -- treat the edge as an upper bound.
+      Paper copies are also size-gated through the tax gate.
+
+  python dutched_arb.py --min-edge 0.0308     (already wired in Round 25)
+
+  Tests: 270 (Tax_Reserve_Agent) + 237 (Monarch) = 507, all passing, all offline.
+
+================================================================================
+ROUND 27 (2026-09-02) — v1.0-q1-freeze  ***CODEBASE FROZEN FOR Q1 LIVE***
+================================================================================
+518 tests pass (281 Tax_Reserve_Agent + 237 Monarch), all offline.
+Core ledger (lot_engine / tax_calculator / db) frozen since Round 25, unchanged.
+
+FINAL CHANGES:
+  consensus_scanner.py -- sharp win rates are now WILSON-SHRUNK against their own
+    sample size before the edge is computed. The roster SELECTS wallets for having
+    won, so the raw rate is a survivorship artefact that made the filter too
+    permissive. Measured: 70% over 12 closed positions @ 0.60 ask goes from +16.7%
+    raw edge (would clear) to NEGATIVE (rejected). 70% over 300 barely moves.
+  consensus_scanner.py -- copies derive a category and are size-gated through
+    tax_gate, so they get the same measured drawdown clamps as bot orders.
+  BREAK-EVEN IS NOW FAIL-SAFE. dutched_arb used to pass 0.0 as the fallback, so an
+    unreachable agent SILENTLY DISABLED the filter. Both scanners now fall back to
+    0.0308 and print which figure they used.
+  payoff_basis accepts "min" as an alias for "conservative".
+
+BACKTEST (scratch/backtest_sizing.py, 210 real round-trips) reproduces exactly.
+  BUT the harness floors negative expectancy at 1%; the SHIPPED code clamps to 0.
+  Re-run with real behaviour:  max DD 22.88% -> 10.74%,  Calmar 0.0365 -> 0.0797.
+  The shipped numbers are BETTER than the ones signed off.
+  NOTE: that clamp REFUSES 98 of 210 trades (47%) outright, not trims them.
+
+  Full CLI verified: hud, calendar, harvest, bankroll, resolve-markets, import,
+  watch, chain-sync, rebuild. All Monarch entry points import clean.
+
+================================================================================
+ROUND 28 (2026-09-03) — PHASE 3 TASK 1: STRATEGY CAPITAL BUCKETS
+================================================================================
+Tax_Reserve_Agent/  (core ledger still frozen and untouched)
+  config.yaml -> bot_integration.strategies ring-fences each strategy's slice of
+  the SAFE bankroll:
+      dutched_arb: 0.50    consensus_copy: 0.30    sandbox: 0.20
+  Leave the block EMPTY to disable bucketing (pre-Phase-3 behaviour).
+
+  python -m Tax_Reserve_Agent.main bankroll     now prints the bucket table.
+
+  RULES THAT ARE NOT OBVIOUS:
+    - Allocations over 100% are SCALED DOWN, not honoured. 130% does not mean
+      130% exists; it means every bucket is 30% bigger than you think.
+    - Under 100% is fine -- the remainder is unallocated reserve.
+    - The per-order cap is a fraction OF THE BUCKET. 5% of a 20% sandbox = 1% of
+      the book. Otherwise "quarantined" would be cosmetic.
+    - An UNRECOGNISED strategy is quarantined into `sandbox`. The unnamed
+      `default` tag counts as unrecognised. With no sandbox bucket it gets $0.
+    - already_deployed is now per-STRATEGY. The caller owns that state; the hook
+      is read-only. A bot passing 0 every time gets only the per-order cap.
+
+  Tests: 299 (Tax_Reserve_Agent) + 237 (Monarch) = 536, all passing, all offline.
+
+================================================================================
+ROUND 29 (2026-09-03) — PHASE 3 TASKS 2&3: ATTRIBUTION + STRATEGY INTERFACE
+================================================================================
+Tax_Reserve_Agent/  (schema still FROZEN -- attribution rides in notes)
+  python -m Tax_Reserve_Agent.main strategies
+      Strategy | Budget | Open Exposure | Closed | Realised PnL | Win % | Expectancy
+
+  OVER-ALLOCATION NOW HARD-FAILS (StrategyAllocationError) instead of scaling.
+  IMPORTANT: tax_gate catches every construction error and degrades to UNGATED,
+  so a raise would have turned OFF all sizing protection on a config typo. Config
+  errors now set fatal_config_error and clamp_shares returns 0 shares. Outages
+  still fail open (scanners place no orders); bad capital plans fail CLOSED.
+
+  STRATEGY ATTRIBUTION: trades are tagged `strategy:<name>;` in transactions.notes
+  (schema untouched). The trailing ';' is LOAD-BEARING -- without it
+  %strategy:sandbox% also matches strategy:sandbox_v2 and pools a new strategy's
+  exposure into the bucket it was quarantined from.
+    SpotIngestor.create_trade(..., strategy="dutched_arb")
+    PolymarketIngestor.create_manual_trade(..., strategy="sandbox")
+
+  get_strategy_open_exposure() measures open cost basis from the LEDGER, and
+  check_order folds it in when the caller passes 0 -- so bucket ceilings hold even
+  if a bot never tracks its own exposure. CAVEAT: only lots TAGGED at ingestion
+  count; anything older is invisible and ceilings look looser than they are.
+
+Polymarket/Polymarket_Monarch/strategies/
+  base.py -- BaseStrategy ABC + Opportunity.
+    min_edge DEFAULTS to the after-tax break-even (never 0).
+    opportunities() applies the hurdle centrally so a forgotten filter in a
+    subclass cannot become an unguarded path.
+    size() always tags strategy=self.name, so an untagged strategy is quarantined.
+    validate() warns on a below-break-even override, a missing name, or a
+    non-positive notional.
+
+  Tests: 329 (Tax_Reserve_Agent) + 237 (Monarch) = 566, all passing, all offline.
+
+================================================================================
+ROUND 30 (2026-09-03) — PHASE 4: LIVE FEE DETECTION, RECEIPTS, HEALTH CHECK
+================================================================================
+  python -m Tax_Reserve_Agent.main health     exit 0 = healthy, 1 = needs review
+      Fires on an INVERTED category expectancy (40-trade window, so it catches a
+      recent turn) or an escrow ratio above 15% of liquid cash. An UNMEASURED
+      category is not a failure -- alerting on absence of evidence trains you to
+      ignore the alert.
+
+  LIVE FEE DETECTION -- THE BRIEF'S PREMISE WAS INVERTED:
+    /fee-rate returns base_fee:1000 for ESSENTIALLY EVERY market (23 of 25 live
+    tokens). It is a CONSTANT, not a rate. Read as bps it implies a 10% fee.
+    The real terms are on Gamma. Across 300 OPEN markets:
+        politics 4% (237)  sports 3% (31)  economics 5% (14)
+        finance 4% (7)     crypto 7% (6)   no schedule (5)
+    295 of 300 have feesEnabled:true. Zeroing the hurdle on "zero-fee" markets
+    would have removed protection on the markets charging the MOST.
+    Fees are PRICE-DEPENDENT: rate * min(p, 1-p).
+        7% crypto book @ p=0.50 -> TRUE hurdle 10.77%, not 3.08%
+        same book      @ p=0.02 -> TRUE hurdle  0.43%
+    The flat 3.08% was ~3.5x too LOW at mid prices, several times too HIGH in tails.
+    "Unknown" (None) stays distinct from "free" (0.0) everywhere.
+
+  ATTRIBUTION LOOP WAS BROKEN AND IS NOW FIXED. csv_watcher's loaders built their
+  own notes and DISCARDED the file's, so an execution receipt tagged
+  strategy:dutched_arb; reached the ledger UNTAGGED and counted against no
+  bucket. _carry_notes() now preserves a notes/strategy column on all three
+  loaders. Only the round-trip test caught this.
+
+  BaseStrategy.log_execution_receipt(...) drops a tagged fill CSV into
+  data/imports/ for csv_watcher to ingest. uuid4 filenames, not clock suffixes.
+
+  Tests: 361 (Tax_Reserve_Agent) + 237 (Monarch) = 598, all passing, all offline.
+
+================================================================================
+ROUND 31 (2026-09-03) — v1.1-q1-live  *** FROZEN FOR Q1 LIVE DEPLOYMENT ***
+================================================================================
+612 tests pass (375 Tax_Reserve_Agent + 237 Monarch), all offline.
+Core ledger unchanged since v1.0: a1954770 / 665974f0 / d2ffeac6.
+
+FINAL CHANGES:
+  holds_to_resolution -- a contract REDEEMED at settlement pays the exchange
+    ONCE (entry only); one that is SOLD OUT pays twice. dutched_arb sets it,
+    scalpers do not. Default is the 2-leg charge: an undeclared strategy is
+    assumed to trade out.
+    CONSEQUENCE: at 4% politics / 50c, a 4% edge LOSES if sold out and WINS if
+    redeemed. Same edge, opposite verdict.
+
+  FEE CURVE IS NOW 2p(1-p), NOT min(p,1-p). Your sign-off named a p(1-p) curve;
+  the implementation used min(). BOTH give 2.00% politics / 3.50% crypto at 50c,
+  which is why the anchors could not distinguish them -- but at 10c they differ
+  by 1.8x. Switched to the named curve, which is also the more conservative.
+  FeeSchedule(curve="min") keeps the old shape.
+
+  RECEIPTS CAN CARRY THE CHAIN TX HASH, formatted as the Data API writes it
+  (<tx>#<asset[:24]>). WITHOUT THIS the receipt and the synced row are DIFFERENT
+  ledger keys and the same fill is counted TWICE. The briefed UPDATE only helps
+  once the keys match; both were needed.
+
+  backfill_strategy_tags() attaches a tag to an already-present untagged row.
+  Matched on the FULL unique key (source+tx_hash+symbol+side), not tx_hash alone
+  -- one Polygon tx can carry several markets and hash-only matching would stamp
+  one strategy's tag onto another's position.
+
+OPERATING THE FREEZE:
+  Schedule `python -m Tax_Reserve_Agent.main health` -- exit 1 means review.
+  Fires on an inverted 40-trade category expectancy or escrow above 15%.
+
+  STILL AN ASSUMPTION: the fee price-curve shape has never been reconciled
+  against a real fill. Every hurdle in the system depends on it.
+
+================================================================================
+ROUND 32 (2026-09-03) — FEE MODEL VALIDATED ON CHAIN. v1.1-q1-live SHIPPED.
+================================================================================
+  Polygon tx 0x904ac954...99b121, CTFExchangeV2, block 93120661.
+  Decoded independently by both agents:
+      taker leg    20.83 sh @ $0.495199, notional $10.3150, fee $0.260350
+      ACTUAL       2.5240%
+      2p(1-p)x5%   2.4998%    delta +2.42 bps   <- shipped
+      min(p,1-p)   2.4760%    delta +4.80 bps   <- rejected, 2x worse
+  Switching the curve at the final lock was correct. Residual implies an exact
+  rate of 5.048% vs 5.000% published -- shape confirmed, constant not exact.
+
+  BONUS CONFIRMATION: the same tx had TWO MAKER LEGS THAT PAID ZERO FEE. That is
+  direct on-chain evidence for takerOnly:true, previously an untested assumption
+  under the whole holds_to_resolution split.
+
+  GOTCHAS FOR WHOEVER DECODES THIS NEXT:
+    - CTFExchangeV2 does NOT emit the standard OrderFilled signature. Its fill
+      event is topic0 0xd543adfd... with 4 topics and 7 data words.
+    - logIndex in a receipt is BLOCK-scoped, not transaction-scoped.
+
+  Q1 EXECUTION ORDER (from Antigravity):
+    1. Deploy v1.1-q1-live
+    2. Schedule `python -m Tax_Reserve_Agent.main health`  (exit 1 = review)
+    3. Wire log_execution_receipt() into live order paths as trades execute
+    4. Let the ledger accumulate a full quarter before any further changes
+
+================================================================================
+ROUND 33 (2026-09-03) — init --force IMPLEMENTED; DEMO LEDGER CLEARED
+================================================================================
+  THE SIGN-OFF TOLD THE OPERATOR TO RUN `main init --force`. THAT COMMAND DID
+  NOT EXIST. argparse rejected --force, and plain `main init` printed
+  "[SUCCESS] Database initialized." while deleting NOTHING -- a success message
+  that reads exactly like a wipe. Q1 would have started on $1,542 of fabricated
+  gains and a fake 2/2 category edge driving an 8% position cap.
+
+  python -m Tax_Reserve_Agent.main init
+      Reports what is actually in the ledger and that NOTHING was deleted.
+  python -m Tax_Reserve_Agent.main init --force
+      Copies the ledger to tax_ledger.<timestamp>.bak, THEN clears the three
+      tables, and reports both. Archived, not deleted -- demo rows are
+      indistinguishable from real ones once gone.
+  Implemented in main.py; database/db.py stays frozen (hash d2ffeac6 unchanged).
+
+  LIVE LEDGER IS NOW CLEARED. Archived to tax_ledger.20260902_212710.bak.
+  First readings against the empty book:
+      escrow 0.0%   safe bankroll $10,000.00   no category edges   health exit 0
+      buckets: dutched_arb $5,000 / consensus_copy $3,000 / sandbox $2,000
+
+  Backtest guard confirmed: importing scratch/backtest_sizing.py now takes 0.09s
+  and makes no network calls.
+
+  Tests: 375 + 237 = 612, all passing. Frozen hashes intact.
+
+================================================================================
+ROUND 34 (2026-09-03) — HL_MONARCH ROUND 16: SOVEREIGN RISK & EXECUTION BRIDGE
+================================================================================
+HyperLiquid/HL_Monarch/
+  execution/risk_manager.py  (NEW)
+    RiskManager.check_order(strategy, size_usd, margin_required_usd)
+    TWO limits, both must hold, smaller wins:
+      1. account MARGIN utilisation (default 50% of equity) -- perps liquidate on
+         margin, not notional. This is the survive-volatility limit.
+      2. SAFE BANKROLL + strategy bucket from Tax_Reserve_Agent -- this is the
+         do-not-spend-the-tax-escrow limit.
+    Degrades to the paper balance if the Tax Agent is missing, and says
+    "TAX GATE UNAVAILABLE" in reason on EVERY decision -- never silently.
+    require_tax_gate=True turns degradation into refusal (set this for live).
+
+  EXECUTION RECEIPTS -- OFF BY DEFAULT.
+    PaperTrader(receipts_enabled=True, receipts_dir=..., default_strategy=...)
+    BasisHarvester(receipts_enabled=True, receipts_dir=...)
+    Every fill writes fills_hyperliquid_<strategy>_<ts>_<uuid>.csv with
+    notes="strategy:<name>; exit_reason:<reason>;". Entries AND exits, because
+    the ledger does its own FIFO matching.
+    OFF by default because 561 tests and every backtest share PaperTrader and
+    would otherwise file fabricated trades into the live tax ledger.
+
+  TWO DEVIATIONS FROM THE BRIEF, BOTH DELIBERATE:
+    1. The brief hooked only paper_trader. BasisHarvester NEVER GOES THROUGH IT.
+       Hooking only paper_trader would have instrumented hl_liquidation_fade --
+       which is RETIRED (FADE_STRATEGY_ENABLED = False) -- and missed the live
+       delta-neutral book. Both are now instrumented.
+    2. csv_watcher could not classify a hyperliquid receipt; HL fills landed in
+       failed/ and never reached the ledger. Perps now book as crypto_perp, which
+       also keeps them out of the Polymarket category sizer.
+
+  FUNDING IS NOT BOOKED AS A CAPITAL GAIN. It is periodic ORDINARY income and the
+  ledger models capital gains only. Memoed into receipt notes, not sent through
+  the FIFO engine. Needs separate treatment before any real filing.
+
+Tax_Reserve_Agent/config.yaml -- strategy buckets rebalanced for the ecosystem:
+  dutched_arb 30% | consensus_copy 20% | hl_basis_harvest 25%
+  hl_liquidation_fade 5% (retired; token allocation) | sandbox 20%
+
+  Tests: 608 HL + 375 Tax Agent + 237 Polymarket = 1,220, all passing, all offline.
+
+================================================================================
+ROUND 35 (2026-09-03) — HL_MONARCH ROUND 17: EIP-712 SIGNING + HARD TAX GATE
+================================================================================
+HyperLiquid/HL_Monarch/
+  execution/risk_manager.py -- RiskBreachException + @require_tax_gate decorator.
+    The decorator CALLS check_order ITSELF; a gate you must remember to invoke is
+    one that eventually is not. An unapproved order raises before the wallet is
+    ever touched. RiskBreachException is its own type so a broad `except
+    Exception` in a trading loop cannot swallow it.
+
+  execution/wallet_manager.py (NEW) -- EIP-712 agent-wallet signing.
+    *** THE DOMAIN AND ACTION ENCODING ARE UNVERIFIED ***
+    Never checked against a signature the live API accepted. A wrong domain is
+    harmless (rejected); a wrong ACTION encoding signs the WRONG ORDER validly.
+    describe()["domain_verified"] is hard-coded False. Run
+    verify_against_known_vector() with a real captured request before trusting it.
+    NO NETWORK CODE AT ALL -- there is a test asserting the file contains no URL,
+    socket or HTTP reference. Key from HL_AGENT_PRIVATE_KEY; never logged, never
+    in __repr__, never in an exception, never in a receipt.
+    TESTNET IS THE DEFAULT (domain differs, so a misconfig is rejected not filled).
+    Prices/sizes are decimal STRINGS -- floats are REFUSED, since binary rounding
+    changes the hash and would sign a different order than intended.
+
+  execution/order_executor.py (NEW) -- gate -> sign -> submit -> receipt.
+    DRY RUN BY DEFAULT. Live needs BOTH dry_run=False AND an injected submit_fn.
+    Unmapped coin RAISES (defaulting to asset index 0 would sign a real order on
+    the wrong market). Oversized orders are CLAMPED to the gate's number, not
+    rejected. A transport failure reports UNKNOWN + the cloid to reconcile on --
+    reporting "rejected" would invite a duplicate retry.
+    PARTIAL FILLS BOOK EXACTLY WHAT FILLED. Basis legs are two independent orders;
+    residual_sz is real unhedged exposure, never smoothed into a phantom hedge.
+    Filled legs are NOT auto-unwound (that is a market order into a moving book).
+
+  requirements.txt -- eth-account and msgpack declared as OPTIONAL. The modules
+  import cleanly without them and raise SigningUnavailable if asked to sign.
+
+  Tests: 669 HL + 375 Tax Agent + 237 Polymarket = 1,281, all passing, all offline.
+
+================================================================================
+ROUND 36 (2026-09-03) — HL_MONARCH ROUND 18: BASIS CLAMP, DEAD MAN, RESOLVER
+================================================================================
+HyperLiquid/HL_Monarch/
+  EIP-712 PARITY CONFIRMED vs the official SDK. domain_verified() is now True --
+  but COMPUTED, not hard-coded: it re-derives GOLDEN_VECTOR's signature every
+  call. A constant True would keep claiming verification after someone edited
+  the encoding, which is the exact thing the flag exists to catch.
+
+  BASIS PAIRS ARE GATED AS ONE DECISION (execute_basis_pair / pair_gate).
+    Total notional = sz * (spot_px + perp_px), gated ONCE, and BOTH legs take the
+    same clamped size. Per-leg gating could clamp leg 1 and not leg 2 -- which
+    turns a delta-neutral pair into a NAKED DIRECTIONAL POSITION wearing a
+    hedge's name. If the gate shifts between calls and re-sizes leg 1, LEG 2 IS
+    NOT PLACED.
+
+  DEAD MAN'S SWITCH: arm_dead_man_switch(ttl_seconds) -> scheduleCancel.
+    The protection is the DEADLINE, not the call: a hung process cannot send a
+    cancel, which is exactly when resting orders are most dangerous. Re-arm on a
+    timer well under the TTL (60s switch, re-arm every 20s).
+    A FAILED SUBMIT DOES NOT MARK IT ARMED -- believing you have protection you
+    do not have is worse than knowing you have none.
+    Deliberately NOT behind the tax gate: cancelling is risk-REDUCING, and an
+    account out of capital must still be able to protect itself.
+
+  api/asset_resolver.py (NEW) -- coin name -> asset index.
+    Three defences: unknown RAISES (never a default 0), STALE raises (an index
+    learned an hour ago may have been reindexed), malformed universe rejected
+    ALL-OR-NOTHING (a partial load looks authoritative where it succeeded).
+    The resolver OUTRANKS the static map, and a stale answer BLOCKS the order
+    rather than falling back to it.
+    Offline by construction -- it never fetches; a caller supplies meta.
+
+  STILL OPEN: no per-order lifecycle beyond the switch, no position
+  reconciliation, and NOTHING REFRESHES THE RESOLVER (it goes stale after an
+  hour and blocks -- safe, but the refresh loop is missing live wiring).
+
+  Tests: 738 HL + 375 Tax Agent + 237 Polymarket = 1,350, all passing, all offline.
+
+[37] HL_Monarch Round 19 - supervisor heartbeat + live pre-flight
+     python main.py test-order --coin BTC --sz 0.001 --px 60000.0
+       Constructs ONE order, gates it, prints payload/connectionId/signature.
+       Dry-run + testnet by default; mainnet+live needs --confirm "SEND IT LIVE".
+     execution/supervisor.py  EcosystemSupervisor - account-wide dead-man's
+       switch, 30s TTL renewed every 10s, daemon thread, never tax-gated.
+
+[38] Round 24 audit (Claude Code) - four silent bugs fixed across desks.
+     See HyperLiquid/HL_Monarch/AGENTS.md "Session Log - Round 24".
+     Suites: HL 887 | Tax 376 | Polymarket 237 | quant_trading_lab 171 = 1,671
+     Tax suite needs all three modules:
+       python -m unittest Tax_Reserve_Agent.tests.test_agent          Tax_Reserve_Agent.tests.test_new_features          Tax_Reserve_Agent.tests.test_tradovate_receipts
+
+[39] Round 26 (2026-09-03) - SPORTS GAMBLING TAX MODULE (Tax_Reserve_Agent).
+     Antigravity drafted Item 1; Claude Code audited, refactored, extended.
+     Escrow for sports wagers under IRC 61 / 165(d) / 1402 + OBBBA 70114.
+
+     python -m Tax_Reserve_Agent.main hud
+         Now renders a GAMBLING & SPORTS WAGERING card: gross wins, gross
+         losses, losses DISALLOWED under 165(d), federal/state/buffer split,
+         W-2G credited vs overwithheld, and the gambling escrow.
+
+     Drop a sportsbook CSV into Tax_Reserve_Agent/data/imports/ and:
+     python -m Tax_Reserve_Agent.main import
+         Classifies DraftKings / FanDuel / BetMGM / Pinnacle / Caesars /
+         PointsBet / bet365 exports. Reads American (-110/+150), decimal
+         (1.91), fractional (10/11) and EVEN odds; handles single-row
+         "settled bets" exports and two-row placement+settlement logs.
+
+     New config block: config.yaml -> gambling
+         tax_treatment: casual_standard_deduction (DEFAULT AND CONSERVATIVE)
+                        | casual_itemized | professional_schedule_c
+                        | session_netting
+         loss_deduction_pct: 0.90   <-- OBBBA 90% haircut, 2026+. Set 1.0 if
+                                        repealed; it is the single line that
+                                        matters most for a break-even year.
+         w2g_credit_scope: federal  <-- federal withholding cannot pay state tax
+         state_allows_loss_deduction: true  <-- false for IL/OH/CT etc.
+
+     THE POINT OF THE DEFAULT: a casual bettor taking the standard deduction
+     cannot deduct gambling losses at all. Win $80k, lose $79k, and you owe
+     ordinary income tax on $80,000. The default enforces that.
+
+     Round 26b: Antigravity cross-checked and reproduced 3 defects (timestamp
+     string-sort mis-ordering, W-2G double-tagged on dead-heat legs, ambiguous
+     odds sniffing). All fixed, plus an offset-aware/naive datetime crash the
+     first fix uncovered in the holding-period math. New config key:
+       gambling.default_odds_format: "" | "american" | "decimal"
+
+     Round 26c: Antigravity round-2 cross-check. Fixed parse_iso_date (bare
+     dates / microseconds / space offsets all raised, which mis-ordered lots),
+     the LONG_TERM boundary (now calendar-based - no day count is right across
+     a leap year), structural W-2G dedup, free/promo bets (were refused, which
+     DROPPED taxable winnings), per-leg parlay rows booking one lot each, and
+     bookmaker name aliasing.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 458 (was 379), all offline.
+       python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features
+
+[40] Item 2 (2026-09-03) - SPORTS_DESK FAIR-VALUE (NO-VIG) ENGINE.
+     New tree: DEV\Sports_Desk\. Built jointly with Antigravity in one session.
+
+     python -m unittest Sports_Desk.tests.test_fair_value      (25 tests, offline)
+
+     Sports_Desk/engine/fair_value.py   pure devigging maths, no I/O
+       calculate_fair_value(odds, oracle_tolerance=0.03, odds_format=None)
+         Shin's method on every market (closed form n=2, bisection n>=3),
+         with the Power method run as a cross-check ORACLE. Returns
+         FairValueResult: .fair_probabilities .fair_odds .shin_z .power_k
+         .overround .vig_pct .converged .divergent .max_oracle_delta
+         .trustworthy .warnings .as_record()
+       Accepts decimal floats (100.0 = decimal by contract), American strings
+       ("-110", "+150"), fractional ("10/11") and "EVEN".
+
+     Sports_Desk/data/db.py             provenance store, sports_market.db
+       init_market_db / record_fair_value_measurement / query_latest_measurements
+       Stores EVERY leg's raw quote as JSON on each row, plus the method, the
+       solved z/k and the oracle verdict - so a bet placed on a stale or
+       one-legged quote is diagnosable later.
+
+     GATE ORDERS ON .trustworthy, NOT .converged. Nothing is renormalised after
+     solving, on purpose: a rescale makes a failed solve look identical to a good
+     one (measured: 9.4 percentage points out, still summing to exactly 1.0).
+
+     A booksum below 1.0 raises ArbitrageError rather than returning a price -
+     it carries .booksum and .edge_pct and IS the arb signal.
+
+     kelly_fraction() is GROSS OF TAX. Do not wire it to an order; real sizing
+     needs monarch_hook, where the bankroll and tax treatment live.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 458 | Sports_Desk 25, all offline.
+
+[41] Item 3 (2026-09-03) - ODDS WATCHER + AFTER-TAX HURDLE.
+
+     python -m Sports_Desk.ingestors.odds_watcher --once
+     python -m Sports_Desk.ingestors.odds_watcher --poll 5 --hurdle 0.2429
+         Drop odds CSVs into DEV\Sports_Desk\data\odds_drops\. Two-poll
+         stability check, SHA-256 content dedupe, archives to processed/.
+
+         event_id,sport,market_type,selection,book,odds,is_sharp
+         NFL_KC_BAL,NFL,moneyline,Chiefs,Pinnacle,-140,1
+         NFL_KC_BAL,NFL,moneyline,Ravens,DraftKings,+145,0
+
+     THE SHARP BOOK IS DEVIGGED; RETAIL IS SCORED AGAINST IT AND NEVER
+     DEVIGGED. A market with no sharp book is REFUSED, not priced off
+     DraftKings - a fair value from a retail book is not a fair value.
+
+     THE AFTER-TAX HURDLE (Tax_Reserve_Agent/interfaces/monarch_hook.py):
+       hook.after_tax_edge_hurdle(decimal_odds)
+       hook.breakeven_gross_edge(category="sports", decimal_odds=2.00)
+
+       At 35% tax, even money, by loss-deductibility d:
+         d=1.00 (fully deductible)         ->  0.00%
+         d=0.90 (OBBBA itemized, 2026+)    ->  2.62%
+         d=0.00 (casual standard deduction)-> 21.21%   <-- READ THIS
+
+       Under a standard deduction a COIN FLIP at 2.00 needs a true 60.6% win
+       rate to break even after tax, and the hurdle RISES with the odds
+       (+1000 needs 46.67%). Every "3% edge" sports model is an after-tax
+       loser in that regime. Non-sports categories are unaffected.
+
+     Round 26e: fixed `stake` column ambiguity - some books print it as the
+     CASH side beside a bonus column, others as the TOTAL including it. Reading
+     a total as cash gave the ticket a basis it never had ($100 instead of $75,
+     leaving $25 of winnings untaxed). An explicit cash column settles it; where
+     it is genuinely ambiguous the row takes the LOWER basis and is tagged
+     `stake_basis:assumed_total_not_cash`.
+
+     Round 26f: THE HURDLE IS NOW A GATE.
+       hook.check_order(notional, category="sports",
+                        expected_edge=0.30, decimal_odds=2.00)
+     Sub-hurdle wagers are REJECTED; survivors are sized by after-tax Kelly,
+     which can only tighten the flat cap. A wagering order with no edge supplied
+     FAILS CLOSED. Non-wagering categories are untouched.
+
+     Odds watcher gained: line as part of the market key (Chiefs -3.5 and -2.5
+     are different markets), normalised selection membership, a per-sport
+     staleness guard, and closing-line-value via db.measure_clv().
+
+     python -m Sports_Desk.ingestors.odds_watcher --once --hurdle-from-ledger
+         USE --hurdle-from-ledger, NOT --hurdle. The after-tax hurdle rises with
+         the odds (16.3% at 1.50 -> 49.7% at +1000); a flat number marks longshots
+         as tradeable when they are after-tax losses.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 485 | Sports_Desk 65, offline.
+     Required: python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher
+
+
+[42] Item 4 (2026-09-03) - RESULTS INGESTION + ACTIONABLE HOTLIST.
+     The chain from an odds CSV to a sized, tax-cleared bet is now closed.
+
+     python -m Sports_Desk.ingestors.results_watcher --once
+         Drop settled outcomes into DEV\Sports_Desk\data
+esults_drops\.
+         event_id,sport,market_type,line,selection,result,settled_at
+         G1,NFL,moneyline,,Chiefs,win,2026-09-04T02:00:00Z
+         Marks winners/losers, records rolling Brier + SKILL SCORE per book.
+         A push is recorded as voided and NEVER scored.
+
+     python -m Sports_Desk.interfaces.cli_hotlist --show-rejected
+         Terminal HUD of actionable bets with approved dollar sizing, run
+         through monarch_hook.check_order. Ranked by APPROVED DOLLARS, not by
+         edge. Excludes settled / started / live / stale / untrusted /
+         sub-hurdle. Under a casual standard deduction an EMPTY list is the
+         correct output, not a broken pipeline.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 485 | Sports_Desk 100, offline.
+     Master: python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher          Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist
+
+
+[43] Round 26h (2026-09-03) - FORM W-2G + THE ARBITRAGE TAX TRAP.
+
+     W-2G prediction (Tax_Reserve_Agent). Both statutory tests are CONJUNCTIVE:
+       reportable  = proceeds >= $600   AND proceeds >= 300x the wager
+       withholding = proceeds >  $5,000 AND proceeds >= 300x the wager, at 24%
+     Proceeds = received MINUS staked. A $1,000 winner at 2:1 triggers NOTHING -
+     the odds test is what exempts almost all sports betting. When one DOES
+     trigger, the payout arrives 24% short and the HUD says so before your bank
+     statement does.
+
+     THE ARBITRAGE TAX TRAP (monarch_hook):
+       hook.after_tax_arbitrage_hurdle()
+       hook.check_order(..., category="sports", arbitrage_edge=0.03)
+
+       At 35% tax, by loss-deductibility d:
+         d=1.00 (fully deductible)          ->  0.00%
+         d=0.90 (OBBBA itemized / pro)      ->  2.69%
+         d=0.00 (casual standard deduction) -> 26.92%   <-- READ THIS
+
+       Real cross-book arbitrage is 1-3%. Under a standard deduction EVERY ONE
+       is an after-tax LOSS of roughly 14%, because one leg is a taxed win and
+       the other is a non-deductible loss. It looks like free money until April.
+
+       AND AN ARB IS NOT RISKLESS AFTER TAX. Pass both legs
+       (arbitrage_odds=(1.05, 25.0)) and the WORST branch is priced: 51.68%.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 508 | master six-module 597.
+
+
+[44] Round 26i (2026-09-03) - ARBITRAGE DETECTOR + MONARCH_SHARK BETSLIP.
+
+     python -m Sports_Desk.interfaces.monarch_shark          interactive betslip
+     python -m Sports_Desk.interfaces.monarch_shark --arb    arbitrage only
+     python -m Sports_Desk.interfaces.monarch_shark --clv    execution CLV
+
+     CROSS-BOOK ARBITRAGE (Sports_Desk/engine/arbitrage.py). Builds a synthetic
+     market from the best price per outcome across books, then prices it AFTER
+     TAX. Same 5.60% arb on $1,000:
+        professional (d=0.90)      hurdle  2.91%   worst branch  +1.75%
+        casual standard deduction  hurdle 29.12%   worst branch -15.29%
+     Real arbs are 1-3%. Under a standard deduction they are RELIABLE LOSSES.
+
+     N-way worst-branch hurdle, delta-aware:
+        R = [1 - t*s_min - t*d*(1 - s_min)] / (1 - t),  s_min = (1/O_max)/booksum
+
+     MONARCH_SHARK records what was STAKED into placed_bets - distinct from
+     edge_opportunities, which is what was OFFERED. The gap is execution
+     slippage. A stake above the approved size is REFUSED, not clamped. A
+     sub-hurdle arb is refused WHOLESALE, never leg by leg.
+
+     STILL NOT A TAX RECORD. Import the book's export through Tax_Reserve_Agent.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 508 | Sports_Desk master 635.
+
+
+[45] Round 26j (2026-09-03) - AUDIT OF EARLIER ROUNDS + SESSION EXPOSURE FIX.
+
+     MONARCH_SHARK BYPASSED THE STRATEGY BUCKET (fixed). check_order measures
+     exposure from the TAX LEDGER, which does not see a wager until the book's
+     export is imported - so every bet in a session was gated against an empty
+     bucket. Measured: 40 bets, $1,249 against a $750 bucket, 1.7x over. The
+     betslip now re-gates each stake against max(ledger, desk) exposure.
+
+     CHECK YOUR TAX RATES. config.yaml sets short_term_capital_gains: 0.28 with
+     the comment "24% Federal + 4% State composite", then ADDS state_tax_rate
+     0.05 - state is counted twice. That composite is the fallback FEDERAL leg
+     for every gambling number, so the W-2G credit ceiling is too generous and
+     every hurdle too strict. Fix by setting, in config.yaml -> gambling:
+       federal_ordinary_rate: 0.24     <- your real federal marginal rate
+       state_ordinary_rate:   0.05     <- your real state rate
+     The HUD now warns until you do.
+
+     RUN `python -m Tax_Reserve_Agent.main rebuild` ON ANY LEDGER BUILT BEFORE
+     ROUND 26c. Capital terms classified under the old `>= 365` day count can be
+     marked LONG_TERM when they are legally SHORT_TERM, which UNDER-states the
+     reserve. The HUD says so when it detects it.
+
+     Master suite is now EIGHT modules:
+       python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher          Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist          Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 508 | master 643.
+
+
+[46] Round 26k (2026-09-03) - RATES UNBUNDLED + THREE OPERATIONAL BRIDGES.
+
+     *** YOUR TAX RATES CHANGED. config.yaml now holds ONE THING PER LINE: ***
+       tax_rates:
+         federal_ordinary_rate: 0.24     pure federal marginal
+         state_tax_rate: 0.05            pure state
+         safety_buffer_pct: 0.02
+         short_term_capital_gains: 0.24  short-term IS ordinary income
+       Composite is 0.31, not 0.35. State used to be counted twice.
+
+     EVERY FIGURE PUBLISHED IN ROUNDS 26f-26j WAS AT THE WRONG RATE:
+       single even-money hurdle   21.21% -> 18.34%
+       symmetric arb hurdle       26.92% -> 22.46%
+       arb at delta=0.90           2.69% ->  2.25%
+       Polymarket fee break-even   3.08% ->  2.90%
+       $150 of winnings, escrow   $52.50 -> $46.50
+     Every hurdle was too strict and every escrow too high. The W-2G credit
+     ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     python -m Sports_Desk.interfaces.monarch_shark --check-sync
+     python -m Sports_Desk.interfaces.monarch_shark --export-to-tax-agent
+     python -m Sports_Desk.interfaces.monarch_shark --performance
+         check-sync  : placed bets >3 days old the tax ledger has never seen.
+                       The escrow is under-reserving by whatever they win.
+         export      : writes them into Tax_Reserve_Agent/data/imports/, then
+                       run `python -m Tax_Reserve_Agent.main import`.
+         performance : realised P&L, ROI, win rate vs the model's expectation.
+
+     RECORD THE BOOK'S TICKET ID when the betslip asks. It is the only thing
+     that makes the export idempotent - without it, importing both the export
+     and the book's own CSV books the wager TWICE.
+
+     ONE GAME, ONE POSITION CAP. Legs on the same event share a single cap
+     ($375 on a $50k bankroll), because Chiefs ML and Chiefs -3.5 are close to
+     the same bet and Kelly treats them as independent.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 521 | master 652 | bridges 23.
+
+
+[47] Round 26L (2026-09-03) - NEW JERSEY. State netting is NOT the federal election.
+
+     OPERATOR: travelling x-ray tech, tax home Union NJ 07083, works multi-state.
+
+     BUG FIXED: the standard-deduction branch hardcoded the STATE base to gross
+     winnings, as though the federal standard deduction bound New Jersey too.
+     NJ nets gambling losses against winnings as a CATEGORY of income - no
+     Schedule A, no carry-forward, capped at winnings.
+       $80,000 won / $79,000 lost, NJ resident, standard deduction:
+         state base was $80,000  ->  now $1,000
+         state tax was  $5,096   ->  now $63.70
+
+     The FEDERAL trap is untouched - still taxed on the full gross federally.
+
+     CONFIG NOW SET FOR NJ:
+       tax_rates.state_tax_rate: 0.0637   (NJ single, $75k-$500k band;
+                                           use 0.05525 if under $75k)
+       gambling.state_loss_deduction_pct: 1.0   (no state adopted the OBBBA 90%)
+
+     YOUR HURDLES as a NJ resident on the standard deduction (composite 32.37%):
+       even money   19.31%   need a true 59.66% win rate (fair is 50.00%)
+       -110         18.22%   need a true 61.93% win rate (fair is 52.38%)
+       +150         24.10%   need a true 49.64% win rate (fair is 40.00%)
+       +300         32.06%   need a true 33.02% win rate (fair is 25.00%)
+       arbitrage    23.93%
+
+     professional_schedule_c is NOT available to you - Groetzinger requires
+     gambling as a full-time livelihood, which a travel contract precludes.
+
+     NOT MODELLED: multi-state sourcing. NJ credits tax paid elsewhere, so the
+     effective rate is roughly max(NJ, work-state) - higher in NY, lower in PA.
+
+     Suites: HL_Monarch 904 | Tax_Reserve_Agent 524 | master+bridges 678.

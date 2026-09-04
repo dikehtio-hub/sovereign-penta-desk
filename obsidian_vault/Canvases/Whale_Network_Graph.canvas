@@ -1,0 +1,21 @@
+{
+	"nodes":[
+		{"id":"hub-node","x":0,"y":0,"width":380,"height":220,"type":"text","text":"# 👑 Monarch Hub\n**Executive Command Center**\n- Central Cross-Venue Orchestrator\n- Real-time Strategy Telemetry\n- Dynamic Risk & Hot-Reload Engine","color":"4"},
+		{"id":"hl-node","x":-520,"y":-260,"width":340,"height":200,"type":"text","text":"## 🏛 HyperLiquid Engine\n- 436 Perpetual DEX Markets\n- HIP-3 TradFi (Stocks, Commodities)\n- Spot-Backed Basis Harvester\n- Liquidation Waterfall Stream","color":"5"},
+		{"id":"poly-node","x":520,"y":-260,"width":340,"height":200,"type":"text","text":"## 🌐 Polymarket Engine\n- Sharp Trader 7D Realized PnL\n- Multi-Sharp Consensus Scanner\n- Dutching & Multi-Outcome Arbitrage\n- Macro Event Sentiment Matrix","color":"3"},
+		{"id":"quant-node","x":0,"y":-380,"width":380,"height":220,"type":"text","text":"## ⚡ Quant Trading Lab\n- CME Futures (/NQ, /ES, /GC, /CL)\n- 9 Strategy Stacks (ICT, IB, CVD, Footprint)\n- Real-Time ICT Killzones & Session Clocks\n- Risk Sentinel ($3.5k/$5k hard limits)","color":"6"},
+		{"id":"liquidator-node","x":-640,"y":140,"width":300,"height":180,"type":"text","text":"### 👑 System Liquidators\n- `0xdfc24b077bc1...f303`\n- `0x31ca8395cf83...974b`\n*Deep collateral backstops & cascading sweep targets*","color":"6"},
+		{"id":"titans-node","x":0,"y":340,"width":380,"height":200,"type":"text","text":"### 👑 Cross-Market Titans\n**Dual-Venue Institutional Actors**\n- Synchronized Perp & Prediction Flow\n- Logarithmic Conviction Score ($C \\in [0, 100]$)\n- Cross-Venue Delta & Hedging Vectors","color":"2"},
+		{"id":"sharps-node","x":640,"y":140,"width":300,"height":180,"type":"text","text":"### 🏆 Sharp Predictors\n- `0x272491ccfdcd...a7c2` ($142k Realized)\n- `0x8b31a547cd89...f911` ($84k Realized)\n*High Win-Rate Macro Whales*","color":"1"}
+	],
+	"edges":[
+		{"id":"edge-1","fromNode":"hub-node","toNode":"hl-node","label":"Perp Telemetry & Basis Matrix","color":"5","fromSide":"left","toSide":"right"},
+		{"id":"edge-2","fromNode":"hub-node","toNode":"poly-node","label":"Consensus Radar & Macro Sentiment","color":"3","fromSide":"right","toSide":"left"},
+		{"id":"edge-3","fromNode":"hl-node","toNode":"liquidator-node","label":"Margin Stress & Liquidation Cascades","color":"6","fromSide":"bottom","toSide":"top"},
+		{"id":"edge-4","fromNode":"poly-node","toNode":"sharps-node","label":"PnL Tracking & Trade Feeds","color":"1","fromSide":"bottom","toSide":"top"},
+		{"id":"edge-5","fromNode":"liquidator-node","toNode":"titans-node","label":"Wallet Identity Overlap","color":"2","fromSide":"right","toSide":"left"},
+		{"id":"edge-6","fromNode":"sharps-node","toNode":"titans-node","label":"Wallet Identity Overlap","color":"2","fromSide":"left","toSide":"right"},
+		{"id":"edge-7","fromNode":"hub-node","toNode":"quant-node","label":"CME Microstructure & Killzone HUD","color":"6","fromSide":"top","toSide":"bottom"},
+		{"id":"edge-8","fromNode":"quant-node","toNode":"hl-node","label":"HIP-3 TradFi / CME SMT Arbitrage","color":"5","fromSide":"left","toSide":"right"}
+	]
+}

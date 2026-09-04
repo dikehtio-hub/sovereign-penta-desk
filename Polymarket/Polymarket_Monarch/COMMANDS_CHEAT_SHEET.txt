@@ -1,0 +1,167 @@
+================================================================================
+👑 POLYMARKET MONARCH — CLI COMMANDS CHEAT SHEET
+100% Free Native Prediction Market Intelligence (Zero Paid Keys / Free SQLite)
+================================================================================
+
+HOW TO RUN:
+1. Open PowerShell / Command Prompt.
+2. Navigate to this directory:
+     cd C:\Users\ixis1\Desktop\DEV\Polymarket\Polymarket_Monarch
+
+--------------------------------------------------------------------------------
+1. QUICK START LAUNCHER (Interactive Menu)
+--------------------------------------------------------------------------------
+# Launches the interactive batch menu with all dashboard, scanner & sync options:
+.\run_monarch_poly.bat
+
+
+--------------------------------------------------------------------------------
+2. LIVE TERMINAL DASHBOARD (Rich 3-Panel TUI)
+--------------------------------------------------------------------------------
+# Live 3-panel dashboard (Sharp Trader Leaderboard + Whale Stream + Macro Sentiment):
+python terminal_dashboard.py
+
+# Custom refresh rate and whale size threshold ($5,000+ fills):
+python terminal_dashboard.py --refresh-rate 2.0 --min-usd 5000
+
+# Narrow terminal mode:
+python terminal_dashboard.py --refresh-rate 1.0
+
+
+--------------------------------------------------------------------------------
+3. SHARP MONEY PnL SCANNER & AUDITOR
+--------------------------------------------------------------------------------
+# Scan top 25 active wallets for $300+ 7-day realized PnL:
+python pnl_scanner.py --max-wallets 25 --min-pnl 300
+
+# Deep scan top 100 wallets with higher threshold ($1,000+ 7D profit):
+python pnl_scanner.py --max-wallets 100 --min-pnl 1000
+
+# Audit a single specific wallet address:
+python pnl_scanner.py --wallet 0x0cb038487586d1119b165466072e9baf666f3a90
+
+# Scan wallets and immediately export/sync to Obsidian Vault:
+python pnl_scanner.py --max-wallets 25 --obsidian
+
+
+--------------------------------------------------------------------------------
+4. LIVE WHALE FILL COLLECTOR (Public WebSocket & REST)
+--------------------------------------------------------------------------------
+# Start live streaming WebSocket ingestion into SQLite (data/polymarket_whales.db):
+python whale_collector.py --min-usd 1000
+
+# Filter for mega-whales only ($10,000+ USD fills):
+python whale_collector.py --min-usd 10000
+
+# One-shot REST backfill (fetches latest 100 fills without opening WebSocket):
+python whale_collector.py --backfill-only
+
+# Offline demo replay (simulates live whale flow from recorded fixture data):
+python whale_collector.py --replay
+
+
+--------------------------------------------------------------------------------
+5. OBSIDIAN VAULT SYNCHRONIZATION
+--------------------------------------------------------------------------------
+# One-shot export to default vault (./obsidian_vault):
+python obsidian_sync.py --once
+
+# One-shot export to a custom Obsidian Vault directory:
+python obsidian_sync.py --once --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
+
+# Continuous background sync daemon (updates every 15s with content-hash dirty checking):
+python obsidian_sync.py --watch --interval 15
+
+# Continuous sync to custom Obsidian Vault path:
+python obsidian_sync.py --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
+
+
+--------------------------------------------------------------------------------
+6. SHARED CROSS-SUITE OBSIDIAN VAULT (HyperLiquid + Polymarket)
+--------------------------------------------------------------------------------
+# Set shared vault path in PowerShell:
+$env:OBSIDIAN_VAULT_PATH = "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
+
+# Export both intelligence suites into the shared vault:
+python ..\..\HyperLiquid\HL_Monarch\main.py obsidian --once
+python obsidian_sync.py --once
+
+# Resulting unified structure in Obsidian:
+#   📁 obsidian_vault/
+#   ├── 📄 Monarch_Hub.md            <- Unified Index & Cross-Market Titans
+#   ├── 📄 Polymarket_Monarch.md     <- Polymarket Leaderboard & Whales
+#   ├── 📄 HyperLiquid_Monarch.md    <- HyperLiquid TradFi, Funding & Liqs
+#   ├── 📂 Wallets/0x....md          <- Polymarket Trader Profile Notes
+#   └── 📂 Whales/0x....md           <- HyperLiquid Whale Profile Notes
+
+
+--------------------------------------------------------------------------------
+7. TEST SUITE & VERIFICATION
+--------------------------------------------------------------------------------
+# Run all Polymarket Monarch unit tests (173 tests):
+python -m pytest tests -q
+
+# Run tests with detailed verbose output:
+python -m pytest tests -v
+
+# Run specific test file:
+python -m pytest tests/test_obsidian_sync.py -v
+================================================================================
+
+--------------------------------------------------------------------------------
+ROUND 15 (2026-09-01)
+--------------------------------------------------------------------------------
+python dutched_arb.py
+    Negative-risk dutching scanner: finds multi-outcome events where YES on
+    EVERY outcome can be bought for under $1 total (a locked profit, since
+    exactly one outcome pays $1).
+      --max-ask-sum 0.96   flag threshold
+      --events 400         how many active events to fetch
+      --shares 100         size used when walking real CLOB depth
+      --no-depth           top-of-book only (NOT tradeable evidence)
+      --all-events         include non-neg-risk events (outcomes may not be exhaustive)
+
+    Expect ZERO hits. Tightest of 200 events scanned was 1.0100 (-1.00%); the
+    0.96 threshold is 5 points beyond anything the venue quotes. The tool
+    reports the DISTRIBUTION so an empty result is a measurement, not a blank.
+    Legs with one-sided books are dropped, not scored -- illiquid outcomes
+    quote bestAsk ~1.00 with nothing behind it and inflate sums to 77+.
+
+python consensus_scanner.py
+    Sharp trader consensus scanner. Fires when >=2 DISTINCT sharp wallets take
+    the same side of the same market within 3 hours.
+      --min-closed 10   minimum closed positions (guards against 100%-on-one-
+                        trade wallets; the roster is 7 wallets at this bar, not 20)
+      --window 3        consensus window in hours
+      --min-wallets 2   distinct wallets needed to fire
+      --paper           simulate copy trades (fills at the CURRENT ask and
+                        records slippage vs the sharp's price)
+    Suppresses market making: same wallets on opposing outcomes, or >8 trades
+    per wallet in the window. On the first live run ALL FOUR clusters were
+    market makers quoting 5-minute BTC binaries.
+
+--------------------------------------------------------------------------------
+ROUND 18 (2026-09-01) - UNIFIED TRI-MARKET COCKPIT & 1-CLICK LAUNCHERS
+--------------------------------------------------------------------------------
+1. Master Ecosystem 1-Click Launchers:
+   - Start All 3 Watchers (HL + Poly + Quant Lab):
+     C:\Users\ixis1\Desktop\DEV\start_all_ecosystem_sync.bat
+   - Stop All 3 Watchers:
+     C:\Users\ixis1\Desktop\DEV\stop_all_ecosystem_sync.bat
+
+2. Unified Shared Obsidian Vault:
+   - Primary Live Vault: C:\Users\ixis1\Desktop\DEV\obsidian_vault
+   - Master Index: Monarch_Hub.md (Indexes all 3 desks, 112+ entity notes, graph canvas)
+   - Desk Notes: Polymarket_Monarch.md, HyperLiquid_Monarch.md, Quant_Trading_Lab.md
+   - Operations: Bot_Control.md (1-click batch triggers), Bot_Config.md (Fail-closed risk)
+
+3. Standalone Polymarket Live Sync:
+   python obsidian_sync.py --watch --interval 15
+   (Uses content-hash dirty checking to eliminate file churn in Obsidian)
+
+4. Emergency Fail-Closed Sentinel:
+   - To immediately lock out all new orders across the entire ecosystem:
+     type nul > C:\Users\ixis1\Desktop\DEV\obsidian_vault\HALT.flag
+   - To disarm the hardware halt:
+     del C:\Users\ixis1\Desktop\DEV\obsidian_vault\HALT.flag
+================================================================================

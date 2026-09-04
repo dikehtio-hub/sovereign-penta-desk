@@ -1,0 +1,9 @@
+# Core runtime
+termcolor>=2.0.0
+
+# Testing
+pytest>=7.0.0
+
+# --- Needed only for real on-chain "live" execution (not yet implemented) ---
+# web3>=6.0.0
+# eth-account>=0.10.0

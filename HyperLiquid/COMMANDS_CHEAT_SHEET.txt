@@ -1,0 +1,413 @@
+================================================================================
+👑 HL_MONARCH: ALL COMMANDS & USAGE CHEAT SHEET
+Hyperliquid & HIP-3 TradFi Market Intelligence Suite
+================================================================================
+
+This file contains every command available in HL_Monarch, operational modes,
+hotkeys, environment setup, and recipes for PowerShell or Windows File Explorer.
+
+
+--------------------------------------------------------------------------------
+1. RUNNING FROM "C:\Users\ixis1\Desktop\DEV"
+--------------------------------------------------------------------------------
+
+# 📊 Launch Live Real-Time Dashboard (Interactive Hotkeys 1-8, Tab, Q)
+python HyperLiquid/main.py dashboard
+
+# 📊 Launch Dashboard Focused on a Specific Asset (e.g. TSLA, NVDA, GOLD)
+python HyperLiquid/main.py dashboard --coin xyz:TSLA
+
+# 📷 Print Instant Dashboard Snapshot and Exit (Keeps Terminal Ready)
+python HyperLiquid/main.py dashboard --once
+
+# 📺 Run Dashboard in Inline Mode (Without Clearing Full Terminal Screen)
+python HyperLiquid/main.py dashboard --inline
+
+# 📈 Scan Funding Rate Arbitrage Opportunities (>= 10% APR)
+python HyperLiquid/main.py arb --min-apr 10.0
+python HyperLiquid/main.py arb --check-spreads --show-rejected   # liquidity-screened
+
+# 🐋 View Auto-Discovered Whale Wallets
+python HyperLiquid/main.py whales --limit 20
+
+# 🔍 Deep-Dive Inspect a Single Whale Wallet (Equity, Positions, PnL, Liq Distances)
+python HyperLiquid/main.py inspect 0x023a3d058020fb76cca98f01b3c48c8938a22355
+
+# ⚠️ Scan Trader Wallets in Liquidation Danger (Distance <= 5.0%, Min USD >= $25k)
+python HyperLiquid/main.py scan --top 20 --danger 5.0 --min-usd 25000
+
+# 💼 View Simulated Paper Trading Balance, Positions, and Strategy Fills
+python HyperLiquid/main.py paper
+
+# 📊 Instant TradFi Market Overview Table (Mark, OI, Vol, Funding APR)
+python HyperLiquid/main.py summary --dex xyz
+
+# 🔥 Query Stored Historical Liquidations and Large Fills
+python HyperLiquid/main.py liqs --limit 25
+python HyperLiquid/main.py liqs --coin xyz:GOLD --limit 25
+
+# ⚡ Run Background Ingestion & Liquidation Collector
+python HyperLiquid/main.py collector
+
+# 🔄 One-Shot Market Universe Sync
+python HyperLiquid/main.py sync
+
+# 🔔 Send Test Webhook Notification (Discord / Telegram)
+python HyperLiquid/main.py test-alert
+
+# 🧹 Prune Retention Windows + Checkpoint WAL (keeps DB size bounded)
+python HyperLiquid/main.py maintain
+python HyperLiquid/main.py maintain --vacuum   # also return freed pages to the OS
+
+# 🧪 Run Full Automated Test Suite (285 Tests)
+python -m unittest discover -s HyperLiquid/HL_Monarch/tests -t HyperLiquid/HL_Monarch -v
+
+
+--------------------------------------------------------------------------------
+2. RUNNING FROM "C:\Users\ixis1\Desktop\DEV\HyperLiquid"
+--------------------------------------------------------------------------------
+
+# Jump into folder first:
+cd C:\Users\ixis1\Desktop\DEV\HyperLiquid
+
+# 📊 Launch Dashboard
+python main.py dashboard
+python main.py dashboard --coin xyz:TSLA
+python main.py dashboard --once
+python main.py dashboard --inline
+
+# 📈 Funding Arbitrage Matrix
+python main.py arb --min-apr 10.0
+python main.py arb --check-spreads --show-rejected
+
+# 📉 Backtest funding harvest over retained history (needs a continuously-run collector)
+python main.py backtest --hours 72
+
+# 🚀 ONE-CLICK BACKGROUND SERVICE (detached, no console window - START HERE)
+#    Double-click: HyperLiquid\launch_service_background.bat
+launch_service_background.bat            REM start detached
+launch_service_background.bat status     REM running? + snapshot coverage
+launch_service_background.bat stop       REM stop it
+launch_service_background.bat log        REM tail the JSON service log
+
+# ♾️  PERSISTENT COLLECTOR SERVICE (foreground variant)
+#    Auto-restarts on crash, logs JSON to HL_Monarch\data\collector_service.jsonl
+python run_collector_service.py                 # from HL_Monarch\
+python run_collector_service.py --coverage-only # just report snapshot coverage
+python run_collector_service.py --status        # running? (PID lockfile) + coverage
+#    Or double-click: HyperLiquid\run_monarch_collector_service.bat
+
+# 🎯 Do squeeze flags actually precede liquidations? (needs continuous history)
+python main.py validate --hours 72
+
+# 🌀 Squeeze & exhaustion radar (exotic perps with no spot hedge)
+python main.py squeeze --hours 24
+
+# 🏛 Cross-market titans (actors live on BOTH Hyperliquid and Polymarket)
+python main.py titans          # list confirmed
+python main.py titans --scan   # run a discovery pass (network)
+python main.py backtest --coin BTC --hours 72 --spot-backed   # liquidity-screened + why rows were cut
+
+# 🐋 Auto-Discovered Whales
+python main.py whales --limit 20
+
+# 🔍 Inspect Wallet
+python main.py inspect 0x023a3d058020fb76cca98f01b3c48c8938a22355
+
+# ⚠️ Scan Wallets in Danger
+python main.py scan --top 20 --danger 5.0 --min-usd 25000
+
+# 💼 Paper Trading Status
+python main.py paper
+
+# 📊 TradFi Summary Table
+python main.py summary --dex xyz
+
+# 🔥 Query Liquidations
+python main.py liqs --limit 25
+python main.py liqs --coin xyz:GOLD --limit 25
+
+# ⚡ Run Background Collector
+python main.py collector
+
+# 🔄 One-Shot Universe Sync
+python main.py sync
+
+# 🔔 Send Test Alert
+python main.py test-alert
+
+# 🧹 Prune + Checkpoint DB (keeps size bounded)
+python main.py maintain
+python main.py maintain --vacuum
+
+# 🧪 Run Test Suite (285 Tests)
+python -m unittest discover -s HL_Monarch/tests -t HL_Monarch -v
+
+
+--------------------------------------------------------------------------------
+3. RUNNING FROM "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch"
+--------------------------------------------------------------------------------
+
+# Jump into folder first:
+cd C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch
+
+# 📊 Launch Dashboard
+python main.py dashboard
+python main.py dashboard --coin xyz:TSLA
+python main.py dashboard --once
+python main.py dashboard --inline
+
+# 📈 Funding Arbitrage Matrix
+python main.py arb --min-apr 10.0
+python main.py arb --check-spreads --show-rejected
+
+# 📉 Backtest funding harvest over retained history (needs a continuously-run collector)
+python main.py backtest --hours 72
+python main.py backtest --coin BTC --hours 72 --spot-backed   # liquidity-screened + why rows were cut
+
+# 🐋 Auto-Discovered Whales
+python main.py whales --limit 20
+
+# 🔍 Inspect Wallet
+python main.py inspect 0x023a3d058020fb76cca98f01b3c48c8938a22355
+
+# ⚠️ Scan Wallets in Danger
+python main.py scan --top 20 --danger 5.0 --min-usd 25000
+
+# 💼 Paper Trading Status
+python main.py paper
+
+# 📊 TradFi Summary Table
+python main.py summary --dex xyz
+
+# 🔥 Query Liquidations
+python main.py liqs --limit 25
+python main.py liqs --coin xyz:GOLD --limit 25
+
+# ⚡ Run Background Collector
+python main.py collector
+
+# 🔄 One-Shot Universe Sync
+python main.py sync
+
+# 🔔 Send Test Alert
+python main.py test-alert
+
+# 🧹 Prune + Checkpoint DB (keeps size bounded)
+python main.py maintain
+python main.py maintain --vacuum
+
+# 🧪 Run Test Suite (285 Tests)
+python -m unittest discover tests -v
+
+
+--------------------------------------------------------------------------------
+SHARED OBSIDIAN VAULT (link HyperLiquid + Polymarket into ONE vault)
+--------------------------------------------------------------------------------
+Obsidian [[wikilinks]] only resolve inside a SINGLE vault. Point both suites at
+the same folder and their notes cross-link; leave it unset and each keeps its own
+private vault (cross-links are then hidden, never broken).
+
+# PowerShell - set once per terminal:
+$env:OBSIDIAN_VAULT_PATH = "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
+
+# Then export both suites into it:
+python HyperLiquid/main.py obsidian --once
+python Polymarket/Polymarket_Monarch/obsidian_sync.py --once
+
+# Open that folder in Obsidian ("Open folder as vault"). You get:
+#   Monarch_Hub.md           <- index note linking both suites
+#   HyperLiquid_Monarch.md   + Whales/0x....md   (perp whales)
+#   Polymarket_Monarch.md    + Wallets/0x....md  (sharp traders)
+# Run either exporter with --watch to keep the vault live.
+
+--------------------------------------------------------------------------------
+4. INTERACTIVE DASHBOARD HOTKEYS (While Dashboard is Running)
+--------------------------------------------------------------------------------
+
+Press these keys directly inside your terminal window while the dashboard is running:
+
+  [1]  Core Watchlist   -> Overview of Stocks, Commodities, Indices, FX, Crypto
+  [2]  Stocks Only      -> 18 TradFi Stocks (TSLA, NVDA, AAPL, META, MSFT, PLTR...)
+  [3]  Commodities      -> 6 Commodities (GOLD, SILVER, COPPER, OIL, NATGAS...)
+  [4]  Indices & FX     -> Tech Index (XYZ100), SP500, EUR, JPY, GBP, DXY
+  [5]  Crypto           -> BTC, ETH, SOL, HYPE, SUI, DOGE
+  [6]  Whale Radar      -> Live whale positions & liquidation danger distances
+  [7]  Funding Arb      -> Live delta-neutral basis/funding harvest opportunities
+  [8]  Paper Trader     -> Live simulated account balance, positions, & PnL
+  [Tab] / [H]           -> Cycle Liquidation Heatmap Focus:
+                           GOLD -> XYZ100 -> NVDA -> TSLA -> SP500 -> BTC...
+  [Q]                   -> Exit Dashboard gracefully and return to prompt
+
+
+--------------------------------------------------------------------------------
+5. 1-CLICK WINDOWS BATCH LAUNCHERS (Double-Click in File Explorer)
+--------------------------------------------------------------------------------
+
+Located in: C:\Users\ixis1\Desktop\DEV\HyperLiquid\
+  • run_monarch_dashboard.bat  -> Launches the Live Interactive Terminal Dashboard
+  • run_monarch_collector.bat  -> Launches the Background Ingestion & Liquidation Collector
+  • run_tests.bat              -> Runs the complete automated test suite (43 Tests)
+
+Located in: C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\
+  • launch_dashboard.bat       -> Launches the Live Terminal Dashboard
+  • launch_collector.bat       -> Launches the Ingestion & Liquidation Collector
+
+
+--------------------------------------------------------------------------------
+6. OPERATIONAL RUNTIME MODES & RATE LIMITING
+--------------------------------------------------------------------------------
+
+💡 Hyperliquid enforces a budget of 1,200 weight/min per IP address.
+
+• Mode A — Interactive Desktop Dashboard:
+    Run: python main.py dashboard
+    (The dashboard embeds an internal collector automatically. No need to run
+    a separate collector in another window).
+
+• Mode B — Dedicated 24/7 Headless Server:
+    Run: python main.py collector
+    (Runs continuous ingestion; inspect on-demand using 'python main.py dashboard --once'
+    or 'python main.py summary').
+
+⚠️  Caution: Do NOT run 'python main.py collector' and 'python main.py dashboard'
+    simultaneously in two separate terminals on the same IP, as two concurrent
+    collectors will spend ~1,800 weight/min and exceed the 1,200 weight/min ceiling.
+
+
+--------------------------------------------------------------------------------
+7. ASSET NAMING CONVENTIONS (HIP-3 TradFi vs. Main Crypto)
+--------------------------------------------------------------------------------
+
+• Main Hyperliquid Crypto Perpetuals (No Prefix):
+    BTC, ETH, SOL, HYPE, SUI, DOGE, AVAX, LINK, etc.
+
+• Primary HIP-3 TradFi DEX (xyz: Prefix):
+    Stocks:      xyz:TSLA, xyz:NVDA, xyz:AAPL, xyz:META, xyz:MSFT, xyz:GOOGL,
+                 xyz:AMZN, xyz:AMD, xyz:PLTR, xyz:COIN, xyz:MSTR, xyz:HOOD
+    Commodities: xyz:GOLD, xyz:SILVER, xyz:COPPER, xyz:CL, xyz:NATGAS, xyz:URANIUM
+    Indices:     xyz:XYZ100, xyz:SP500
+    FX:          xyz:EUR, xyz:JPY, xyz:GBP, xyz:DXY
+
+• Other HIP-3 Perp DEXes (<dex>: Prefix):
+    km:EUR (Kinetiq), flx:BTC (Felix), cash:USDC (Dreamcash), para:SOL (Paragon)
+
+
+--------------------------------------------------------------------------------
+8. WEBHOOK & REAL-TIME ALERT CONFIGURATION
+--------------------------------------------------------------------------------
+
+Configure environment variables in PowerShell before running or launching:
+
+# Session-only Webhook Setup (PowerShell):
+$env:DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/your/webhook/url"
+$env:TELEGRAM_BOT_TOKEN  = "123456789:ABCdefGhIJKlmNoPQRstUVwxyZ"
+$env:TELEGRAM_CHAT_ID    = "-1001234567890"
+
+# Permanent Setup in Windows User Profile:
+[System.Environment]::SetEnvironmentVariable('DISCORD_WEBHOOK_URL', 'https://discord.com/...', 'User')
+[System.Environment]::SetEnvironmentVariable('TELEGRAM_BOT_TOKEN', '123456:ABC...', 'User')
+[System.Environment]::SetEnvironmentVariable('TELEGRAM_CHAT_ID', '-100123456...', 'User')
+
+# Verify webhook dispatch:
+python HyperLiquid/main.py test-alert
+
+
+--------------------------------------------------------------------------------
+9. QUICK HEALTH-CHECK & INSPECTION ONE-LINERS (PowerShell)
+--------------------------------------------------------------------------------
+
+# 🔍 Instant DEX Open Interest Breakdown:
+python -c "import sys; sys.path.insert(0, 'HyperLiquid/HL_Monarch'); from storage.repository import MarketRepository; print(MarketRepository().get_total_oi_by_dex())"
+
+# 📦 Check Current SQLite DB & WAL File Sizes:
+Get-Item HyperLiquid/HL_Monarch/data/hyperliquid_data.db* | Select-Object Name, @{N='Size (MB)'; E={"{0:N2}" -f ($_.Length/1MB)}}
+
+# ⚡ Inspect Live Snapshot for a Specific Asset:
+python -c "import sys; sys.path.insert(0, 'HyperLiquid/HL_Monarch'); from storage.repository import MarketRepository; print(MarketRepository().get_latest_snapshots(coins=['xyz:GOLD']))"
+
+
+--------------------------------------------------------------------------------
+10. TARGETED TEST SUITE EXECUTION (Individual Modules)
+--------------------------------------------------------------------------------
+
+From C:\Users\ixis1\Desktop\DEV\HyperLiquid:
+
+# 🧪 Run individual test suites during development:
+python -m unittest HL_Monarch/tests/test_maintenance.py -v   # DB retention & rate limiter
+python -m unittest HL_Monarch/tests/test_ws_resilience.py -v # WS backoff & dispatch
+python -m unittest HL_Monarch/tests/test_analytics.py -v     # Liquidation clusters & OI
+python -m unittest HL_Monarch/tests/test_funding_arb.py -v   # Funding yield matrix
+python -m unittest HL_Monarch/tests/test_whale_tracker.py -v # Whale discovery & scanner
+python -m unittest HL_Monarch/tests/test_execution.py -v     # Paper trading engine
+
+
+--------------------------------------------------------------------------------
+11. SYSTEM DEFAULTS & RETENTION POLICIES (config/settings.py)
+--------------------------------------------------------------------------------
+
+  • Rate Limit Budget:        1,200 weight/min per IP (80% safety cap = 960 weight/min)
+  • Context REST Interval:    8.0s (~900 weight/min across 6 active DEXes)
+  • Snapshots Retention:      72 Hours (3 Days) — newest row per coin never pruned
+  • Clusters Retention:       24 Hours (1 Day) — newest row per coin never pruned
+  • Trades & Liqs Retention:  168 Hours (7 Days)
+  • WAL Auto-Maintenance:     Every 5 Minutes (auto-checkpoint + prune)
+
+
+--------------------------------------------------------------------------------
+12. OBSIDIAN VAULT SYNCHRONIZATION (Live Markdown Dashboards)
+--------------------------------------------------------------------------------
+
+# 📁 One-Shot Export to Default Vault (./obsidian_vault/):
+python HyperLiquid/main.py obsidian --once
+python Polymarket/Polymarket_Monarch/obsidian_sync.py --once
+
+# 📁 Export Directly to Custom Obsidian Vault Folder:
+python HyperLiquid/main.py obsidian --vault "C:\path\to\your\ObsidianVault"
+python Polymarket/Polymarket_Monarch/obsidian_sync.py --vault "C:\path\to\your\ObsidianVault"
+
+# 🔄 Real-Time Continuous Obsidian Sync Daemon (Live Note Updates):
+python HyperLiquid/main.py obsidian --watch --interval 15
+python Polymarket/Polymarket_Monarch/obsidian_sync.py --watch --interval 15
+
+# 🌐 Set Persistent Vault Path (Environment Variable):
+[System.Environment]::SetEnvironmentVariable('OBSIDIAN_VAULT_PATH', 'C:\path\to\your\ObsidianVault', 'User')
+
+# 📝 Features in Obsidian:
+• Polymarket_Monarch.md   -> Live Sharp Trader Leaderboard + Whale Stream + Macro Probabilities
+• HyperLiquid_Monarch.md  -> HIP-3 TradFi Markets + Funding Arb APR Matrix + Whale Accounts + Liqs
+• Wallets/[[0x...]].md    -> Individual Sharp Trader Profiles with editable Research Notes section!
+
+================================================================================
+
+--------------------------------------------------------------------------------
+ROUND 15 (2026-09-01)
+--------------------------------------------------------------------------------
+python main.py basis
+    Delta-neutral basis scan: long spot + short perp funding harvest.
+    Bars: gross funding APR >= 25%, net APR > 15% after BOTH legs' spread,
+    amortised over a 7-day hold. Only positive funding is constructible --
+    the mirror trade needs spot borrow, which Hyperliquid does not have.
+      --min-apr / --min-net-apr / --notional / --days
+      --no-spreads   skip live L2 checks (net APR then == gross, bar is a no-op)
+
+Regime filter (automatic, no command):
+    Fades are now gated on EMA-50/RSI-14 over 15m buckets, and geometry is
+    scaled by ATR. Unknown regime BLOCKS. Toggle in config/settings.py via
+    REGIME_ENABLED / FADE_USE_DYNAMIC_GEOMETRY.
+
+Rotation is now 20 majors + 15 exotics (<$5M OI, >$100k vol) rather than
+volume-only, which had never once selected an exotic book.
+
+Paper experiments live in data/experiments/:
+    baseline_unfiltered_N12_2026-09-01.json   the archived control (do not delete)
+    regime_filtered_v1.meta.json              the pre-registered current run
+
+python main.py excursion [--source trade_sweep|trade_flow|all]
+    MFE/MAE excursion benchmark on historical liquidation events, with a
+    random-entry control. Answers whether the entry signal has any edge.
+      --horizons 5,15,30   forward windows in minutes
+      --threshold 1.50     MFE/MAE bar for ALPHA_CONFIRMED
+      --min-notional       ignore small events
+    RESULT (2026-09-01): trade_sweep scores 0.513 vs a 1.092 control at 30m ->
+    NO_ALPHA. The fade is wrong-sided; price continues through the cascade.

@@ -1,0 +1,32 @@
+{
+  "experiment": "passive_fade_rebenchmark",
+  "registered_utc": "2026-09-01T05:42:16.383702+00:00",
+  "status": "PASSIVE - the fade does not trade; sweeps accumulate with execution disabled",
+  "why": "The retirement verdict came from 15.2 hours in which CASHCAT and PONS supplied 83% of all events (HHI 0.360). The direction was consistent across 10 of 12 coins, but the headline 0.513 is substantially a two-microcap artifact - the broad-market effect was 0.849.",
+  "sample_requirements": {
+    "window_days": 7,
+    "min_events": 500,
+    "min_coins": 20,
+    "max_single_coin_share": 0.2,
+    "note": "Enforced in code by wick_benchmark.reopening_gate()."
+  },
+  "reopening_bar": {
+    "rule": "P(ratio >= 1.25) > 0.90 under a CLUSTER bootstrap resampling coins",
+    "rationale": "Deliberately asymmetric. Retiring took p=0.024 on a narrow sample; coming back should cost more than leaving did."
+  },
+  "state_at_registration": {
+    "events": 492,
+    "coins": 15,
+    "hhi": 0.36,
+    "top_coin_share": 0.43,
+    "ratio_30m": 0.518,
+    "control_30m": 0.862,
+    "cluster_p_ge_1_by_horizon": {
+      "5m": 0.0827,
+      "15m": 0.0772,
+      "30m": 0.0259
+    },
+    "caveat": "Only the 30m horizon clears p<0.05 under clustering. At 5m and 15m the result is NOT significant. The retirement rests on one horizon of a concentrated sample."
+  },
+  "auditing_standard": "Every excursion run now reports asset-concentration HHI, coins measured, top-coin share, and a cluster-bootstrapped p-value. Event-level bootstraps are invalid here because forward windows on the same coin overlap."
+}

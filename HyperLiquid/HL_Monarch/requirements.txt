@@ -1,0 +1,9 @@
+websockets>=12.0
+rich>=13.7.0
+
+# Optional: native EIP-712 order signing (execution/wallet_manager.py).
+# Not needed for the paper trader, analytics, or any test that does not sign.
+# The module imports cleanly without them and raises SigningUnavailable if asked
+# to sign.
+eth-account>=0.13.0
+msgpack>=1.0.0

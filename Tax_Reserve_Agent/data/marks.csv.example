@@ -1,0 +1,7 @@
+# Current marks for OPEN positions, used by `main harvest`.
+# Copy to data/marks.csv and edit. A position with no mark here (and no live
+# price source) is reported as UNMARKED and excluded from every total -- an
+# invented mark produces an invented loss.
+symbol,price
+SOL/USDC,120.00
+WILL-FED-CUT-RATES-YES,0.32

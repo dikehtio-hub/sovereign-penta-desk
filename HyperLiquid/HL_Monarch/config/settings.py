@@ -1,0 +1,382 @@
+"""
+HL_Monarch Settings and Watchlist Definitions.
+Covers Main Dex crypto assets and HIP3 TradFi DEX assets (Stocks, Commodities, Indices, FX).
+"""
+from pathlib import Path
+
+# Paths
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(exist_ok=True)
+DB_PATH = DATA_DIR / "hyperliquid_data.db"
+
+# API Endpoints (100% Free, Native, Direct to Hyperliquid)
+REST_API_URL = "https://api.hyperliquid.xyz/info"
+EXCHANGE_API_URL = "https://api.hyperliquid.xyz/exchange"
+TESTNET_REST_API_URL = "https://api.hyperliquid-testnet.xyz/info"
+TESTNET_EXCHANGE_API_URL = "https://api.hyperliquid-testnet.xyz/exchange"
+WS_API_URL = "wss://api.hyperliquid.xyz/ws"
+
+# Rate Limiting.
+# Hyperliquid meters the /info endpoint by *request weight*, not request count:
+# the per-IP budget is 1200 weight/minute. Most info requests cost weight 20;
+# the cheap ones (l2Book, allMids, clearinghouseState, orderStatus) cost weight 2.
+# Budgeting by raw request count under-counts heavy calls by 10x, so the limiter
+# is weight-aware and we spend against the real ceiling with a safety margin.
+MAX_REQUEST_WEIGHT_PER_MINUTE = 1200
+RATE_LIMIT_SAFETY_FACTOR = 0.8          # only ever spend 80% of the published budget
+DEFAULT_REQUEST_WEIGHT = 20
+
+# Per-endpoint weights (anything not listed falls back to DEFAULT_REQUEST_WEIGHT).
+REQUEST_WEIGHTS = {
+    "l2Book": 2,
+    "allMids": 2,
+    "clearinghouseState": 2,
+    "orderStatus": 2,
+    "openOrders": 2,
+    "spotClearinghouseState": 2,
+    "exchangeStatus": 2,
+    "order": 1,
+    "userRole": 60,
+}
+
+# Retained for backwards compatibility with callers that still think in req/min.
+MAX_REQUESTS_PER_MINUTE = 120
+REQUEST_TIMEOUT_SECONDS = 10.0
+
+# Supported DEXes
+DEX_MAIN = "main"        # Main Hyperliquid Crypto Perpetuals (230+ coins)
+DEX_XYZ = "xyz"          # Primary HIP3 TradFi DEX (117 assets: TSLA, NVDA, GOLD, XYZ100, etc.)
+DEX_KM = "km"            # Markets by Kinetiq
+DEX_FLX = "flx"          # Felix Exchange
+DEX_CASH = "cash"        # Dreamcash
+DEX_PARA = "para"        # Paragon
+
+ACTIVE_DEXES = [DEX_MAIN, DEX_XYZ, DEX_KM, DEX_FLX, DEX_CASH, DEX_PARA]
+
+# Asset Watchlists (HIP-3 TradFi Categories)
+WATCHLIST_STOCKS = [
+    "xyz:TSLA", "xyz:NVDA", "xyz:AAPL", "xyz:META", "xyz:MSFT",
+    "xyz:GOOGL", "xyz:AMZN", "xyz:AMD", "xyz:INTC", "xyz:PLTR",
+    "xyz:COIN", "xyz:HOOD", "xyz:MSTR", "xyz:ORCL", "xyz:MU",
+    "xyz:NFLX", "xyz:RIVN", "xyz:BABA"
+]
+
+WATCHLIST_COMMODITIES = [
+    "xyz:GOLD", "xyz:SILVER", "xyz:COPPER", "xyz:CL", "xyz:NATGAS", "xyz:URANIUM"
+]
+
+WATCHLIST_INDICES = [
+    "xyz:XYZ100", "xyz:SP500"
+]
+
+WATCHLIST_FX = [
+    "xyz:EUR", "xyz:JPY", "xyz:GBP", "xyz:DXY"
+]
+
+WATCHLIST_CRYPTO_BENCHMARKS = [
+    "BTC", "ETH", "SOL", "HYPE", "SUI", "DOGE"
+]
+
+ALL_CORE_WATCHLIST = (
+    WATCHLIST_STOCKS +
+    WATCHLIST_COMMODITIES +
+    WATCHLIST_INDICES +
+    WATCHLIST_FX +
+    WATCHLIST_CRYPTO_BENCHMARKS
+)
+
+# Polling and Refresh Intervals (seconds)
+# A full context sweep costs len(ACTIVE_DEXES) * 20 weight (= 120 for 6 DEXes).
+# At the old 3s interval that is 2400 weight/min - double the real 1200 ceiling,
+# which starved every other REST caller and invited sustained 429s. 8s keeps the
+# collector at ~900 weight/min and leaves headroom for wallet/whale scans.
+REST_POLL_INTERVAL = 8.0       # Ticker and context polling interval
+ORDERBOOK_POLL_INTERVAL = 5.0  # Order book snapshot interval
+DB_FLUSH_INTERVAL = 2.0        # Database batch insert flush interval
+
+# Database maintenance / retention.
+# asset_snapshots and liquidation_clusters are written every poll for every asset,
+# so without retention the DB grows without bound (~12M rows/day at 436 assets).
+DB_MAINTENANCE_INTERVAL = 300.0     # seconds between prune + WAL checkpoint passes
+SNAPSHOT_RETENTION_HOURS = 72       # asset_snapshots / orderbook_snapshots history kept
+CLUSTER_RETENTION_HOURS = 24        # liquidation_clusters history kept
+TRADE_RETENTION_HOURS = 168         # trades + liquidation_events history kept (7 days)
+WAL_AUTOCHECKPOINT_PAGES = 2000     # ~8MB WAL before an automatic checkpoint
+
+# UI refresh caching: how long the dashboard reuses an expensive REST-backed scan
+# before re-issuing it. Without this, holding the Whale tab issued ~15 REST calls
+# per rendered frame.
+DASHBOARD_SCAN_TTL_SECONDS = 30.0
+
+# Funding Arbitrage Tradeability Gates.
+# The most extreme funding APRs sit on illiquid or near-dead markets where the
+# spread eats the yield and size cannot be filled, so headline APR is filtered
+# against real liquidity before an opportunity is called tradeable.
+ARB_MIN_NOTIONAL_OI = 250_000.0    # USD open interest floor
+ARB_MIN_DAY_VOLUME = 100_000.0     # USD 24h turnover floor - OI without volume cannot be exited
+ARB_MAX_SPREAD_BPS = 25.0          # reject wider than 25bps top-of-book
+ARB_SPREAD_CHECK_LIMIT = 8         # max live l2Book checks per direction (weight 2 each)
+
+# Funding harvest modelling.
+# Hyperliquid settles perp funding hourly (verified against the API: the `funding`
+# field on metaAndAssetCtxs is a 1-hour rate, so APR = rate * 24 * 365 * 100).
+ARB_FUNDING_INTERVAL_HOURS = 1.0
+# Horizon used to amortise the one-off entry/exit spread cost. A week is a
+# realistic funding-harvest hold; a 1-day assumption over-penalises every row.
+ARB_DEFAULT_HOLDING_DAYS = 7.0
+
+# Squeeze & Funding Exhaustion Engine.
+# Aimed at the ~86% of perps with no spot leg, where funding yield is a directional
+# bet rather than a hedgeable basis trade.
+SQUEEZE_LOOKBACK_HOURS = 24.0     # window for funding percentile / OI expansion
+SQUEEZE_MIN_SAMPLES = 20          # below this the percentile is meaningless
+# $100k, not $250k: high-volatility exotics in the $100k-$200k OI band are exactly
+# the thin books where a forced exit moves price hardest, and were being excluded
+# from rotation before they could ever be observed.
+SQUEEZE_MIN_NOTIONAL_OI = 100_000.0   # ignore markets too small to squeeze
+SQUEEZE_WATCH_THRESHOLD = 60.0    # score at or above which an asset earns a WATCH label
+# Dynamic WS subscription rotation. WebSocket subscriptions cost no REST budget,
+# so the trade feed can follow whatever is currently squeezing. This is what makes
+# liquidation_events fill for exotics - previously it only ever covered the core
+# watchlist, which is why the precedence validator had nothing to measure.
+# 180s, not 60s: the squeeze score is computed from a 24h window and cannot move
+# meaningfully in a minute, so a faster loop only produced sub/unsub churn.
+SQUEEZE_ROTATION_INTERVAL = 180.0     # retained: squeeze engine is informational only
+SQUEEZE_ROTATION_MAX_COINS = 35
+# A coin stays subscribed at least this long after being added, even once its
+# score drops. A squeeze stops looking crowded exactly when it begins unwinding,
+# which is when its liquidations print - dropping the feed then would discard the
+# data the precedence validator is measuring.
+SQUEEZE_ROTATION_COOLDOWN_SECONDS = 1200.0   # 20 minutes
+# Active-unwind trigger. The crowd must first have been committed, then the rate
+# must break decisively out of its own range - drifting to the median is not an unwind.
+SQUEEZE_EXHAUSTION_PERSISTENCE = 0.75
+SQUEEZE_EXHAUSTION_LOW_PCT = 35.0     # positive regime collapsing below this = longs exiting
+SQUEEZE_EXHAUSTION_HIGH_PCT = 65.0    # negative regime rising above this = shorts covering
+
+# Cross-Market Titan pipeline.
+# Measured over a 120-address sample of hyperliquidusers.txt: 31.7% of Hyperliquid
+# addresses have a Polymarket profile, but only 6.7% have ANY volume and 3.3% have
+# more than $1k. A profile is created on wallet connection, so existence alone is
+# not a signal - both directions gate on demonstrated activity.
+TITAN_MIN_PM_VOLUME = 1_000.0        # Polymarket weighted volume to count as active
+TITAN_MIN_HL_ACCOUNT_VALUE = 1_000.0 # Hyperliquid account equity to count as active
+TITAN_MIN_HL_VOLUME = 5_000.0        # ...OR this much Hyperliquid throughput
+# Reference sizes that normalise the logarithmic conviction terms onto 0-100.
+# Roughly the largest values seen in each corpus, so a top-decile actor lands near
+# the weight ceiling rather than saturating it.
+TITAN_HL_REFERENCE_VALUE = 10_000_000.0
+TITAN_PM_REFERENCE_VOLUME = 1_000_000.0
+TITAN_SCAN_LIMIT = 50                # addresses probed per direction per pass
+TITAN_REVERIFY_HOURS = 24.0          # re-confirm a titan at most once a day
+
+# Squeeze precedence validation.
+# A hit rate from a handful of windows is noise, not a finding; below this count the
+# validator reports UNDERPOWERED rather than a number.
+VALIDATOR_MIN_OBSERVATIONS = 30
+# Pre-registered acceptance bar, agreed 2026-08-31 BEFORE any validation data
+# existed. Written down so the verdict is applied by rule rather than judged once
+# the number is visible.
+VALIDATOR_ALPHA = 0.05          # PASS also requires p < this
+VALIDATOR_PASS_LIFT = 1.75      # >= this AND significant -> deploy
+VALIDATOR_RETUNE_LIFT = 1.25    # >= this -> retune weights; below -> retire classifier
+
+# Liquidation sweep detection thresholds.
+# Two tiers: a single notional floor cannot serve both BTC (median fill in the
+# thousands) and the exotics the squeeze engine targets (median fill $69, p90
+# $495). The exotic tier trades size for slippage - thin books mean a forced exit
+# moves price hard without needing size.
+EXOTIC_SWEEP_MIN_NOTIONAL = 1_000.0     # small fill...
+EXOTIC_SWEEP_MIN_SLIPPAGE_PCT = 1.0     # ...but must print far from mark
+MAJOR_SWEEP_MIN_NOTIONAL = 25_000.0     # large fill...
+MAJOR_SWEEP_MIN_SLIPPAGE_PCT = 0.4      # ...needs less slippage to qualify
+WHALE_ORDER_MIN_NOTIONAL = 50_000.0     # size alone, regardless of slippage
+
+# Liquidation-fade paper strategy sizing.
+# The old flat $50k trigger meant the strategy could only ever fire on BTC/ETH,
+# so every exotic liquidation the squeeze rotation now records was ignored.
+FADE_MIN_NOTIONAL_MAJOR = 50_000.0    # trigger on a deep-book market
+FADE_MIN_NOTIONAL_EXOTIC = 1_000.0    # trigger on a thin-book market
+FADE_EXOTIC_OI_CEILING = 5_000_000.0  # notional OI below which a market counts as exotic
+FADE_LIMIT_OFFSET_PCT = 0.5           # rest the fade this far deeper into the cascade
+# A fade is a bet on THIS cascade reverting. Without a TTL a resting order from
+# hours ago eventually fills on unrelated price action and books a trade the
+# strategy never intended, quietly flattering the paper PnL.
+FADE_ORDER_TTL_SECONDS = 180.0        # cancel unfilled fade limits after 3 minutes
+# Re-geometried 2026-08-31. The previous 0.5% offset with a 1.5% stop was ~1:3
+# reward:risk, needing a >75% win rate merely to break even. Both legs are now
+# 0.65% from the limit: 1:1, which breaks even at 50%.
+FADE_STOP_LOSS_PCT = 0.65             # stop this far beyond the limit price
+FADE_TAKE_PROFIT_PCT = 0.65           # snapback target, same distance -> 1:1
+# A fade is a bet on a fast snapback. A position still open after ten minutes has
+# had its thesis disproved by time, whatever the price is doing.
+FADE_POSITION_MAX_HOLD_SECONDS = 1800.0
+
+# Hyperliquid fee schedule. A resting limit earns the maker rate; anything that
+# crosses the book to get out pays taker. This matters at these targets: a 0.65%
+# move against a maker-in / taker-out round trip loses 4.5bps to fees, which is
+# ~7% of the gross edge. Reading PnL without it would be optimistic by an unknown
+# amount, which is exactly the kind of number that survives longer than it should.
+MAKER_FEE_PCT = 0.00010   # 1.0 bps - resting limit (entry, take-profit)
+TAKER_FEE_PCT = 0.00035   # 3.5 bps - crossing out (stop-loss, time-stop)
+
+# Pre-registered 50-trade hurdle, agreed 2026-08-31 BEFORE any closed trades
+# existed. Net of fees. Recorded here so the verdict is applied by rule, exactly
+# as the retired squeeze classifier's bar was.
+#   PASS   : win rate >= 54.0% AND profit factor >= 1.25
+#   RETUNE : 48.0% <= win rate < 54.0%
+#   FAIL   : win rate < 48.0%
+HURDLE_MIN_TRADES = 50
+HURDLE_PASS_WIN_RATE = 54.0
+HURDLE_PASS_PROFIT_FACTOR = 1.25
+HURDLE_RETUNE_WIN_RATE = 48.0
+
+# --- Round 15: trend / ATR confluence filter --------------------------------
+# The unfiltered baseline lost GROSS (-$482.77 over 12 closes, 25% win rate):
+# blind fading on liquid majors was catching trend waterfalls, not dislocations.
+# The filter refuses fades that lean against a strong prevailing trend unless the
+# market is already stretched to an extreme.
+#
+# ALL THRESHOLDS BELOW ARE PERCENTS, not fractions. atr_pct is a percent too
+# (1.93 == 1.93%). Mixing the two is how an offset ends up 100x wrong.
+# --- RETIRED 2026-09-01: the reactive liquidation fade -----------------------
+# The MFE/MAE excursion benchmark measured the entry signal at 0.513 against a
+# random-entry control of 1.092 (n=466, 98% coverage, 30m horizon). Paired
+# MFE-MAE per event: t=-10.52, MAE exceeded MFE in 72.7% of events, and 0 of
+# 20,000 bootstrap resamples produced a non-negative mean.
+#
+# Forced liquidations are MOMENTUM drivers, not mean-reverting wicks: price moves
+# ~2x further against the fade than for it. No filter or geometry fixes a sign
+# error, which is why rounds 9-15 of execution refinement never moved the result.
+#
+# The module and its tests are KEPT, not deleted - they are the record of what
+# was measured and why, and the paper engine, fee model and exit engine they
+# exercise are shared with the basis harvester. This flag is what stops it
+# trading. Do not re-enable without a new pre-registered excursion result.
+FADE_STRATEGY_ENABLED = False
+
+REGIME_ENABLED = True
+REGIME_BUCKET_MINUTES = 15.0      # "15m ATR" - also the EMA/RSI bar
+REGIME_LOOKBACK_MINUTES = 1440.0  # 24h: enough bars for EMA-50 at 15m
+REGIME_EMA_PERIOD = 50
+REGIME_RSI_PERIOD = 14
+REGIME_ATR_PERIOD = 14
+REGIME_RSI_OVERSOLD = 32.0        # buy a downtrend only when this stretched
+REGIME_RSI_OVERBOUGHT = 68.0      # sell an uptrend only when this stretched
+# With indicators unavailable (thin/gappy series) the filter BLOCKS rather than
+# permits: "unknown regime" is not the same as "regime is fine", and defaulting
+# to permit would quietly restore the unfiltered baseline we just rejected.
+REGIME_BLOCK_WHEN_UNKNOWN = True
+
+# Dynamic, volatility-scaled geometry. Offset floors at 0.40% so a quiet major
+# does not rest inside the noise; TP/SL floor because a pure 1.0x ATR target on
+# BTC is ~0.15%, against which the 4.5bp round-trip fee is ~31% of gross - the
+# strategy would be paying a third of its edge to the exchange.
+FADE_ATR_OFFSET_MULT = 0.50
+FADE_ATR_OFFSET_FLOOR_PCT = 0.30
+FADE_ATR_TARGET_MULT = 0.50       # halved: a 1.0x target needed 1,224s median
+FADE_ATR_STOP_MULT = 0.50         # equal to target -> still 1:1
+FADE_ATR_TARGET_FLOOR_PCT = 0.30  # keeps fees <= ~15% of the gross target
+FADE_USE_DYNAMIC_GEOMETRY = True
+
+# --- Round 15: dual rotation pool -------------------------------------------
+# Volume-only ranking selected exclusively >$5M OI books, so the exotic tier
+# built in rounds 9-12 never fired once - every fill was the $10k major tier.
+# Slots are now split so both regimes are actually observed.
+ROTATION_MAJOR_SLOTS = 20
+ROTATION_EXOTIC_SLOTS = 15
+ROTATION_EXOTIC_MAX_OI = 5_000_000.0
+ROTATION_EXOTIC_MIN_VOLUME = 100_000.0
+# The paper account is written by the collector and read by `main.py paper` - two
+# processes - so it has to live somewhere both can see.
+PAPER_STATE_PATH = DATA_DIR / "paper_trading_state.json"
+PAPER_SAVE_INTERVAL = 10.0            # seconds between paper-state flushes
+# Single-instance guard for the collector itself. Distinct from the service
+# supervisor's lockfile: `python main.py collector` bypassed that one entirely,
+# so two collectors could write the paper account concurrently.
+COLLECTOR_LOCK_PATH = DATA_DIR / "collector.pid"
+
+# WebSocket rotation for REACTIVE execution.
+# Ranked by 24h volume, not squeeze score: the predictive classifier was retired
+# 2026-08-31 (lift 0.351 vs a 1.25x floor - anti-predictive), so gating the feed on
+# it was choosing the markets least likely to liquidate. Liquidations happen where
+# there is flow.
+ROTATION_INTERVAL = 180.0             # seconds between rotations
+ROTATION_MAX_COINS = 35               # cap on dynamically subscribed markets
+ROTATION_COOLDOWN_SECONDS = 1200.0    # hysteresis: hold a coin 20min before dropping
+ROTATION_MIN_DAY_VOLUME = 100_000.0   # ignore markets with no meaningful turnover
+
+# Liquidation Cluster Settings
+DEFAULT_LEVERAGE_TIERS = [5, 10, 20, 25, 30, 50]
+
+# Whale discovery floors. A $25k fill is a whale on BTC and an impossibility on a
+# thin exotic - the flat floor meant exotic counterparties were never discovered.
+WHALE_DISCOVERY_MIN_NOTIONAL_CORE = 25_000.0
+WHALE_DISCOVERY_MIN_NOTIONAL_EXOTIC = 7_500.0
+
+# Alerting tiers. The exotic tier trades size for slippage, matching how
+# liquidation detection distinguishes a thin-book sweep from ordinary flow.
+ALERT_EXOTIC_MIN_NOTIONAL = 2_500.0
+ALERT_EXOTIC_MIN_SLIPPAGE_PCT = 1.5
+# One cascade prints many qualifying fills within seconds. Without a cooldown a
+# single event becomes a dozen near-identical webhooks, which trains readers to
+# ignore the channel - the opposite of what an alert is for.
+ALERT_COOLDOWN_SECONDS = 60.0
+
+# Known Hyperliquid System Backstop Liquidators & Market Maker Addresses
+HL_SYSTEM_LIQUIDATOR_ADDRESSES = {
+    '0xdfc24b077bc1425ad1dea75bcb6f8158e10df303',
+    '0x31ca8395cf837de08b24da3f660e77761dfb974b',
+    '0xb0a55f13d22f66e6d495ac98113841b2326e9540',
+    '0x010461c14e146ac35fe42271bdc1134ee31c703a',
+    '0x2ed5c4484ea3ff8d57d5f2fb152a40d9f2b68308',
+    '0x5e177e5e39c0f4e421f5865a6d8beed8d921cb70'
+}
+
+MAINTENANCE_MARGIN_FRACTIONS = {
+    5: 0.10,
+    10: 0.05,
+    20: 0.025,
+    25: 0.02,
+    30: 0.0166,
+    50: 0.01
+}
+
+# --- Round 15: delta-neutral basis trade ------------------------------------
+# Long spot + short perp, harvesting positive funding with no net delta.
+# Only the SHORT_HARVEST direction is constructible: the mirror trade (long perp
+# + short spot) needs to borrow spot, and Hyperliquid spot has no borrow. A
+# negative-funding row is therefore a directional idea, never a basis trade.
+BASIS_MIN_FUNDING_APR = 25.0   # gross bar, per the Round 15 directive
+BASIS_MIN_NET_APR = 20.0       # after spread on BOTH legs, amortised over the hold
+BASIS_HOLDING_DAYS = 7.0       # matches the funding backtester's realised-APR window
+BASIS_NOTIONAL_USD = 10_000.0  # per leg; the position is 1:1 by construction
+
+# Paper harvester: the delta-neutral engine that replaced the retired fade.
+BASIS_PAPER_STARTING_CASH = 100_000.0
+BASIS_PAPER_STATE_PATH = str(DATA_DIR / "basis_paper_state.json")
+BASIS_MAX_CONCURRENT = 2            # tactical: the realistic opportunity set is 1-2 names
+BASIS_ACCRUAL_INTERVAL = 3600.0     # funding is quoted hourly, so accrue hourly
+BASIS_MIN_HOLD_DAYS = 7.0           # do not open what we would not hold a week
+
+# --- Dynamic yield exit -----------------------------------------------------
+# MEASURED, not assumed. Realised yield after entering on a >=25% APR reading,
+# net of the 0.0900% round-trip fee on both legs:
+#     6h hold  -> -0.0612% net, only 16% of entries profitable
+#    12h hold  -> +0.0070% net, 56% profitable
+#    24h hold  -> +0.0465% net, 69% profitable
+#    48h hold  -> +0.1185% net, 78% profitable
+# Short holds LOSE money. The fee dominates: at a sustained 12% APR the daily
+# yield is 0.0329%, so a round trip takes 2.74 DAYS just to pay for itself.
+#
+# A 12% exit floor was proposed. It was rejected on this data: 63.6% of >=25%
+# readings fall under 12% within 24h, so a 12% floor churns almost every position
+# inside a day and pays 0.09% for the privilege - three days of yield at the very
+# rate it is exiting for being "too low". Churn only helps if there is somewhere
+# better to redeploy, and the qualifying set is 1-2 names.
+#
+# So we exit when the position turns against us, not when it merely gets boring.
+BASIS_EXIT_APR_FLOOR = 0.0          # exit when funding goes NEGATIVE (we start paying)
+# A switch must pay for its own round trip, with margin, before it is worth doing.
+BASIS_SWITCH_MIN_GAIN_APR = 25.0
