@@ -159,6 +159,15 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 
 ## Round 44 findings
 
+- **Service found dead at 20:50 UTC.** Last DB write 20:43:49 (8 min after the
+  Round 44 restart); supervisor log ends at its 20:35:18 coverage report with
+  no shutdown or child-exit event; the dashboard died at the same moment; BOTH
+  pid files still held the dead PIDs (so stop_collector.bat was not used - it
+  deletes them). Signature of the console windows being closed or an external
+  kill. Relaunched 20:51:21 (supervisor 10428, collector 51188). ~7.5 min lost.
+  If the windows were closed deliberately, use stop_collector.bat instead; the
+  supervisor cannot log or recover from a kill of itself.
+
 - **perpDexs lists ten dexes**: xyz, flx, vntl (Ventuals), hyna (HyENA), km,
   abcd (ABCDEx), cash, para, mkts, io. Six are quarantined by name; para is
   mixed (symbol set); vntl, hyna and abcd are UNCLASSIFIED. None of mkts, io,
