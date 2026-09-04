@@ -246,13 +246,20 @@ ALLOW_SYNTHETIC_TRADFI_BASIS = False
 # beside AVGO, AAOI and the 2Y/10Y/30Y rates) and for the main dex.
 # Round 44 (Ruling 44-1): "mkts" (Kinetiq index perps) and "io" (EntropyIO pre-IPO
 # synthetic equities: Anthropic, OpenAI) added from the live perpDexs payload.
-TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx", "mkts", "io"})
-# Round 45 (Ruling 45-2): dexes the live perpDexs payload lists that nobody has
-# classified - vntl (Ventuals), hyna (HyENA), abcd (ABCDEx). They are NOT in
-# ACTIVE_DEXES (never polled) and, fail closed, a perp on one of them is refused
-# as a basis leg and as a sampling candidate until someone classifies the dex
-# here: move it to TRADFI_DEXES, or remove it from this set once verified crypto.
-UNCLASSIFIED_DEXES = frozenset({"vntl", "hyna", "abcd"})
+# Round 46 (Ruling 46-3): "vntl" (Ventuals) classified from its live universe -
+# ANTHROPIC, OPENAI, SPACEX, MAG7, SEMIS, DEFENSE, NUCLEAR, SOY, WHEAT, GOLDJM...:
+# pre-IPO equities, sector baskets and commodities, all TradFi.
+TRADFI_DEXES = frozenset({"xyz", "km", "cash", "flx", "mkts", "io", "vntl"})
+# Round 46 (Ruling 46-3): "hyna" (HyENA) is MIXED, like para - crypto majors and
+# memes (BTC, ETH, SOL, HYPE, FARTCOIN, PUMP...) beside GOLD and SILVER. It is not
+# in ACTIVE_DEXES (never polled today); if it ever is, the symbol set quarantines
+# its commodity perps and the rest resolve like any main-dex crypto.
+# Round 45 (Ruling 45-2): a dex nobody has classified is refused outright - not
+# polled, never a basis leg, never a sampling candidate - until a human looks at
+# what trades there and moves it out of this set. abcd (ABCDEx) carries one perp
+# on 2026-09-04 (abcd:USA500, no streaming OI cap) - TradFi by symbol too, so it
+# is refused twice over; it stays here until someone classifies the dex itself.
+UNCLASSIFIED_DEXES = frozenset({"abcd"})
 SYNTHETIC_TRADFI_SYMBOLS = frozenset({
     # Ruling 42-1, as issued.
     "NVDA", "TSLA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "COIN", "HOOD", "AVGO",

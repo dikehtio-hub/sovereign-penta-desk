@@ -306,22 +306,33 @@ class DynamicConfigManager:
             # frontmatter yields nothing at all. The two SAFETY flags are the one
             # deliberate asymmetry: a kill-switch that reads "maybe" is armed, not
             # off - a malformed safety value must stop trading, never enable it.
+            # Round 46 (Ruling 46-2): the fallback is PRESET-AWARE. active_preset is
+            # read first; a corrupt field then takes the value that preset gives it
+            # (a "conservative" operator whose notional line is mistyped gets $5k,
+            # not the dataclass's $10k). "custom", an unknown preset, or a field the
+            # preset does not carry falls back to the dataclass / settings default.
             d = BotConfig()
+            preset_name = str(config_dict.get("active_preset", "custom")).strip().lower()
+            preset_defaults = PRESETS.get(preset_name, {})
+
+            def dflt(field: str):
+                return preset_defaults.get(field, getattr(d, field))
+
             cfg = BotConfig(
-                basis_notional_usd=_config_number(config_dict, "basis_notional_usd", d.basis_notional_usd),
-                max_concurrent_positions=_config_int(config_dict, "max_concurrent_positions", d.max_concurrent_positions),
-                max_drawdown_limit_pct=_config_number(config_dict, "max_drawdown_limit_pct", d.max_drawdown_limit_pct),
-                basis_min_funding_apr=_config_number(config_dict, "basis_min_funding_apr", d.basis_min_funding_apr),
-                basis_min_net_apr=_config_number(config_dict, "basis_min_net_apr", d.basis_min_net_apr),
-                basis_holding_days=_config_number(config_dict, "basis_holding_days", d.basis_holding_days),
-                max_spread_bps=_config_number(config_dict, "max_spread_bps", d.max_spread_bps),
-                whale_danger_zone_pct=_config_number(config_dict, "whale_danger_zone_pct", d.whale_danger_zone_pct),
-                alert_cooldown_seconds=_config_number(config_dict, "alert_cooldown_seconds", d.alert_cooldown_seconds),
+                basis_notional_usd=_config_number(config_dict, "basis_notional_usd", dflt("basis_notional_usd")),
+                max_concurrent_positions=_config_int(config_dict, "max_concurrent_positions", dflt("max_concurrent_positions")),
+                max_drawdown_limit_pct=_config_number(config_dict, "max_drawdown_limit_pct", dflt("max_drawdown_limit_pct")),
+                basis_min_funding_apr=_config_number(config_dict, "basis_min_funding_apr", dflt("basis_min_funding_apr")),
+                basis_min_net_apr=_config_number(config_dict, "basis_min_net_apr", dflt("basis_min_net_apr")),
+                basis_holding_days=_config_number(config_dict, "basis_holding_days", dflt("basis_holding_days")),
+                max_spread_bps=_config_number(config_dict, "max_spread_bps", dflt("max_spread_bps")),
+                whale_danger_zone_pct=_config_number(config_dict, "whale_danger_zone_pct", dflt("whale_danger_zone_pct")),
+                alert_cooldown_seconds=_config_number(config_dict, "alert_cooldown_seconds", dflt("alert_cooldown_seconds")),
                 emergency_killswitch=_config_flag(config_dict, "emergency_killswitch", True)
-                if "emergency_killswitch" in config_dict else d.emergency_killswitch,
+                if "emergency_killswitch" in config_dict else bool(dflt("emergency_killswitch")),
                 pause_new_entries=_config_flag(config_dict, "pause_new_entries", True)
-                if "pause_new_entries" in config_dict else d.pause_new_entries,
-                active_preset=str(config_dict.get("active_preset", "custom")),
+                if "pause_new_entries" in config_dict else bool(dflt("pause_new_entries")),
+                active_preset=preset_name,
                 allow_synthetic_tradfi_basis=_config_flag(
                     config_dict, "allow_synthetic_tradfi_basis", _SETTINGS_ALLOW_SYNTHETIC_TRADFI_BASIS),
                 spot_min_volume_notional_multiple=_config_number(

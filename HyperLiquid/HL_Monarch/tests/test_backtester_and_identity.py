@@ -203,11 +203,13 @@ class TestSpotBacking(unittest.TestCase):
         """
         from config.settings import TRADFI_DEXES
         from analytics.funding_arbitrage import is_synthetic_tradfi, perp_dex, spot_symbol_candidates
-        self.assertEqual(TRADFI_DEXES, frozenset({"xyz", "km", "cash", "flx", "mkts", "io"}))
+        self.assertEqual(TRADFI_DEXES, frozenset({"xyz", "km", "cash", "flx", "mkts", "io", "vntl"}))
         self.assertEqual(perp_dex("xyz:GOLD"), "xyz")
         self.assertEqual(perp_dex("BTC"), "main")
         # Round 44: mkts (Kinetiq index perps) and io (EntropyIO pre-IPO equities) by address too.
-        for coin in ("xyz:NEWCO", "km:WHATEVER", "cash:X", "flx:GAS", "XYZ:UPPER", "mkts:US500", "io:OAI", "io:ANTHROPIC"):
+        # Round 46: vntl (Ventuals - ANTHROPIC, OPENAI, SPACEX, MAG7, SOY, WHEAT...) classified TradFi.
+        for coin in ("xyz:NEWCO", "km:WHATEVER", "cash:X", "flx:GAS", "XYZ:UPPER", "mkts:US500", "io:OAI",
+                     "io:ANTHROPIC", "vntl:SPACEX", "vntl:MAG7", "vntl:WHEAT"):
             self.assertTrue(is_synthetic_tradfi(coin), coin)
             self.assertEqual(spot_symbol_candidates(coin), [], coin)
             self.assertIsNone(spot_symbol_for(coin, {"NEWCO", "UNEWCO", "WHATEVER", "X", "GAS", "UPPER"}), coin)
@@ -228,10 +230,11 @@ class TestSpotBacking(unittest.TestCase):
         from config.settings import ACTIVE_DEXES, TRADFI_DEXES, UNCLASSIFIED_DEXES
         from analytics.funding_arbitrage import is_unclassified_dex, is_synthetic_tradfi, spot_symbol_candidates
         from collectors.orderbook_sampler import top_funding_candidates
-        self.assertEqual(UNCLASSIFIED_DEXES, frozenset({"vntl", "hyna", "abcd"}))
+        self.assertEqual(UNCLASSIFIED_DEXES, frozenset({"abcd"}))                 # Round 46: vntl -> TradFi, hyna -> mixed
         self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint(TRADFI_DEXES))
         self.assertTrue(UNCLASSIFIED_DEXES.isdisjoint({str(d).lower() for d in ACTIVE_DEXES}))
-        for coin in ("vntl:SPACEX", "hyna:HYPE", "abcd:BTC"):
+        self.assertNotIn("hyna", {str(d).lower() for d in ACTIVE_DEXES})           # mixed, documented, not polled
+        for coin in ("abcd:BTC", "abcd:HYPE"):
             self.assertTrue(is_unclassified_dex(coin), coin)
             self.assertFalse(is_synthetic_tradfi(coin), coin)                    # unclassified, not TradFi
             self.assertEqual(spot_symbol_candidates(coin), [], coin)
@@ -239,6 +242,11 @@ class TestSpotBacking(unittest.TestCase):
             self.assertIsNone(spot_symbol_for(coin, {"HYPE", "UBTC", "SPACEX"}, {"HYPE": 1e9}), coin)
         self.assertFalse(is_unclassified_dex("BTC"))
         self.assertFalse(is_unclassified_dex("para:ANSEM"))
+        # hyna is mixed like para: its crypto resolves, its commodities hit the symbol set.
+        self.assertFalse(is_unclassified_dex("hyna:HYPE"))
+        self.assertEqual(spot_symbol_candidates("hyna:HYPE"), ["UHYPE", "HYPE"])
+        self.assertEqual(spot_symbol_candidates("hyna:GOLD"), [])
+        self.assertTrue(is_synthetic_tradfi("hyna:GOLD"))
         # The scan and the sampler inherit it.
         engine = FundingArbitrageEngine(client=FakeSpotClient(["HYPE", "UBTC"]))
         res = engine.scan_funding_opportunities(
@@ -246,7 +254,7 @@ class TestSpotBacking(unittest.TestCase):
         by_coin = {i["coin"]: i for i in res["short_harvest"]}
         self.assertFalse(by_coin["abcd:BTC"]["is_spot_backed"])
         self.assertTrue(by_coin["BTC"]["is_spot_backed"])
-        snaps = [{"coin": "hyna:HYPE", "funding_rate": 0.01, "notional_oi": 1e7, "day_ntl_vlm": 1e7},
+        snaps = [{"coin": "abcd:HYPE", "funding_rate": 0.01, "notional_oi": 1e7, "day_ntl_vlm": 1e7},
                  {"coin": "HYPE", "funding_rate": 0.001, "notional_oi": 1e7, "day_ntl_vlm": 1e7}]
         self.assertEqual(top_funding_candidates(snaps, n=5, spot_universe={"HYPE"}), ["HYPE"])
 

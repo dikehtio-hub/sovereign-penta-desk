@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+Round 46 complete: vntl CLASSIFIED TRADFI, hyna DOCUMENTED MIXED, PRESET-AWARE
+CONFIG FALLBACK. `TRADFI_DEXES` gains vntl (Ventuals: ANTHROPIC, OPENAI, SPACEX,
+MAG7, SOY, WHEAT...), `UNCLASSIFIED_DEXES` shrinks to abcd, hyna is documented
+as mixed crypto + GOLD/SILVER and stays unpolled. A corrupt Bot_Config field now
+falls back to the ACTIVE PRESET's value (a "conservative" typo lands on $5k, not
+the dataclass's $10k); custom/unknown presets and preset-less fields keep the
+dataclass/settings default. Safety-flags-fail-armed ratified. 1 new test.
+
 Round 45 complete: PER-FIELD CONFIG FALLBACK FOR EVERY FIELD & UNCLASSIFIED-DEX
 FAIL-CLOSED. Every Bot_Config field now parses on its own through
 `_config_number` / `_config_int` / `_config_flag`: a corrupt value warns and
@@ -143,7 +151,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1075 passed |
+| HL_Monarch (pytest) | 1076 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -166,6 +174,21 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 46 findings
+
+- **abcd is not an empty shell.** The ruling called it dormant with an empty
+  asset list; the live meta for dex=abcd lists one perp, abcd:USA500. It stays
+  in UNCLASSIFIED_DEXES as ruled (refused), and USA500 is in the symbol set, so
+  it would be refused twice over if ever polled. Settings comment corrected.
+- **Live universes verified before classifying**: vntl 15 perps, all pre-IPO
+  equities, sector baskets or commodities; hyna 25 perps, crypto majors and
+  memes plus GOLD and SILVER (mixed, exactly para's shape); neither is polled.
+- **Preset-aware fallback reads active_preset FIRST**, then resolves each
+  field's default from PRESETS[preset] when present, else the dataclass. A
+  well-formed line under any preset is honoured as written - the preset only
+  supplies fallbacks. Safety flags: malformed -> armed, absent -> the preset's
+  False. Spot fields have no preset entry and keep the settings defaults.
 
 ## Round 45 findings
 

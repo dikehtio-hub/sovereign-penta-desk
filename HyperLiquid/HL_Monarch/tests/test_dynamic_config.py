@@ -105,6 +105,38 @@ def test_every_field_falls_back_on_its_own_and_the_others_still_load(tmp_path, c
     assert DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config().max_concurrent_positions == 3
 
 
+def test_a_corrupt_field_falls_back_to_the_active_presets_value(tmp_path, caplog):
+    """
+    Round 46 (Ruling 46-2). A "conservative" operator who mistypes the notional
+    line must land on the conservative $5,000, not be scaled up to the
+    dataclass's $10,000. "custom", an unknown preset, or a field the preset does
+    not carry take the dataclass / settings default.
+    """
+    from config.dynamic_config import BotConfig, PRESETS
+    from config.settings import SPOT_MIN_DAY_VOLUME
+    vault_dir = tmp_path / "obsidian_vault"
+    cases = (("conservative", 5000.0, 1, 35.0), ("aggressive", 25000.0, 4, 18.0),
+             ("custom", 10000.0, 2, 25.0), ("weird", 10000.0, 2, 25.0))
+    for preset, notional, slots, gross_bar in cases:
+        caplog.clear()
+        _write(vault_dir, f'active_preset: "{preset}"\nbasis_notional_usd: garbage\n'
+                          f"max_concurrent_positions: nope\nbasis_min_funding_apr: ???\n"
+                          f"spot_min_day_volume: bad\nmax_spread_bps: 9.0\n")
+        cfg = DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config()
+        assert cfg.basis_notional_usd == notional, preset
+        assert cfg.max_concurrent_positions == slots, preset
+        assert cfg.basis_min_funding_apr == gross_bar, preset
+        assert cfg.spot_min_day_volume == SPOT_MIN_DAY_VOLUME, preset          # presets carry no spot fields
+        assert cfg.max_spread_bps == 9.0, preset                                # a good line still wins
+        assert cfg.emergency_killswitch is False, preset
+        assert cfg.active_preset == (preset if preset in PRESETS or preset == "custom" else "custom")
+        assert sum("using the" in r.message for r in caplog.records) == 4, preset
+    # The preset only supplies FALLBACKS: a well-formed line under "conservative" is honoured as written.
+    _write(vault_dir, 'active_preset: "conservative"\nbasis_notional_usd: 7500.0\n')
+    assert DynamicConfigManager(vault_path=vault_dir, json_path=tmp_path / "cfg.json").get_config().basis_notional_usd == 7500.0
+    assert BotConfig().basis_notional_usd == 10000.0
+
+
 def test_malformed_safety_flags_fail_armed_not_off(tmp_path, caplog):
     """A kill-switch that reads "maybe" stops trading; a spot policy flag that reads "maybe" stays at its default."""
     vault_dir = tmp_path / "obsidian_vault"
