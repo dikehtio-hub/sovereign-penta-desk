@@ -299,39 +299,40 @@ def generate_trading_terminal_note(vault_path: Path, synced_at: str) -> Tuple[Pa
         except Exception:
             pass
 
+    # Read archived 50-trade baseline experiment metadata if present
+    baseline_meta_file = Path(DATA_DIR) / "experiments" / "baseline_unfiltered_N12_2026-09-01.meta.json"
+    baseline_meta: Dict[str, Any] = {}
+    if baseline_meta_file.exists():
+        try:
+            baseline_meta = json.loads(baseline_meta_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
     cash = float(basis_state.get("cash", basis_state.get("starting_cash", 100_000.0)))
     starting = float(basis_state.get("starting_cash", 100_000.0))
     realized_pnl = float(basis_state.get("realized_pnl", 0.0))
     fees_paid = float(basis_state.get("fees_paid", 0.0))
     funding_collected = float(basis_state.get("funding_collected", 0.0))
+    accruals = int(basis_state.get("accruals", 0))
     positions = basis_state.get("positions", {})
-    closed_trades = basis_state.get("closed", [])
+    closed_basis_trades = basis_state.get("closed", [])
     open_orders = paper_state.get("open_orders", [])
 
-    # Hurdle metrics
-    closed_count = len(closed_trades)
-    wins = sum(1 for t in closed_trades if float(t.get("realized_pnl", 0)) > 0)
-    win_rate = (wins / closed_count * 100.0) if closed_count > 0 else 0.0
+    # 50-Trade Hurdle metrics from archived baseline
+    baseline_n = int(baseline_meta.get("closed_trades", 12))
+    baseline_wins = int(baseline_meta.get("wins", 3))
+    baseline_losses = int(baseline_meta.get("losses", 9))
+    win_rate = float(baseline_meta.get("win_rate_pct", 25.0))
+    profit_factor = float(baseline_meta.get("profit_factor", 0.123))
+    net_pnl = float(baseline_meta.get("net_pnl", -536.74))
+    gross_pnl = float(baseline_meta.get("gross_pnl", -482.76))
+    fees_incurred = float(baseline_meta.get("fees_paid", 53.98))
 
-    gross_gains = sum(float(t.get("realized_pnl", 0)) for t in closed_trades if float(t.get("realized_pnl", 0)) > 0)
-    gross_losses = abs(sum(float(t.get("realized_pnl", 0)) for t in closed_trades if float(t.get("realized_pnl", 0)) < 0))
-    profit_factor = (gross_gains / gross_losses) if gross_losses > 0 else (99.9 if gross_gains > 0 else 0.0)
-
-    # Hurdle Verdict
-    if closed_count >= 50:
-        if win_rate >= 54.0 and profit_factor >= 1.25:
-            verdict_badge = "🟢 **PASS (EDGE VALIDATED - READY FOR LIVE DEPLOYMENT)**"
-        elif win_rate >= 48.0:
-            verdict_badge = "🟡 **RETUNE (MARGINAL EDGE - RETUNE PARAMETERS)**"
-        else:
-            verdict_badge = "🔴 **FAIL (NO EDGE - SYSTEM REJECTED)**"
-    else:
-        verdict_badge = f"🔵 **IN PROGRESS ({closed_count}/50 TRADES COMPLETED)**"
-
-    hurdle_bar = make_progress_bar(closed_count, 50, length=15)
+    hurdle_bar = make_progress_bar(baseline_n, 50, length=15)
     win_bar = make_progress_bar(win_rate, 100, length=10)
+    verdict_badge = "🔴 **FAIL / RETIRED (TERMINATED EARLY AT N=12 / 50)**"
 
-    # Build Open Positions Table
+    # Build Open Positions Table for Delta-Neutral Basis
     pos_rows = []
     deployed_capital = sum(float(p.get("capital") or (float(p.get("notional_per_leg", 0.0)) * 2)) for p in positions.values())
     total_equity = cash + deployed_capital
@@ -346,32 +347,42 @@ def generate_trading_terminal_note(vault_path: Path, synced_at: str) -> Tuple[Pa
         accrued_str = f"+${accrued:,.2f}" if accrued > 0 else f"${accrued:,.2f}"
         opened_at = pos.get("opened_at", 0)
         dur = f"{(time.time() - opened_at) / 3600:.1f}h" if opened_at else "—"
-        pos_rows.append(f"| **`{coin}`** | {ntl} | `{spot_str}` | `{perp_str}` | {entry_apr} | **`{accrued_str}`** | `{dur}` |")
-    pos_table = "\n".join(pos_rows) if pos_rows else "| — | — | — | — | — | *No active open delta-neutral basis positions.* | — |"
+        hours_held = float(pos.get("hours_held", 0.0))
+        ntl_raw = float(pos.get("notional_per_leg", 0.0))
+        realised_apr_str = "—"
+        if hours_held > 0 and ntl_raw > 0:
+            r_apr = (accrued / ntl_raw / hours_held) * 24.0 * 365.0 * 100.0
+            realised_apr_str = format_apr(r_apr)
+        spot_sym = pos.get("spot_symbol", coin)
+        pos_rows.append(
+            f"| **`{coin}`** | `{spot_sym}` | {ntl} | `{spot_str}` | `{perp_str}` | {entry_apr} | {realised_apr_str} | **`{accrued_str}`** | `{dur}` |"
+        )
+    pos_table = "\n".join(pos_rows) if pos_rows else "| — | — | — | — | — | — | — | *No active open delta-neutral basis positions.* | — |"
 
     # Build Resting Orders Table
     order_rows = []
     for o in open_orders:
         coin = o.get("coin", "")
         side = o.get("side", "")
-        px = float(o.get("price", 0.0))
+        px = float(o.get("limit_price") or o.get("price", 0.0))
         sz = float(o.get("size", 0.0))
         ntl = format_usd(px * sz)
         placed_at = float(o.get("placed_at", time.time()))
-        ttl = max(0, int(180 - (time.time() - placed_at)))
+        p_sec = placed_at / 1000.0 if placed_at > 1e11 else placed_at
+        ttl = max(0, int(180 - (time.time() - p_sec)))
         order_rows.append(f"| **`{coin}`** | `{side}` | `${px:,.2f}` | `{sz:.4f}` | {ntl} | `{ttl}s remaining` |")
-    order_table = "\n".join(order_rows) if order_rows else "| — | — | — | — | — | *No resting limit orders active.* |"
+    order_table = "\n".join(order_rows) if order_rows else "| — | — | — | — | — | *No resting limit orders active (FADE_STRATEGY_ENABLED = False).* |"
 
     # Build Closed Trades Table
     closed_rows = []
-    for t in closed_trades[-10:]:
+    for t in closed_basis_trades[-10:]:
         coin = t.get("coin", "")
         pnl = format_usd(float(t.get("realized_pnl", 0.0)))
         pnl_badge = f"🟢 **{pnl}**" if float(t.get("realized_pnl", 0.0)) > 0 else f"🔴 **{pnl}**"
         dur = f"{float(t.get('hold_duration_hours', 0.0)):.1f}h"
         reason = t.get("exit_reason", "normal_close")
         closed_rows.append(f"| **`{coin}`** | {pnl_badge} | `{dur}` | `{reason}` |")
-    closed_table = "\n".join(closed_rows) if closed_rows else "| — | — | *No closed trades logged yet.* | — |"
+    closed_table = "\n".join(closed_rows) if closed_rows else "| — | — | *No closed basis pairs logged yet (positions held delta-neutral for funding yield).* | — |"
 
     pm_link_row = f"- [[{PM_DASHBOARD_NOTE}|🌐 Polymarket Intelligence]]\n" if note_exists(vault_path, PM_DASHBOARD_NOTE) else ""
     ql_link_row = f"- [[{QL_DASHBOARD_NOTE}|⚡ Quant Trading Lab]]\n" if note_exists(vault_path, QL_DASHBOARD_NOTE) else ""
@@ -388,36 +399,42 @@ last_synced: "{synced_at}"
 
 # 📈 Monarch Trading Terminal & 50-Trade Hurdle Tracker
 
-> [!INFO] **Account Telemetry Snapshot**
+> [!INFO] **Live Delta-Neutral Harvester Telemetry**
 > - **Total Account Equity**: **`{format_usd(total_equity)}`** (Starting: `{format_usd(starting)}`)
 > - **Available Cash Balance**: **`{format_usd(cash)}`** • Deployed Collateral: **`{format_usd(deployed_capital)}`**
 > - **Net Realized Yield / PnL**: **`+{format_usd(realized_pnl)}`**
-> - **Accrued Funding Yield**: **`+{format_usd(funding_collected)}`**
+> - **Accrued Funding Yield**: **`+{format_usd(funding_collected)}`** ({accruals} accrual cycles)
 > - **Total Execution Fees Paid**: `{format_usd(fees_paid)}` (Net of maker/taker accounting)
+> - **Active Basis Pairs**: `{len(positions)} pairs deployed`
 > - **Last Synchronized**: `{synced_at}`
 
 ---
 
 ## 🎯 Pre-Registered 50-Trade Hurdle Validation Deck
 
-> [!IMPORTANT] **Rigorous Statistical Hurdle Bar**
-> To prevent deploying curve-fitted strategies to live capital, the engine must satisfy our pre-registered acceptance criteria over **50 discrete closed trades**:
-> - **Hurdle 1**: Win Rate **`>= 54.0%`** (Net of fees)
-> - **Hurdle 2**: Profit Factor **`>= 1.25`**
+> [!WARNING] **Directional Liquidation Fade: Terminated Early at N=12 & Retired**
+> The pre-registered 50-trade hurdle on the **Reactive Liquidation Fade Strategy** was committed on 2026-08-31 to evaluate directional edge under strict maker/taker fees (1.0 bps / 3.5 bps):
+> - **Pre-Registered Bar**: Win Rate **`>= 54.0%`** (Net of fees) **AND** Profit Factor **`>= 1.25`** over 50 closed trades.
+> - **Archived Baseline ($N=12$)**: Win Rate **`25.0%`** (3 Wins / 9 Losses) • Profit Factor **`0.12`** • Net PnL **`-$536.74`** (Gross: `-$482.76`, Fees: `$53.98`).
+> - **Excursion Benchmark (`wick_benchmark.py`)**: Empirical MFE/MAE ratio measured at **`0.513`** vs. random control **`1.092`** ($p = 0.0259$ at 30m). Forced liquidations are momentum drivers that continue running against the position, not mean-reverting wicks.
 > - **Current Verdict**: {verdict_badge}
+> - **Operational State**: Directional trading is halted ([`FADE_STRATEGY_ENABLED = False`](file:///C:/Users/ixis1/Desktop/DEV/HyperLiquid/HL_Monarch/config/settings.py)). Placed in **PASSIVE Re-benchmarking Mode** (telemetry logs sweeps without placing orders; requires 7d window, >=500 events, $P(\\text{{ratio}} \\ge 1.25) > 0.90$ under cluster bootstrap to reopen).
+> - **Archive Reference**: `HL_Monarch/data/experiments/baseline_unfiltered_N12_2026-09-01.meta.json`
 
-| Hurdle Metric | Current Value | Required PASS Floor | Validation Progress |
+| Hurdle Metric | Archived Baseline (N=12) | Required PASS Floor | Verdict / Progress |
 | :--- | :---: | :---: | :--- |
-| **Sample Size** | **`{closed_count} trades`** | `50 trades` | {hurdle_bar} |
-| **Win Rate** | **`{win_rate:.1f}%`** | `>= 54.0%` | {win_bar} |
-| **Profit Factor** | **`{profit_factor:.2f}`** | `>= 1.25` | `Gross: {format_usd(gross_gains)} / Loss: {format_usd(gross_losses)}` |
+| **Sample Size** | **`{baseline_n} trades`** | `50 trades` | {hurdle_bar} (Archived early at N=12) |
+| **Win Rate** | **`{win_rate:.1f}%`** | `>= 54.0%` | {win_bar} 🔴 **FAIL** (3W / 9L) |
+| **Profit Factor** | **`{profit_factor:.2f}`** | `>= 1.25` | `Gross: $75.30 / Loss: $612.04` 🔴 **FAIL** |
+| **Signal MFE/MAE** | **`0.513`** | `>= 1.250` | Control: `1.092` 🔴 **ADVERSE MOMENTUM** |
 
 ---
 
 ## 📊 Active Delta-Neutral Basis Positions
+*Capital redeployed to delta-neutral cash-and-carry funding rate harvesting (Long Spot + Short Perp).*
 
-| Asset | Leg Size | Spot Entry | Perp Entry | Entry APR | Funding Accrued | Duration |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Asset | Spot Pair | Leg Notional | Spot Entry | Perp Entry | Entry APR | Realised APR | Funding Accrued | Duration |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 {pos_table}
 
 ---
