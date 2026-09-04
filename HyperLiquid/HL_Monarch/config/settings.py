@@ -119,8 +119,14 @@ DB_MAINTENANCE_INTERVAL = 300.0     # seconds between prune + WAL checkpoint pas
 #
 # AND IT IS NOT SUFFICIENT FOR THE 30-DAY STANDARD. 720 hours of observation
 # cannot be held in a 192-hour window at any disk size; that needs measurements
-# persisted incrementally as raw rows age out. See `analytics/measurement_store`
-# when it lands.
+# persisted incrementally as raw rows age out. Round 34 built it:
+# `storage/incremental_persistence.py`, run by the repository BEFORE every prune.
+#
+# A RUNNING COLLECTOR DOES NOT SEE THIS FILE CHANGE. Settings are read at import.
+# The collector launched 2026-09-03 14:45 kept pruning at 72h until it was
+# restarted on 2026-09-04 after this was found (oldest snapshot was exactly 72.0h
+# old, 15 hours after the constant below said 192). Restart the collector after
+# any change here, or the change is a comment.
 #
 # Cost: snapshots are ~12M rows/day and dominate the file. 69h -> 192h is ~2.8x
 # on a 3.9 GB database, so roughly +7 GB against 60 GB free.
@@ -128,6 +134,39 @@ SNAPSHOT_RETENTION_HOURS = 192      # 8 days: one clear day beyond a 7-day hold
 CLUSTER_RETENTION_HOURS = 24        # liquidation_clusters history kept
 TRADE_RETENTION_HOURS = 192         # trades + liquidation_events, matched to above
 WAL_AUTOCHECKPOINT_PAGES = 2000     # ~8MB WAL before an automatic checkpoint
+
+# --- Round 34: INCREMENTAL MEASUREMENT PERSISTENCE (option b) -----------------
+# The pruner reduces raw rows to measurements BEFORE deleting them, so the
+# walk-forward's history is unbounded while the raw tables stay at 192h.
+# See storage/incremental_persistence.py for the rules.
+MEASUREMENT_HOLD_HOURS = (24.0, 168.0)      # holds materialised: the validated 24h, and the 7-day the money is committed for
+MEASUREMENT_ENTRY_STRIDE_HOURS = 3.0        # candidate entries every 3h on an epoch-aligned grid (Round 32 script used 3h)
+MEASUREMENT_MAX_GAP_HOURS = 2.0             # longer intervals count as unobserved, never extrapolated across
+MEASUREMENT_MIN_COVERAGE = 0.60             # below this a window's realised APR is NULL, not a number
+# One instant per hold per pass: a 7-day scan is ~0.25s per coin, so one instant
+# is ~2 min across 440 coins. Steady state needs one per 3h; one per 5 min catches
+# up 36x faster than data arrives without keeping the maintenance thread busy.
+MEASUREMENT_MAX_GRID_POINTS_PER_PASS = 1
+MEASUREMENT_MAX_EVENTS_PER_PASS = 2000      # collector pass budget for cascade events
+EXCURSION_PERSIST_HORIZONS_MINUTES = (5.0, 15.0, 30.0, 60.0)
+EXCURSION_PERSIST_SOURCES = ("trade_sweep", "trade_flow")
+# trade_flow is ANY fill >= $50k and ran 107k events per 72h - mostly plain whale
+# orders. Persisting all of it would be ~13M rows/year for a source the fade
+# does not trade. The floor keeps the tail that the whale sweeper cares about.
+EXCURSION_PERSIST_MIN_NOTIONAL = {"trade_sweep": 0.0, "trade_flow": 250_000.0}
+EXCURSION_CONTROL_MULTIPLE = 1              # matched random entries persisted per event
+# Regime tag read off the reference coin over the trailing window. Thresholds are
+# ENGINEERING ESTIMATES; the underlying numbers are stored on every row so they
+# can be re-bucketed later without raw data.
+REGIME_REFERENCE_COIN = "BTC"
+REGIME_LOOKBACK_HOURS = 24.0
+REGIME_MIN_HOURLY_BUCKETS = 12
+REGIME_VOL_BUCKETS = (1.5, 3.5)             # daily realised vol %: LOW < 1.5 <= MID < 3.5 <= HIGH
+REGIME_FUNDING_BUCKETS = (0.0, 20.0)        # APR %: NEG < 0 <= FLAT < 20 <= HOT (neutral BTC funding is ~10.95%)
+# Ruling D: 30 days across >= 2 regimes before an edge is called enduring.
+RULING_D_REQUIRED_HOURS = 720.0
+RULING_D_MIN_REGIMES = 2
+RULING_D_MIN_HOURS_PER_REGIME = 48.0        # a regime seen for less than two days is a blip, not a regime
 
 # UI refresh caching: how long the dashboard reuses an expensive REST-backed scan
 # before re-issuing it. Without this, holding the Whale tab issued ~15 REST calls

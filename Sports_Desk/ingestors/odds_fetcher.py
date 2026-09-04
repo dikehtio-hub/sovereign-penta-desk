@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import sys
 import time
@@ -229,6 +230,72 @@ def ledger_hurdle() -> Callable[[float], float]:
     return lambda odds: ledger.breakeven_gross_edge(category="sports", decimal_odds=odds)
 
 
+# ---------------------------------------------------------------------------
+# Recurring polling (Round 34 Target 3)
+# ---------------------------------------------------------------------------
+
+def price_fingerprint(rows: Sequence[Dict[str, Any]]) -> str:
+    """
+    Identity of a quote set by its PRICES - timestamps deliberately excluded.
+
+    The poller must be able to tell "the market moved" from "I asked again". A
+    fingerprint that included the quote time would call every poll new, and the
+    sample source - which is stamped `now` on every call - would be dropped into
+    the folder every five minutes as a fresh file of identical prices. The
+    watcher would price each one, and `fair_odds_measurements` would fill with a
+    line history that no book ever quoted: perfectly flat, perfectly fictional.
+    """
+    digest = hashlib.sha256()
+    keys = ("event_id", "sport", "market_type", "line", "selection", "book", "odds")
+    for row in sorted(rows, key=lambda r: tuple(str(r.get(k, "")) for k in keys)):
+        digest.update(("|".join(str(row.get(k, "")) for k in keys) + "\n").encode("utf-8"))
+    return digest.hexdigest()
+
+
+def poll(source: Callable[[], List[Dict[str, Any]]],
+         drop_folder: Path = DEFAULT_DROP_FOLDER, db_path: Path = DEFAULT_DB_PATH,
+         interval: float = 300.0, max_polls: Optional[int] = None,
+         hurdle: Optional[Callable[[float], float]] = None, archive: bool = True,
+         run_watcher_after: bool = True, sleep: Callable[[float], None] = time.sleep,
+         log: Callable[[str], None] = print) -> Dict[str, int]:
+    """
+    Fetch on a timer; drop a file ONLY when the prices changed; price it.
+
+    This is what keeps the staleness guard fed with real movement: each drop is
+    a new quote set at a new time, so the per-market age check compares live
+    against live. An unchanged set is skipped and said so. Brier scoring is not
+    fed by this loop - it needs settled RESULTS, which arrive through
+    `results_watcher`, not through quotes.
+    """
+    stats = {"polls": 0, "drops": 0, "skipped_unchanged": 0, "errors": 0, "markets_priced": 0}
+    last: Optional[str] = None
+    while True:
+        stats["polls"] += 1
+        try:
+            rows = validate_rows(list(source()))
+        except Exception as exc:                            # noqa: BLE001 - keep polling
+            stats["errors"] += 1
+            log("[ERROR] poll %d: %s: %s" % (stats["polls"], type(exc).__name__, exc))
+        else:
+            current = price_fingerprint(rows)
+            if current == last:
+                stats["skipped_unchanged"] += 1
+                log("[SKIP] poll %d: %d row(s) unchanged since the last drop - not re-stamped"
+                    % (stats["polls"], len(rows)))
+            else:
+                target = write_drop(rows, drop_folder)
+                stats["drops"] += 1
+                last = current
+                log("[DROP] poll %d: %d row(s) -> %s" % (stats["polls"], len(rows), target))
+                if run_watcher_after:
+                    for report in run_watcher(drop_folder, db_path, hurdle=hurdle, archive=archive):
+                        stats["markets_priced"] += int(getattr(report, "markets_seen", 0) or 0)
+                        log(report.summary())
+        if max_polls is not None and stats["polls"] >= max_polls:
+            return stats
+        sleep(interval)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Sports_Desk odds fetcher - drops a real-shaped odds file and prices it")
@@ -244,10 +311,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--hurdle-from-ledger", action="store_true",
                         help="compute the after-tax hurdle per row from the tax ledger")
     parser.add_argument("--no-archive", action="store_true")
+    parser.add_argument("--watch", action="store_true",
+                        help="poll the source every --interval seconds; drop and price ONLY when prices change")
+    parser.add_argument("--interval", type=float, default=300.0, help="seconds between polls (default 300)")
+    parser.add_argument("--max-polls", type=int, default=None, help="stop after this many polls")
     args = parser.parse_args(argv)
 
     folder = Path(args.folder or DEFAULT_DROP_FOLDER)
     db_path = Path(args.db or DEFAULT_DB_PATH)
+
+    if args.watch:
+        source = (lambda: fetch_json_rows(args.url)) if args.url else sample_rows
+        hurdle = ledger_hurdle() if args.hurdle_from_ledger else None
+        if not args.url:
+            print("[WATCH] source is the bundled sample: it drops ONCE and then reports "
+                  "'unchanged' every poll, because its prices never move. Pass --url for a feed.")
+        stats = poll(source, folder, db_path, interval=args.interval, max_polls=args.max_polls,
+                     hurdle=hurdle, archive=not args.no_archive, run_watcher_after=args.run_watcher)
+        print("[WATCH] %d poll(s): %d drop(s), %d unchanged, %d error(s)"
+              % (stats["polls"], stats["drops"], stats["skipped_unchanged"], stats["errors"]))
+        return 0
 
     if args.url:
         rows = fetch_json_rows(args.url)

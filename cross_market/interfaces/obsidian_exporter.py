@@ -45,18 +45,31 @@ NOMINAL_CAPITAL = 1_000.0
 
 
 def load_questions(drop_dir: Path = DEFAULT_QUESTIONS_DIR) -> List[Dict[str, Any]]:
-    """Polymarket questions from dropped JSON files. Never the network."""
+    """
+    Polymarket questions from dropped JSON files. Never the network.
+
+    ONE ROW PER MARKET, THE NEWEST WINS. A folder that has been polled into holds
+    the same market in several files at prices that are no longer offered;
+    pricing each copy would show a pair three times at three stale prices.
+    Files are read oldest-first and keyed by token id (question text when there
+    is none), so the most recently written quote is the one that survives.
+    """
     drop_dir = Path(drop_dir)
     if not drop_dir.exists():
         return []
-    found: List[Dict[str, Any]] = []
-    for path in sorted(drop_dir.glob("*.json")):
+    found: Dict[str, Dict[str, Any]] = {}
+    paths = sorted(drop_dir.glob("*.json"), key=lambda p: (p.stat().st_mtime, p.name))
+    for path in paths:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        found.extend(payload if isinstance(payload, list) else [payload])
-    return found
+        for row in (payload if isinstance(payload, list) else [payload]):
+            if not isinstance(row, dict):
+                continue
+            key = str(row.get("token_id") or row.get("question") or id(row))
+            found[key] = row
+    return list(found.values())
 
 
 def collect(hook: Any, questions: List[Dict[str, Any]],

@@ -1,0 +1,193 @@
+{
+ "nodes": [
+  {
+   "id": "hub",
+   "x": -210,
+   "y": -1160,
+   "width": 420,
+   "height": 220,
+   "color": "4",
+   "type": "file",
+   "file": "Monarch_Hub.md"
+  },
+  {
+   "id": "tax",
+   "x": -280,
+   "y": -220,
+   "width": 560,
+   "height": 400,
+   "color": "1",
+   "type": "file",
+   "file": "Trading_Taxes/Tax_Reserve_2026-09-03.md"
+  },
+  {
+   "id": "hl",
+   "x": -1300,
+   "y": -700,
+   "width": 560,
+   "height": 380,
+   "color": "5",
+   "type": "file",
+   "file": "HyperLiquid_Monarch.md"
+  },
+  {
+   "id": "pm",
+   "x": 740,
+   "y": -700,
+   "width": 560,
+   "height": 380,
+   "color": "3",
+   "type": "file",
+   "file": "Polymarket_Monarch.md"
+  },
+  {
+   "id": "ql",
+   "x": -1300,
+   "y": 260,
+   "width": 560,
+   "height": 380,
+   "color": "6",
+   "type": "file",
+   "file": "Quant_Trading_Lab.md"
+  },
+  {
+   "id": "sports",
+   "x": 740,
+   "y": 260,
+   "width": 560,
+   "height": 380,
+   "color": "4",
+   "type": "file",
+   "file": "Sports_Desk.md"
+  },
+  {
+   "id": "xarb",
+   "x": -280,
+   "y": 760,
+   "width": 560,
+   "height": 380,
+   "color": "2",
+   "type": "file",
+   "file": "Cross_Market_Arb.md"
+  }
+ ],
+ "edges": [
+  {
+   "id": "hub-tax",
+   "fromNode": "hub",
+   "toNode": "tax",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "color": "4",
+   "label": "vault index"
+  },
+  {
+   "id": "gate-hl",
+   "fromNode": "tax",
+   "toNode": "hl",
+   "fromSide": "left",
+   "toSide": "right",
+   "color": "1",
+   "label": "capital gate: safe bankroll → bucket → max order"
+  },
+  {
+   "id": "flow-hl",
+   "fromNode": "hl",
+   "toNode": "tax",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "color": "5",
+   "label": "receipts → lots · escrow · reserve"
+  },
+  {
+   "id": "gate-pm",
+   "fromNode": "tax",
+   "toNode": "pm",
+   "fromSide": "right",
+   "toSide": "left",
+   "color": "1",
+   "label": "capital gate: safe bankroll → bucket → max order"
+  },
+  {
+   "id": "flow-pm",
+   "fromNode": "pm",
+   "toNode": "tax",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "color": "3",
+   "label": "receipts → lots · escrow · reserve"
+  },
+  {
+   "id": "gate-ql",
+   "fromNode": "tax",
+   "toNode": "ql",
+   "fromSide": "left",
+   "toSide": "right",
+   "color": "1",
+   "label": "capital gate: safe bankroll → bucket → max order"
+  },
+  {
+   "id": "flow-ql",
+   "fromNode": "ql",
+   "toNode": "tax",
+   "fromSide": "top",
+   "toSide": "bottom",
+   "color": "6",
+   "label": "receipts → lots · escrow · reserve"
+  },
+  {
+   "id": "gate-sports",
+   "fromNode": "tax",
+   "toNode": "sports",
+   "fromSide": "right",
+   "toSide": "left",
+   "color": "1",
+   "label": "capital gate: safe bankroll → bucket → max order"
+  },
+  {
+   "id": "flow-sports",
+   "fromNode": "sports",
+   "toNode": "tax",
+   "fromSide": "top",
+   "toSide": "bottom",
+   "color": "4",
+   "label": "receipts → lots · escrow · reserve"
+  },
+  {
+   "id": "gate-xarb",
+   "fromNode": "tax",
+   "toNode": "xarb",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "color": "1",
+   "label": "capital gate: safe bankroll → bucket → max order"
+  },
+  {
+   "id": "flow-xarb",
+   "fromNode": "xarb",
+   "toNode": "tax",
+   "fromSide": "left",
+   "toSide": "left",
+   "color": "2",
+   "label": "receipts → lots · escrow · reserve"
+  },
+  {
+   "id": "sports-xarb",
+   "fromNode": "sports",
+   "toNode": "xarb",
+   "fromSide": "bottom",
+   "toSide": "right",
+   "color": "4",
+   "label": "book quotes · sports_market.db"
+  },
+  {
+   "id": "pm-xarb",
+   "fromNode": "pm",
+   "toNode": "xarb",
+   "fromSide": "bottom",
+   "toSide": "right",
+   "color": "3",
+   "label": "questions · polymarket_drops"
+  }
+ ]
+}

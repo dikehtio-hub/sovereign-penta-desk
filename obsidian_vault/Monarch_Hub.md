@@ -5,13 +5,13 @@ tags:
   - hub
   - executive-cockpit
   - dashboard
-last_synced: "2026-09-04 04:02:42 UTC"
+last_synced: "2026-09-04 04:46:42 UTC"
 ---
 
 # 👑 Monarch Intelligence Hub & Executive Command Center
 
 > [!INFO] **Vault Index**
-> - **Last Refreshed**: `2026-09-04 04:02:42 UTC`
+> - **Last Refreshed**: `2026-09-04 04:46:42 UTC`
 > - **Suites In This Vault**: `6` of 6
 > - **Vault Root**: `C:\Users\ixis1\Desktop\DEV\obsidian_vault`
 
@@ -51,6 +51,7 @@ last_synced: "2026-09-04 04:02:42 UTC"
 | 👑 **Cross-Market Titans** | Multi-venue entity resolution, macro co-positioning | [[Cross_Market_Titans|Open Titans Desk]] |
 | 🏈 **Sports Desk** | +EV hotlist, realised P&L, execution CLV, un-exported bet alerts | [[Sports_Desk|Open Sports Desk]] |
 | ⚖️ **Cross-Market Arb** | Polymarket vs sportsbook pairs, 16.75% / 23.93% after-tax hurdles | [[Cross_Market_Arb|Open Cross-Market Arb]] |
+| 🗺️ **Penta-Desk Canvas** | Visual cockpit: capital gating and reserve flows across all five desks | [[Canvases/Sovereign_Penta_Cockpit.canvas|Open Canvas]] |
 
 ---
 

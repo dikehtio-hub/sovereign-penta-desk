@@ -5,17 +5,17 @@ tags:
   - cross-market
   - arbitrage
   - tax-asymmetry
-last_synced: "2026-09-04 04:02:29 UTC"
+last_synced: "2026-09-04 04:46:14 UTC"
 ---
 
 # ⚖️ Cross-Market Arbitrage - Polymarket vs Sportsbook
 
 > [!INFO] **Desk Snapshot**
-> - **Questions loaded**: `0`
-> - **Matched pairs**: `0`  •  **Clearing after tax**: **`0`**
+> - **Questions loaded**: `7`
+> - **Matched pairs**: `6`  •  **Clearing after tax**: **`0`**
 > - **Pricing capital**: `$1,000.00`  _(bankroll is $0.00 - pairs priced on a nominal $1,000.00; verdicts are unaffected, stakes are notional)_
 > - **Reference hurdles**: capital reading, no capacity **`16.75%`** • wagering reading **`23.93%`**
-> - **Last Synchronized**: `2026-09-04 04:02:29 UTC`
+> - **Last Synchronized**: `2026-09-04 04:46:14 UTC`
 
 > **Cockpit Navigation**: [[Monarch_Hub|👑 Master Hub]] • [[Sports_Desk|🏈 Sports Desk]] • [[Polymarket_Monarch|🌐 Polymarket]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]]
 
@@ -31,7 +31,16 @@ last_synced: "2026-09-04 04:02:29 UTC"
 
 ## 📋 Matched Pairs
 
-_No matched cross-market pairs. This is the normal state: a pair needs the same fixture, market and line quoted on both venues at once, and unmatched markets are dropped rather than approximated._
+| Verdict | Pair | Book arb | Worst after-tax | Hurdle (1234A) | Hurdle (165(d)) | Leg A | Leg B |
+| :---: | :--- | ---: | ---: | ---: | ---: | :--- | :--- |
+| ❌ REJECT | DAL_COWBOYS / Eagles | `+6.13%` | **`-1.21%`** | `+7.94%` ⛔ | `+17.99%` ⛔ | `sample-phi-dal-dal` @ 0.2200 ($290.74) | pinnacle Eagles @ 1.3846 ($709.26) |
+| ❌ REJECT | KC_CHIEFS / Ravens | `+0.56%` | **`-6.78%`** | `+10.69%` ⛔ | `+23.71%` ⛔ | `sample-kc-bal-kc` @ 0.5500 ($600.12) | pinnacle Ravens @ 2.2500 ($399.88) |
+| ❌ REJECT | KC_CHIEFS / Under 47.5 | `-2.75%` | **`-9.06%`** | `+10.79%` ⛔ | `+23.92%` ⛔ | `sample-kc-bal-o47.5` @ 0.5000 ($542.49) | pinnacle Under 47.5 @ 1.8929 ($457.51) |
+| ❌ REJECT | PHI_EAGLES / Over 44.5 | `-3.27%` | **`-9.41%`** | `+10.80%` ⛔ | `+23.93%` ⛔ | `sample-phi-dal-u44.5` @ 0.5100 ($549.09) | pinnacle Over 44.5 @ 1.9091 ($450.91) |
+| ❌ REJECT | PHI_EAGLES / Cowboys | `-5.43%` | **`-9.82%`** | `+9.21%` ⛔ | `+20.66%` ⛔ | `sample-phi-dal-phi` @ 0.7400 ($728.64) | pinnacle Cowboys @ 3.1500 ($271.36) |
+| ❌ REJECT | BAL_RAVENS / Chiefs | `-4.15%` | **`-9.91%`** | `+10.66%` ⛔ | `+23.65%` ⛔ | `sample-kc-bal-bal` @ 0.4600 ($502.18) | pinnacle Chiefs @ 1.7143 ($497.82) |
+
+_⛔ marks a book arb below that reading's hurdle. A pair that clears 1234A but not 165(d) is a position whose verdict depends on a question the IRS has not answered._
 
 ---
 

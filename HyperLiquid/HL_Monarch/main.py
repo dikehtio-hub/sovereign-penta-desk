@@ -103,6 +103,23 @@ def main():
     maintain_parser = subparsers.add_parser("maintain", help="Prune expired rows, checkpoint the WAL, and report DB size")
     maintain_parser.add_argument("--vacuum", action="store_true", help="Also VACUUM to return freed pages to the OS")
 
+    # Command: persist (Round 34 - incremental measurement persistence, option b)
+    persist_parser = subparsers.add_parser(
+        "persist",
+        help="Materialise completed basis windows and cascade excursions into the never-pruned "
+             "summary tables (the pruner runs one bounded pass of this before every delete)")
+    persist_parser.add_argument("--backfill", action="store_true",
+                                help="Loop passes until every watermark is caught up (default: one bounded pass)")
+    persist_parser.add_argument("--status", action="store_true",
+                                help="Report watermarks, spans, regimes and the Ruling D precondition; write nothing")
+    persist_parser.add_argument("--hold", type=float, default=None,
+                                help="Print the entry-conditioned walk-forward for this hold (hours) from the persisted windows")
+    persist_parser.add_argument("--excursions", action="store_true",
+                                help="Print MFE/MAE per horizon from the persisted rows, against the persisted control")
+    persist_parser.add_argument("--source", default="trade_sweep",
+                                help="Excursion source for --excursions (default: trade_sweep)")
+    persist_parser.add_argument("--max-passes", type=int, default=500, help="Backfill pass cap (default: 500)")
+
     # Command: summary
     summary_parser = subparsers.add_parser("summary", help="Print an instant TradFi snapshot table to console")
     summary_parser.add_argument("--dex", default="xyz", help="Target DEX (default: xyz)")
@@ -546,6 +563,37 @@ def main():
             f"{' (reader busy, partial)' if stats['wal_busy'] else ''}"
         )
         console.print(f"[bold green]Database after:[/bold green] {stats['db_bytes'] / 1_048_576.0:,.1f} MB")
+
+    elif args.command == "persist":
+        from storage.repository import MarketRepository
+        from storage.incremental_persistence import (
+            backfill, entry_conditioned_summary, excursion_summary, format_entry_conditioned,
+            format_excursions, format_status, persist_completed_measurements, persistence_status)
+        repo = MarketRepository()
+        conn = repo.db.connection
+        if not args.status:
+            if args.backfill:
+                def progress(r):
+                    print("  pass: %d windows, %d events, %d controls in %.1fs%s" % (
+                        r["windows_written"], r["events_written"], r["controls_written"],
+                        r["elapsed_s"], "" if r["pending"] else " - caught up"), flush=True)
+                print("Backfilling measurements from the retained window...", flush=True)
+                result = backfill(conn, progress=progress, max_passes=args.max_passes,
+                                  max_grid_points=8, max_events=5000)
+                print("%d pass(es): %d windows, %d events, %d controls, %.1fs%s" % (
+                    result["passes"], result["windows_written"], result["events_written"],
+                    result["controls_written"], result["elapsed_s"],
+                    "" if result["caught_up"] else " - NOT caught up (pass cap hit)"))
+            else:
+                r = persist_completed_measurements(conn)
+                print("one pass: %d windows, %d events, %d controls in %.1fs%s" % (
+                    r["windows_written"], r["events_written"], r["controls_written"],
+                    r["elapsed_s"], " (more pending)" if r["pending"] else ""))
+        print(format_status(persistence_status(conn)))
+        if args.hold:
+            print(format_entry_conditioned(entry_conditioned_summary(conn, args.hold)))
+        if args.excursions:
+            print(format_excursions(excursion_summary(conn, args.source)))
 
     elif args.command == "summary":
         from api.rest_client import HyperliquidRestClient

@@ -4,12 +4,14 @@ Coordinates REST market state polling and WebSocket real-time trade/liquidation 
 Persists all data to SQLite WAL database.
 """
 import asyncio
+import os
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Any, List, Set
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Set
 from config.settings import (
-    ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST,
+    ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST, COLLECTOR_LOCK_PATH,
     DB_FLUSH_INTERVAL, DB_MAINTENANCE_INTERVAL,
     ROTATION_INTERVAL, ROTATION_MAX_COINS,
     ROTATION_COOLDOWN_SECONDS, ROTATION_MIN_DAY_VOLUME,
@@ -43,8 +45,37 @@ MAX_BUFFERED_TRADES = 20_000
 MAX_BUFFERED_LIQ_EVENTS = 5_000
 
 
+def service_collector_alive(lock_path: Optional[Path] = None) -> bool:
+    """
+    True when `data/collector.pid` names a LIVE process other than this one.
+
+    Used by the dashboard's embedded collector to decide whether to run the
+    maintenance loop at all. Two pruners with two ideas of the retention window
+    is exactly what happened in Round 34: the dashboard, launched fifteen hours
+    before the retention constant changed, kept deleting at 72h every five
+    minutes while the restarted service collector held 192h.
+    """
+    path = Path(lock_path) if lock_path is not None else COLLECTOR_LOCK_PATH
+    try:
+        pid = int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    if pid == os.getpid():
+        return False
+    try:
+        import psutil
+    except ImportError:
+        # Cannot verify; honour the lock rather than start a second pruner.
+        return True
+    return psutil.pid_exists(pid)
+
+
 class MarketCollector:
-    def __init__(self):
+    def __init__(self, maintenance: bool = True):
+        # Whether THIS collector prunes and measures. Retention belongs to exactly
+        # one process; an embedded collector inside a UI passes False when the
+        # service collector is alive.
+        self.maintenance = bool(maintenance)
         self.rest_client = HyperliquidRestClient()
         self.ws_client = HyperliquidWsClient()
         self.repo = MarketRepository()
@@ -60,6 +91,13 @@ class MarketCollector:
         self._liq_buffer: List[Dict[str, Any]] = []
         self._dropped_rows = 0
         self._db_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hl-db")
+        # Round 34: maintenance gets its OWN thread. It now measures completed
+        # basis windows and cascade excursions before pruning (~2 min per pass
+        # across 440 coins), and the hl-db thread is also the snapshot poller and
+        # the trade-buffer flusher. Queued behind a two-minute pass, the poller
+        # would create the very gaps the measurements are made from and the
+        # buffers (20k trades) would overflow. SQLite connections are per thread.
+        self._maint_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hl-maint")
 
         # Coins subscribed dynamically by volume rotation, tracked separately so
         # the core watchlist is never rotated out from under the dashboard.
@@ -251,12 +289,18 @@ class MarketCollector:
             if not self.running:
                 return
             try:
-                stats = await loop.run_in_executor(self._db_executor, self.repo.run_maintenance)
+                stats = await loop.run_in_executor(self._maint_executor, self.repo.run_maintenance)
+                persisted = stats.get("persisted") or {}
                 logger.info(
-                    "DB maintenance: pruned %d rows, WAL %d pages checkpointed, DB %.1f MB",
+                    "DB maintenance: pruned %d rows, WAL %d pages checkpointed, DB %.1f MB; "
+                    "persisted %d windows / %d events%s",
                     stats["total_deleted"],
                     max(0, stats["checkpointed_pages"]),
                     stats["db_bytes"] / 1_048_576.0,
+                    persisted.get("windows_written", 0),
+                    persisted.get("events_written", 0),
+                    (" - PERSISTENCE FAILED, measured tables NOT pruned: %s" % persisted["error"])
+                    if persisted.get("error") else "",
                 )
             except Exception as e:
                 logger.error(f"DB maintenance failed: {e}")
@@ -681,11 +725,15 @@ class MarketCollector:
             asyncio.create_task(self._poll_market_contexts_loop()),
             asyncio.create_task(self._subscribe_tradfi_streams()),
             asyncio.create_task(self._flush_loop()),
-            asyncio.create_task(self._maintenance_loop()),
             asyncio.create_task(self._rotation_loop()),
             asyncio.create_task(self._paper_save_loop()),
             asyncio.create_task(self._basis_accrual_loop()),
         ]
+        if self.maintenance:
+            tasks.append(asyncio.create_task(self._maintenance_loop()))
+        else:
+            logger.info("Maintenance loop DISABLED for this collector: another process owns "
+                        "retention and measurement persistence")
 
         try:
             await asyncio.gather(*tasks)
@@ -707,6 +755,7 @@ class MarketCollector:
                 logger.error(f"Final paper state save failed: {e}")
             self.whale_tracker.shutdown()
             self._db_executor.shutdown(wait=False)
+            self._maint_executor.shutdown(wait=False)
 
 
 def start_collector():

@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 from typing import Optional, Tuple
 from config.settings import DB_PATH, WAL_AUTOCHECKPOINT_PAGES
+from storage.measurement_schema import MEASUREMENT_SCHEMA_SQL
 
 logger = logging.getLogger("Storage")
 
@@ -211,6 +212,9 @@ class DatabaseManager:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         with self.connection as conn:
             conn.executescript(SCHEMA_SQL)
+            # Round 34: the never-pruned measurement tables. IF NOT EXISTS, so a
+            # database written before this round gains them on its next open.
+            conn.executescript(MEASUREMENT_SCHEMA_SQL)
 
     def checkpoint(self, mode: str = "TRUNCATE") -> Tuple[int, int, int]:
         """

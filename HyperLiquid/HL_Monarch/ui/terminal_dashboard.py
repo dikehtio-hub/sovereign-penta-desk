@@ -33,7 +33,7 @@ from analytics.position_scanner import PositionScanner
 from analytics.funding_arbitrage import FundingArbitrageEngine
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
-from collectors.market_collector import MarketCollector
+from collectors.market_collector import MarketCollector, service_collector_alive
 from ui.components import (
     build_header_panel, build_tradfi_table, build_liquidations_panel,
     build_clusters_panel, build_top_wallets_panel, build_funding_arb_panel,
@@ -273,7 +273,11 @@ class TerminalDashboard:
         def run_bg_collector():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            collector = MarketCollector()
+            # Round 34: a UI process must not prune underneath the service
+            # collector. This dashboard ran fifteen hours with a stale 72h
+            # retention in memory and deleted history every five minutes while
+            # the service, restarted with 192h, was trying to keep it.
+            collector = MarketCollector(maintenance=not service_collector_alive())
             try:
                 loop.run_until_complete(collector.run())
             except Exception:

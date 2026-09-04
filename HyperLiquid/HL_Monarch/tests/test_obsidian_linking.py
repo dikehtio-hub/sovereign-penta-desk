@@ -27,11 +27,13 @@ def assert_all_links_resolve(testcase, vault: Path):
     """Every [[wikilink]] in the vault must point at a note that exists."""
     notes = {p.relative_to(vault).with_suffix("").as_posix() for p in vault.rglob("*.md")}
     basenames = {p.stem for p in vault.rglob("*.md")}
+    # A canvas is linked WITH its extension ([[Canvases/X.canvas]]), unlike a note.
+    canvases = {p.relative_to(vault).as_posix() for p in vault.rglob("*.canvas")}
     broken = []
     for md in vault.rglob("*.md"):
         for target in WIKILINK.findall(md.read_text(encoding="utf-8")):
             t = target.strip()
-            if t not in notes and t not in basenames:
+            if t not in notes and t not in basenames and t not in canvases:
                 broken.append(f"{md.relative_to(vault).as_posix()} -> [[{t}]]")
     testcase.assertEqual(broken, [], f"unresolved wikilinks: {broken}")
 

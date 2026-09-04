@@ -21,6 +21,7 @@ same vault, so a standalone export never renders a dead link.
 """
 
 import hashlib
+import json
 import re
 from pathlib import Path
 from typing import Optional, Tuple
@@ -42,6 +43,11 @@ CROSS_MARKET_ARB_NOTE = "Cross_Market_Arb"
 # Per-suite subfolders for entity notes.
 HL_WHALES_DIR = "Whales"
 PM_WALLETS_DIR = "Wallets"
+
+# Round 34: the penta-desk canvas and the tax desk's dated notes it centres on.
+PENTA_CANVAS_DIR = "Canvases"
+PENTA_CANVAS_NOTE = "Sovereign_Penta_Cockpit"
+TAX_NOTES_DIR = "Trading_Taxes"
 
 USER_NOTES_HEADER = "## 📝 My Research & Notes"
 
@@ -170,6 +176,92 @@ def _fmt_usd(val: float) -> str:
     return f"{sign}${mag:,.2f}"
 
 
+def latest_tax_note(vault_path: Path) -> Optional[str]:
+    """Vault-relative path of the newest `Trading_Taxes/Tax_Reserve_<date>.md`, or None."""
+    folder = Path(vault_path) / TAX_NOTES_DIR
+    if not folder.is_dir():
+        return None
+    names = sorted(p.name for p in folder.glob("Tax_Reserve_*.md"))
+    return "%s/%s" % (TAX_NOTES_DIR, names[-1]) if names else None
+
+
+def write_penta_canvas(vault_path: Path) -> Tuple[Path, bool]:
+    """
+    `Canvases/Sovereign_Penta_Cockpit.canvas`: the five desks around the tax
+    reserve, capital gating drawn one way and reserve flows drawn back.
+
+    A node is a FILE node when the desk's note exists in this vault - Obsidian
+    renders the live note inside the canvas, so the cockpit shows the dashboards
+    themselves rather than a drawing of them - and a text placeholder otherwise,
+    so a partially exported vault still opens cleanly. The centre is the newest
+    Tax_Reserve note, because every desk's sizing runs through that ledger. The
+    content carries no timestamp, so the content-hashed write leaves the file
+    alone unless a desk appeared or the tax note rolled to a new day.
+    """
+    vault_path = Path(vault_path)
+    target = vault_path / PENTA_CANVAS_DIR / ("%s.canvas" % PENTA_CANVAS_NOTE)
+
+    def node(nid, x, y, width, height, color, note, placeholder):
+        base = {"id": nid, "x": x, "y": y, "width": width, "height": height, "color": color}
+        if note and (vault_path / note).exists():
+            base.update({"type": "file", "file": note})
+        else:
+            base.update({"type": "text", "text": placeholder})
+        return base
+
+    desks = [
+        ("hl", -1300, -700, "5", "%s.md" % HL_DASHBOARD_NOTE,
+         "## 🏛 HyperLiquid Desk\nPerp basis harvest · whale sweeps · liquidation waterfall\n\n"
+         "*not exported into this vault yet*"),
+        ("pm", 740, -700, "3", "%s.md" % PM_DASHBOARD_NOTE,
+         "## 🌐 Polymarket Desk\nPrediction CLOB · sharp consensus · dutching\n\n"
+         "*not exported into this vault yet*"),
+        ("ql", -1300, 260, "6", "%s.md" % QL_DASHBOARD_NOTE,
+         "## ⚡ Quant Trading Lab\nCME futures · killzones · risk sentinel\n\n"
+         "*not exported into this vault yet*"),
+        ("sports", 740, 260, "4", "%s.md" % SPORTS_DESK_NOTE,
+         "## 🏈 Sports Desk\nFair value · CLV · after-tax hurdle\n\n*not exported into this vault yet*"),
+        ("xarb", -280, 760, "2", "%s.md" % CROSS_MARKET_ARB_NOTE,
+         "## ⚖️ Cross-Market Arb\nAsymmetric hedger · 16.75% / 23.93% hurdles\n\n"
+         "*not exported into this vault yet*"),
+    ]
+    nodes = [
+        node("hub", -210, -1160, 420, 220, "4", "%s.md" % HUB_NOTE,
+             "# 👑 Monarch Hub\n\n*not exported into this vault yet*"),
+        node("tax", -280, -220, 560, 400, "1", latest_tax_note(vault_path),
+             "# 💰 Tax & Bankroll Reserve\n**Centre of the ecosystem**\n"
+             "- safe bankroll → strategy buckets → per-order cap\n"
+             "- FAIL-CLOSED on an empty ledger\n"
+             "- lots · escrow · W-2G · §165(d) / §1234A\n\n*no Tax_Reserve note in this vault yet*"),
+    ]
+    for nid, x, y, color, note, placeholder in desks:
+        nodes.append(node(nid, x, y, 560, 380, color, note, placeholder))
+
+    # Sides chosen so the two arrows between the centre and each desk do not overlap.
+    geometry = {"hl": ("left", "right", "bottom", "top"), "pm": ("right", "left", "bottom", "top"),
+                "ql": ("left", "right", "top", "bottom"), "sports": ("right", "left", "top", "bottom"),
+                "xarb": ("bottom", "top", "left", "left")}
+    colours = {d[0]: d[3] for d in desks}
+    edges = [{"id": "hub-tax", "fromNode": "hub", "toNode": "tax", "fromSide": "bottom",
+              "toSide": "top", "color": "4", "label": "vault index"}]
+    for nid, *_ in desks:
+        gate_from, gate_to, flow_from, flow_to = geometry[nid]
+        edges.append({"id": "gate-%s" % nid, "fromNode": "tax", "toNode": nid,
+                      "fromSide": gate_from, "toSide": gate_to, "color": "1",
+                      "label": "capital gate: safe bankroll → bucket → max order"})
+        edges.append({"id": "flow-%s" % nid, "fromNode": nid, "toNode": "tax",
+                      "fromSide": flow_from, "toSide": flow_to, "color": colours[nid],
+                      "label": "receipts → lots · escrow · reserve"})
+    edges.append({"id": "sports-xarb", "fromNode": "sports", "toNode": "xarb", "fromSide": "bottom",
+                  "toSide": "right", "color": "4", "label": "book quotes · sports_market.db"})
+    edges.append({"id": "pm-xarb", "fromNode": "pm", "toNode": "xarb", "fromSide": "bottom",
+                  "toSide": "right", "color": "3", "label": "questions · polymarket_drops"})
+
+    content = json.dumps({"nodes": nodes, "edges": edges}, indent=1, ensure_ascii=False)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return write_note_if_changed(target, content + "\n")
+
+
 def write_hub_note(vault_path: Path, synced_at: str) -> Path:
     """
     Write (or refresh) the master executive vault index that ties the entire ecosystem together.
@@ -283,6 +375,10 @@ def write_hub_note(vault_path: Path, synced_at: str) -> Path:
     if has_xarb:
         launcher_rows.append(f"| ⚖️ **Cross-Market Arb** | Polymarket vs sportsbook pairs, 16.75% / 23.93% after-tax hurdles | [[{CROSS_MARKET_ARB_NOTE}|Open Cross-Market Arb]] |")
 
+    launcher_rows.append(
+        f"| 🗺️ **Penta-Desk Canvas** | Visual cockpit: capital gating and reserve flows across all five desks "
+        f"| [[{PENTA_CANVAS_DIR}/{PENTA_CANVAS_NOTE}.canvas|Open Canvas]] |")
+
     launchers_table = "\n".join(launcher_rows) if launcher_rows else "| — | *No active dashboards.* | — |"
 
     content = f"""---
@@ -336,4 +432,7 @@ Both suites track **wallet addresses** as primary entities, backed by local SQLi
 *Generated automatically by Monarch Intelligence Exporters.*
 """
     write_note_if_changed(hub_file, content.strip() + "\n")
+    # Round 34: the canvas is refreshed with the hub so whichever exporter runs
+    # last leaves it reflecting the notes that actually exist.
+    write_penta_canvas(vault_path)
     return hub_file

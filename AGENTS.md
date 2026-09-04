@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 34 complete: INCREMENTAL PERSISTENCE & DATA INGESTION. The pruner now
+reduces raw rows to `basis_realised_windows` and `cascade_excursions` BEFORE
+deleting them (never pruned; Ruling D's 720h standard is now reachable);
+Polymarket sports questions flow into `Sports_Desk/data/polymarket_drops/`
+(`Cross_Market_Arb.md` shows 6 matched pairs, 0 clearing); the odds fetcher
+polls and drops only on price change; `Canvases/Sovereign_Penta_Cockpit.canvas`
+renders all six notes around the tax reserve. **The collector was restarted** -
+it had been pruning at 72h for 15 hours after Round 33 said 192 (see findings).
+58 new tests.
+
 Round 33 complete: DATA GROUNDING. Retention raised to 192h; the bankroll gate
 now FAILS CLOSED on an empty ledger (config placeholder removed, DEPOSIT rows
 are the measured balance); Sports_Desk has a real `sports_market.db` for the
@@ -30,9 +40,9 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters (14 modules) | 768 OK |
-| HL_Monarch (pytest) | 974 passed |
-| Tax_Reserve_Agent (4 modules) | 524 OK |
+| master + bridges + cross-market + exporters + ingestors (15 modules) | 788 OK |
+| HL_Monarch (pytest) | 1012 passed |
+| Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 24% federal + 6.37% NJ + 2% buffer, `casual_standard_deduction`.
@@ -54,6 +64,70 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 34 findings
+
+- **The Round 33 retention fix was not in effect on the machine.** Settings are
+  read at import; the collector had been launched 2026-09-03 14:45, nine hours
+  before `SNAPSHOT_RETENTION_HOURS` was edited, and the oldest snapshot was
+  exactly 72.0h old 15 hours later. Its supervisor (`run_collector_service.py`)
+  had died, leaving a bare child with **78% hour-continuity** over the retained
+  window (12 of the last 24 hours had no rows for ANY coin). Restarted under the
+  supervisor 2026-09-04 04:45 UTC, and again 05:20 UTC after the collector patch
+  below. Ruling C's ~2026-09-08 for 168h of raw rows still holds; the first
+  PERSISTED 168h windows (entry must carry a quote, window must complete) land
+  ~2026-09-11, and Ruling D's 720h no earlier than ~2026-10-04.
+- **A SECOND pruner: the dashboard.** `main.py dashboard` embeds a full
+  `MarketCollector`, maintenance loop included. The dashboard launched 2026-09-03
+  14:46 kept 72h in memory and pruned every five minutes AFTER the service was
+  restarted with 192h - caught because rows older than 72.5h stayed at zero and
+  the boundary moved at 05:02:34 UTC, a time no service pass could produce.
+  The embedded collector now skips maintenance whenever `data/collector.pid`
+  names a live process (`service_collector_alive`); the dashboard was restarted.
+  Restart BOTH after any settings change.
+- **What the persisted tables say after the first backfill** (6,670 windows,
+  11,941 events + matched controls, 418s): entry-conditioned 24h, quote >= 20%:
+  n=358 on 103 coins, median realised 25.7% vs 6.8% unconditional, **+18.9pp,
+  coin-bootstrap P(median >= 20%) = 0.897**; >= 25%: +22.3pp, P 0.972; >= 40%:
+  +28.6pp, P 1.000 - the Round 32 result reproduced from the summary tables.
+  Cascade excursions, trade_sweep, 7,694 events on 31 coins: MFE/MAE 0.49 (5m)
+  to 0.83 (60m) against a persisted control of ~1.05, cluster P(>= 1) 0.000-0.032
+  - the fade retirement on 15x the sample. Regimes seen: VOL_MID|FUND_FLAT 18h,
+  UNKNOWN 15h (BTC reference gaps); 168h hold: 0 windows until ~2026-09-11.
+- **The collector's one `hl-db` thread ran the snapshot poller, the buffer
+  flusher AND maintenance.** A two-minute measurement pass queued behind it
+  would have created the gaps the measurements are made from. Maintenance now
+  has its own `hl-maint` thread; the per-pass budget is one grid instant per
+  hold (~2 min across 440 coins for the 7-day scan, 0.25s per coin measured).
+- **Fail closed on the measured tables.** If the persistence pass raises,
+  `asset_snapshots` and `liquidation_events` are NOT pruned that cycle; the
+  others prune as before. Tested by monkeypatching the pass to raise.
+- **"No quote, no entry."** The first rule wrote 1,760 seven-day windows whose
+  entry instant predated any row for the coin - entries nobody could have made.
+  Deleted; a window is now recorded only if a funding quote was in force at the
+  entry instant (one indexed lookup, asked first). Thin windows AFTER a real
+  entry still record with a NULL rate, never a number.
+- **`orderbook_snapshots` is empty and nothing writes it.** `net_apr_after_fees`
+  is therefore NULL on every persisted window (`fee_basis = 'unmeasured'`); no
+  default spread is substituted. The cost model that decides the 7-day hold has
+  no measured spread anywhere in the repo.
+- **Antigravity's Gamma URL does not filter.** `?tag=sports` returned a crypto IPO
+  event and French politics; `tag_id=1` (the "Sports" tag per `/tags/slug/sports`)
+  does. Fixture markets are team-vs-team, not yes/no, and are rewritten into two
+  derived questions carrying `derived_from`. `takerBaseFee` has no documented
+  unit and is NOT inferred into `fee_rate`.
+- **Spread pairs never match, by convention conflict.** `odds_watcher` keys both
+  spread legs under the home handicap (Round 33 fix); `matcher.hedge_leg_for`
+  looks for the MIRRORED line on the opponent. The sample carries one spread
+  question so the gap is visible: 7 questions loaded, 6 pairs matched. Needs a
+  ruling on which convention wins before spreads can be hedged.
+- A static odds source cannot fabricate line history: `--watch` fingerprints
+  PRICES (not timestamps) and skips an unchanged poll. Brier scoring is fed by
+  settled results (`results_watcher`), not by quotes - the poller does not
+  touch it.
+- The supervisor sends the collector's stdout to DEVNULL, so its maintenance
+  log lines are invisible. `python main.py persist --status` and
+  `measurement_watermarks.updated_at` are the evidence that passes run.
 
 ## Round 33 findings
 
@@ -150,6 +224,18 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   (23.9317%, matches to 1e-6) and the trivially-zero fully-relieved case.
 
 ## Next / open questions
+
+- **Ruling needed: spread line convention.** Store the selection's OWN handicap
+  (away leg at +3.5) and group markets by |line|, or teach the matcher the
+  home-keyed form. Until then no spread hedge can price.
+- **Orderbook collection.** Nothing populates `orderbook_snapshots`; the cost
+  drag on every basis decision rests on an assumed spread. Persisted windows
+  will carry a measured `net_apr_after_fees` the moment it is written.
+- `persist --status` daily. Ruling D precondition: 720h across >= 2 regime tags
+  with >= 48h each; UNKNOWN never counts. First 168h persisted windows
+  ~2026-09-11; first 24h walk-forward read `persist --hold 24` is available now.
+- Polymarket live polling is the operator's call (network):
+  `python -m cross_market.ingestors.polymarket_fetcher --live --watch`.
 
 - **Incremental measurement persistence (option b)** is now *required* by Ruling
   D's 720h standard, not a follow-up. Design: persist per-event excursions and

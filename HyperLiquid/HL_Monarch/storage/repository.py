@@ -17,6 +17,8 @@ logger = logging.getLogger("Repository")
 class MarketRepository:
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
         self.db = db_manager or DatabaseManager()
+        # What the last prune's measurement pass did (Round 34), for run_maintenance.
+        self.last_persistence: Optional[Dict[str, Any]] = None
 
     def upsert_assets(self, assets_data: List[Dict[str, Any]]):
         """Insert or update asset metadata."""
@@ -333,6 +335,7 @@ class MarketRepository:
         snapshot_retention_hours: float = SNAPSHOT_RETENTION_HOURS,
         cluster_retention_hours: float = CLUSTER_RETENTION_HOURS,
         trade_retention_hours: float = TRADE_RETENTION_HOURS,
+        persist_first: bool = True,
     ) -> Dict[str, int]:
         """
         Delete rows older than the configured retention windows.
@@ -340,10 +343,36 @@ class MarketRepository:
         asset_snapshots and liquidation_clusters gain a row per asset per poll, so
         the DB grows without bound if nothing prunes it. The newest row per coin is
         always kept, so a long collector outage cannot starve get_latest_snapshots.
+
+        ROUND 34: MEASURE BEFORE DELETING. Rows about to age out are first reduced
+        to basis windows and cascade excursions (storage/incremental_persistence),
+        which are never pruned. If that pass FAILS, the tables it reads from -
+        asset_snapshots and liquidation_events - are NOT pruned this cycle. The
+        database grows a little until the next successful pass; that is the right
+        side to fail on, because a pruned row cannot be measured later and a
+        warning every five minutes is impossible to miss. The other tables prune
+        as before.
         """
         now_ms = int(time.time() * 1000)
         hour_ms = 3600 * 1000
         deleted: Dict[str, int] = {}
+
+        measured_tables = {"asset_snapshots", "liquidation_events"}
+        skip_tables: set = set()
+        self.last_persistence = None
+        if persist_first:
+            try:
+                from storage.incremental_persistence import persist_completed_measurements
+                self.last_persistence = persist_completed_measurements(
+                    self.db.connection, now_ms=now_ms,
+                    snapshot_retention_hours=snapshot_retention_hours,
+                    trade_retention_hours=trade_retention_hours)
+            except Exception as e:
+                logger.warning(
+                    "Measurement persistence FAILED (%s); asset_snapshots and "
+                    "liquidation_events are NOT pruned this pass", e)
+                self.last_persistence = {"error": str(e), "pruned_measured_tables": False}
+                skip_tables = measured_tables
 
         plan = [
             (
@@ -385,6 +414,9 @@ class MarketRepository:
             for table, sql, hours in plan:
                 if not hours or hours <= 0:
                     continue
+                if table in skip_tables:
+                    deleted[table] = 0
+                    continue
                 cutoff = now_ms - int(hours * hour_ms)
                 try:
                     cursor = conn.execute(sql, (cutoff,))
@@ -410,6 +442,7 @@ class MarketRepository:
         return {
             "deleted": deleted,
             "total_deleted": total_deleted,
+            "persisted": self.last_persistence,
             "wal_busy": busy,
             "wal_pages": wal_pages,
             "checkpointed_pages": checkpointed,

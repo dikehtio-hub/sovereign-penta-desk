@@ -2320,8 +2320,9 @@ esults_drops\.
        python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher          Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist          Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark          Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb
           Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter
           cross_market.tests.test_obsidian_exporter
+          cross_market.tests.test_polymarket_fetcher
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (974 passed as of Round 33)
+                        (1012 passed as of Round 34)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2357,6 +2358,38 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 34 - INCREMENTAL PERSISTENCE & DATA INGESTION
+     cd HyperLiquid\HL_Monarch && python main.py persist --status
+     cd HyperLiquid\HL_Monarch && python main.py persist --backfill
+     cd HyperLiquid\HL_Monarch && python main.py persist --hold 24 --excursions --source trade_sweep
+         The pruner now MEASURES BEFORE DELETING: basis_realised_windows and
+         cascade_excursions (with a matched random control per event) are never
+         pruned, so Ruling D's 720h standard is reachable inside 192h retention.
+         --status reports watermarks, spans, regimes and the Ruling D precondition.
+         If a pass fails, asset_snapshots and liquidation_events are NOT pruned
+         that cycle (fail closed). The collector runs one bounded pass per 5 min.
+     python -m cross_market.ingestors.polymarket_fetcher --sample
+     python -m cross_market.ingestors.polymarket_fetcher --live [--watch --interval 300]
+         Gamma tag_id=1; the documented ?tag=sports is IGNORED by Gamma (verified).
+         Writes ONE current file, polymarket_sports.json; --watch rewrites it only
+         when prices change. Then: python -m cross_market.interfaces.obsidian_exporter --once
+     python -m Sports_Desk.ingestors.odds_fetcher --watch --interval 300 --url <feed> --run-watcher --hurdle-from-ledger
+         Drops and prices ONLY when prices change. With --sample it drops once and
+         then reports 'unchanged' every poll - a static source never fabricates history.
+     obsidian_vault\Canvases\Sovereign_Penta_Cockpit.canvas
+         Regenerated with the hub by the HL and Polymarket exporters; file nodes
+         render the live notes; the newest Trading_Taxes note is the centre.
+
+     RESTART THE COLLECTOR AFTER ANY settings.py CHANGE:
+         HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat, then start_collector.bat
+         Settings are read at import. The process launched 2026-09-03 14:45 kept
+         pruning at 72h for 15 hours after the constant said 192. Always start it
+         through the launcher (supervisor + restarts + coverage reports), never bare.
+         THE DASHBOARD EMBEDS A COLLECTOR TOO (main.py dashboard): it pruned at 72h
+         with stale settings after the service was fixed. It now skips maintenance
+         while data\collector.pid names a live process; still restart it after a
+         settings change (open_dashboard.bat) so its other constants are current.
 
      ROUND 33 - DATA GROUNDING
      python -m Tax_Reserve_Agent.main seed-bankroll --paper-bankroll 10000

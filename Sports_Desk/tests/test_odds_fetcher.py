@@ -19,8 +19,8 @@ from pathlib import Path
 from Sports_Desk.data.db import query_edges
 from Sports_Desk.ingestors.odds_fetcher import (COLUMNS, RETAIL_BOOKS, SHARP_BOOK,
                                                 FetchError, fetch_json_rows, main,
-                                                rows_to_csv, run_watcher,
-                                                sample_rows, validate_rows,
+                                                poll, price_fingerprint, rows_to_csv,
+                                                run_watcher, sample_rows, validate_rows,
                                                 write_drop)
 from Sports_Desk.ingestors.odds_watcher import parse_odds_csv
 
@@ -137,6 +137,69 @@ class TestLivePathIsAContract(FetcherBase):
         self.assertEqual(len(rows), len(sample_rows()))
         with self.assertRaises(FetchError):
             fetch_json_rows("http://example.invalid", getter=lambda url, t: [{"junk": 1}])
+
+
+class TestRecurringPoller(FetcherBase):
+    """Round 34 Target 3: drop and price on a timer - but only when the prices moved."""
+
+    def test_fingerprint_ignores_timestamps_and_sees_prices(self):
+        a = sample_rows(now=datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc))
+        b = sample_rows(now=datetime(2026, 9, 5, 12, 0, tzinfo=timezone.utc))
+        self.assertEqual(price_fingerprint(a), price_fingerprint(b))
+        b[0]["odds"] = "-999"
+        self.assertNotEqual(price_fingerprint(a), price_fingerprint(b))
+
+    def test_an_unchanged_source_drops_once_and_is_then_skipped(self):
+        """Re-stamping identical prices would manufacture a flat, fictional line history."""
+        logs = []
+        stats = poll(sample_rows, self.drop, self.db, interval=0, max_polls=3, archive=False,
+                     sleep=lambda s: None, log=logs.append)
+        self.assertEqual((stats["polls"], stats["drops"], stats["skipped_unchanged"]), (3, 1, 2))
+        self.assertGreater(stats["markets_priced"], 0)
+        self.assertEqual(len(list(self.drop.glob("*.csv"))), 1)
+        self.assertGreater(len(query_edges(db_path=self.db)), 0)
+        self.assertTrue(any(line.startswith("[SKIP]") for line in logs))
+
+    def test_a_moving_source_is_dropped_and_priced_again(self):
+        moves = iter(["-140", "-140", "-150"])
+
+        def source():
+            rows = sample_rows()
+            price = next(moves)
+            for row in rows:
+                if row["book"] == SHARP_BOOK and row["selection"] == "Chiefs" and row["market_type"] == "moneyline":
+                    row["odds"] = price
+            return rows
+
+        stats = poll(source, self.drop, self.db, interval=0, max_polls=3, archive=False,
+                     sleep=lambda s: None, log=lambda m: None)
+        self.assertEqual((stats["drops"], stats["skipped_unchanged"]), (2, 1))
+        self.assertEqual(len(list(self.drop.glob("*.csv"))), 2)
+
+    def test_a_failing_source_is_counted_and_polling_continues(self):
+        calls = {"n": 0}
+
+        def source():
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("feed down")
+            return sample_rows()
+
+        stats = poll(source, self.drop, self.db, interval=0, max_polls=2, archive=False,
+                     sleep=lambda s: None, log=lambda m: None)
+        self.assertEqual((stats["errors"], stats["drops"]), (1, 1))
+
+    def test_the_cli_watch_mode_runs_offline_and_says_the_sample_never_moves(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(["--sample", "--watch", "--interval", "0", "--max-polls", "2", "--run-watcher",
+                         "--no-archive", "--folder", str(self.drop), "--db", str(self.db)])
+        self.assertEqual(code, 0)
+        self.assertIn("drops ONCE", out.getvalue())
+        self.assertIn("1 drop(s), 1 unchanged", out.getvalue())
+        self.assertTrue(self.db.exists())
 
 
 if __name__ == "__main__":
