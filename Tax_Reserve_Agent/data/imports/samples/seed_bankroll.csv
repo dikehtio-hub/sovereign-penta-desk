@@ -1,0 +1,2 @@
+timestamp,side,amount,symbol,source,notes
+2026-09-04 00:00:00,DEPOSIT,10000.00,USDC,deposit,seed bankroll (Round 33)

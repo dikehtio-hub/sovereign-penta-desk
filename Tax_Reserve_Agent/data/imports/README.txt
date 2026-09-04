@@ -16,3 +16,20 @@ rather than guessed - rename it to include spot / polymarket / options, or add a
 
 Re-dropping the same file is safe: rows are deduplicated on their id, or on a
 content hash when the export has no id column.
+
+DEPOSITS AND WITHDRAWALS (Round 33)
+-----------------------------------
+The liquid balance is READ FROM THE LEDGER, not from config.yaml. Seed it once:
+
+    python -m Tax_Reserve_Agent.main seed-bankroll --paper-bankroll 10000
+
+or drop a file whose name contains "deposit" / "bankroll":
+
+    timestamp,side,amount,symbol
+    2026-09-04 00:00:00,DEPOSIT,10000.00,USDC
+    2026-09-10 00:00:00,WITHDRAWAL,2500.00,USDC
+
+Until the ledger holds a deposit - or a bankroll is passed explicitly with
+--cash (live) or --paper-bankroll (simulation) - the safe bankroll is $0.00 and
+the order gate REFUSES. That is deliberate: it used to size against a number
+typed into config.yaml, and nothing had ever measured it.

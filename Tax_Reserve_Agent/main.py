@@ -68,7 +68,7 @@ def main():
     parser.add_argument("command", nargs="?", default="hud",
                         choices=["hud", "sync", "chain-sync", "resolve-markets", "import", "watch",
                                  "bankroll", "harvest", "calendar", "rebuild", "strategies",
-                                 "health", "seed", "export", "init"],
+                                 "health", "seed", "seed-bankroll", "export", "init"],
                         help=("hud (default) | sync (REST data API) | chain-sync (Gnosis CTF logs + CLOB subgraph) "
                               "| import (one sweep of the CSV drop folder) | watch (poll the drop folder) "
                               "| resolve-markets (settle open lots in markets that have resolved) "
@@ -78,7 +78,11 @@ def main():
                               "| health (exit 1 if review needed) "
                               "| seed | export | init"))
     parser.add_argument("--year", type=int, default=2026, help="Tax year to calculate (default: 2026)")
-    parser.add_argument("--cash", type=float, default=None, help="Override current liquid balance")
+    parser.add_argument("--cash", type=float, default=None,
+                        help="LIVE liquid balance, e.g. read from the exchange. Overrides everything.")
+    parser.add_argument("--paper-bankroll", type=float, default=None,
+                        help="Declare a SIMULATED balance. Required to size against an empty "
+                             "ledger; also the amount seed-bankroll deposits (default 10000).")
     parser.add_argument("--from-block", type=int, default=None, help="chain-sync: first Polygon block to scan")
     parser.add_argument("--to-block", type=int, default=None, help="chain-sync: last Polygon block to scan")
     parser.add_argument("--interval", type=float, default=None, help="watch: seconds between drop-folder polls")
@@ -105,8 +109,42 @@ def main():
     init_db()
 
     config = load_config()
-    if args.cash is not None:
-        config.setdefault("portfolio", {})["default_cash_balance_usdc"] = args.cash
+    override = args.cash if args.cash is not None else args.paper_bankroll
+    if override is not None:
+        portfolio = config.setdefault("portfolio", {})
+        portfolio["default_cash_balance_usdc"] = float(override)
+        portfolio["_override_cash"] = float(override)
+
+    if args.command == "seed-bankroll":
+        # Ground the ledger in a real row rather than a config number. Writes a
+        # DEPOSIT into the drop folder and ingests it at once, so the very next
+        # `hud` reads the balance from the ledger.
+        from datetime import datetime, timezone
+        amount = float(args.paper_bankroll if args.paper_bankroll is not None else 10_000.0)
+        imports_cfg = config.get("imports", {}) or {}
+        drop_folder = Path(imports_cfg.get("drop_folder") or "data/imports")
+        if not drop_folder.is_absolute():
+            drop_folder = Path(__file__).parent / drop_folder
+        drop_folder.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        target = drop_folder / "seed_bankroll.csv"
+        target.write_text(
+            "timestamp,side,amount,symbol,source,notes\n"
+            f"{stamp},DEPOSIT,{amount:.2f},USDC,deposit,seed bankroll (Round 33)\n",
+            encoding="utf-8")
+        watcher = CSVWatcher(imports_dir=drop_folder,
+                             archive=bool(imports_cfg.get("archive_after_import", True)))
+        results = watcher.scan_once(require_stable=False)
+        seeded = [r for r in results if r["file"] == target.name]
+        status = seeded[0]["status"] if seeded else "not seen"
+        counts = _ledger_counts()
+        print(f"[SEED] {target.name}: {status}. Ledger now holds "
+              f"{counts['transactions']} transaction(s).")
+        summary = calculate_tax_summary(tax_year=args.year, config=config)
+        print(f"[SEED] liquid cash ${summary['liquid_cash_balance']:,.2f} "
+              f"(source: {summary['cash_source']}) | safe bankroll "
+              f"${summary['safe_deployable_bankroll']:,.2f}")
+        return
 
     if args.command == "init":
         # PLAIN `init` IS NOT A RESET. It runs CREATE TABLE IF NOT EXISTS and

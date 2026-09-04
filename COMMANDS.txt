@@ -2318,8 +2318,10 @@ esults_drops\.
 
      Master suite is now EIGHT modules:
        python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher          Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist          Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark          Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb
+          Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter
+          cross_market.tests.test_obsidian_exporter
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (966 passed as of Round 31)
+                        (974 passed as of Round 33)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2355,6 +2357,20 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 33 - DATA GROUNDING
+     python -m Tax_Reserve_Agent.main seed-bankroll --paper-bankroll 10000
+         Writes a DEPOSIT row. Until the ledger holds one - or --cash / --paper-
+         bankroll is passed - the safe bankroll is $0.00 and every gate REFUSES.
+         config.yaml no longer carries a placeholder balance.
+     python -m Tax_Reserve_Agent.main bankroll --check 100 [--paper-bankroll N]
+     python -m Sports_Desk.ingestors.odds_fetcher --sample --run-watcher --hurdle-from-ledger
+         Drops a real-shaped multi-book odds file and prices it -> sports_market.db.
+         --url <json> for a live feed in the same column shape (never touched by default).
+     python -m Sports_Desk.interfaces.obsidian_exporter --once | --watch --interval 15
+     python -m cross_market.interfaces.obsidian_exporter  --once | --watch --interval 15
+         Writes Sports_Desk.md / Cross_Market_Arb.md. start_all_ecosystem_sync.bat
+         launches both under slot [5/5].
 
      python -m Sports_Desk.interfaces.monarch_shark --cross-market
          Polymarket vs sportsbook, priced through the ASYMMETRIC tax. Each

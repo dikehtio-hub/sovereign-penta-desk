@@ -2,7 +2,7 @@
 Tax Escrow Calculator and Safe Bankroll Sizer.
 Computes real-time tax liabilities, loss offsets, and available risk capital.
 """
-from typing import Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional
 from pathlib import Path
 from ..database.db import get_connection, get_meta
 from ..config import load_config, get_composite_tax_rate
@@ -11,6 +11,60 @@ from .lot_engine import (ACCOUNTING_METHOD_KEY, DEFAULT_METHOD, GAMBLING_ASSET_C
                         normalise_method)
 from .gambling_tax import (GamblingInputs, SESSION_NETTING, compute_gambling_tax,
                            resolve_policy, resolve_rates)
+
+# Cash movements live in the ledger under this asset class. A DEPOSIT or a
+# WITHDRAWAL is a transaction like any other - it has a timestamp, a source and a
+# hash, and it is the reason the ledger can say what the liquid balance IS rather
+# than what a config file says it should be.
+CASH_ASSET_CLASS = "cash"
+
+
+def resolve_liquid_cash(config: Dict[str, Any], cursor) -> Tuple[float, str, Dict[str, Any]]:
+    """
+    (liquid_cash, source, facts). Where the balance came from, in precedence order:
+
+      "override"   a live exchange balance or an explicit paper bankroll was
+                   passed in. Explicit, and it wins.
+      "deposits"   the ledger holds DEPOSIT / WITHDRAWAL rows. MEASURED.
+      "declared"   config carries a number. A declared paper balance - fine for
+                   a test or a simulation, and now absent from config.yaml.
+      "none"       nothing anywhere. The answer is $0.00.
+
+    ROUND 33 RULING C, and the reason "none" is not 10,000. config.yaml shipped
+    `default_cash_balance_usdc: 10000.00` and every risk limit in the ecosystem
+    scaled off it: safe bankroll $10,000, the hl_basis_harvest bucket $2,500, the
+    per-order cap $125 - all derived from a number somebody typed into a file,
+    against a ledger with ZERO transactions. A gate that sizes against a
+    placeholder is not a gate. An empty ledger with nothing declared is $0, and
+    the hook refuses to size until a deposit is imported or a paper bankroll is
+    passed on purpose.
+    """
+    facts: Dict[str, Any] = {"transactions": 0, "deposits": 0.0, "deposit_rows": 0}
+    try:
+        facts["transactions"] = int(cursor.execute(
+            "SELECT COUNT(*) FROM transactions").fetchone()[0])
+        row = cursor.execute("""
+            SELECT COUNT(*),
+                   COALESCE(SUM(CASE WHEN side = 'DEPOSIT' THEN total_value ELSE 0 END), 0)
+                 - COALESCE(SUM(CASE WHEN side = 'WITHDRAWAL' THEN total_value ELSE 0 END), 0)
+            FROM transactions WHERE asset_class = ?
+        """, (CASH_ASSET_CLASS,)).fetchone()
+        facts["deposit_rows"] = int(row[0] or 0)
+        facts["deposits"] = float(row[1] or 0.0)
+    except Exception:  # a schema-less or unreadable ledger reports as empty
+        pass
+
+    portfolio = config.get("portfolio", {}) or {}
+    override = portfolio.get("_override_cash")
+    if override is not None:
+        return float(override), "override", facts
+    if facts["deposit_rows"] > 0:
+        return max(0.0, facts["deposits"]), "deposits", facts
+    declared = portfolio.get("default_cash_balance_usdc")
+    if declared not in (None, "", 0, 0.0):
+        return float(declared), "declared", facts
+    return 0.0, "none", facts
+
 
 def calculate_tax_summary(tax_year: int = 2026, db_path: Optional[Path] = None, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
@@ -311,7 +365,7 @@ def calculate_tax_summary(tax_year: int = 2026, db_path: Optional[Path] = None, 
 
         total_tax_escrow = st_tax + lt_tax + futures_tax + ord_tax + gambling_escrow
 
-        liquid_cash = float(config.get("portfolio", {}).get("default_cash_balance_usdc", 10000.0))
+        liquid_cash, cash_source, ledger_facts = resolve_liquid_cash(config, cursor)
         safe_deployable_bankroll = max(0.0, liquid_cash - total_tax_escrow)
         reserve_ratio = (total_tax_escrow / liquid_cash * 100.0) if liquid_cash > 0 else 0.0
 
@@ -323,6 +377,13 @@ def calculate_tax_summary(tax_year: int = 2026, db_path: Optional[Path] = None, 
             "term_rule": ledger_term_rule or "pre-calendar",
             "term_rule_stale": term_rule_stale,
             "liquid_cash_balance": liquid_cash,
+            # Where the balance came from and whether the ledger has anything
+            # in it at all. `empty_ledger` with `cash_source == "none"` is the
+            # fail-closed condition the bankroll hook refuses on.
+            "cash_source": cash_source,
+            "ledger_transactions": ledger_facts["transactions"],
+            "ledger_deposits": ledger_facts["deposits"],
+            "empty_ledger": ledger_facts["transactions"] == 0,
             "total_gross_gains": total_gross_gains,
             "total_gross_losses": total_gross_losses,
             "net_capital_gains": total_gross_gains + total_gross_losses,

@@ -338,11 +338,17 @@ def generate_master_dashboard_note(
     # Obsidian cannot resolve.
     hl_link = counterpart_link(vault_path, HL_DASHBOARD_NOTE, "👑 HyperLiquid Monarch")
     ql_link = counterpart_link(vault_path, QL_DASHBOARD_NOTE, "⚡ Quant Trading Lab")
+    sports_link = counterpart_link(vault_path, "Sports_Desk", "🏈 Sports Desk")
+    xarb_link = counterpart_link(vault_path, "Cross_Market_Arb", "⚖️ Cross-Market Arb")
     nav_parts = [wikilink(HUB_NOTE, "👑 Monarch Intelligence Hub")]
     if hl_link:
         nav_parts.append(hl_link)
     if ql_link:
         nav_parts.append(ql_link)
+    if sports_link:
+        nav_parts.append(sports_link)
+    if xarb_link:
+        nav_parts.append(xarb_link)
     nav_line = "> **Vault Navigation**: " + " • ".join(nav_parts)
 
     # 1. Leaderboard Table

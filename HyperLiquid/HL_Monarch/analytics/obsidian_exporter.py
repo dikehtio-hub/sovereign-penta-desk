@@ -54,6 +54,8 @@ from analytics.obsidian_links import (
     preserve_user_notes,
     wikilink,
     write_hub_note,
+    SPORTS_DESK_NOTE,
+    CROSS_MARKET_ARB_NOTE,
     write_note_if_changed,
     make_progress_bar,
 )
@@ -660,11 +662,17 @@ def export_hyperliquid_to_obsidian(
     cfg_link = wikilink(BOT_CONFIG_NOTE, "⚙️ Bot Config")
     term_link = wikilink(TRADING_TERMINAL_NOTE, "📈 Trading Terminal")
 
+    sports_link = counterpart_link(vault_path, SPORTS_DESK_NOTE, "🏈 Sports Desk")
+    xarb_link = counterpart_link(vault_path, CROSS_MARKET_ARB_NOTE, "⚖️ Cross-Market Arb")
     nav_parts = [hub_link, ctrl_link, cfg_link, term_link]
     if pm_link:
         nav_parts.append(pm_link)
     if ql_link:
         nav_parts.append(ql_link)
+    if sports_link:
+        nav_parts.append(sports_link)
+    if xarb_link:
+        nav_parts.append(xarb_link)
     nav_line = "> **Cockpit Navigation**: " + " • ".join(nav_parts)
 
     content = f"""---

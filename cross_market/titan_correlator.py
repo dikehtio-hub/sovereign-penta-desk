@@ -423,7 +423,7 @@ last_synced: "{synced_at}"
 > - **Confirmed Titan Entities**: `{len(titans)}` institutional actors
 > - **Active Macro Signals**: `{len(signals)}` convergent vectors
 
-> **Cockpit Navigation**: [[{HUB_NOTE}|👑 Master Hub]] • [[{BOT_CONTROL_NOTE}|🎮 Bot Control]] • [[{BOT_CONFIG_NOTE}|⚙️ Bot Config]] • [[{TRADING_TERMINAL_NOTE}|📈 Trading Terminal]] • [[{HL_NOTE}|🏛 HyperLiquid]] • [[{PM_NOTE}|🌐 Polymarket]] • [[{QL_NOTE}|⚡ Quant Lab]]
+> **Cockpit Navigation**: [[{HUB_NOTE}|👑 Master Hub]] • [[{BOT_CONTROL_NOTE}|🎮 Bot Control]] • [[{BOT_CONFIG_NOTE}|⚙️ Bot Config]] • [[{TRADING_TERMINAL_NOTE}|📈 Trading Terminal]] • [[{HL_NOTE}|🏛 HyperLiquid]] • [[{PM_NOTE}|🌐 Polymarket]] • [[{QL_NOTE}|⚡ Quant Lab]] • [[Sports_Desk|🏈 Sports Desk]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]]
 
 ---
 

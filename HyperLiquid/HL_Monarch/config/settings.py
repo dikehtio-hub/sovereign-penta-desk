@@ -99,9 +99,34 @@ DB_FLUSH_INTERVAL = 2.0        # Database batch insert flush interval
 # asset_snapshots and liquidation_clusters are written every poll for every asset,
 # so without retention the DB grows without bound (~12M rows/day at 436 assets).
 DB_MAINTENANCE_INTERVAL = 300.0     # seconds between prune + WAL checkpoint passes
-SNAPSHOT_RETENTION_HOURS = 72       # asset_snapshots / orderbook_snapshots history kept
+
+# --- Round 33: RETENTION MUST OUTLAST THE HOLDING PERIOD IT EVALUATES --------
+# These were 72 / 24 / 168, and the 72 was the binding defect of the whole
+# analytics stack. BASIS_MIN_HOLD_DAYS is 7 (168h) and the price series needed to
+# score a 7-day hold was deleted after 3. The strategy's holding period was 2.3x
+# the data retained to evaluate it, so `net_apr_after_spread` - which amortises
+# execution cost over 7 days, and is what turns a 3bp spread into ~6% annualised
+# instead of ~44% - rested on a window no data in the repo could test.
+#
+# The same 72 blocked the fade re-benchmark: passive_fade_rebenchmark.meta.json
+# requires a 7-day window and excursions are measured against asset_snapshots, so
+# events older than 3 days had no price series to measure against. The reopening
+# gate was unreachable by construction, not merely not-yet-reached.
+#
+# RAISING THIS DOES NOT CREATE HISTORY. Pruned rows are gone; the change only
+# stops future deletion. Snapshots currently span 69.1h, so a 168h window first
+# becomes available ~4.1 days from the moment this ships - not today.
+#
+# AND IT IS NOT SUFFICIENT FOR THE 30-DAY STANDARD. 720 hours of observation
+# cannot be held in a 192-hour window at any disk size; that needs measurements
+# persisted incrementally as raw rows age out. See `analytics/measurement_store`
+# when it lands.
+#
+# Cost: snapshots are ~12M rows/day and dominate the file. 69h -> 192h is ~2.8x
+# on a 3.9 GB database, so roughly +7 GB against 60 GB free.
+SNAPSHOT_RETENTION_HOURS = 192      # 8 days: one clear day beyond a 7-day hold
 CLUSTER_RETENTION_HOURS = 24        # liquidation_clusters history kept
-TRADE_RETENTION_HOURS = 168         # trades + liquidation_events history kept (7 days)
+TRADE_RETENTION_HOURS = 192         # trades + liquidation_events, matched to above
 WAL_AUTOCHECKPOINT_PAGES = 2000     # ~8MB WAL before an automatic checkpoint
 
 # UI refresh caching: how long the dashboard reuses an expensive REST-backed scan

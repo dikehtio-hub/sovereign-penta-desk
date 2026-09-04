@@ -174,9 +174,18 @@ apis:
     client_id: ""
     client_secret: ""
 
-# Portfolio Liquid Balances Override (Optional: manual baseline or auto-detected)
+# Portfolio liquid balance.
+#
+# ROUND 33: THIS IS NO LONGER A NUMBER, ON PURPOSE. It shipped as 10000.00 and
+# every risk limit in the ecosystem scaled off it - safe bankroll, strategy
+# buckets, per-order caps - while the ledger held zero transactions. The balance
+# now comes from, in order: an explicit override (`--cash` for a live exchange
+# balance, `--paper-bankroll` for a simulation), then DEPOSIT / WITHDRAWAL rows
+# in the ledger (seed one with `python -m Tax_Reserve_Agent.main seed-bankroll`),
+# then this value. Leave it null so an empty ledger sizes to $0.00 and the hook
+# refuses, rather than trading against a figure nobody measured.
 portfolio:
-  default_cash_balance_usdc: 10000.00
+  default_cash_balance_usdc: null
   tax_year: 2026
 
 # On-Chain Sync (Gnosis CTF logs on Polygon + CLOB order-fill subgraph)

@@ -257,6 +257,23 @@ class StrategyBudget:
                 f"${self.deployed:,.2f} deployed, ${self.remaining:,.2f} left{tag}")
 
 
+class EmptyLedgerRefusal(RuntimeError):
+    """
+    The ledger holds no transactions and no bankroll was declared.
+
+    Raised by `require_funded()` for callers that would rather crash at startup
+    than discover at order time that every decision is REJECTED. `check_order`
+    itself never raises - it returns a rejection carrying `EMPTY_LEDGER_REASON` -
+    so a bot that only reads decisions still cannot overtrade.
+    """
+
+
+EMPTY_LEDGER_REASON = (
+    "ledger is EMPTY and no bankroll was declared - refusing to size against a "
+    "placeholder. Import a deposit (python -m Tax_Reserve_Agent.main seed-bankroll) "
+    "or pass --paper-bankroll for a simulation")
+
+
 class StrategyAllocationError(ValueError):
     """
     A `strategies:` block that cannot be honoured.
@@ -377,8 +394,14 @@ class MonarchBankrollHook:
                  allow_empirical_upsize: bool = False,
                  category_window: int = CATEGORY_WINDOW,
                  min_category_trades: int = MIN_CATEGORY_TRADES,
-                 payoff_basis: str = DEFAULT_PAYOFF_BASIS):
+                 payoff_basis: str = DEFAULT_PAYOFF_BASIS,
+                 paper_bankroll: Optional[float] = None):
         self.config = config if config is not None else load_config()
+        # An EXPLICIT simulated balance. Distinct from `live_cash`, which is a
+        # measured exchange balance passed per call: this is a declaration that
+        # the caller is running paper and knows it. Without one, an empty ledger
+        # sizes to zero.
+        self.paper_bankroll = None if paper_bankroll is None else float(paper_bankroll)
         self.tax_year = tax_year or int(self.config.get("portfolio", {}).get("tax_year", 2026))
         self.db_path = db_path
         self.max_position_pct = float(max_position_pct)
@@ -445,12 +468,18 @@ class MonarchBankrollHook:
         for. Fail-closed is the only safe direction for a spending limit.
         """
         config = self.config
-        if live_cash is not None:
+        override = live_cash if live_cash is not None else self.paper_bankroll
+        if override is not None:
             config = json.loads(json.dumps(self.config))  # deep copy; never mutate the shared config
-            config.setdefault("portfolio", {})["default_cash_balance_usdc"] = float(live_cash)
+            portfolio = config.setdefault("portfolio", {})
+            portfolio["default_cash_balance_usdc"] = float(override)
+            # Marked as an override so the calculator reports its provenance
+            # honestly instead of calling a live balance "declared in config".
+            portfolio["_override_cash"] = float(override)
         try:
             summary = calculate_tax_summary(tax_year=self.tax_year, db_path=self.db_path, config=config)
             summary["available"] = True
+            summary["paper_bankroll"] = live_cash is None and self.paper_bankroll is not None
             self._last_error = ""
             return summary
         except Exception as e:  # sqlite errors, missing db, malformed config
@@ -458,6 +487,8 @@ class MonarchBankrollHook:
             print(f"[WARN] Tax Reserve Agent unavailable ({self._last_error}); orders will be rejected.")
             return {
                 "available": False, "tax_year": self.tax_year,
+                "empty_ledger": True, "cash_source": "none",
+                "ledger_transactions": 0, "paper_bankroll": False,
                 "liquid_cash_balance": float(live_cash or 0.0),
                 "tax_escrow_reserve": 0.0, "safe_deployable_bankroll": 0.0,
                 "reserve_ratio_pct": 0.0, "net_capital_gains": 0.0,
@@ -900,6 +931,12 @@ class MonarchBankrollHook:
 
         if not snapshot.get("available", False):
             return decision(False, 0.0, f"tax ledger unreadable ({self._last_error or 'unknown error'})")
+        # ROUND 33 RULING C. Readable but EMPTY, with nothing declared, is not
+        # "available with $0" - it is the placeholder case, and the reason must
+        # say so, or the operator reads "requested notional exceeds safe bankroll"
+        # and goes looking for a sizing bug that is not there.
+        if snapshot.get("empty_ledger") and snapshot.get("cash_source") == "none":
+            return decision(False, 0.0, EMPTY_LEDGER_REASON)
         if desired_notional <= 0:
             return decision(False, 0.0, "requested notional must be positive")
         if safe <= 0:
@@ -1358,11 +1395,26 @@ class MonarchBankrollHook:
 
     # -- reporting ----------------------------------------------------------
 
+    @property
+    def is_funded(self) -> bool:
+        """False when the ledger is empty and nothing was declared - the $0 case."""
+        snapshot = self.snapshot()
+        return bool(snapshot.get("available")) and not (
+            snapshot.get("empty_ledger") and snapshot.get("cash_source") == "none")
+
+    def require_funded(self) -> None:
+        """Raise `EmptyLedgerRefusal` rather than let a bot start against $0."""
+        if not self.is_funded:
+            raise EmptyLedgerRefusal(EMPTY_LEDGER_REASON)
+
     def status_line(self, live_cash: Optional[float] = None) -> str:
         """One-line banner for a bot's startup log or the Monarch TUI footer."""
         snapshot = self.snapshot(live_cash)
         if not snapshot.get("available", False):
             return "[TAX] ledger unavailable - order gating is FAIL-CLOSED"
+        if snapshot.get("empty_ledger") and snapshot.get("cash_source") == "none":
+            return ("[TAX] ledger EMPTY and no bankroll declared - order gating is "
+                    "FAIL-CLOSED (seed a deposit, or pass --paper-bankroll)")
         return (f"[TAX] safe ${snapshot['safe_deployable_bankroll']:,.2f} "
                 f"| escrow ${snapshot['tax_escrow_reserve']:,.2f} "
                 f"({snapshot['reserve_ratio_pct']:.1f}% of ${snapshot['liquid_cash_balance']:,.2f}) "

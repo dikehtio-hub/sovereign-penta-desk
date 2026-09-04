@@ -60,6 +60,10 @@ CLOSING_SIDES = ("SELL", "REDEEM", "OPTION_SELL", "OPTION_EXPIRE", "OPTION_BUY_T
 # row no matter what `asset_class` the import happened to write, and it must not
 # be allowed to land in a capital-gain term bucket.
 WAGER_SIDES = ("BET", "BET_WIN", "BET_LOSS", "BET_PUSH", "BET_CASHOUT")
+# Cash movements. Recorded in `transactions` so the ledger can state the liquid
+# balance from evidence, but they are not positions: no lot opens, nothing is
+# ever realised against them, and the tax summary never sums them into gains.
+CASH_SIDES = ("DEPOSIT", "WITHDRAWAL")
 GAMBLING_TERM = "GAMBLING"
 GAMBLING_ASSET_CLASS = "sports_bet"
 
@@ -320,6 +324,8 @@ def apply_to_lots(tx: Dict[str, Any], tx_id: int, conn: sqlite3.Connection,
     """
     cursor = conn.cursor()
     side = tx["side"].upper()
+    if side in CASH_SIDES:
+        return          # a deposit is money, not a position - see CASH_SIDES
     quantity = float(tx["quantity"])
     price = float(tx["price"])
     fee = float(tx.get("fee", 0.0))

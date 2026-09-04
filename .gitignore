@@ -32,11 +32,24 @@ Keys/
 *.sqlite3
 
 # Broker and exchange exports - trade history, account identifiers.
-data/imports/
-data/processed/
-data/failed/
-data/odds_drops/
-data/results_drops/
+#
+# `**/` PREFIXES, BECAUSE A PATTERN WITH A SLASH IS ANCHORED TO THIS FILE'S
+# DIRECTORY. `data/odds_drops/` matched only <root>/data/odds_drops/ and never
+# Sports_Desk/data/odds_drops/ - the first real odds drop showed up as untracked
+# and would have been committed by `git add -A`. Every desk keeps its data under
+# its own `data/`, so every rule here must match at any depth.
+#
+# `data/imports/*` rather than `data/imports/` so the samples folder and the
+# README can be re-included - git cannot re-include inside an excluded
+# directory, only inside an excluded glob.
+**/data/imports/*
+!**/data/imports/README.txt
+!**/data/imports/samples/
+**/data/processed/
+**/data/failed/
+**/data/odds_drops/
+**/data/results_drops/
+**/data/polymarket_drops/
 *_trades.csv
 *_liquidations.csv
 binance*.csv

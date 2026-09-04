@@ -28,5 +28,13 @@
     },
     "caveat": "Only the 30m horizon clears p<0.05 under clustering. At 5m and 15m the result is NOT significant. The retirement rests on one horizon of a concentrated sample."
   },
-  "auditing_standard": "Every excursion run now reports asset-concentration HHI, coins measured, top-coin share, and a cluster-bootstrapped p-value. Event-level bootstraps are invalid here because forward windows on the same coin overlap."
+  "auditing_standard": "Every excursion run now reports asset-concentration HHI, coins measured, top-coin share, and a cluster-bootstrapped p-value. Event-level bootstraps are invalid here because forward windows on the same coin overlap.",
+  "data_retention": {
+    "recorded_utc": "2026-09-04T00:00:00+00:00",
+    "finding": "Round 32: SNAPSHOT_RETENTION_HOURS was 72 while this registration requires a 7-day window. Excursions are measured against asset_snapshots, so events older than 3 days had no price series and the reopening gate was unreachable by construction.",
+    "fix": "Round 33: SNAPSHOT_RETENTION_HOURS = 192 and TRADE_RETENTION_HOURS = 192.",
+    "required_snapshot_hours": 168.5,
+    "note": "Raising retention does not recreate pruned history. Snapshots spanned 69.1h at the fix; a full 7-day window first exists ~4.1 days later. The reopening bar above is unchanged.",
+    "enforced_in_code": "wick_benchmark.retention_covers_window(), checked first by reopening_gate()"
+  }
 }

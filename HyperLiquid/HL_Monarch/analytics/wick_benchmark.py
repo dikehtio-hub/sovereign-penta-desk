@@ -316,7 +316,52 @@ REOPEN_RATIO = 1.25
 REOPEN_CONFIDENCE = 0.90
 
 
-def reopening_gate(result: Dict[str, Any]) -> Dict[str, Any]:
+def retention_covers_window(window_days: float = 7.0,
+                            forward_minutes: float = 30.0) -> Dict[str, Any]:
+    """
+    Can the price series still hold every event in the registration's window?
+
+    ROUND 32 FOUND THE GATE UNREACHABLE BY CONSTRUCTION. The registration asks
+    for a 7-day window; excursions are measured against asset_snapshots; and
+    those were pruned at 72 hours, so events older than three days had no price
+    series to measure against no matter how long the collector ran. The sample
+    could grow forever and never qualify. This check is what makes that visible
+    - and it is asked FIRST, because a sample verdict on a window the database
+    cannot hold is a verdict on nothing.
+    """
+    from config.settings import SNAPSHOT_RETENTION_HOURS
+    needed = float(window_days) * 24.0 + float(forward_minutes) / 60.0
+    covers = float(SNAPSHOT_RETENTION_HOURS) >= needed
+    return {
+        "covers": covers,
+        "retention_hours": float(SNAPSHOT_RETENTION_HOURS),
+        "needed_hours": needed,
+        "detail": ("snapshots retained %.0fh >= %.1fh needed for a %g-day window"
+                   % (SNAPSHOT_RETENTION_HOURS, needed, window_days)) if covers else
+                  ("snapshots retained %.0fh < %.1fh needed for a %g-day window: "
+                   "events age out before they can be measured"
+                   % (SNAPSHOT_RETENTION_HOURS, needed, window_days)),
+    }
+
+
+def reopening_gate(result: Dict[str, Any], window_days: float = 7.0) -> Dict[str, Any]:
+    """
+    The sample gate, with the retention check in front of it.
+
+    Retention is checked first and overrides the sample verdict, because a
+    "SAMPLE_ADEQUATE" on a window the database cannot hold would be the most
+    misleading status this function could return.
+    """
+    retention = retention_covers_window(window_days)
+    out = _reopening_sample_gate(result)
+    out["retention"] = retention
+    if not retention["covers"]:
+        out.update({"status": "RETENTION_TOO_SHORT", "eligible": False,
+                    "detail": retention["detail"]})
+    return out
+
+
+def _reopening_sample_gate(result: Dict[str, Any]) -> Dict[str, Any]:
     """
     Whether the sample is broad enough to reconsider the retired fade at all.
 

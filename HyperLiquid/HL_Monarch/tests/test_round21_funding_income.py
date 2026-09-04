@@ -112,7 +112,14 @@ def test_funding_receipt_ingestion_and_tax_calculation(tmp_path: Path):
     # this ledger exists to prevent.
     #
     # $1.50 of funding at the composite ordinary rate (0.35) = $0.525.
-    summary = calculate_tax_summary(tax_year=2026, db_path=db_path)
+    # ROUND 33 RULING C: config.yaml no longer carries a placeholder balance, so a
+    # ledger with income but no DEPOSIT row sizes to $0.00. This test is a
+    # simulation and must DECLARE the balance it reasons about - which is what
+    # every fixture was implicitly doing before, off a number nobody measured.
+    from Tax_Reserve_Agent.config import load_config
+    config = load_config()
+    config.setdefault("portfolio", {})["default_cash_balance_usdc"] = 10_000.0
+    summary = calculate_tax_summary(tax_year=2026, db_path=db_path, config=config)
     assert summary["ordinary_income"] == pytest.approx(1.50, abs=1e-4)
     assert summary["net_ordinary_income"] == pytest.approx(1.50, abs=1e-4)
 

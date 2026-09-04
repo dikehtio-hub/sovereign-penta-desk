@@ -34,6 +34,10 @@ HUB_NOTE = "Monarch_Hub"
 BOT_CONTROL_NOTE = "Bot_Control"
 BOT_CONFIG_NOTE = "Bot_Config"
 TRADING_TERMINAL_NOTE = "Trading_Terminal"
+# Round 33: the fourth and fifth desks. Sports_Desk and the cross-market arb
+# exporter write these at the vault root; the hub lists them when present.
+SPORTS_DESK_NOTE = "Sports_Desk"
+CROSS_MARKET_ARB_NOTE = "Cross_Market_Arb"
 
 # Per-suite subfolders for entity notes.
 HL_WHALES_DIR = "Whales"
@@ -181,6 +185,8 @@ def write_hub_note(vault_path: Path, synced_at: str) -> Path:
     has_ctrl = note_exists(vault_path, BOT_CONTROL_NOTE)
     has_cfg = note_exists(vault_path, BOT_CONFIG_NOTE)
     has_term = note_exists(vault_path, TRADING_TERMINAL_NOTE)
+    has_sports = note_exists(vault_path, SPORTS_DESK_NOTE)
+    has_xarb = note_exists(vault_path, CROSS_MARKET_ARB_NOTE)
 
     rows = []
     if has_ctrl:
@@ -229,6 +235,18 @@ def write_hub_note(vault_path: Path, synced_at: str) -> Path:
             f"| Multi-Venue Intelligence | Whale entity resolution, logarithmic conviction score, macro co-positioning "
             f"| `Active Intelligence` |"
         )
+    if has_sports:
+        rows.append(
+            f"| {wikilink(SPORTS_DESK_NOTE, '🏈 Sports Desk')} "
+            f"| Sportsbooks / Fair Value | Shin-devigged edges, after-tax hurdle, execution CLV, tax-ledger bridge "
+            f"| `Active Desk` |"
+        )
+    if has_xarb:
+        rows.append(
+            f"| {wikilink(CROSS_MARKET_ARB_NOTE, '⚖️ Cross-Market Arb')} "
+            f"| Polymarket vs Sportsbook | Matched pairs priced through the asymmetric tax, both characterisations "
+            f"| `Active Desk` |"
+        )
     table = "\n".join(rows) if rows else "| — | — | *No suite dashboards exported into this vault yet.* | — |"
     both = has_hl and has_pm
     cross_note = (
@@ -260,6 +278,10 @@ def write_hub_note(vault_path: Path, synced_at: str) -> Path:
         launcher_rows.append(f"| ⚡ **CME Futures Desk** | /NQ, /ES, /GC, /CL, 9 Strategy Stacks, Killzones | [[{QL_DASHBOARD_NOTE}|Open Quant Lab Desk]] |")
     if has_titans:
         launcher_rows.append(f"| 👑 **Cross-Market Titans** | Multi-venue entity resolution, macro co-positioning | [[{TITANS_DASHBOARD_NOTE}|Open Titans Desk]] |")
+    if has_sports:
+        launcher_rows.append(f"| 🏈 **Sports Desk** | +EV hotlist, realised P&L, execution CLV, un-exported bet alerts | [[{SPORTS_DESK_NOTE}|Open Sports Desk]] |")
+    if has_xarb:
+        launcher_rows.append(f"| ⚖️ **Cross-Market Arb** | Polymarket vs sportsbook pairs, 16.75% / 23.93% after-tax hurdles | [[{CROSS_MARKET_ARB_NOTE}|Open Cross-Market Arb]] |")
 
     launchers_table = "\n".join(launcher_rows) if launcher_rows else "| — | *No active dashboards.* | — |"
 
@@ -277,7 +299,7 @@ last_synced: "{synced_at}"
 
 > [!INFO] **Vault Index**
 > - **Last Refreshed**: `{synced_at}`
-> - **Suites In This Vault**: `{int(has_hl) + int(has_pm) + int(has_ql) + int(has_titans)}` of {2 + (1 if has_ql else 0) + (1 if has_titans else 0)}
+> - **Suites In This Vault**: `{int(has_hl) + int(has_pm) + int(has_ql) + int(has_titans) + int(has_sports) + int(has_xarb)}` of {2 + (1 if has_ql else 0) + (1 if has_titans else 0) + (1 if has_sports else 0) + (1 if has_xarb else 0)}
 > - **Vault Root**: `{vault_path}`
 
 {cross_note}
@@ -307,6 +329,8 @@ Both suites track **wallet addresses** as primary entities, backed by local SQLi
 - **Polymarket**: Discovers sharp traders from prediction-market fills and tracks 7-day realized/unrealized PnL and consensus convergence.
 - **Quant Trading Lab**: Tracks CME Futures microstructure (/NQ, /ES, /GC, /CL), 9 Strategy Stacks, and real-time ICT Killzone session clocks.
 - **Cross-Market Titans**: An address appearing in both venues is an institutional actor operating across perps and prediction markets.
+- **Sports Desk**: Devigs the sharp book, scores retail prices against it, gates every stake through the tax ledger's after-tax hurdle, and flags bets the ledger has not yet seen.
+- **Cross-Market Arb**: Pairs a Polymarket YES with the opposite sportsbook side and prices the worst branch after tax - each leg's loss is deductible only against income the other leg does not produce.
 
 ---
 *Generated automatically by Monarch Intelligence Exporters.*

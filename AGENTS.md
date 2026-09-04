@@ -5,6 +5,12 @@ the detail.
 
 ## Status
 
+Round 33 complete: DATA GROUNDING. Retention raised to 192h; the bankroll gate
+now FAILS CLOSED on an empty ledger (config placeholder removed, DEPOSIT rows
+are the measured balance); Sports_Desk has a real `sports_market.db` for the
+first time; Obsidian is a penta-desk cockpit (Sports_Desk.md, Cross_Market_Arb.md,
+hub regenerated). 62 new tests.
+
 Round 31 complete: Targets D (exit hysteresis) and E (leverage policy) applied,
 and **Item 14 built as a GATED, NON-TRADING module** - see findings. 38 new tests.
 
@@ -24,9 +30,8 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market (11 modules) | 738 OK |
-| HL_Monarch (pytest) | 966 passed |
-| Sports_Desk master + bridges (9 modules) | 680 OK |
+| master + bridges + cross-market + exporters (14 modules) | 768 OK |
+| HL_Monarch (pytest) | 974 passed |
 | Tax_Reserve_Agent (4 modules) | 524 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -49,6 +54,34 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 33 findings
+
+- **Three of Antigravity's Round 33 rulings needed correction before building on
+  them, all verified**: (1) Ruling B's cost-drag figures (3.13% / 21.90%) used
+  `legs=1` for a two-leg spot-backed trade; correct values are **6.26% / 43.80%**
+  - the conclusion (keep 7-day hold) is *strengthened*. (2) Ruling A's "unblocks
+  7-day windows TODAY" is wrong: raising retention does not recreate pruned
+  rows; snapshots spanned 69.1h, so a full 168h window first exists **~4.1 days
+  after the change**. (3) Ruling D (720h across >=2 regimes) **cannot be met under
+  Ruling A alone** - 192h retention can never hold 720h; incremental measurement
+  persistence (option b) is required by D, not optional.
+- **Target 2 path names were wrong** (`monarch_bankroll.py` does not exist; the
+  hook is `interfaces/monarch_hook.py`). No `DEPOSIT` type existed in the ledger;
+  one now does (`asset_class="cash"`, opens no lot, never summed into gains).
+- **Precedence for liquid cash**: override (`--cash` / `--paper-bankroll`) >
+  deposits (measured) > declared-in-config > **none = $0.00**. `config.yaml` now
+  ships `default_cash_balance_usdc: null`. One HL test relied on the old
+  placeholder and now declares its balance explicitly.
+- **The odds watcher's own guard caught a defect in my sample**: I keyed the two
+  spread legs under different lines (-3.5/+3.5), making two one-leg markets it
+  correctly refused. Both legs now share one line key; 6/6 markets price.
+- **`.gitignore` data rules were root-anchored** - `data/odds_drops/` never
+  matched `Sports_Desk/data/odds_drops/`, and the first real drop showed up as
+  untracked. All data rules now use `**/` prefixes; verified with `check-ignore`.
+- The Sports exporter had a tz-aware `now` vs naive `placed_at` bug that silently
+  disabled the >3-day un-exported warning; caught by the test that asked for the
+  warning by name.
 
 ## Round 31 findings
 
@@ -117,6 +150,16 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   (23.9317%, matches to 1e-6) and the trivially-zero fully-relieved case.
 
 ## Next / open questions
+
+- **Incremental measurement persistence (option b)** is now *required* by Ruling
+  D's 720h standard, not a follow-up. Design: persist per-event excursions and
+  per-window realised funding as raw rows age out, so the analysis window is
+  unbounded while storage stays flat.
+- **7-day entry-conditioned re-run** once snapshots reach 168h (~2026-09-08).
+  The 24h signal is validated (+17.7pp over control, coin-bootstrap 0.913-1.000);
+  the 7-day hold the money is committed for is not.
+- Run `python -m Tax_Reserve_Agent.main seed-bankroll --paper-bankroll <amt>`
+  before any live desk starts, or every gate stays FAIL-CLOSED by design.
 
 - **Is a Polymarket event contract capital or wagering?** Unsettled - the IRS has
   not ruled on retail-held CFTC-regulated binaries. IRC 1234A supports capital;

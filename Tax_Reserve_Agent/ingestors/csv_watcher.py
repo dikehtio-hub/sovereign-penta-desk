@@ -55,6 +55,7 @@ FILENAME_HINTS = {
     "tradovate": ("tradovate", "futures", "cme", "ninjatrader"),
     "sports": ("sports", "sportsbook", "draftkings", "fanduel", "betmgm", "pinnacle",
                "caesars", "pointsbet", "bet365", "wager", "bets", "parlay"),
+    "deposit": ("deposit", "seed_bankroll", "bankroll", "cash_in", "withdrawal"),
 }
 
 # Header columns that only ever appear on one kind of export.
@@ -71,6 +72,7 @@ SIDE_SIGNATURES = {
     "options": ("OPTION_BUY", "OPTION_SELL", "OPTION_EXPIRE", "OPTION_SELL_TO_OPEN", "OPTION_BUY_TO_CLOSE", "EXPIRE"),
     "polymarket": ("REDEEM", "SPLIT", "MERGE", "SPLIT_YES", "SPLIT_NO"),
     "sports": ("BET", "BET_WIN", "BET_LOSS", "BET_PUSH", "BET_CASHOUT"),
+    "deposit": ("DEPOSIT", "WITHDRAWAL"),
 }
 
 
@@ -120,6 +122,8 @@ def classify_csv(path: Path, rows: Optional[List[Dict[str, str]]] = None,
                 return "tradovate", "explicit `source` column"
             if declared in ("sports", "sports_bet", "sportsbook", "draftkings", "fanduel", "betmgm", "pinnacle"):
                 return "sports", "explicit `source` column"
+            if declared in ("deposit", "cash", "bankroll", "withdrawal"):
+                return "deposit", "explicit `source` column"
 
     stem = path.stem.lower()
     for source, tokens in FILENAME_HINTS.items():
@@ -323,6 +327,49 @@ def load_tradovate_csv(path: Path) -> List[Dict[str, Any]]:
     return trades
 
 
+def load_deposit_csv(path: Path) -> List[Dict[str, Any]]:
+    """
+    Cash deposits and withdrawals -> ledger rows under `asset_class = "cash"`.
+
+    Columns (extra columns ignored): timestamp, side (DEPOSIT | WITHDRAWAL),
+    amount (or quantity / total_value), [symbol, default USDC], [tx_hash],
+    [notes]. Quantity is the amount and the price is 1.0, so `total_value` is the
+    dollar figure and the ledger's existing sums need no special case.
+
+    This is the row that ROUND 33 makes the ledger's cash balance depend on. A
+    ledger with deposit rows reports what was actually put in; a ledger without
+    them, and nothing declared, reports $0.00 - never a placeholder.
+    """
+    out: List[Dict[str, Any]] = []
+    with open(path, "r", encoding="utf-8-sig", newline="") as f:
+        for line_no, raw in enumerate(csv.DictReader(f), start=2):
+            row = {str(k).strip().lower(): (v or "").strip() for k, v in raw.items() if k}
+            side = str(row.get("side") or "DEPOSIT").strip().upper()
+            if side not in ("DEPOSIT", "WITHDRAWAL"):
+                raise ValueError(f"{path.name}:{line_no} side must be DEPOSIT or "
+                                 f"WITHDRAWAL, got {side!r}")
+            amount_text = (row.get("amount") or row.get("quantity")
+                           or row.get("total_value") or row.get("usd") or "")
+            try:
+                amount = float(str(amount_text).replace(",", "").replace("$", ""))
+            except ValueError:
+                raise ValueError(f"{path.name}:{line_no} amount {amount_text!r} is not a number")
+            if amount <= 0:
+                raise ValueError(f"{path.name}:{line_no} amount must be positive; a "
+                                 f"withdrawal is its own side, not a negative deposit")
+            timestamp = str(row.get("timestamp") or row.get("date") or "").strip()
+            symbol = str(row.get("symbol") or row.get("asset") or "USDC").strip().upper()
+            tx_hash = str(row.get("tx_hash") or "").strip() or _row_fingerprint(row, "deposit")
+            trade = {
+                "source": "deposit", "tx_hash": tx_hash, "timestamp": timestamp,
+                "asset_class": "cash", "symbol": symbol, "side": side,
+                "quantity": amount, "price": 1.0, "fee": 0.0, "total_value": amount,
+                "notes": f"{side.title()} of {symbol}",
+            }
+            out.append(_carry_notes(trade, row))
+    return out
+
+
 def load_sports_csv(path: Path) -> List[Dict[str, Any]]:
     """
     Loads sports wagers and settlements exported from sportsbooks.
@@ -350,6 +397,7 @@ LOADERS = {
     "options": load_options_csv,
     "tradovate": load_tradovate_csv,
     "sports": load_sports_csv,
+    "deposit": load_deposit_csv,
 }
 
 
