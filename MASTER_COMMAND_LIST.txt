@@ -1,0 +1,444 @@
+================================================================================
+👑 SOVEREIGN PENTA-DESK TRADING ECOSYSTEM — MASTER COMMAND REFERENCE
+================================================================================
+File:        MASTER_COMMAND_LIST.txt
+Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
+Created:     2026-09-04 (Round 50 Milestone)
+Last Update: Round 50 Complete (Commit 0bb8f0b)
+Status:      2,427 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
+
+This document is the authoritative, permanent command reference for every tool,
+daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
+  Desk 1: HyperLiquid Monarch  (Perps, Basis Harvester, Whale Sweeper, L2 Sampler)
+  Desk 2: Sports Desk          (Fair Value Engine, Poisson, Devigger, CLV Tracker)
+  Desk 3: Cross-Market Desk    (Polymarket Dutching Arb, Titan Correlator)
+  Desk 4: Quant Trading Lab    (CME Futures Excursions, Backtesting, Risk Sentinel)
+  Desk 5: Tax Reserve Agent    (IRC §1256, NJ 07083 Apportionment, Bankroll Escrow)
+
+RULE: Whenever new tools, flags, or items are added to the ecosystem, update this file!
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+  1. QUICK-START CHEATSHEET (The 5 Most Important Commands)
+  2. TOP 20 ECOSYSTEM MODULES (What It Does & How To Activate)
+       - Tier 1: Core Foundation & Risk Defense (Items 1 - 5)
+       - Tier 2: Core Execution & Cross-Market Alpha (Items 6 - 10)
+       - Tier 3: Edge Refinement & Trading Lab Scaling (Items 11 - 15)
+       - Tier 4: Analytics, Optimization & Master Cockpit (Items 16 - 20)
+  3. PROCESS DAEMON & SUPERVISOR MANAGEMENT
+  4. OBSIDIAN VAULT SYNCHRONIZATION & EXPORTERS
+  5. MASTER OFFLINE TEST SUITES (100% Offline Pass Guarantee)
+  6. EMERGENCY BRAKES, FAIL-SAFE SENTINELS & RULES
+
+================================================================================
+1. QUICK-START CHEATSHEET (The 5 Most Important Commands)
+================================================================================
+
+1. START LIVE HARVESTER SERVICE (24/7 Background with Keep-Awake & Auto-Restart):
+   cmd /c "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\start_collector.bat"
+
+2. OPEN READ-ONLY TERMINAL DASHBOARD:
+   cmd /c "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\open_dashboard.bat"
+   (or from root: python HyperLiquid/HL_Monarch/main.py dashboard)
+
+3. CHECK CURRENT PAPER HARVESTER STATE & PnL:
+   python HyperLiquid/HL_Monarch/main.py basis --harvest
+
+4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
+   python -m cross_market.titan_correlator --scan
+
+5. RUN FULL OFFLINE VERIFICATION (2,427 tests across all 5 desks):
+   python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+
+================================================================================
+2. TOP 20 ECOSYSTEM MODULES (What It Does & How To Activate)
+================================================================================
+
+--------------------------------------------------------------------------------
+TIER 1: CORE FOUNDATION & RISK DEFENSE
+--------------------------------------------------------------------------------
+
+[x] ITEM 1: SPORTS ODDS INGESTION & FAIR-VALUE (NO-VIG) ENGINE
+  - What It Does: Pulls multi-bookmaker odds (Pinnacle, Circa, retail books). Strips
+    the bookmaker overround/vig using Shin's method, Power oracle, or closed-form
+    exact deduction to compute the true mathematical fair-value probability.
+  - Primary Code: Sports_Desk/engine/fair_value.py
+                  Sports_Desk/ingestors/odds_fetcher.py
+                  Sports_Desk/ingestors/odds_watcher.py
+  - Database:     Sports_Desk/data/sports_market.db
+  - How to Activate:
+      # Ingest sample multi-bookmaker odds and compute no-vig fair value:
+      python -m Sports_Desk.ingestors.odds_fetcher --sample --run-watcher --hurdle-from-ledger
+
+      # Continuous polling with live feed (only drops/recalculates on price change):
+      python -m Sports_Desk.ingestors.odds_fetcher --watch --interval 300 --url <FEED_URL> --run-watcher --hurdle-from-ledger
+  - Test Command:
+      python -m unittest Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher
+
+--------------------------------------------------------------------------------
+[x] ITEM 2: SPORTS GAMBLING TAX & LOSS DEDUCTION MODULE
+  - What It Does: Computes statutory tax liability under IRC §61 and §165(d).
+    Implements New Jersey state tax netting (Union NJ 07083: 24% Fed + 6.37% NJ + 2%
+    buffer = 32.37% composite). Avoids the federal standard deduction trap (losses
+    non-deductible federally without itemizing on Schedule A) and tracks Form W-2G
+    withholding credits.
+  - Primary Code: Tax_Reserve_Agent/engine/gambling_tax.py
+                  Tax_Reserve_Agent/ingestors/sports_betting.py
+  - How to Activate:
+      # Ingest settled sportsbook bet slips from CSV drop directory:
+      python -m Tax_Reserve_Agent.main import
+
+      # View current gambling escrow vs net winnings:
+      python -m Tax_Reserve_Agent.main status
+  - Test Command:
+      python -m unittest Tax_Reserve_Agent.tests.test_sports_tax
+
+--------------------------------------------------------------------------------
+[x] ITEM 3: MULTI-MARKET BANKROLL HURDLE & GATING HOOK
+  - What It Does: Centralized pre-flight gate. Recomputes the required after-tax
+    break-even edge before any wager or trade is executed. Fails closed (rejects
+    orders) if the tax ledger is uninitialized or if available unreserved cash is $0.
+  - Primary Code: Tax_Reserve_Agent/interfaces/monarch_hook.py
+                  Tax_Reserve_Agent/main.py
+  - How to Activate:
+      # Check if bankroll gate approves a proposed bet or position size:
+      python -m Tax_Reserve_Agent.main bankroll --check 1000
+
+      # Seed paper bankroll deposit (never do this on live IRS ledger):
+      python -m Tax_Reserve_Agent.main seed-bankroll --paper-bankroll 10000
+  - Test Command:
+      python -m unittest Tax_Reserve_Agent.tests.test_empty_ledger
+
+--------------------------------------------------------------------------------
+[x] ITEM 4: SECTION 1256 FUTURES TAX INGESTION (60/40 RULE)
+  - What It Does: Ingests CME futures trade confirmations (CME MES, MNQ, ES, NQ)
+    from Tradovate/NinjaTrader. Automatically classifies them under IRC §1256
+    (60% long-term / 40% short-term capital gains rate regardless of holding time).
+  - Primary Code: Tax_Reserve_Agent/ingestors/tradovate.py
+  - How to Activate:
+      # Drop Tradovate execution receipts into Tax_Reserve_Agent/data/imports/ then run:
+      python -m Tax_Reserve_Agent.main import
+  - Test Command:
+      python -m unittest Tax_Reserve_Agent.tests.test_tradovate_receipts
+
+--------------------------------------------------------------------------------
+[x] ITEM 5: FRACTIONAL KELLY STAKING ENGINE
+  - What It Does: Dynamic bet sizing engine implementing Quarter-Kelly staking
+    scaled against the net after-tax hurdle rate. Enforces strict 1-game 1-position
+    risk limits (e.g. Chiefs ML and Chiefs -3.5 share one aggregate exposure cap).
+  - Primary Code: Sports_Desk/engine/fair_value.py
+                  Tax_Reserve_Agent/interfaces/monarch_hook.py
+  - How to Activate:
+      # Integrated inside the Sports CLI and odds watcher:
+      python -m Sports_Desk.interfaces.monarch_shark --performance
+  - Test Command:
+      python -m unittest Sports_Desk.tests.test_fair_value
+
+--------------------------------------------------------------------------------
+TIER 2: CORE EXECUTION & CROSS-MARKET ALPHA
+--------------------------------------------------------------------------------
+
+[x] ITEM 6: CROSS-MARKET ARBITRAGE ENGINE (POLYMARKET VS SPORTSBOOKS)
+  - What It Does: Matches sports event outcomes on Polymarket's CLOB against sharp
+    and retail sportsbook odds. Evaluates dutched arbitrage under asymmetric tax
+    treatment (gambling loss relief vs capital gain offsets) with signed spread lines.
+  - Primary Code: cross_market/hybrid_arb.py
+                  cross_market/matcher.py
+                  cross_market/hud.py
+                  Sports_Desk/interfaces/monarch_shark.py
+  - How to Activate:
+      # Run cross-market arbitrage scan between Polymarket and Sportsbooks:
+      python -m Sports_Desk.interfaces.monarch_shark --cross-market
+
+      # Check for desynchronized bets placed >3 days ago:
+      python -m Sports_Desk.interfaces.monarch_shark --check-sync
+      python -m Sports_Desk.interfaces.monarch_shark --reconcile   (alias)
+
+      # Export cleared cross-market fills to Tax Reserve Agent:
+      python -m Sports_Desk.interfaces.monarch_shark --export-to-tax-agent
+  - Test Command:
+      python -m unittest cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_arbitrage
+
+--------------------------------------------------------------------------------
+[ ] ITEM 7: AUTOMATED HEADLESS SPORTS EXECUTION AGENT
+  - What It Does: Headless browser automation (Playwright) navigating to bookmaker
+    betslips to execute +EV wagers before lines move.
+  - Status: [ROADMAP] Specification ready; pending live account credentials.
+
+--------------------------------------------------------------------------------
+[x] ITEM 8: HYPERLIQUID DELTA-NEUTRAL FUNDING RATE HARVESTER (BASIS BOT)
+  - What It Does: Fully automated cash-and-carry harvester. Simultaneously buys spot
+    and shorts perpetual contracts on HyperLiquid when annualized funding yield
+    exceeds entry hurdle (>=25% gross / >=20% net APR). Enforces:
+      * TradFi Quarantine: 7 TradFi DEXes (xyz, km, cash, flx, mkts, io, vntl) quarantined.
+      * Mixed-DEX Allow-List: para perps quarantined unless on crypto allow-list (ANSEM).
+      * 10x ADV Floor: Spot pair must have >= $100k 24h volume ($10k leg notional).
+      * Duplicate Guard: 1 position per underlying coin across spot and perps.
+      * Spread Ceiling: Max 25 bps spread on entry.
+      * Auto-Sweep: Closes positions if spot pair volume drops below floor.
+  - Primary Code: HyperLiquid/HL_Monarch/strategies/funding_harvester.py
+                  HyperLiquid/HL_Monarch/analytics/funding_arbitrage.py
+                  HyperLiquid/HL_Monarch/main.py
+  - State File:   HyperLiquid/HL_Monarch/data/basis_paper_state.json
+  - How to Activate:
+      # Scan live markets for basis opportunities:
+      python HyperLiquid/HL_Monarch/main.py basis --scan
+
+      # Run manual harvest check (displays open positions, accrued yield, cash):
+      python HyperLiquid/HL_Monarch/main.py basis --harvest
+
+      # Manually trigger illiquid spot leg sweep (service must be stopped):
+      python HyperLiquid/HL_Monarch/main.py basis --sweep-illiquid
+
+      # List liquid spot tokens with no perp mapping:
+      python HyperLiquid/HL_Monarch/main.py basis --unmapped-spot
+
+      # Change dynamic risk preset (hot-reloaded without daemon restart):
+      python HyperLiquid/HL_Monarch/main.py config --apply-preset conservative
+      python HyperLiquid/HL_Monarch/main.py config --apply-preset balanced
+      python HyperLiquid/HL_Monarch/main.py config --apply-preset aggressive
+  - Test Command:
+      python -m pytest HyperLiquid/HL_Monarch/tests/test_funding_arbitrage.py -q
+
+--------------------------------------------------------------------------------
+[x] ITEM 9: LIVE PROCESS SUPERVISOR & HEALTH WATCHDOG DAEMON
+  - What It Does: Robust process daemon managing the 24/7 background collector.
+    Holds Windows OS keep-awake flags (ES_CONTINUOUS | ES_SYSTEM_REQUIRED), tracks
+    coverage every 15 minutes, auto-restarts failed children with backoff, and
+    isolates crashes.
+  - Primary Code: HyperLiquid/HL_Monarch/run_collector_service.py
+  - Launcher:     HyperLiquid/HL_Monarch/scripts/launchers/start_collector.bat
+  - Stop Script:  HyperLiquid/HL_Monarch/scripts/launchers/stop_collector.bat
+  - Logs:         HyperLiquid/HL_Monarch/data/collector_service.jsonl
+  - PIDs:         HyperLiquid/HL_Monarch/data/collector_service.pid
+                  HyperLiquid/HL_Monarch/data/collector.pid
+  - How to Activate:
+      # Launch 24/7 supervisor and collector service:
+      cmd /c "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\start_collector.bat"
+
+      # Gracefully terminate service and collector:
+      cmd /c "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat"
+  - Test Command:
+      python -m pytest HyperLiquid/HL_Monarch/tests/test_dashboard_service_mode.py -q
+
+--------------------------------------------------------------------------------
+[ ] ITEM 10: CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT
+  - What It Does: Mobile interactive C2 for remote /bankroll, /positions, and /killall.
+  - Status: [ROADMAP]
+
+--------------------------------------------------------------------------------
+TIER 3: EDGE REFINEMENT & TRADING LAB SCALING
+--------------------------------------------------------------------------------
+
+[ ] ITEM 11: AUTOMATED PROP FIRM / CME FUTURES EXECUTION GATEWAY
+  - What It Does: Live execution bridge connecting Quant Lab ICT/Killzone to Tradovate.
+  - Status: [ROADMAP]
+
+--------------------------------------------------------------------------------
+[ ] ITEM 12: POLYMARKET BREAKING NEWS & ORACLE LATENCY SNIPER
+  - What It Does: Sub-second news scraper hitting stale limit orders on Polymarket CLOB.
+  - Status: [ROADMAP]
+
+--------------------------------------------------------------------------------
+[ ] ITEM 13: POLYMARKET AUTOMATED MARKET MAKER & REWARDS BOT
+  - What It Does: Two-sided liquidity quoting capturing spread + farming USDC rewards.
+  - Status: [ROADMAP]
+
+--------------------------------------------------------------------------------
+[x] ITEM 14: HYPERLIQUID WHALE CASCADE SWEEPER
+  - What It Does: Gated, non-trading passive accumulation module. Identifies large
+    whale liquidation clusters on HyperLiquid, measures adverse momentum excursions,
+    and logs cascade profiles to validate mean-reversion theses without risking capital.
+  - Primary Code: HyperLiquid/HL_Monarch/strategies/whale_sweeper.py
+                  HyperLiquid/HL_Monarch/analytics/excursions.py
+  - Note: WHALE_SWEEP_EXECUTION_ENABLED = False (Gated off; passive telemetry only).
+  - Test Command:
+      python -m pytest HyperLiquid/HL_Monarch/tests/test_whale_sweeper.py -q
+
+--------------------------------------------------------------------------------
+[x] ITEM 15: CLOSING LINE VALUE (CLV) TRACKER & SOFT-BOOK HEALTH MONITOR
+  - What It Does: Measures achieved execution odds against Pinnacle closing lines
+    to verify true mathematical edge. Drops odds snapshots into sports_market.db
+    with staleness filters and displays CLV distribution in terminal HUD.
+  - Primary Code: Sports_Desk/engine/clv_tracker.py
+                  Sports_Desk/interfaces/monarch_shark.py
+  - How to Activate:
+      # Display CLV metrics and performance against the closing line:
+      python -m Sports_Desk.interfaces.monarch_shark --clv
+  - Test Command:
+      python -m unittest Sports_Desk.tests.test_results_watcher
+
+--------------------------------------------------------------------------------
+TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
+--------------------------------------------------------------------------------
+
+[x] ITEM 16: FAST TIME-SERIES WAREHOUSE & INCREMENTAL PERSISTENCE
+  - What It Does: Measures and aggregates tick data into permanent summary tables
+    (`basis_realised_windows` and `cascade_excursions`) before deleting raw rows.
+    Enables reaching 720h+ analytical retention standards within a 192h raw DB window.
+  - Primary Code: HyperLiquid/HL_Monarch/storage/pruner.py
+                  HyperLiquid/HL_Monarch/storage/measurement_schema.py
+  - How to Activate:
+      # Check retention watermarks, pre-prune spans, and database stats:
+      python HyperLiquid/HL_Monarch/main.py persist --status
+
+      # Backfill measurement tables from historical snapshots:
+      python HyperLiquid/HL_Monarch/main.py persist --backfill
+
+      # Run historical excursion measurement pass:
+      python HyperLiquid/HL_Monarch/main.py persist --hold 24 --excursions --source trade_sweep
+  - Test Command:
+      python -m pytest HyperLiquid/HL_Monarch/tests/test_measurement_schema.py -q
+
+--------------------------------------------------------------------------------
+[x] ITEM 17: AUTOMATED TAX-LOSS HARVESTING AUTO-EXECUTOR
+  - What It Does: Scans tax lot ledgers across crypto and prediction markets to
+    identify underwater positions, calculate exact tax alpha, and recommend
+    statutory loss harvesting while avoiding wash-sale pitfalls.
+  - Primary Code: Tax_Reserve_Agent/main.py
+  - How to Activate:
+      # Generate tax-loss harvesting recommendations:
+      python -m Tax_Reserve_Agent.main harvest
+
+      # Rebuild lot ledger from raw transaction imports:
+      python -m Tax_Reserve_Agent.main rebuild
+  - Test Command:
+      python -m unittest Tax_Reserve_Agent.tests.test_new_features
+
+--------------------------------------------------------------------------------
+[x] ITEM 18: CROSS-MARKET TITAN CORRELATOR (MACRO -> CRYPTO -> PREDICTIONS)
+  - What It Does: Correlates top HyperLiquid whale wallets against Polymarket sharp
+    traders. Analyzes cross-venue positioning, conviction scores, and lead-lag
+    relationships between prediction markets and crypto perpetuals.
+  - Primary Code: cross_market/titan_correlator.py
+  - Output Note:  obsidian_vault/Cross_Market_Titans.md
+  - How to Activate:
+      # Run Titan correlation scan and update Obsidian note:
+      python -m cross_market.titan_correlator --scan
+
+      # Print CLI conviction report to terminal without modifying vault:
+      python -m cross_market.titan_correlator --report
+
+      # Run against custom databases:
+      python -m cross_market.titan_correlator --scan --hl-db <PATH> --pm-db <PATH>
+  - Test Command:
+      python -m unittest cross_market.tests.test_titan_correlator
+
+--------------------------------------------------------------------------------
+[ ] ITEM 19: MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR
+  - What It Does: 100k-iteration portfolio survival simulator across correlated assets.
+  - Status: [ROADMAP]
+
+--------------------------------------------------------------------------------
+[x] ITEM 20: SOVEREIGN MASTER COCKPIT UI (WAR ROOM DASHBOARD & CANVAS)
+  - What It Does: Real-time visual interface rendering the entire penta-desk
+    ecosystem. Provided across two synchronized channels:
+      1. Rich Read-Only Terminal Dashboard: Displays collector PID, service mode,
+         novel-dex badges, L2 candidate rotation, and real-time funding yield.
+      2. Obsidian Penta-Desk Canvas: Visual multi-card cockpit displaying all 5
+         desk markdown summaries around the central Tax Reserve escrow node.
+  - Primary Code: HyperLiquid/HL_Monarch/ui/terminal_dashboard.py
+                  HyperLiquid/HL_Monarch/exporters/obsidian_exporter.py
+  - Canvas File:  obsidian_vault/Canvases/Sovereign_Penta_Cockpit.canvas
+  - How to Activate:
+      # Launch terminal dashboard:
+      python HyperLiquid/HL_Monarch/main.py dashboard
+
+      # Refresh all Obsidian cockpit cards on demand:
+      python HyperLiquid/HL_Monarch/main.py obsidian --once
+  - Test Command:
+      python -m pytest HyperLiquid/HL_Monarch/tests/test_dashboard_service_mode.py -q
+
+================================================================================
+3. PROCESS DAEMON & SUPERVISOR MANAGEMENT
+================================================================================
+
+The HyperLiquid Monarch collector runs 24/7 as a background service supervised by
+`run_collector_service.py`.
+
+- START SERVICE:
+    C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\start_collector.bat
+- STOP SERVICE:
+    C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat
+- CHECK LOGS:
+    powershell -Command "Get-Content -Tail 30 HyperLiquid\HL_Monarch\data\collector_service.jsonl"
+    powershell -Command "Get-Content -Tail 30 HyperLiquid\HL_Monarch\data\dashboard.jsonl"
+- CHECK STATUS FILE:
+    powershell -Command "Get-Content HyperLiquid\HL_Monarch\data\collector_status.json"
+- CHECK PROCESS PIDs:
+    powershell -Command "Get-Process -Id (Get-Content HyperLiquid\HL_Monarch\data\collector_service.pid), (Get-Content HyperLiquid\HL_Monarch\data\collector.pid)"
+
+EMERGENCY KILLSWITCH:
+  To instantly halt all new basis entries without stopping background telemetry:
+    python HyperLiquid/HL_Monarch/main.py config --set-killswitch on
+  Or create a hard sentinel file:
+    powershell -Command "New-Item -Path C:\Users\ixis1\Desktop\DEV\HALT.flag -ItemType File"
+
+================================================================================
+4. OBSIDIAN VAULT SYNCHRONIZATION & EXPORTERS
+================================================================================
+
+Master 15-second background synchronizer for all 5 desks:
+  C:\Users\ixis1\Desktop\DEV\start_all_ecosystem_sync.bat
+
+Individual One-Off Exporters (Refreshes notes on demand):
+  - Desk 1 (HL Monarch):   python HyperLiquid/HL_Monarch/main.py obsidian --once
+  - Desk 2 (Sports Desk):  python -m Sports_Desk.interfaces.obsidian_exporter --once
+  - Desk 3 (Cross-Market): python -m cross_market.interfaces.obsidian_exporter --once
+  - Desk 3 (Titans Scan):  python -m cross_market.titan_correlator --scan
+  - Desk 4 (Quant Lab):    python -m quant_trading_lab.telemetry.obsidian_exporter --once
+  - Desk 5 (Tax Reserve):  python -m Tax_Reserve_Agent.main export
+
+Obsidian Vault Locations:
+  Cockpit Canvas:   obsidian_vault/Canvases/Sovereign_Penta_Cockpit.canvas
+  Trading Terminal: obsidian_vault/Trading_Terminal.md
+  Monarch Hub:      obsidian_vault/Monarch_Hub.md
+  Sports Desk:      obsidian_vault/Sports_Desk.md
+  Cross-Market Arb: obsidian_vault/Cross_Market_Arb.md
+  Quant Lab:        obsidian_vault/Quant_Trading_Lab.md
+  Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md
+
+================================================================================
+5. MASTER OFFLINE TEST SUITES (2,427 Tests Total)
+================================================================================
+
+Every modification MUST be verified offline against all 3 test suites. Never push
+a commit without all 2,427 tests passing!
+
+1. HyperLiquid Monarch (pytest — 1,083 tests):
+   cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q
+
+2. Master & Bridges Suite (unittest — 15 modules, 798 tests):
+   python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator
+
+3. Tax Reserve Agent Suite (unittest — 5 modules, 546 tests):
+   python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+
+Single-Line Full Verification Command (PowerShell):
+   python -m pytest HyperLiquid/HL_Monarch/tests -q; python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator; python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+
+================================================================================
+6. EMERGENCY BRAKES, FAIL-SAFE SENTINELS & RULES
+================================================================================
+
+1. NEVER-SEED LIVE LEDGER RULE:
+   `python -m Tax_Reserve_Agent.main seed-bankroll` writes a synthetic DEPOSIT row.
+   NEVER run this on the live production ledger. On live accounts, real bankroll
+   must only be established by importing real deposit receipts from CSVs.
+
+2. FAIL-CLOSED ON UNKNOWN DEX:
+   Only DEXes explicitly listed in `CRYPTO_DEXES` (`main`) or `MIXED_DEXES` (`para`
+   under allow-list) can trade basis perps. Novel DEXes discovered live fail closed
+   by default and trigger an amber alert in the dashboard.
+
+3. SPREAD & LIQUIDITY ENTRY GATES:
+   - Gross APR >= 25.0%
+   - Net APR >= 20.0% (after spread amortization & fees)
+   - Max Top-of-Book Spread <= 25.0 bps
+   - Spot Pair 24h Volume >= $100,000.00 (10x notional)
+
+4. RESTART COLLECTOR ON SETTINGS CHANGES:
+   Python settings are cached on import. Any change to `config/settings.py` requires
+   stopping and starting the collector via `stop_collector.bat` then `start_collector.bat`.
+================================================================================
