@@ -20,6 +20,7 @@ from config.settings import (
     ARB_SPREAD_CHECK_LIMIT,
     ARB_DEFAULT_HOLDING_DAYS,
     ARB_FUNDING_INTERVAL_HOURS,
+    SPOT_MIN_DAY_VOLUME,
 )
 
 
@@ -56,25 +57,63 @@ class FundingArbitrageEngine:
     def __init__(self, client: Optional[HyperliquidRestClient] = None):
         self.repo = MarketRepository()
         self.client = client or HyperliquidRestClient()
-        self._spot_universe: Optional[Set[str]] = None
+        self._spot_volumes: Optional[Dict[str, float]] = None
 
-    def get_spot_universe(self, refresh: bool = False) -> Set[str]:
+    def get_spot_volumes(self, refresh: bool = False) -> Optional[Dict[str, float]]:
         """
-        Tradeable spot tickers, cached for the life of the engine.
+        {TOKEN: best 24h notional volume across its spot pairs}, cached for the
+        life of the engine; None when the lookup failed (not cached, so the next
+        call retries).
 
-        Returns an empty set if the lookup fails; callers treat that as "unknown"
-        and fall back to not claiming spot backing, never to claiming it falsely.
+        ROUND 39. Two facts about the live payload that a naive parse gets wrong:
+        `universe[i].tokens` holds token INDEX fields, not list positions, and the
+        asset contexts are NOT aligned with the pair list (718 contexts for 326
+        pairs on 2026-09-04) - a context is matched to its pair by `coin` name. A
+        token that appears in no pair at all (COIN, NVDA) is a shell and gets no
+        entry, so it can never be called spot-backed.
         """
-        if self._spot_universe is not None and not refresh:
-            return self._spot_universe
+        if self._spot_volumes is not None and not refresh:
+            return self._spot_volumes
         try:
-            meta = self.client.get_spot_meta()
-            self._spot_universe = {
-                str(t.get("name", "")).upper() for t in (meta or {}).get("tokens", []) if t.get("name")
-            }
+            meta, ctxs = self.client.get_spot_meta_and_asset_ctxs()
+            names: Dict[int, str] = {}
+            for t in (meta or {}).get("tokens", []) or []:
+                if t.get("name") is not None and t.get("index") is not None:
+                    names[int(t["index"])] = str(t["name"]).upper()
+            pair_volume: Dict[str, float] = {}
+            for ctx in ctxs or []:
+                try:
+                    pair_volume[str(ctx.get("coin"))] = float(ctx.get("dayNtlVlm") or 0.0)
+                except (TypeError, ValueError, AttributeError):
+                    continue
+            volumes: Dict[str, float] = {}
+            for pair in (meta or {}).get("universe", []) or []:
+                refs = pair.get("tokens") or []
+                base = names.get(int(refs[0])) if refs else None
+                if base is None:
+                    continue
+                volumes[base] = max(volumes.get(base, 0.0), pair_volume.get(str(pair.get("name")), 0.0))
         except Exception:
-            self._spot_universe = set()
-        return self._spot_universe
+            return None
+        self._spot_volumes = volumes
+        return volumes
+
+    def get_spot_universe(self, refresh: bool = False,
+                          min_spot_volume: float = SPOT_MIN_DAY_VOLUME) -> Set[str]:
+        """
+        Spot tokens with a TRADEABLE pair: best pair 24h notional >= `min_spot_volume`.
+
+        Before Round 39 this was every token name in spotMeta, and a token is not
+        a market: TSLA and AVGO spot turned over $0 while their HIP-3 perps traded
+        tens of millions, so the "hedge" the harvester booked against them could
+        not have been filled. Returns an empty set if the lookup fails; callers
+        treat that as "unknown" and never claim spot backing on it.
+        """
+        volumes = self.get_spot_volumes(refresh=refresh)
+        if not volumes:
+            return set()
+        floor = float(min_spot_volume)
+        return {token for token, volume in volumes.items() if volume >= floor}
 
     def _perp_sz_decimals(self, dex: Optional[str] = None) -> Dict[str, int]:
         """

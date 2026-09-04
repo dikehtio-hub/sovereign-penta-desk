@@ -29,12 +29,23 @@ H = 3_600_000  # one hour in ms
 # --------------------------------------------------------------------------
 
 class FakeSpotClient:
-    def __init__(self, tokens, spreads=None):
+    def __init__(self, tokens, spreads=None, volumes=None):
         self.tokens = tokens
         self.spreads = spreads or {}
+        self.volumes = volumes or {}            # token -> 24h pair notional; unlisted tokens are liquid
 
     def get_spot_meta(self):
         return {"tokens": [{"name": t} for t in self.tokens]}
+
+    def get_spot_meta_and_asset_ctxs(self):
+        """Live shape (Round 39): pair token refs are token INDEX fields, and the
+        contexts are matched to pairs by `coin` name, never by position."""
+        tokens = [{"name": "USDC", "index": 0}] + [{"name": t, "index": 10 + i} for i, t in enumerate(self.tokens)]
+        universe = [{"name": "@%d" % (i + 1), "tokens": [10 + i, 0], "index": i + 1}
+                    for i, _ in enumerate(self.tokens)]
+        ctxs = [{"coin": "@%d" % (i + 1), "dayNtlVlm": str(self.volumes.get(t, 1_000_000.0))}
+                for i, t in enumerate(self.tokens)]
+        return [{"tokens": tokens, "universe": universe}, list(reversed(ctxs))]
 
     def get_l2_book(self, coin):
         if coin not in self.spreads:
@@ -87,6 +98,9 @@ class TestSpotBacking(unittest.TestCase):
             def get_spot_meta(self):
                 raise RuntimeError("down")
 
+            def get_spot_meta_and_asset_ctxs(self):
+                raise RuntimeError("down")
+
         engine = FundingArbitrageEngine(client=Broken())
         res = engine.scan_funding_opportunities(min_apr_pct=10.0, snapshots=[_snap("BTC", 0.001)])
         self.assertFalse(res["short_harvest"][0]["is_spot_backed"])
@@ -95,16 +109,69 @@ class TestSpotBacking(unittest.TestCase):
         client = FakeSpotClient(["UBTC"])
         engine = FundingArbitrageEngine(client=client)
         calls = []
-        orig = client.get_spot_meta
+        orig = client.get_spot_meta_and_asset_ctxs
 
         def counting():
             calls.append(1)
             return orig()
 
-        client.get_spot_meta = counting
+        client.get_spot_meta_and_asset_ctxs = counting
         engine.get_spot_universe()
         engine.get_spot_universe()
+        engine.get_spot_universe(min_spot_volume=0.0)      # a different floor filters the same cached volumes
         self.assertEqual(len(calls), 1)
+
+    def test_a_spot_token_with_a_dead_pair_is_not_spot_backed(self):
+        """
+        Round 39. Measured live: TSLA and AVGO spot turned over $0 in 24h while
+        their HIP-3 perps traded tens of millions; CRCL under $2k. A token is not
+        a market, and a basis trade hedged on a dead pair has no hedge.
+        """
+        client = FakeSpotClient(["TSLA", "AVGO", "HYPE", "CRCL"],
+                                volumes={"TSLA": 0.0, "AVGO": 34.18, "CRCL": 1_983.91})
+        engine = FundingArbitrageEngine(client=client)
+        self.assertEqual(engine.get_spot_universe(), {"HYPE"})
+        self.assertEqual(engine.get_spot_universe(min_spot_volume=1_000.0), {"HYPE", "CRCL"})
+        self.assertEqual(engine.get_spot_volumes()["AVGO"], 34.18)
+        res = engine.scan_funding_opportunities(
+            min_apr_pct=10.0, snapshots=[_snap("xyz:TSLA", 0.001), _snap("HYPE", 0.001)])
+        by_coin = {i["coin"]: i for i in res["short_harvest"]}
+        self.assertFalse(by_coin["xyz:TSLA"]["is_spot_backed"])
+        self.assertEqual(by_coin["xyz:TSLA"]["trade_type"], "DIRECTIONAL_FUNDING")
+        self.assertTrue(by_coin["HYPE"]["is_spot_backed"])
+
+    def test_a_token_with_no_pair_at_all_is_a_shell(self):
+        """COIN and NVDA have a token entry and no pair - the payload's other trap,
+        alongside index-based token refs and name-matched contexts."""
+        class Shells:
+            def get_spot_meta_and_asset_ctxs(self):
+                return [{"tokens": [{"name": "USDC", "index": 0}, {"name": "COIN", "index": 5},
+                                    {"name": "PURR", "index": 1}],
+                         "universe": [{"name": "PURR/USDC", "tokens": [1, 0], "index": 0}]},
+                        [{"coin": "@77", "dayNtlVlm": "5"}, {"coin": "PURR/USDC", "dayNtlVlm": "2589841.64"}]]
+
+        engine = FundingArbitrageEngine(client=Shells())
+        self.assertEqual(engine.get_spot_volumes(), {"PURR": 2589841.64})
+        self.assertEqual(engine.get_spot_universe(), {"PURR"})
+
+    def test_a_failed_volume_lookup_is_not_cached_and_claims_nothing(self):
+        class Flaky:
+            calls = 0
+
+            def get_spot_meta_and_asset_ctxs(self):
+                self.calls += 1
+                if self.calls == 1:
+                    raise RuntimeError("down")
+                return [{"tokens": [{"name": "USDC", "index": 0}, {"name": "HYPE", "index": 1}],
+                         "universe": [{"name": "HYPE/USDC", "tokens": [1, 0], "index": 0}]},
+                        [{"coin": "HYPE/USDC", "dayNtlVlm": "1e6"}]]
+
+        engine = FundingArbitrageEngine(client=Flaky())
+        self.assertEqual(engine.get_spot_universe(), set())        # the failed attempt claims nothing
+        self.assertIsNone(engine._spot_volumes)                    # and the failure is not cached
+        self.assertEqual(engine.get_spot_universe(), {"HYPE"})     # retried on the next call, then cached
+        self.assertEqual(engine.get_spot_universe(), {"HYPE"})
+        self.assertEqual(engine.client.calls, 2)
 
 
 class TestNetAprModel(unittest.TestCase):

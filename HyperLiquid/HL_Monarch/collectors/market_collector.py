@@ -393,7 +393,8 @@ class MarketCollector:
             self._spot_universe_warned = True
         return set()
 
-    def _sample_coins(self, snapshots: Sequence[Dict[str, Any]] = ()) -> List[str]:
+    def _sample_coins(self, snapshots: Sequence[Dict[str, Any]] = (),
+                      spreads: Optional[Dict[str, float]] = None) -> List[str]:
         """
         Which coins this pass samples, capped:
 
@@ -404,14 +405,16 @@ class MarketCollector:
         record BEFORE their entry instant, so a persisted window is measured at
         the moment it opens rather than only after the position is held. Round
         38: a candidate must be spot-backed per the live universe and clear the
-        OI and volume floors the harvester's scan applies.
+        OI and volume floors the harvester's scan applies. Round 39: a candidate
+        with a spread on record (`spreads`) ranks on its net APR.
         """
         harvester = getattr(self, "basis_harvester", None)
         held = list(getattr(harvester, "positions", {}).keys()) if harvester is not None else []
         candidates: List[str] = []
         if snapshots:
             candidates = top_funding_candidates(snapshots, n=ORDERBOOK_SAMPLE_CANDIDATES,
-                                                spot_universe=self._spot_universe_cached())
+                                                spot_universe=self._spot_universe_cached(),
+                                                spreads=spreads)
         return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
                                    cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held, candidates=candidates)
 
@@ -422,7 +425,12 @@ class MarketCollector:
         except Exception as e:                              # noqa: BLE001 - sample without candidates
             logger.warning(f"Could not read latest snapshots for candidate selection: {e}")
             snapshots = []
-        coins = self._sample_coins(snapshots)
+        spreads: Dict[str, float] = {}
+        try:
+            spreads = self.repo.get_latest_orderbook_spreads()
+        except Exception as e:                              # noqa: BLE001 - rank on gross instead
+            logger.warning(f"Could not read latest spreads for candidate ranking: {e}")
+        coins = self._sample_coins(snapshots, spreads)
         return sample_orderbooks(self.rest_client, self.repo, coins)
 
     async def _orderbook_sample_loop(self):

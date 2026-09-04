@@ -122,6 +122,35 @@ class MarketRepository:
         with self.db.connection as conn:
             conn.executemany(sql, snapshots)
 
+    def get_latest_orderbook_spreads(self, within_hours: float = 24.0,
+                                     now_ms: Optional[int] = None) -> Dict[str, float]:
+        """
+        {coin: spread_bps} from each coin's NEWEST orderbook_snapshots row no
+        older than `within_hours`.
+
+        Round 39: candidate ranking nets a coin's funding against its last
+        measured spread. A reading older than a day is history, not a cost
+        estimate, so it is left out and the coin ranks on gross again.
+        """
+        now_ms = int(now_ms if now_ms is not None else time.time() * 1000)
+        cutoff = now_ms - int(float(within_hours) * 3_600_000)
+        sql = """
+        SELECT o.coin, o.spread_bps
+        FROM orderbook_snapshots o
+        JOIN (SELECT coin, MAX(timestamp) AS ts
+              FROM orderbook_snapshots WHERE timestamp >= ? GROUP BY coin) m
+          ON m.coin = o.coin AND m.ts = o.timestamp;
+        """
+        with self.db.connection as conn:
+            rows = conn.execute(sql, (cutoff,)).fetchall()
+        out: Dict[str, float] = {}
+        for coin, spread in rows:
+            try:
+                out[str(coin)] = float(spread)
+            except (TypeError, ValueError):
+                continue
+        return out
+
     def insert_orderbook_snapshot(self, snapshot: Dict[str, Any]):
         """Record order book spread and depth snapshot."""
         sql = """

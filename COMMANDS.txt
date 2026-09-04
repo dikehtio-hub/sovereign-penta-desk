@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1050 passed as of Round 38)
+                        (1055 passed as of Round 39)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,19 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 39 - SPOT LIQUIDITY GROUNDING, NET-APR CANDIDATE RANKING
+     FundingArbitrageEngine.get_spot_universe(min_spot_volume=SPOT_MIN_DAY_VOLUME)
+         keeps only tokens whose best spot pair did >= $10k notional in 24h
+         (spotMetaAndAssetCtxs; get_spot_volumes() is the cached token->volume
+         map). A token with no pair or a dead pair (TSLA, AVGO, COIN, NVDA) is
+         NOT spot-backed anywhere: scan, harvester, squeeze engine, sampler.
+         Failed lookup -> empty set, not cached.
+     Sampler candidates: a coin with a spread on record (latest orderbook row
+         within 24h, MarketRepository.get_latest_orderbook_spreads) ranks on
+         APR net of that spread x 2 legs over BASIS_HOLDING_DAYS; unmeasured
+         coins rank on gross (one sample, then their net decides).
+     Quick check:  python -c "from analytics.funding_arbitrage import *; e=FundingArbitrageEngine(); print(sorted(e.get_spot_universe()))"
 
      ROUND 38 - SPOT-GROUNDED CANDIDATES, SPREAD CEILING, CONCENTRATION GUARD
      Sampler candidates: spot-backed per spot_symbol_for() against the LIVE spot

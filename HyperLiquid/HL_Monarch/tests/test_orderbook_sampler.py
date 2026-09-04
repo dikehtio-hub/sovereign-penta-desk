@@ -108,6 +108,38 @@ def test_candidates_are_grounded_on_the_spot_universe_not_the_prefix():
     assert top_funding_candidates(snapshots, n=5)[:4] == ["CHIP", "PONS", "XMR", "FARTCOIN"]
 
 
+def test_measured_candidates_rank_on_net_apr_and_unmeasured_on_gross():
+    """
+    Round 39 (cross-check 3.4). Over a 7-day hold a 40% quote at 40 bps nets
+    40 - 0.4 x 2 x 365/7 = -1.7% and sinks; 30% at 1 bp nets 28.96% and leads
+    the measured coins. A coin with no spread on record ranks on its gross - an
+    upper bound that buys it one sample - so a new hot market is not starved
+    behind measured ones.
+    """
+    universe = {"WIDE", "TIGHT", "NEW", "MID"}
+
+    def rate(apr):
+        return apr / 100.0 / 8760.0
+
+    snapshots = [snap("WIDE", rate(40.0)), snap("TIGHT", rate(30.0)), snap("NEW", rate(29.5)), snap("MID", rate(35.0))]
+    spreads = {"WIDE": 40.0, "TIGHT": 1.0, "MID": 8.0}        # MID nets 35 - 0.08 x 2 x 365/7 = 26.66%
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe, spreads=spreads) == ["NEW", "TIGHT", "MID", "WIDE"]
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe) == ["WIDE", "MID", "TIGHT", "NEW"]
+    # A longer hold amortises the same spread further: WIDE at 30 days nets 30.3% and moves up.
+    assert top_funding_candidates(snapshots, n=5, spot_universe=universe, spreads=spreads,
+                                  holding_days=30.0) == ["MID", "WIDE", "TIGHT", "NEW"]
+
+
+def test_the_latest_spread_per_coin_within_a_day_feeds_candidate_ranking(repo):
+    """Round 39: the repository hands the sampler each coin's NEWEST reading, and only a recent one."""
+    sample_orderbooks(FakeClient({"BTC": book(100.0, 6.0), "ETH": book(100.0, 2.0)}), repo, ["BTC", "ETH"], now_ms=T0)
+    sample_orderbooks(FakeClient({"BTC": book(100.0, 3.0)}), repo, ["BTC"], now_ms=T0 + 60_000)
+    spreads = repo.get_latest_orderbook_spreads(within_hours=24.0, now_ms=T0 + 120_000)
+    assert spreads == pytest.approx({"BTC": 3.0, "ETH": 2.0}, abs=0.01)      # the newest reading, not the first
+    assert repo.get_latest_orderbook_spreads(within_hours=90 / 3600.0, now_ms=T0 + 120_000) == pytest.approx({"BTC": 3.0}, abs=0.01)
+    assert repo.get_latest_orderbook_spreads(within_hours=24.0, now_ms=T0 + 25 * H) == {}   # a day old is history
+
+
 def test_candidates_under_the_liquidity_floors_are_not_worth_a_sampling_slot():
     """Cross-check 3.3: the scan rejects them before reading a spread, so sampling them measures nothing tradeable."""
     universe = {"HOT", "THIN", "DEAD", "NOOI"}
@@ -214,20 +246,23 @@ def test_a_sampling_pass_reads_current_state_and_samples_the_candidates(repo):
             self.rows = []
 
         def get_latest_snapshots(self, coins=None):
-            return [snap("HOT", 0.002), snap("COLD", -0.001)]
+            return [snap("HOT", 0.002), snap("WARM", 0.0019), snap("COLD", -0.001)]
+
+        def get_latest_orderbook_spreads(self, **kwargs):
+            return {"HOT": 300.0}                           # Round 39: measured wide, so it nets negative
 
         def insert_orderbook_snapshots(self, rows):
             self.rows.extend(rows)
 
     collector = mc.MarketCollector.__new__(mc.MarketCollector)
     collector._rotated_coins = set()
-    collector._spot_universe, collector._spot_universe_at = {"HOT", "COLD"}, time.time()
+    collector._spot_universe, collector._spot_universe_at = {"HOT", "WARM", "COLD"}, time.time()
     collector.repo = Repo(repo)
-    collector.rest_client = FakeClient({"HOT": book(10.0, 3.0)})
+    collector.rest_client = FakeClient({"WARM": book(10.0, 3.0)})
     stats = collector._sample_pass()
-    assert collector.rest_client.calls[0] == "HOT"                 # the candidate is sampled first
+    assert collector.rest_client.calls[:2] == ["WARM", "HOT"]     # unmeasured gross beats measured-wide net
     assert stats["written"] >= 1
-    assert collector.repo.rows[0]["coin"] == "HOT"
+    assert collector.repo.rows[0]["coin"] == "WARM"
 
 
 def test_a_pass_writes_one_row_per_coin_and_isolates_failures(repo):

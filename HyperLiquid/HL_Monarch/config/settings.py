@@ -217,6 +217,14 @@ ARB_MIN_NOTIONAL_OI = 250_000.0    # USD open interest floor
 ARB_MIN_DAY_VOLUME = 100_000.0     # USD 24h turnover floor - OI without volume cannot be exited
 ARB_MAX_SPREAD_BPS = 25.0          # reject wider than 25bps top-of-book
 ARB_SPREAD_CHECK_LIMIT = 8         # max live l2Book checks per direction (weight 2 each)
+# Round 39: a spot TOKEN is not a spot MARKET. Measured 2026-09-04: TSLA and AVGO
+# spot pairs turned over $0 in 24h, CRCL under $2k, and COIN/NVDA have a token
+# entry but no pair at all - while their HIP-3 perps trade tens of millions. A
+# basis trade hedged on such a leg has no hedge. Only tokens whose best spot pair
+# clears this 24h notional floor count as spot-backed anywhere in the system
+# (46 of 499 tokens at $10k on that date; 25 at $100k). Note a $10k leg into a
+# $10k/day pair is the whole day's turnover - see the Round 39 handoff.
+SPOT_MIN_DAY_VOLUME = 10_000.0     # USD 24h notional floor for the SPOT leg's pair
 
 # Funding harvest modelling.
 # Hyperliquid settles perp funding hourly (verified against the API: the `funding`

@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+Round 39 complete: SPOT LIQUIDITY GROUNDING & NET-APR CANDIDATE RANKING. A
+spot TOKEN is no longer a spot MARKET: `get_spot_universe` keeps only tokens
+whose best spot pair turned over >= SPOT_MIN_DAY_VOLUME ($10k) in 24h, read
+from spotMetaAndAssetCtxs (46 of 499 tokens live). TSLA/AVGO spot did $0 while
+their HIP-3 perps traded tens of millions; COIN/NVDA have a token and no pair.
+Sampler candidates with a spread on record rank on net APR. 5 new tests.
+
 Round 38 complete: SPOT-GROUNDED CANDIDATES, SPREAD CEILING & CONCENTRATION
 GUARD. Funding candidates for the spread sampler are now decided by
 `spot_symbol_for` against the live spot universe (the ':' prefix rule was wrong
@@ -76,7 +83,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1050 passed |
+| HL_Monarch (pytest) | 1055 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -99,6 +106,30 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 39 findings
+
+- **Four of the five paper positions are hedged on dead spot legs.** Live
+  24h spot pair volume: ANSEM $1.5k, HOOD $402, AVGO $0 (both AVGO perps),
+  UXPL $1.36M. Under the new rule xyz:HOOD, para:AVGO and xyz:AVGO resolve to
+  no spot leg; para:ANSEM resolves to UANSEM (liquid) rather than the bare
+  ANSEM it was booked against. Positions untouched per Ruling 39-1 (yield-only
+  exits); no new entry can be classed spot-backed on those legs.
+- **Two payload traps.** `universe[i].tokens` are token INDEX fields, not list
+  positions (a positional parse raises IndexError); asset contexts are NOT
+  aligned with the pair list (718 contexts for 326 pairs) and match by `coin`
+  name. Both are pinned in tests. A failed lookup returns an empty universe
+  and is not cached.
+- **Alias gap in `spot_symbol_for` (open).** The U-prefix rule misses
+  abbreviated wrappers: FARTCOIN's liquid spot is UFART ($570k/day), XMR's is
+  XMR1/FXMR, NVDA has NVDAX. FARTCOIN is therefore spot-backed in fact and
+  unmatched in code. Needs an alias table or a fullName match - ruling asked.
+- **Net-APR ranking mixes measured and unmeasured on one scale** (deviation
+  from the directive's "unmeasured behind measured"): an unmeasured coin ranks
+  on gross, an upper bound that buys it one sample; ranking it behind five
+  measured positives would never sample a new hot market before entry.
+- Threshold note: a $10k leg into a $10k/day pair is the day's whole turnover;
+  25 tokens survive at $100k. Ruling asked.
 
 ## Round 38 findings
 

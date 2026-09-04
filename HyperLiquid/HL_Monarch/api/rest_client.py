@@ -211,6 +211,14 @@ class HyperliquidRestClient:
         """Fetch the spot universe (token list), used to test for a hedgeable spot leg."""
         return self._post({"type": "spotMeta"})
 
+    def get_spot_meta_and_asset_ctxs(self) -> List[Any]:
+        """
+        Spot universe WITH per-pair contexts: [spotMeta, [ctx, ...]]. Each ctx
+        carries `coin` (the pair name) and `dayNtlVlm`; a token listed in spotMeta
+        may have no pair, or a pair with no turnover (Round 39).
+        """
+        return self._post({"type": "spotMetaAndAssetCtxs"})
+
     def get_all_mids(self) -> Dict[str, str]:
         """Fetch mid prices across all coins."""
         return self._post({"type": "allMids"})
