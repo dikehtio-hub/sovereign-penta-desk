@@ -481,6 +481,12 @@ COLLECTOR_LOCK_PATH = DATA_DIR / "collector.pid"
 # list here so the dashboard - a separate, read-only process - can show a badge
 # a console warning cannot: a closed window is a warning nobody sees.
 COLLECTOR_STATUS_PATH = DATA_DIR / "collector_status.json"
+# Round 49 (Ruling 49-1): the dashboard has died twice today with no trace. It
+# appends start / stop / crash (with traceback) here, so the next death has a cause.
+DASHBOARD_LOG_PATH = DATA_DIR / "dashboard.jsonl"
+# How old the collector's status file may be before the dashboard stops trusting
+# it: a dead collector's last write must not keep claiming a badge.
+COLLECTOR_STATUS_MAX_AGE_SECONDS = 7200.0
 
 # WebSocket rotation for REACTIVE execution.
 # Ranked by 24h volume, not squeeze score: the predictive classifier was retired

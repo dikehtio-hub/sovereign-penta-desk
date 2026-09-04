@@ -2323,7 +2323,7 @@ esults_drops\.
           cross_market.tests.test_polymarket_fetcher
           cross_market.tests.test_titan_correlator
        and separately:  cd HyperLiquid/HL_Monarch && python -m pytest tests/ -q
-                        (1081 passed as of Round 48)
+                        (1083 passed as of Round 49)
 
      HL_SHARK WHALE SWEEPER IS DEPLOYED BUT GATED OFF. It measures
      cascade zones and accumulates them passively; it places no orders.
@@ -2359,6 +2359,16 @@ esults_drops\.
        $150 of winnings, escrow   $52.50 -> $46.50
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
+
+     ROUND 49 - DASHBOARD LIFECYCLE LOG, 2H STATUS WINDOW, PERPDEXS AT START-UP
+     data/dashboard.jsonl (DASHBOARD_LOG_PATH): dashboard_start {mode, service_pid,
+         fullscreen}, dashboard_frame_error {error, traceback, count} (first 3),
+         dashboard_crash {error, traceback, frame_errors} (re-raised), dashboard_stop
+         {frame_errors}. When the viewer dies: tail this first.
+     read_collector_status(path, max_age_s=7200.0): a status file older than 2h is
+         ignored (COLLECTOR_STATUS_MAX_AGE_SECONDS). max_age_s=None reads it anyway.
+     MarketCollector._check_perp_dexs(): at start-up (hl-l2 executor, after universe
+         sync) and hourly; writes data/collector_status.json; never raises.
 
      ROUND 48 - MIXED-DEX ALLOW-LIST, NOVEL-DEX BADGE, CANDIDATE ROTATION LOG
      settings: CRYPTO_DEXES = {main}; MIXED_DEXES = {para}; MIXED_DEX_CRYPTO_ALLOWLIST

@@ -34,8 +34,8 @@ from analytics.funding_arbitrage import FundingArbitrageEngine
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 from collectors.market_collector import MarketCollector, read_service_pid, service_collector_alive
-from ui.components import (ingestion_badge, newest_snapshot_age_seconds, novel_dex_badge,
-                           read_collector_status)
+from ui.components import (append_dashboard_event, ingestion_badge, newest_snapshot_age_seconds,
+                           novel_dex_badge, read_collector_status)
 from ui.components import (
     build_header_panel, build_tradfi_table, build_liquidations_panel,
     build_clusters_panel, build_top_wallets_panel, build_funding_arb_panel,
@@ -324,6 +324,12 @@ class TerminalDashboard:
         self.service_pid = read_service_pid()
         self.service_mode = alive
         self._refresh_service_badge(force=True)
+        # Round 49 (Ruling 49-1): a lifecycle log, because the viewer died twice
+        # today with no trace and there was nothing to read afterwards.
+        from config.settings import DASHBOARD_LOG_PATH
+        append_dashboard_event(DASHBOARD_LOG_PATH, "dashboard_start",
+                               mode="read_only" if alive else "standalone",
+                               service_pid=self.service_pid, fullscreen=bool(fullscreen))
         if not alive:
             def run_bg_collector():
                 loop = asyncio.new_event_loop()
@@ -347,6 +353,20 @@ class TerminalDashboard:
         signal.signal(signal.SIGINT, handle_exit)
         signal.signal(signal.SIGTERM, handle_exit)
 
+        self._run_live_loop(fullscreen=fullscreen, refresh_rate=refresh_rate)
+
+    def _run_live_loop(self, fullscreen: bool = True, refresh_rate: float = 1.0) -> None:
+        """
+        The Live render loop, with its lifecycle written to the dashboard log
+        (Round 49, Ruling 49-1): a frame that fails to render is logged (the
+        first few, then counted), an exception that escapes the loop is logged
+        as a crash WITH its traceback and re-raised, and a clean exit logs stop
+        with the frame-error count.
+        """
+        import traceback
+        from config.settings import DASHBOARD_LOG_PATH
+        frame_errors = 0
+        crashed = False
         try:
             with Live(self.generate_layout(), console=console, screen=fullscreen, refresh_per_second=4) as live:
                 while self.running:
@@ -355,10 +375,22 @@ class TerminalDashboard:
                         time.sleep(refresh_rate)
                     except KeyboardInterrupt:
                         break
-                    except Exception:
+                    except Exception as e:                  # noqa: BLE001 - one bad frame must not end the viewer
+                        frame_errors += 1
+                        if frame_errors <= 3:
+                            append_dashboard_event(DASHBOARD_LOG_PATH, "dashboard_frame_error",
+                                                   error=f"{type(e).__name__}: {e}",
+                                                   traceback=traceback.format_exc(), count=frame_errors)
                         time.sleep(1.0)
+        except BaseException as e:                          # noqa: BLE001 - log the cause, then let it propagate
+            crashed = True
+            append_dashboard_event(DASHBOARD_LOG_PATH, "dashboard_crash", error=f"{type(e).__name__}: {e}",
+                                   traceback=traceback.format_exc(), frame_errors=frame_errors)
+            raise
         finally:
             self.running = False
+            if not crashed:
+                append_dashboard_event(DASHBOARD_LOG_PATH, "dashboard_stop", frame_errors=frame_errors)
             console.print("\n[bold green]✓ Dashboard exited. Terminal ready for commands.[/bold green]\n")
 
     def print_snapshot(self):

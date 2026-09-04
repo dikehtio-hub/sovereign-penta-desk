@@ -15,8 +15,9 @@ from rich.console import Console
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from collectors.market_collector import read_service_pid
-from ui.components import (STALLED_AFTER_SECONDS, build_header_panel, ingestion_badge,
-                           newest_snapshot_age_seconds, novel_dex_badge, read_collector_status)
+from ui.components import (STALLED_AFTER_SECONDS, append_dashboard_event, build_header_panel,
+                           ingestion_badge, newest_snapshot_age_seconds, novel_dex_badge,
+                           read_collector_status)
 
 
 def test_read_service_pid_is_none_when_absent_or_junk(tmp_path):
@@ -122,22 +123,130 @@ def test_a_novel_dex_shows_as_an_amber_badge_from_the_collector_status_file(tmp_
     assert novel_dex_badge(["newdex", "Other", "newdex", ""]) == \
         "[bold dark_orange]⚠ NOVEL DEX: newdex, other · refused until classified[/bold dark_orange]"
 
+    import time
     path = tmp_path / "collector_status.json"
     assert read_collector_status(path) == {}                                       # absent: nothing claimed
     assert write_collector_status(path, {"unclassified_dexs": ["newdex"], "checked_at": 1_788_000_000.0})
     assert json.loads(path.read_text(encoding="utf-8"))["unclassified_dexs"] == ["newdex"]
-    assert read_collector_status(path)["unclassified_dexs"] == ["newdex"]
+    assert read_collector_status(path, max_age_s=None)["unclassified_dexs"] == ["newdex"]
     assert read_collector_status(path, max_age_s=3600.0, now=1_788_000_100.0)["unclassified_dexs"] == ["newdex"]
     assert read_collector_status(path, max_age_s=60.0, now=1_788_000_100.0) == {}   # stale: nothing claimed
+    # Round 49 (Ruling 49-1): two hours by default - a dead collector's last write is history.
+    assert read_collector_status(path, now=1_788_000_000.0 + 7199.0)["unclassified_dexs"] == ["newdex"]
+    assert read_collector_status(path, now=1_788_000_000.0 + 7201.0) == {}
+    assert read_collector_status(path) == {}                                       # that stamp is weeks old now
     path.write_text("{not json", encoding="utf-8")
     assert read_collector_status(path) == {}
 
-    # The header composes the service badge and the drift badge.
+    # The header composes the service badge and the drift badge - from a FRESH file only.
     monkeypatch.setattr(settings, "COLLECTOR_STATUS_PATH", path)
     dash = TerminalDashboard.__new__(TerminalDashboard)
     assert dash._header_status("[dim]Service: RUNNING (PID 1) · Read-Only Mode[/dim]") == \
         "[dim]Service: RUNNING (PID 1) · Read-Only Mode[/dim]"
-    write_collector_status(path, {"unclassified_dexs": ["newdex"], "checked_at": 1.0})
+    write_collector_status(path, {"unclassified_dexs": ["newdex"], "checked_at": time.time()})
     assert dash._header_status("[dim]svc[/dim]") == "[dim]svc[/dim]  " + novel_dex_badge(["newdex"])
-    write_collector_status(path, {"unclassified_dexs": [], "checked_at": 1.0})
+    write_collector_status(path, {"unclassified_dexs": ["newdex"], "checked_at": time.time() - 3 * 3600})
+    assert dash._header_status("[dim]svc[/dim]") == "[dim]svc[/dim]"                # stale: no badge
+    write_collector_status(path, {"unclassified_dexs": [], "checked_at": time.time()})
     assert dash._header_status("") == ""
+
+
+def test_the_collector_checks_perp_dexs_at_start_up_and_writes_the_status_file(tmp_path, monkeypatch):
+    """Round 49 (Ruling 49-2): the badge is live from minute 0, not minute 60."""
+    import json
+    import collectors.market_collector as mc
+
+    class Client:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def get_perp_dexs(self):
+            if isinstance(self.payload, Exception):
+                raise self.payload
+            return self.payload
+
+    path = tmp_path / "collector_status.json"
+    monkeypatch.setattr(mc, "COLLECTOR_STATUS_PATH", path)
+    collector = mc.MarketCollector.__new__(mc.MarketCollector)
+    collector.rest_client = Client([None, {"name": "xyz"}, {"name": "para"}, {"name": "NewDex"}, {}])
+    assert collector._check_perp_dexs() == ["newdex"]
+    written = json.loads(path.read_text(encoding="utf-8"))
+    assert written["unclassified_dexs"] == ["newdex"]
+    assert written["dexes_listed"] == ["newdex", "para", "xyz"]
+    assert written["checked_at"] > 1_700_000_000 and written["pid"] > 0
+    # A failed lookup writes nothing and raises nothing - the previous file stands.
+    collector.rest_client = Client(RuntimeError("429"))
+    assert collector._check_perp_dexs() == []
+    assert json.loads(path.read_text(encoding="utf-8"))["unclassified_dexs"] == ["newdex"]
+    # And the dashboard shows what was just written.
+    import config.settings as settings
+    from ui.terminal_dashboard import TerminalDashboard
+    monkeypatch.setattr(settings, "COLLECTOR_STATUS_PATH", path)
+    assert "NOVEL DEX: newdex" in TerminalDashboard.__new__(TerminalDashboard)._header_status("")
+
+
+def test_the_dashboard_logs_its_start_stop_and_crash(tmp_path, monkeypatch):
+    """
+    Round 49 (Ruling 49-1). The viewer died twice today with nothing to read
+    afterwards. A frame that fails to render is logged (first three, then
+    counted); an exception that escapes the loop is logged with its traceback
+    and re-raised; a clean exit logs stop with the count.
+    """
+    import json
+    import config.settings as settings
+    import ui.terminal_dashboard as td
+
+    log = tmp_path / "dashboard.jsonl"
+    assert append_dashboard_event(log, "dashboard_start", mode="read_only", service_pid=42)
+    assert append_dashboard_event(log, "dashboard_crash", error="RuntimeError: boom", traceback="tb")
+    lines = [json.loads(l) for l in log.read_text(encoding="utf-8").splitlines()]
+    assert [l["event"] for l in lines] == ["dashboard_start", "dashboard_crash"]
+    assert lines[0]["mode"] == "read_only" and lines[0]["service_pid"] == 42 and lines[0]["pid"] > 0
+    assert lines[1]["traceback"] == "tb" and lines[1]["ts"].endswith("+00:00")
+    assert append_dashboard_event(tmp_path, "nope") is False                        # a directory: unwritable, no raise
+
+    monkeypatch.setattr(settings, "DASHBOARD_LOG_PATH", log)
+    monkeypatch.setattr(td, "console", type("C", (), {"print": staticmethod(lambda *a, **k: None)})())
+    monkeypatch.setattr(td.time, "sleep", lambda *_: None)
+
+    class FakeLive:
+        def __init__(self, *args, **kwargs):
+            self.updates = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def update(self, layout):
+            self.updates += 1
+            if self.updates == 1:
+                raise ValueError("bad frame")                                   # logged, loop continues
+            dash.running = False                                                # then a clean exit
+
+    dash = td.TerminalDashboard.__new__(td.TerminalDashboard)
+    dash.running = True
+    dash.generate_layout = lambda: "layout"
+    monkeypatch.setattr(td, "Live", FakeLive)
+    dash._run_live_loop(fullscreen=False, refresh_rate=0.0)
+    events = [json.loads(l) for l in log.read_text(encoding="utf-8").splitlines()][2:]
+    assert [e["event"] for e in events] == ["dashboard_frame_error", "dashboard_stop"]
+    assert "ValueError: bad frame" in events[0]["error"] and "Traceback" in events[0]["traceback"]
+    assert events[1]["frame_errors"] == 1
+
+    class CrashingLive(FakeLive):
+        def __enter__(self):
+            raise RuntimeError("terminal gone")
+
+    dash.running = True
+    monkeypatch.setattr(td, "Live", CrashingLive)
+    try:
+        dash._run_live_loop(fullscreen=False, refresh_rate=0.0)
+    except RuntimeError as e:
+        assert "terminal gone" in str(e)                                        # re-raised, not swallowed
+    else:
+        raise AssertionError("the crash must propagate")
+    last = json.loads(log.read_text(encoding="utf-8").splitlines()[-1])
+    assert last["event"] == "dashboard_crash" and "terminal gone" in last["error"] and "Traceback" in last["traceback"]
+    assert dash.running is False

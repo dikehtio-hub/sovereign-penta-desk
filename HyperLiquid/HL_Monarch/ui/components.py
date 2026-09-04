@@ -3,7 +3,8 @@ Rich UI Components for HL_Monarch Terminal Dashboard.
 Sleek, compact, high-density terminal formatters with responsive widths.
 """
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from rich.table import Table
 from rich.panel import Panel
@@ -55,11 +56,36 @@ def newest_snapshot_age_seconds(snapshots, now: Optional[float] = None) -> Optio
     return max(0.0, (now if now is not None else time.time()) - newest / 1000.0)
 
 
-def read_collector_status(path, max_age_s: Optional[float] = None,
+COLLECTOR_STATUS_MAX_AGE_SECONDS = 7200.0   # Round 49 (Ruling 49-1): two hours, then the file is history
+
+
+def append_dashboard_event(path, event: str, **fields) -> bool:
+    """
+    Append one JSON line {ts, event, pid, ...fields} to the dashboard log
+    (Round 49, Ruling 49-1). Never raises: a logging failure must not take
+    the viewer down with it. Returns whether the line was written.
+    """
+    import json
+    import os
+    record = {"ts": datetime.now(timezone.utc).isoformat(), "event": str(event), "pid": os.getpid()}
+    record.update(fields)
+    try:
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(target, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, default=str) + "\n")
+        return True
+    except Exception:
+        return False
+
+
+def read_collector_status(path, max_age_s: Optional[float] = COLLECTOR_STATUS_MAX_AGE_SECONDS,
                           now: Optional[float] = None) -> Dict[str, Any]:
     """
     The collector's status file as a dict, or {} when absent, unreadable, or
-    older than `max_age_s` by its own checked_at stamp (Round 48). Never raises.
+    older than `max_age_s` (default two hours, Round 49) by its own checked_at
+    stamp - a dead collector's last write must not keep claiming a badge. Pass
+    max_age_s=None to read it regardless of age. Never raises.
     """
     import json
     try:

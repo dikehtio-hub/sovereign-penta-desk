@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 49 complete: DASHBOARD LIFECYCLE LOG, 2-HOUR STATUS WINDOW, PERPDEXS
+CHECK AT START-UP. The dashboard appends start / stop / frame_error / crash
+(with traceback) to `data/dashboard.jsonl`, so the next unexplained death has
+a cause. `read_collector_status` trusts the collector's status file for two
+hours by default (COLLECTOR_STATUS_MAX_AGE_SECONDS), so a dead collector's
+last write cannot keep a NOVEL DEX badge alive. `_check_perp_dexs()` runs on
+the collector's start-up (before the loops) and hourly, so the status file
+exists from minute 0. hyna's future as a MIXED dex with its own allow-list is
+ratified ahead of time. 2 new tests, 1 extended.
+
 Round 48 complete: MIXED-DEX CRYPTO ALLOW-LIST, NOVEL-DEX DASHBOARD BADGE,
 CANDIDATE ROTATION LOG. `CRYPTO_DEXES = {main}`, `MIXED_DEXES = {para}`, and a
 perp on a mixed dex is TradFi unless its base is on `MIXED_DEX_CRYPTO_ALLOWLIST`
@@ -169,7 +179,7 @@ Suites, all offline:
 | suite | count |
 |---|---|
 | master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 797 OK |
-| HL_Monarch (pytest) | 1081 passed |
+| HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
 Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
@@ -192,6 +202,26 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 49 findings
+
+- **The dashboard's render loop swallowed every exception silently** - one
+  bad frame slept a second and retried, forever, with nothing written. Now
+  the first three frame errors are logged with tracebacks and counted; an
+  exception that escapes the loop (Live itself failing) is logged as a crash
+  and RE-RAISED, so the process still exits and main.py prints it; a clean
+  exit logs stop with the frame-error count. The supervisor still does not
+  manage the dashboard (Ruling 49-1: it is an optional viewer).
+- **The 2h window is a default, not a hard rule**: read_collector_status(path,
+  max_age_s=None) reads regardless of age; the dashboard uses the default.
+- **Start-up check runs on the hl-l2 executor** after universe metadata sync
+  and before the loops, so the first status file is written ~2s after start.
+  If perpDexs fails at start, the hourly cycle retries; the previous file
+  (if any) stands until then - and the 2h window expires it if the collector
+  never comes back.
+- Windows note: the collector's console cannot print the ⚠ glyph (cp1252);
+  the dashboard reconfigures stdout to UTF-8 and Rich renders it. The
+  rotation and drift log lines are ASCII on purpose.
 
 ## Round 48 findings
 

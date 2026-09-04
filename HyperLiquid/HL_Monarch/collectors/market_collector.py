@@ -416,6 +416,32 @@ class MarketCollector:
             self._spot_universe_warned = True
         return set()
 
+    def _check_perp_dexs(self) -> List[str]:
+        """
+        Read the live perpDexs list, warn on any dex no settings set knows, and
+        write the collector status file the dashboard reads (Round 47/48). Runs
+        at start-up (Round 49, Ruling 49-2: the badge is live from minute 0, not
+        minute 60) and every hourly cycle. Blocking - one weight-20 request -
+        so callers put it on an executor. Never raises; returns the novel names.
+        """
+        from analytics.funding_arbitrage import unclassified_dex_names
+        try:
+            listed = [d.get("name") for d in (self.rest_client.get_perp_dexs() or []) if d]
+            novel = unclassified_dex_names(listed)
+            if novel:
+                logger.warning("perpDexs lists dex(es) unknown to settings - refused until "
+                               "classified in CRYPTO_DEXES / TRADFI_DEXES: %s", ", ".join(novel))
+            write_collector_status(COLLECTOR_STATUS_PATH, {
+                "unclassified_dexs": novel,
+                "dexes_listed": sorted(str(n).lower() for n in listed if n),
+                "checked_at": time.time(),
+                "pid": os.getpid(),
+            })
+            return novel
+        except Exception as e:                              # noqa: BLE001 - telemetry only
+            logger.debug(f"perpDexs drift check skipped: {e}")
+            return []
+
     def _sample_coins(self, snapshots: Sequence[Dict[str, Any]] = (),
                       spreads: Optional[Dict[str, float]] = None) -> List[str]:
         """
@@ -548,7 +574,7 @@ class MarketCollector:
         """
         from execution.basis_harvester import BasisHarvester
         from execution.strategies.basis_strategy import scan_basis_opportunities
-        from analytics.funding_arbitrage import FundingArbitrageEngine, unclassified_dex_names
+        from analytics.funding_arbitrage import FundingArbitrageEngine
         from config.dynamic_config import get_dynamic_config
         from strategies.funding_harvester import FundingHarvester
 
@@ -596,24 +622,9 @@ class MarketCollector:
                     # fails closed and the scan claims no spot backing.
                     engine = FundingArbitrageEngine(client=self.rest_client)
                     volumes = engine.get_spot_volumes()
-                    # Round 47 (Ruling 47-2): dex drift. A dex the settings do not
-                    # know is refused structurally already; this makes it visible
-                    # once an hour so a human classifies it.
-                    try:
-                        listed = [d.get("name") for d in (self.rest_client.get_perp_dexs() or []) if d]
-                        novel = unclassified_dex_names(listed)
-                        if novel:
-                            logger.warning("perpDexs lists dex(es) unknown to settings - refused until "
-                                           "classified in CRYPTO_DEXES / TRADFI_DEXES: %s", ", ".join(novel))
-                        # Round 48 (Ruling 48-2): the dashboard shows this as a badge.
-                        write_collector_status(COLLECTOR_STATUS_PATH, {
-                            "unclassified_dexs": novel,
-                            "dexes_listed": sorted(str(n).lower() for n in listed if n),
-                            "checked_at": time.time(),
-                            "pid": os.getpid(),
-                        })
-                    except Exception as e:                  # noqa: BLE001 - telemetry only
-                        logger.debug(f"perpDexs drift check skipped: {e}")
+                    # Round 47 (Ruling 47-2): dex drift, once an hour (and at
+                    # start-up since Round 49).
+                    self._check_perp_dexs()
                     if volumes:
                         self._spot_volumes_map = dict(volumes)
                         self._spot_universe = engine.get_spot_universe()
@@ -965,6 +976,11 @@ class MarketCollector:
 
         logger.info("Initializing asset universes...")
         await self._sync_universe_metadata()
+        # Round 49 (Ruling 49-2): the dex drift check and status file at minute 0.
+        try:
+            await asyncio.get_running_loop().run_in_executor(self._io_executor, self._check_perp_dexs)
+        except Exception as e:                              # noqa: BLE001 - telemetry only
+            logger.debug(f"start-up perpDexs check skipped: {e}")
 
         tasks = [
             asyncio.create_task(self.ws_client.start()),
