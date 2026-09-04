@@ -148,6 +148,55 @@ class Betslip:
                                     bankroll=self.hook.get_safe_bankroll(self.bankroll)))
         return opportunities
 
+    def show_cross_market(self, questions: Optional[Sequence[Dict[str, Any]]] = None,
+                          gambling_win_capacity: float = 0.0,
+                          capital_gain_capacity: float = 0.0,
+                          prediction_is_wagering: bool = False) -> List[Any]:
+        """
+        Polymarket against the sportsbooks, priced through the asymmetric tax.
+
+        Kept OUT of the ordinary arbitrage panel on purpose. A same-venue arb and
+        a cross-market one look identical in dollars and are governed by
+        completely different tax mechanics - one delta, versus two reliefs that
+        each depend on income the other leg does not produce. Merging them into
+        one list would invite the reader to compare a 2% here with a 2% there as
+        though the numbers meant the same thing, and they do not.
+        """
+        from cross_market.hud import render_cross_market, scan_cross_market
+        results, pairs = scan_cross_market(
+            self.hook, questions or self._load_polymarket_questions(),
+            db_path=self.db_path,
+            capital=self.hook.get_safe_bankroll(self.bankroll),
+            gambling_win_capacity=gambling_win_capacity,
+            capital_gain_capacity=capital_gain_capacity,
+            prediction_is_wagering=prediction_is_wagering)
+        self.write(render_cross_market(results, pairs))
+        return results
+
+    def _load_polymarket_questions(self) -> List[Dict[str, Any]]:
+        """
+        Live Polymarket questions, from the drop folder when one is present.
+
+        Returns an empty list rather than reaching for the network. This CLI is
+        offline by construction and every test in the suite runs without a socket;
+        a silent HTTP call here would make the panel's output depend on whether
+        the machine happens to have connectivity, which is not something the
+        operator can see from the screen.
+        """
+        import json
+        drop = Path(__file__).resolve().parents[1] / "data" / "polymarket_drops"
+        if not drop.exists():
+            return []
+        found: List[Dict[str, Any]] = []
+        for path in sorted(drop.glob("*.json")):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                self.write("  [WARN] %s is not readable JSON (%s); skipped." % (path.name, exc))
+                continue
+            found.extend(payload if isinstance(payload, list) else [payload])
+        return found
+
     # -- Bridge A: is the tax ledger in step? -------------------------------
 
     def check_sync(self, older_than_days: float = SYNC_ALERT_DAYS,
@@ -546,6 +595,19 @@ def main(argv: Optional[List[str]] = None) -> int:
                         dest="check_sync",
                         help="reconcile placed bets against the tax ledger and "
                              "list any the ledger has not seen")
+    parser.add_argument("--cross-market", action="store_true",
+                        help="Polymarket vs sportsbook, priced after asymmetric tax")
+    parser.add_argument("--gambling-win-capacity", type=float, default=0.0,
+                        help="YTD gambling winnings a sportsbook loss can net "
+                             "against under NJ 54A:5-1(g). Default 0 - the "
+                             "conservative case, and usually the true one")
+    parser.add_argument("--capital-gain-capacity", type=float, default=0.0,
+                        help="YTD capital gains a Polymarket loss can offset "
+                             "under IRC 1211(b) beyond the $3,000 ordinary tranche")
+    parser.add_argument("--prediction-as-wagering", action="store_true",
+                        help="price the ADVERSE reading, in which a Polymarket "
+                             "contract is a wager under IRC 165(d) rather than "
+                             "a capital asset")
     parser.add_argument("--export-to-tax-agent", action="store_true",
                         help="write un-synced bets into the tax agent drop folder "
                              "(Tax_Reserve_Agent/data/imports - the path config.yaml "
@@ -563,6 +625,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
     if args.performance:
         slip.show_performance()
+        return 0
+    if args.cross_market:
+        slip.show_cross_market(
+            gambling_win_capacity=args.gambling_win_capacity,
+            capital_gain_capacity=args.capital_gain_capacity,
+            prediction_is_wagering=args.prediction_as_wagering)
         return 0
     if args.check_sync:
         if not slip.check_sync():

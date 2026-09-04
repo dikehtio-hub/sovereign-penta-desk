@@ -2317,7 +2317,7 @@ esults_drops\.
      reserve. The HUD says so when it detects it.
 
      Master suite is now EIGHT modules:
-       python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher          Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist          Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark          Sports_Desk.tests.test_bridges
+       python -m unittest Tax_Reserve_Agent.tests.test_sports_tax          Tax_Reserve_Agent.tests.test_new_features          Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher          Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist          Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark          Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb
 
        NOTE: test_bridges was added in Round 26k and is missing from the older
        8-module version of this command that still circulates. Without it the
@@ -2346,6 +2346,18 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     python -m Sports_Desk.interfaces.monarch_shark --cross-market
+         Polymarket vs sportsbook, priced through the ASYMMETRIC tax. Each
+         leg's loss is deductible only against income the other leg does not
+         produce, so both reliefs default to ZERO capacity:
+           --gambling-win-capacity N   YTD gambling winnings a sportsbook loss
+                                       can net against (NJ 54A:5-1(g))
+           --capital-gain-capacity N   YTD capital gains a Polymarket loss can
+                                       offset (IRC 1211(b), $3,000 beyond that)
+           --prediction-as-wagering    price the ADVERSE reading, in which the
+                                       event contract is a wager not property
+         Hurdles: ~8.8% with ample capacity, ~16.8% with none, 23.9% if the
+         Polymarket leg is read as wagering. Real arbs pay 1-3%.
      python -m Sports_Desk.interfaces.monarch_shark --reconcile      (alias)
      python -m Sports_Desk.interfaces.monarch_shark --check-sync
      python -m Sports_Desk.interfaces.monarch_shark --export-to-tax-agent
