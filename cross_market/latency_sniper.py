@@ -193,16 +193,28 @@ def stamp_books(tokens: Iterable[str], out_dir: Path, fetch: Callable[[str], Dic
         if not isinstance(payload, dict):
             continue
         path = out_dir / stamp_name(token, now)
-        path.write_text(json.dumps({"token_id": token, "observed_at": now.isoformat(), "fee_rate": fee_rate,
-                                    "bids": payload.get("bids") or [], "asks": payload.get("asks") or []}), encoding="utf-8")
+        # The live /book also carries min_order_size, neg_risk, last_trade_price and a book hash (seen
+        # live, Round 87): kept on the stamp as provenance for the replay; the parser reads only bids/asks.
+        extra = {key: payload.get(key) for key in ("market", "asset_id", "hash", "last_trade_price", "min_order_size", "neg_risk")
+                 if key in payload}
+        path.write_text(json.dumps(dict(extra, token_id=token, observed_at=now.isoformat(), fee_rate=fee_rate,
+                                        bids=payload.get("bids") or [], asks=payload.get("asks") or [])), encoding="utf-8")
         written.append(path)
     return written
 
 
+FETCH_HEADERS = {"User-Agent": "Mozilla/5.0 (PentaDesk latency_sniper recorder)", "Accept": "application/json"}
+
+
 def default_fetch(token: str, timeout: float = 5.0) -> Dict[str, Any]:
-    """The only network call in this module: a read-only GET of the public CLOB book."""
+    """
+    The only network call in this module: a read-only GET of the public CLOB book.
+    Cloudflare answers the default Python client with 403 / error 1010 (found live,
+    Round 87); a browser-style User-Agent gets the book.
+    """
     import urllib.request
-    with urllib.request.urlopen(CLOB_BOOK_URL % token, timeout=timeout) as response:
+    request = urllib.request.Request(CLOB_BOOK_URL % token, headers=FETCH_HEADERS)
+    with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

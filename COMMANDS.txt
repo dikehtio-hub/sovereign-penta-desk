@@ -2363,6 +2363,7 @@ esults_drops\.
      ROUND 87 - ITEM 12 PHASE 1: LATENCY SNIPER, OFFLINE ENGINE + RECORDER (cross_market/latency_sniper.py)
      python -m cross_market.latency_sniper --record --tokens <yes_token_id>[,..] [--books DIR] [--fee-rate 0.02]
          the measurement instrument: one read-only GET per token, stamped into cross_market\data\clob_books\
+         (sends a browser-style User-Agent: Cloudflare answers Python's default with 403 / error 1010)
      python -m cross_market.latency_sniper --event event.json [--rules rules.json] [--books DIR] [--now ISO]
                                            [--assume-defaults] [--paper [--receipts-dir DIR]] [--json]
          event.json = {kind, payload, source, confidence, observed_at}; rules default to the committed SAMPLE
@@ -2708,7 +2709,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (21 modules, 926): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper,
+     MASTER SUITE (21 modules, 927): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

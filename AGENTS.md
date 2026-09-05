@@ -605,7 +605,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (21 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper) | 926 OK |
+| master + bridges + cross-market + exporters + ingestors (21 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper) | 927 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -697,6 +697,16 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
   window; console-only /resume.
 
 ## Round 87 findings
+
+- **The one untested path was broken, and the probe found it.** The
+  recorder's live GET (the only network call in Item 12) got HTTP 403 /
+  Cloudflare error 1010 with Python's default User-Agent; a browser-style
+  User-Agent returns the book (43 bids / 47 asks on the live "no change in
+  Fed rates" market, price/size as strings, plus asset_id, hash,
+  last_trade_price, min_order_size, neg_risk). Fixed (FETCH_HEADERS); the
+  extra fields are kept on each stamp as provenance. Lesson: a test that
+  injects the transport proves the parser, never the wire - probe the wire
+  once, read-only, before anyone relies on it.
 
 - **Rules must fail to nothing, not to NO.** "twenty-five" == -25 is False,
   which would have resolved the market to NO and hit the bids. A numeric

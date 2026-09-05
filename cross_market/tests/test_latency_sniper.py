@@ -241,3 +241,38 @@ class TestReceiptsRecorderAndCli(SniperBase):
             self.assertEqual(ls.main(["--record", "--tokens", "T1, T2", "--books", str(self.root / "rec")]), 0)
             self.assertEqual(ls.main(["--record", "--tokens", "", "--books", str(self.root / "rec")]), 1)
         self.assertEqual(len(list((self.root / "rec").glob("clob_*.json"))), 2)
+
+
+class TestLiveShape(SniperBase):
+    """Round 87b: the wire, probed once for real - Cloudflare wants a User-Agent; the stamp keeps the book's provenance."""
+
+    def test_default_fetch_sends_a_user_agent_and_stamps_keep_the_api_fields(self):
+        captured = {}
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                return json.dumps({"bids": [{"price": "0.4", "size": "1"}], "asks": [], "hash": "abc",
+                                   "min_order_size": "5", "neg_risk": False, "last_trade_price": "0.41",
+                                   "asset_id": "T", "market": "0xm"}).encode("utf-8")
+
+        def fake_urlopen(request, timeout=0):
+            captured["url"] = request.full_url
+            captured["headers"] = {k.lower(): v for k, v in request.header_items()}
+            return FakeResponse()
+        with mock.patch("urllib.request.urlopen", fake_urlopen):
+            payload = ls.default_fetch("T")
+        self.assertTrue(captured["url"].endswith("book?token_id=T"))
+        self.assertIn("mozilla", captured["headers"]["user-agent"].lower())
+        self.assertEqual(payload["hash"], "abc")
+        written = ls.stamp_books(["T"], self.root / "books", lambda t: payload, now=NOW)
+        stamp = json.loads(written[0].read_text(encoding="utf-8"))
+        for key in ("market", "asset_id", "hash", "last_trade_price", "min_order_size", "neg_risk"):
+            self.assertIn(key, stamp)
+        self.assertEqual(stamp["token_id"], "T")
+        self.assertEqual(ls.load_books(self.root / "books", now=NOW)["T"].bids[0].price, 0.4)
