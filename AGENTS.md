@@ -5,6 +5,33 @@ the detail.
 
 ## Status
 
+Round 94 complete (2026-09-05): SURVIVAL-CURVE HARNESS + FOMC DRILL SCHEDULED.
+latency_sniper --survival-curve --event event.json --rules
+cross_market\experiments\fomc_2026-09-16.rules.json --books DIR [--step-seconds 1]
+[--assume-defaults] [--json]: EVERY stamp of a --record-loop drill (not the newest
+per token) replayed through the uncapped depth walk for each market the rules
+resolve, indexed by seconds from the event's observed_at (the rules file's
+release_utc is printed beside it with the lag). Per market a summary: pre-print
+baseline notional, the first post-print second the book changed (CLOB hash, else
+the levels), seconds to half and to a tenth of baseline, seconds until nothing
+clears, and dollar-seconds of fillable notional after the print (size x
+survival). Uncapped on purpose - a Kelly-capped figure sits flat at the cap and
+hides the decay. Neg_risk NO sides deferred (R4). Exit 1 = no stamps for the
+rules' tokens. THE DRILL IS SCHEDULED: Windows task Monarch_FOMC_Drill fires
+2026-09-16 13:58 EDT (= 17:58Z, T-2 min) and runs
+cross_market\data\fomc_drill_2026-09-16.bat (operator file, untracked, CRLF):
+record-loop on the three registered tokens, 1 s x 420 s, into
+cross_market\data\clob_books\fomc_2026-09-16\, log
+cross_market\data\fomc_drill_2026-09-16.log. Dry run today (3 s) wrote 9
+stamps and the curve replayed them end to end with the Tax Reserve Agent
+breakeven. LAPTOP ON AND LOGGED IN at 13:58 EDT on the 16th. After the print the
+operator writes event.json {kind fed_rate, payload.change_bps <int from the
+statement>, source, confidence >= 0.99, observed_at} and runs the curve.
+Docs defect fixed: MASTER_COMMAND_LIST.txt's "Last Update" header had said Round
+72 since 9fd5ef1 - the docs scripts replaced a string that was not there, and a
+silent replace is a no-op; the script now asserts the anchor. Tests: module 21
+now 14. Daemons and tonight's tasks untouched.
+
 Round 93 complete (2026-09-05): RULING R2 INSTRUMENT + FOMC RULES REGISTERED.
 latency_sniper.record_loop() / CLI --record-loop --tokens T[,..] --interval 1
 --duration 420 [--books DIR]: one read-only GET per token per interval,
@@ -673,7 +700,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 935 OK |
+| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 936 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -785,6 +812,20 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 94 findings
+
+- **Dollar-seconds is the number.** A $3M book that dies in one second and a
+  $3k book that survives twenty minutes are both small; fillable notional
+  integrated over the seconds after the print ranks targets by size times
+  survival, which is what Round 92 said the edge actually is.
+- **A change is not a kill.** The first-change second comes from the CLOB book
+  hash, and a new resting order changes the hash too; so half_s / tenth_s /
+  gone_s measure depletion, and first_change_s is only the earliest the book
+  could have been touched.
+- **A silent replace is a bug.** Twenty commits of docs scripts "updated" a
+  MASTER_COMMAND_LIST header line that did not exist in the form they searched
+  for; every docs replace now asserts its anchor first.
 
 ## Round 93 findings
 

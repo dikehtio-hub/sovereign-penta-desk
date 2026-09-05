@@ -25,7 +25,10 @@ WHAT THIS PHASE DOES.
 WHAT IT DOES NOT CLAIM. The roadmap's "10-50% per event" is unmeasured. The first
 job of this engine is to measure it: `--record` stamps CLOB depth for the watched
 tokens around a scheduled release, and a replay of the rules against those stamps
-says what was actually there to take, and for how long.
+says what was actually there to take, and for how long. Round 94: `--survival-curve`
+replays the rules against every stamp of a `--record-loop` drill and reports that "for
+how long" second by second - the pre-print baseline, the first change, the seconds to
+half, a tenth and nothing, and the dollar-seconds of fillable notional after the print.
 """
 from __future__ import annotations
 
@@ -544,6 +547,182 @@ def format_depth(reports: Sequence[Dict[str, Any]], economics_label: str) -> str
     return "\n".join(lines)
 
 
+# ------------------------------------------------------------------ Round 94: the survival curve - how long the edge lasts after the print
+
+@dataclass
+class Stamp:
+    token: str
+    observed_at: datetime
+    book: Book
+    book_hash: str = ""                             # the CLOB's own book hash when the stamp carries one
+    name: str = ""
+
+    def fingerprint(self) -> str:
+        """The CLOB hash when present, else the levels themselves: any difference means the book moved."""
+        if self.book_hash:
+            return self.book_hash
+        return repr([(l.price, l.size) for l in self.book.asks] + [(l.price, l.size) for l in self.book.bids])
+
+
+def load_stamp_series(books_dir: Path, tokens: Optional[Iterable[str]] = None) -> List[Stamp]:
+    """Every readable stamp under books_dir - not just the newest per token - oldest first; junk skipped."""
+    wanted = {str(t).strip() for t in tokens} if tokens else None
+    out: List[Stamp] = []
+    try:
+        files = list(Path(books_dir).glob("clob_*.json"))
+    except Exception:                                       # noqa: BLE001
+        return []
+    for path in files:
+        match = _STAMP_RE.match(path.name)
+        if not match or (wanted is not None and match.group("token") not in wanted):
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            observed = _utc(data.get("observed_at") or datetime.strptime(match.group("stamp"), "%Y%m%dT%H%M%S_%f"))
+            book = Book.from_clob(match.group("token"), data, observed, fee_rate=float(data.get("fee_rate") or 0.0))
+        except Exception:                                   # noqa: BLE001
+            continue
+        out.append(Stamp(token=match.group("token"), observed_at=observed, book=book, book_hash=str(data.get("hash") or ""),
+                         name=path.name))
+    out.sort(key=lambda st: (st.observed_at, st.token))
+    return out
+
+
+def bucket_latest(stamps: Sequence[Stamp], anchor: datetime, step_s: float) -> List[Stamp]:
+    """With a step, the last stamp inside each step-wide bucket measured from the anchor; step <= 0 keeps every stamp."""
+    if step_s <= 0:
+        return list(stamps)
+    kept: Dict[Tuple[str, int], Stamp] = {}
+    for st in stamps:                                       # oldest first, so the last write in a bucket wins
+        kept[(st.token, int((st.observed_at - anchor).total_seconds() // step_s))] = st
+    return sorted(kept.values(), key=lambda st: (st.observed_at, st.token))
+
+
+def survival_summary(series: Sequence[Dict[str, Any]], step_s: float) -> Dict[str, Any]:
+    """
+    The curve in five numbers: the pre-print baseline (the last stamp before the event), the
+    first post-print second the book differed from the stamp before it, the first second the
+    fillable notional fell to half and to a tenth of the baseline, the first second nothing
+    cleared, and the dollar-seconds of fillable notional after the print (size x survival).
+    """
+    pre = [r for r in series if r["delta_s"] < 0]
+    post = [r for r in series if r["delta_s"] >= 0]
+    base_row = pre[-1] if pre else (post[0] if post else None)
+    baseline = base_row["fillable_notional"] if base_row else 0.0
+
+    def first(pred: Callable[[Dict[str, Any]], bool]) -> Optional[float]:
+        for r in post:
+            if pred(r):
+                return r["delta_s"]
+        return None
+    dollar_seconds = 0.0
+    for i, r in enumerate(post):
+        width = (post[i + 1]["delta_s"] - r["delta_s"]) if i + 1 < len(post) else max(step_s, 0.0)
+        dollar_seconds += r["fillable_notional"] * width
+    return {"baseline_notional": baseline, "baseline_delta_s": base_row["delta_s"] if base_row else None,
+            "pre_print_stamps": len(pre), "post_print_stamps": len(post),
+            "first_change_s": first(lambda r: r["changed"]),
+            "half_s": first(lambda r: r["fillable_notional"] <= 0.5 * baseline) if baseline > 0 else None,
+            "tenth_s": first(lambda r: r["fillable_notional"] <= 0.1 * baseline) if baseline > 0 else None,
+            "gone_s": first(lambda r: r["clearing_levels"] == 0),
+            "max_post_notional": round(max((r["fillable_notional"] for r in post), default=0.0), 2),
+            "notional_seconds": round(dollar_seconds, 2)}
+
+
+def survival_curve(stamps: Sequence[Stamp], rules: Sequence[Rule], event: Event, breakeven: Callable[[float], float],
+                   step_s: float = 1.0, release_utc: Optional[datetime] = None, honour_r4: bool = True) -> Dict[str, Any]:
+    """
+    The measurement Rounds 91-93 were built for. For every market the rules resolve from the
+    event: a time series of what each recorded book would have handed a sniper that knew the
+    outcome (the uncapped depth walk), indexed by seconds from the event's observed_at
+    (negative = before the print), plus survival_summary(). Uncapped on purpose: a Kelly-capped
+    figure sits flat at the cap and hides the decay that is being measured. Places nothing.
+    """
+    anchor = event.observed_at
+    out: Dict[str, Any] = {"anchor": anchor.isoformat(), "release_utc": release_utc.isoformat() if release_utc else None,
+                           "anchor_minus_release_s": round((anchor - release_utc).total_seconds(), 3) if release_utc else None,
+                           "event": {"kind": event.kind, "payload": event.payload, "confidence": event.confidence},
+                           "step_seconds": step_s, "stamps": len(stamps), "markets": []}
+    for rule in rules:
+        outcome = rule.resolve(event)
+        if outcome is None:
+            continue
+        own = [st for st in stamps if st.token == rule.market]
+        market: Dict[str, Any] = {"market": rule.market, "rule": rule.label or rule.market, "outcome": outcome,
+                                  "side": "BUY_YES" if outcome == "YES" else "BUY_NO", "stamps": len(own),
+                                  "neg_risk": own[0].book.neg_risk if own else None, "deferred": None, "series": [], "summary": None}
+        out["markets"].append(market)
+        if not own:
+            continue
+        if outcome == "NO" and own[0].book.neg_risk and honour_r4:
+            market["deferred"] = "neg_risk market: NO side deferred to Phase 2 (Ruling R4)"
+            continue
+        previous = None
+        for st in bucket_latest(own, anchor, step_s):
+            rep = depth_report(st.book, outcome, event.confidence, breakeven, now=st.observed_at, honour_r4=honour_r4)
+            print_ = st.fingerprint()
+            market["series"].append({"delta_s": round((st.observed_at - anchor).total_seconds(), 3),
+                                     "observed_at": st.observed_at.isoformat(), "fillable_shares": rep["fillable_shares"],
+                                     "fillable_notional": rep["fillable_notional"], "vwap": rep["vwap"],
+                                     "clearing_levels": rep["levels_clearing"], "best_price": rep["best_price"],
+                                     "expected_profit": rep["expected_profit"],
+                                     "changed": previous is not None and print_ != previous, "stamp": st.name})
+            previous = print_
+        market["summary"] = survival_summary(market["series"], step_s)
+    return out
+
+
+def _fmt_s(value: Optional[float]) -> str:
+    return "never" if value is None else "t%+.1fs" % value
+
+
+def format_survival(result: Dict[str, Any], economics_label: str, max_rows: int = 24) -> str:
+    lines = ["SURVIVAL CURVE (Round 94) - what the recorded books would have handed a sniper that knew the outcome, second by second",
+             "  anchor %s (event observed_at)%s · step %g s · %d stamps · economics: %s" % (
+                 result["anchor"],
+                 " = release %+.1fs" % result["anchor_minus_release_s"] if result.get("anchor_minus_release_s") is not None else "",
+                 result["step_seconds"], result["stamps"], economics_label)]
+    for m in result["markets"]:
+        head = "  %s %s '%s'%s - %d stamps" % (m["market"][:14], m["side"], m["rule"], " (neg_risk)" if m["neg_risk"] else "", m["stamps"])
+        if m["deferred"]:
+            lines.append(head + ": " + m["deferred"])
+            continue
+        if not m["series"]:
+            lines.append(head + ": no stamps for this token")
+            continue
+        sm = m["summary"]
+        lines.append(head)
+        lines.append("      baseline $%.2f at %s · first change %s · half %s · tenth %s · gone %s · post-print $-seconds %.0f · peak post $%.2f" % (
+            sm["baseline_notional"], _fmt_s(sm["baseline_delta_s"]), _fmt_s(sm["first_change_s"]), _fmt_s(sm["half_s"]),
+            _fmt_s(sm["tenth_s"]), _fmt_s(sm["gone_s"]), sm["notional_seconds"], sm["max_post_notional"]))
+        lines.append("      %8s %10s %12s %8s %6s %s" % ("t (s)", "shares", "notional $", "vwap", "lvls", "chg"))
+        pre = [r for r in m["series"] if r["delta_s"] < 0][-2:]
+        post = [r for r in m["series"] if r["delta_s"] >= 0]
+        shown = pre + post[:max_rows]
+        for r in shown:
+            lines.append("      %+8.1f %10.0f %12.2f %8s %6d %s" % (r["delta_s"], r["fillable_shares"], r["fillable_notional"],
+                                                                  "%.4f" % r["vwap"] if r["vwap"] is not None else "-",
+                                                                  r["clearing_levels"], "*" if r["changed"] else ""))
+        hidden = len(m["series"]) - len(shown)
+        if hidden > 0:
+            lines.append("      ... %d more row(s); --json for all" % hidden)
+    lines.append("  uncapped upper bounds from recorded books (Ruling R4 honoured); offline replay; places nothing.")
+    return "\n".join(lines)
+
+
+def replay_economics(assume_defaults: bool) -> Tuple[Callable[[float], float], Callable[[float, float], float], str]:
+    """The Tax Reserve Agent's breakeven when the hook loads, else the fair one - and a label saying which."""
+    breakeven, cap = assumed_economics()
+    if assume_defaults:
+        return breakeven, cap, "assumed (fair breakeven)"
+    try:
+        from Tax_Reserve_Agent.interfaces.monarch_hook import get_hook
+        breakeven, cap = hook_economics(get_hook())
+        return breakeven, cap, "Tax Reserve Agent after-tax breakeven"
+    except Exception as exc:                                # noqa: BLE001 - the ledger may be absent; say so
+        return breakeven, cap, "assumed (hook unavailable: %s)" % type(exc).__name__
+
+
 # ------------------------------------------------------------------ paper receipts (the only execution this module has)
 
 def record_paper(opportunity: Opportunity, event: Event, receipts_dir: Optional[Path] = None, writer=None,
@@ -613,20 +792,33 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="Option 2 (Round 92): for every recorded book, what a sniper knowing the outcome could take, "
                              "level by level, YES and NO (NO deferred on neg_risk books, Ruling R4)")
     parser.add_argument("--confidence", type=float, default=0.995, help="with --depth-report: the assumed outcome confidence")
+    parser.add_argument("--survival-curve", action="store_true",
+                        help="Round 94: replay --rules against every stamp in --books around --event and report, second by "
+                             "second, what a sniper knowing the outcome could have taken and how long that lasted")
+    parser.add_argument("--step-seconds", type=float, default=1.0,
+                        help="with --survival-curve: bucket width, the latest stamp per bucket; <= 0 keeps every stamp")
     args = parser.parse_args(argv)
+    if args.survival_curve:
+        if not args.event or not args.rules:
+            parser.error("--survival-curve needs --event and --rules (the pre-registered file, never the sample)")
+        event = Event.from_dict(json.loads(Path(args.event).read_text(encoding="utf-8")))
+        rules = load_rules(args.rules)
+        release = None
+        try:
+            raw = json.loads(Path(args.rules).read_text(encoding="utf-8"))
+            release = _utc(raw["release_utc"]) if isinstance(raw, dict) and raw.get("release_utc") else None
+        except Exception:                                   # noqa: BLE001 - the release time is a courtesy, not an input
+            release = None
+        stamps = load_stamp_series(Path(args.books or DEFAULT_BOOKS_DIR), tokens=[r.market for r in rules])
+        breakeven, _cap, label = replay_economics(args.assume_defaults)
+        result = survival_curve(stamps, rules, event, breakeven, step_s=args.step_seconds, release_utc=release)
+        print(json.dumps(result, indent=2, default=str) if args.json else format_survival(result, label))
+        return 0 if any(m["series"] for m in result["markets"]) else 1
     if args.depth_report:
         books_dir = Path(args.books or DEFAULT_BOOKS_DIR)
         now = _utc(args.now) if args.now else _now()
         books = load_books(books_dir, now)
-        label = "assumed (fair breakeven)"
-        breakeven, _cap = assumed_economics()
-        if not args.assume_defaults:
-            try:
-                from Tax_Reserve_Agent.interfaces.monarch_hook import get_hook
-                breakeven, _cap = hook_economics(get_hook())
-                label = "Tax Reserve Agent after-tax breakeven"
-            except Exception as exc:                        # noqa: BLE001 - the ledger may be absent; say so
-                label = "assumed (hook unavailable: %s)" % type(exc).__name__
+        breakeven, _cap, label = replay_economics(args.assume_defaults)
         reports = []
         for token in sorted(books):
             for outcome in ("YES", "NO"):

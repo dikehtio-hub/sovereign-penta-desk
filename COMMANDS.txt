@@ -2389,6 +2389,17 @@ esults_drops\.
          Ruling R2 (Round 93): the FOMC drill recorder - start at T-2 min (2026-09-16 17:58Z), stamps every second for
          7 minutes; stops at the duration, on HALT.flag (exit 3) or Ctrl-C; HTTP 429 backs off. Rules pre-registered in
          cross_market\experiments\fomc_2026-09-16.rules.json (real token ids; never edited inside the window).
+     python -m cross_market.latency_sniper --survival-curve --event event.json --rules cross_market\experiments\fomc_2026-09-16.rules.json
+                                           --books cross_market\data\clob_books\fomc_2026-09-16 [--step-seconds 1] [--assume-defaults] [--json]
+         Round 94: every stamp of the drill replayed through the uncapped depth walk, second by second from the event's
+         observed_at; per market: baseline, first change, half, tenth, gone, post-print $-seconds. Exit 1 = no stamps.
+         event.json after the print: {"kind":"fed_rate","payload":{"change_bps":0},"source":"federalreserve.gov statement",
+         "confidence":0.995,"observed_at":"2026-09-16T18:00:00Z"}   (change_bps = the number read from the statement)
+     cross_market\data\fomc_drill_2026-09-16.bat [DURATION] [BOOKS_DIR]       (operator file, untracked; CRLF)
+         the drill recorder: record-loop on the three registered tokens, 1 s x 420 s; log cross_market\data\fomc_drill_2026-09-16.log
+         SCHEDULED as task Monarch_FOMC_Drill for 2026-09-16 13:58 EDT (17:58Z), interactive-only: laptop on and logged in.
+         schtasks /Query /TN Monarch_FOMC_Drill /V /FO LIST      (check)      schtasks /Delete /TN Monarch_FOMC_Drill /F   (remove)
+         schtasks /Create /SC ONCE /SD 09/16/2026 /ST 13:58 /TN Monarch_FOMC_Drill /TR "C:\Users\ixis1\Desktop\DEV\cross_market\data\fomc_drill_2026-09-16.bat" /F
      Tests: python -m unittest cross_market.tests.test_latency_sniper   (master module 21)
 
      ROUND 85 - ITEM 10 PHASE 1: TELEGRAM C2 BOT (cross_market/interfaces/c2_bot.py)
@@ -2729,7 +2740,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (22 modules, 935): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards,
+     MASTER SUITE (22 modules, 936): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

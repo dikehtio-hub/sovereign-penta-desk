@@ -428,3 +428,85 @@ class TestRecordLoop(SniperBase):
         self.assertEqual(by_label["FOMC 2026-09-16: no change"].resolve(hike), "NO")
         self.assertEqual(by_label["FOMC 2026-09-16: hike 25 bps"].resolve(hike), "YES")
         self.assertTrue(all(r.market.isdigit() and len(r.market) > 20 for r in rules))
+
+
+class TestSurvivalCurve(SniperBase):
+    """Round 94: a synthetic drill - series, summary numbers, step bucketing, R4 deferral, the CLI; no network."""
+
+    def test_curve_measures_how_long_the_edge_survives_after_the_print(self):
+        out = self.root / "drill"
+        thick = {"asks": [{"price": "0.50", "size": "1000"}, {"price": "0.55", "size": "1000"}], "bids": [], "hash": "h0"}
+        half = {"asks": [{"price": "0.50", "size": "1000"}], "bids": [], "hash": "h1"}
+        tenth = {"asks": [{"price": "0.50", "size": "200"}], "bids": [], "hash": "h2"}
+        gone = {"asks": [{"price": "0.999", "size": "5000"}], "bids": [], "hash": "h3"}       # nothing clears at 0.999
+        lose = {"asks": [{"price": "0.50", "size": "10"}], "bids": [{"price": "0.40", "size": "10"}], "neg_risk": True}
+        script = [(-2.0, thick), (-1.0, thick), (0.0, thick), (1.0, thick), (2.0, half), (3.0, half), (4.0, tenth), (5.0, gone), (6.0, gone)]
+        for dt, payload in script:
+            ls.stamp_books(["WIN", "LOSE"], out, lambda t, p=payload: p if t == "WIN" else lose, now=NOW + timedelta(seconds=dt))
+        (out / "clob_WIN_junk.json").write_text("{", encoding="utf-8")
+        stamps = ls.load_stamp_series(out)
+        self.assertEqual(len(stamps), 18) ; self.assertEqual([s.token for s in stamps[:2]], ["LOSE", "WIN"])
+        self.assertTrue(all(a.observed_at <= b.observed_at for a, b in zip(stamps, stamps[1:])))
+        self.assertEqual(len(ls.load_stamp_series(out, tokens=["WIN"])), 9)
+        rules = [ls.Rule(market="WIN", kind="fed_rate", field="change_bps", op="==", value=0, label="hold"),
+                 ls.Rule(market="LOSE", kind="fed_rate", field="change_bps", op="==", value=25, label="hike 25"),
+                 ls.Rule(market="NONE", kind="fed_rate", field="change_bps", op=">=", value=50, label="hike 50+"),
+                 ls.Rule(market="CPI", kind="cpi_yoy", field="yoy_pct", op=">", value=3.0, label="cpi")]
+        hold = ls.Event("fed_rate", {"change_bps": 0}, "fed", 0.995, NOW)
+        strict = lambda odds: 1.0 / odds + 0.01
+        curve = ls.survival_curve(stamps, rules, hold, strict, step_s=1.0, release_utc=NOW - timedelta(seconds=4))
+        self.assertEqual(curve["anchor_minus_release_s"], 4.0)
+        by = {m["rule"]: m for m in curve["markets"]}
+        self.assertEqual(set(by), {"hold", "hike 25", "hike 50+"})                    # the CPI rule says nothing
+        self.assertIn("Ruling R4", by["hike 25"]["deferred"]) ; self.assertEqual(by["hike 25"]["series"], [])
+        self.assertEqual((by["hike 50+"]["stamps"], by["hike 50+"]["series"], by["hike 50+"]["summary"]), (0, [], None))
+        win = by["hold"]
+        self.assertEqual([r["delta_s"] for r in win["series"]], [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        self.assertEqual([r["fillable_notional"] for r in win["series"]], [1050.0, 1050.0, 1050.0, 1050.0, 500.0, 500.0, 100.0, 0.0, 0.0])
+        self.assertEqual([r["changed"] for r in win["series"]], [False, False, False, False, True, False, True, True, False])
+        self.assertEqual(win["series"][0]["clearing_levels"], 2) ; self.assertAlmostEqual(win["series"][0]["vwap"], 0.525)
+        sm = win["summary"]
+        self.assertEqual((sm["baseline_notional"], sm["baseline_delta_s"], sm["pre_print_stamps"], sm["post_print_stamps"]), (1050.0, -1.0, 2, 7))
+        self.assertEqual((sm["first_change_s"], sm["half_s"], sm["tenth_s"], sm["gone_s"]), (2.0, 2.0, 4.0, 5.0))
+        self.assertEqual((sm["max_post_notional"], sm["notional_seconds"]), (1050.0, 1050 + 1050 + 500 + 500 + 100))
+        # step bucketing keeps the latest stamp per bucket; step <= 0 keeps every stamp
+        two = {m["rule"]: m for m in ls.survival_curve(stamps, rules, hold, strict, step_s=2.0)["markets"]}["hold"]
+        self.assertEqual([r["delta_s"] for r in two["series"]], [-1.0, 1.0, 3.0, 5.0, 6.0])
+        every = {m["rule"]: m for m in ls.survival_curve(stamps, rules, hold, strict, step_s=0)["markets"]}["hold"]
+        self.assertEqual(len(every["series"]), 9) ; self.assertEqual(every["summary"]["notional_seconds"], 1050 + 1050 + 500 + 500 + 100)
+        # a book that never changes and never dies: the summary says so
+        flat = ls.survival_curve(stamps[:8], rules[:1], hold, strict)["markets"][0]["summary"]
+        self.assertEqual((flat["first_change_s"], flat["half_s"], flat["gone_s"]), (None, None, None))
+        text = ls.format_survival(curve, "assumed")
+        self.assertIn("SURVIVAL CURVE", text) ; self.assertIn("half t+2.0s", text) ; self.assertIn("gone t+5.0s", text)
+        self.assertIn("Ruling R4", text) ; self.assertIn("no stamps for this token", text) ; self.assertIn("places nothing", text)
+        # the CLI over the same folder: text, JSON, exit 1 on an empty folder, --rules required
+        event_path = self.root / "event.json"
+        event_path.write_text(json.dumps({"kind": "fed_rate", "payload": {"change_bps": 0}, "source": "fed", "confidence": 0.995,
+                                          "observed_at": NOW.isoformat()}), encoding="utf-8")
+        rules_path = self.root / "rules.json"
+        rules_path.write_text(json.dumps({"release_utc": (NOW - timedelta(seconds=4)).isoformat(),
+                                          "rules": [{"market": "WIN", "kind": "fed_rate", "field": "change_bps", "op": "==", "value": 0, "label": "hold"},
+                                                    {"market": "LOSE", "kind": "fed_rate", "field": "change_bps", "op": "==", "value": 25, "label": "hike"}]}),
+                              encoding="utf-8")
+        base = ["--survival-curve", "--event", str(event_path), "--rules", str(rules_path), "--books", str(out), "--assume-defaults"]
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ls.main(base), 0)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("SURVIVAL CURVE", printed) ; self.assertIn("= release +4.0s", printed) ; self.assertIn("Ruling R4", printed)
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ls.main(base + ["--json", "--step-seconds", "2"]), 0)
+        payload = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertEqual(payload["markets"][0]["summary"]["half_s"], 3.0)             # bucket of 2 s: the 500 book is first seen at t+3
+        self.assertEqual(payload["step_seconds"], 2.0)
+        with mock.patch("builtins.print"):
+            self.assertEqual(ls.main(base[:-2] + [str(self.root / "empty"), "--assume-defaults"]), 1)
+        with mock.patch("builtins.print"), mock.patch("sys.stderr"):
+            with self.assertRaises(SystemExit):
+                ls.main(["--survival-curve", "--event", str(event_path), "--books", str(out), "--assume-defaults"])
+        # the real registration replays through the same path (no stamps for those tokens here -> exit 1, no crash)
+        real = Path(__file__).resolve().parents[1] / "experiments" / "fomc_2026-09-16.rules.json"
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ls.main(["--survival-curve", "--event", str(event_path), "--rules", str(real), "--books", str(out), "--assume-defaults"]), 1)
+        self.assertIn("= release +5.0s", " ".join(str(c.args[0]) for c in fake_print.call_args_list))   # NOW is 18:00:05Z
+
