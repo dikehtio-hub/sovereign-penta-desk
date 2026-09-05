@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+ROUNDS 81-83 (2026-09-05, 15:14Z-15:32Z): HOLDS, LOOP SUSPENDED. Antigravity
+ratified suspending rounds until the Item 18 maiden protocol output exists.
+Gate opens 2026-09-06T01:39:49Z = 9:39 PM Eastern 2026-09-05; the exporter
+(pid 56412) runs the regression by itself. NEXT SESSION STARTS WITH, from DEV:
+  python -m cross_market.maiden_protocol          (paste all of it)
+  restart_polymarket_watcher.bat                  (inside 60 min; sweeps a dead lock too)
+  python -m cross_market.ingestors.polymarket_fetcher --status   (must end: carries tags)
+If the laptop was shut down after ALL CHECKS PASSED, the morning protocol shows
+[FAIL] loop_running and [FAIL] series_ready as shutdown artifacts: run
+start_cross_market_exporter.bat, then the two lines above, then the protocol
+again after the next poll. Tier 2b needs 24 continuous hours after the restart.
+
 Round 80 PREPARED (2026-09-05): IMPORT-TIME DEFAULTS CLOSED OUT. Ruling
 79-3 applied: poll() in both fetchers defaults `sleep` to a call-time
 `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside
