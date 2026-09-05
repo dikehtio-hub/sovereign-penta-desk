@@ -132,6 +132,9 @@ def main():
     obs_parser.add_argument("--once", action="store_true", help="Perform single export and exit")
     obs_parser.add_argument("--watch", action="store_true", help="Continuous background sync watcher daemon")
     obs_parser.add_argument("--interval", type=int, default=15, help="Sync interval in seconds (default: 15)")
+    obs_parser.add_argument("--throttle-seconds", type=float, default=0.0,
+                            help="Round 70: minimum seconds between rewrites of HyperLiquid_Monarch.md "
+                                 "(0 = unthrottled; other notes unaffected; precision unchanged)")
 
     # Command: test-order  (Round 19 live pre-flight harness)
     to_parser = subparsers.add_parser(
@@ -707,10 +710,11 @@ def main():
 
     elif args.command == "obsidian":
         from analytics.obsidian_exporter import export_hyperliquid_to_obsidian, run_obsidian_sync_loop
+        throttle = float(getattr(args, "throttle_seconds", 0.0) or 0.0)
         if getattr(args, "watch", False):
-            run_obsidian_sync_loop(args.vault, interval=args.interval)
+            run_obsidian_sync_loop(args.vault, interval=args.interval, throttle_seconds=throttle)
         else:
-            out_file = export_hyperliquid_to_obsidian(args.vault)
+            out_file = export_hyperliquid_to_obsidian(args.vault, throttle_seconds=throttle)
             print(f"✓ Exported HyperLiquid intelligence note to Obsidian: {out_file}")
 
 if __name__ == "__main__":

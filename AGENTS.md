@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+Round 70 complete: OPTIONAL WRITE THROTTLE FOR HyperLiquid_Monarch.md.
+`main.py obsidian --watch --throttle-seconds N` (and the module CLI) skips
+rewriting the market dashboard while its last write is younger than N
+seconds, judged on the file's mtime so it holds across processes; every
+other note and every number are untouched (Ruling 69-2: no coarsening).
+Default 0 = unthrottled; the loop logs "(market dashboard throttled)".
+1 new test.
+
 Round 69 complete: CLOCK FRAGMENTS VOLATILE IN THE HL COCKPIT NOTES.
 analytics/obsidian_links.normalize_for_hash (shared by HyperLiquid_Monarch,
 Trading_Terminal, Bot_Control, the whale notes and the hub) now substitutes
@@ -438,6 +446,20 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 70 findings
+
+- **The throttle is judged on mtime, not on in-process state**, so a second
+  exporter (or a manual --once) sees the same cooldown, and a restart does
+  not reset it. It gates only the market note; Bot_Control, the terminal,
+  the config note, the hub and the whale dossiers keep their own hash-based
+  skip.
+- **Throttle and hash compose**: past the cooldown, unchanged content is
+  still skipped by the hash; inside it, even changed content waits. The
+  test pins both orders.
+- **Not wired into start_all_ecosystem_sync.bat** - the ruling made it
+  optional; the operator adds --throttle-seconds to the HL sync line if the
+  git churn of the live dashboard matters more than its 15 s freshness.
 
 ## Round 69 findings
 

@@ -2360,6 +2360,12 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 70 - OPTIONAL WRITE THROTTLE FOR HyperLiquid_Monarch.md
+     python main.py obsidian --watch --interval 15 --throttle-seconds 300 --vault "...\obsidian_vault"
+         Rewrites the market dashboard at most once per 300 s (mtime-judged); other notes and all
+         numbers untouched. 0 (default) = unthrottled. --once honours it too. Loop line shows
+         "(market dashboard throttled)". Optional: not in start_all_ecosystem_sync.bat.
+
      ROUND 69 - CLOCK FRAGMENTS VOLATILE IN THE HL COCKPIT NOTES
      HyperLiquid\HL_Monarch\analytics\obsidian_links.py _VOLATILE_FRAGMENT_PATTERNS: "Ns ago",
          backticked "NN.Nh" durations and the Realised APR cell of a position row are replaced before

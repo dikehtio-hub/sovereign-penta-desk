@@ -563,12 +563,29 @@ tags:
     return file_path, written
 
 
+def market_note_throttled(master_file: Path, throttle_seconds: float, now: Optional[float] = None) -> bool:
+    """
+    Round 70 (Ruling 69-2): HyperLiquid_Monarch.md renders live prices, so a rewrite
+    every sync is legitimate. An operator who wants less disk I/O may impose a minimum
+    cooldown between writes of THAT note - judged on its mtime, so it holds across
+    processes - without coarsening a single number. 0 = unthrottled.
+    """
+    if throttle_seconds <= 0 or not Path(master_file).exists():
+        return False
+    now = time.time() if now is None else float(now)
+    return (now - Path(master_file).stat().st_mtime) < float(throttle_seconds)
+
+
 def export_hyperliquid_to_obsidian(
     vault_path_str: Optional[str] = None,
     repo: Optional[MarketRepository] = None,
     write_whale_notes: bool = True,
+    throttle_seconds: float = 0.0,
 ) -> Path:
-    """Generate all HyperLiquid notes, Bot Control, Config, and Terminal notes inside the vault."""
+    """Generate all HyperLiquid notes, Bot Control, Config, and Terminal notes inside the vault.
+
+    `throttle_seconds` (Round 70) skips rewriting HyperLiquid_Monarch.md while its last write
+    is younger than that; every other note is unaffected."""
     vault_path = get_vault_path(vault_path_str)
     repo = repo or MarketRepository()
     arb_engine = FundingArbitrageEngine()
@@ -770,7 +787,11 @@ last_synced: "{now_utc}"
 ---
 *Generated automatically by HL_Monarch Obsidian Exporter.*
 """
-    _, master_written = write_note_if_changed(master_file, content.strip() + "\n")
+    master_throttled = market_note_throttled(master_file, throttle_seconds)
+    if master_throttled:
+        master_written = False
+    else:
+        _, master_written = write_note_if_changed(master_file, content.strip() + "\n")
 
     # 6. Generate Cockpit Companion Notes
     generate_bot_control_note(vault_path, now_utc)
@@ -782,6 +803,8 @@ last_synced: "{now_utc}"
 
     export_hyperliquid_to_obsidian.last_write_stats = {
         "master_written": master_written,
+        "master_throttled": master_throttled,
+        "throttle_seconds": float(throttle_seconds),
         "whale_notes": len(whale_notes),
         "whales_written": whales_written,
         "whales_skipped": len(whale_notes) - whales_written,
@@ -789,7 +812,8 @@ last_synced: "{now_utc}"
     return master_file
 
 
-def run_obsidian_sync_loop(vault_path_str: Optional[str] = None, interval: int = 15):
+def run_obsidian_sync_loop(vault_path_str: Optional[str] = None, interval: int = 15,
+                           throttle_seconds: float = 0.0):
     vault_path = get_vault_path(vault_path_str)
     repo = MarketRepository()
     interval = max(1, int(interval))
@@ -797,14 +821,18 @@ def run_obsidian_sync_loop(vault_path_str: Optional[str] = None, interval: int =
     print(f"📁 Target Vault: {vault_path}")
     if note_exists(vault_path, PM_DASHBOARD_NOTE):
         print("🔗 Shared vault detected - cross-linking with Polymarket Monarch.")
+    if throttle_seconds > 0:
+        print(f"⏱ Market dashboard rewrites throttled to one per {int(throttle_seconds)}s (full precision kept).")
     print(f"🔄 Syncing intelligence & cockpit notes every {interval}s (Press Ctrl+C to stop)...\n")
     try:
         while True:
             try:
-                file_path = export_hyperliquid_to_obsidian(vault_path_str, repo=repo)
+                file_path = export_hyperliquid_to_obsidian(vault_path_str, repo=repo, throttle_seconds=throttle_seconds)
                 stats = getattr(export_hyperliquid_to_obsidian, "last_write_stats", {})
                 skipped = stats.get("whales_skipped", 0)
                 churn = f" ({skipped} unchanged notes skipped)" if skipped else ""
+                if stats.get("master_throttled"):
+                    churn += " (market dashboard throttled)"
                 dt = datetime.now().strftime("%H:%M:%S")
                 print(f"[{dt}] ✓ Synced Command Cockpit & Market Dashboard -> {file_path.name}{churn}")
             except Exception as e:
@@ -822,10 +850,12 @@ if __name__ == "__main__":
     parser.add_argument("--once", action="store_true", help="One-shot sync and exit")
     parser.add_argument("--watch", action="store_true", help="Continuous background sync loop")
     parser.add_argument("--interval", type=int, default=15, help="Interval in seconds for watch mode")
+    parser.add_argument("--throttle-seconds", type=float, default=0.0,
+                        help="minimum seconds between rewrites of HyperLiquid_Monarch.md (0 = unthrottled)")
     args = parser.parse_args()
 
     if args.watch:
-        run_obsidian_sync_loop(args.vault, interval=args.interval)
+        run_obsidian_sync_loop(args.vault, interval=args.interval, throttle_seconds=args.throttle_seconds)
     else:
-        out = export_hyperliquid_to_obsidian(args.vault)
+        out = export_hyperliquid_to_obsidian(args.vault, throttle_seconds=args.throttle_seconds)
         print(f"✓ Exported HyperLiquid intelligence & command notes to: {out}")

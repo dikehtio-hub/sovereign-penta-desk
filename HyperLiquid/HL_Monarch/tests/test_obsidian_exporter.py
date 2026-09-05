@@ -98,3 +98,52 @@ class TestClockInvariantHash(unittest.TestCase):
         self.assertIn("`+31.58%`", norm)
         self.assertEqual(normalize_for_hash("> - **Funding Rate Arbitrage Opportunities**: `43` liquid pairs (> 25% APR)"),
                          "> - **Funding Rate Arbitrage Opportunities**: `43` liquid pairs (> 25% APR)")
+
+
+class TestMarketNoteThrottle(unittest.TestCase):
+    """Round 70 (Ruling 69-2): an optional cooldown on HyperLiquid_Monarch.md rewrites, judged on mtime."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.vault_dir = Path(self.temp_dir.name) / "vault"
+        DatabaseManager._instance = None
+        self.db = DatabaseManager(Path(self.temp_dir.name) / "export.db")
+        self.repo = MarketRepository(self.db)
+
+    def tearDown(self):
+        self.db.close()
+        DatabaseManager._instance = None
+        try:
+            self.temp_dir.cleanup()
+        except (OSError, PermissionError):
+            pass
+
+    def test_the_throttle_skips_only_the_market_note_and_only_while_it_is_fresh(self):
+        import os
+        import time
+        from analytics.obsidian_exporter import market_note_throttled
+
+        master = export_hyperliquid_to_obsidian(str(self.vault_dir), repo=self.repo, write_whale_notes=False)
+        stats = export_hyperliquid_to_obsidian.last_write_stats
+        self.assertTrue(master.exists())
+        self.assertEqual((stats["master_throttled"], stats["throttle_seconds"]), (False, 0.0))
+        # Fresh note + a 300 s throttle: the market note is not rewritten, the companions still sync.
+        os.utime(master, None)
+        before = master.stat().st_mtime
+        export_hyperliquid_to_obsidian(str(self.vault_dir), repo=self.repo, write_whale_notes=False, throttle_seconds=300)
+        stats = export_hyperliquid_to_obsidian.last_write_stats
+        self.assertTrue(stats["master_throttled"])
+        self.assertFalse(stats["master_written"])
+        self.assertEqual(master.stat().st_mtime, before)
+        self.assertTrue((self.vault_dir / "Bot_Control.md").exists())
+        # Older than the throttle: eligible again (unchanged content is then skipped by the hash, not the throttle).
+        old = time.time() - 600
+        os.utime(master, (old, old))
+        export_hyperliquid_to_obsidian(str(self.vault_dir), repo=self.repo, write_whale_notes=False, throttle_seconds=300)
+        self.assertFalse(export_hyperliquid_to_obsidian.last_write_stats["master_throttled"])
+        # The predicate itself: 0 never throttles; a missing note never throttles; the boundary is strict.
+        self.assertFalse(market_note_throttled(master, 0))
+        self.assertFalse(market_note_throttled(self.vault_dir / "missing.md", 300))
+        os.utime(master, None)
+        self.assertTrue(market_note_throttled(master, 300))
+        self.assertFalse(market_note_throttled(master, 300, now=master.stat().st_mtime + 300))
