@@ -2369,6 +2369,9 @@ esults_drops\.
      Live probe 2026-09-05 (temp folder): 717 questions incl. "Will Bitcoin reach
          $100,000 in September?" at 5%. The REAL drop dir still holds the sample.
      tests: cross_market.tests.test_polymarket_fetcher (TestStampedDrops, TestTagsAndKeywords)
+     data/collector.log (COLLECTOR_LOG_PATH): the SERVICE collector's own log lines - opens,
+         refusals, candidate rotations, perpDexs warnings. Was DEVNULL until Round 52.
+         Rotates to collector.log.1 past 20 MB. Morning: tail this beside collector_service.jsonl.
 
      ROUND 51 - MEASURED MACRO SIGNALS, ITEM 18 LEAD-LAG (OFFLINE RESEARCH)
      python -m cross_market.titan_correlator --report | --scan

@@ -484,6 +484,12 @@ COLLECTOR_STATUS_PATH = DATA_DIR / "collector_status.json"
 # Round 49 (Ruling 49-1): the dashboard has died twice today with no trace. It
 # appends start / stop / crash (with traceback) here, so the next death has a cause.
 DASHBOARD_LOG_PATH = DATA_DIR / "dashboard.jsonl"
+# Round 52: the supervisor used to spawn the collector with stdout=DEVNULL, so every
+# collector log line - "Basis position opened", "Candidate set rotated", the
+# perpDexs warning - existed only in a console window nobody keeps open. The child
+# now writes here, rotated once at this size (collector.log -> collector.log.1).
+COLLECTOR_LOG_PATH = DATA_DIR / "collector.log"
+COLLECTOR_LOG_MAX_BYTES = 20_000_000
 # How old the collector's status file may be before the dashboard stops trusting
 # it: a dead collector's last write must not keep claiming a badge.
 COLLECTOR_STATUS_MAX_AGE_SECONDS = 7200.0

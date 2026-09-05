@@ -4,7 +4,7 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 (Round 50 Milestone)
-Last Update: Round 52 Complete (stamped drops, multi-tag watcher)
+Last Update: Round 52 Complete (stamped drops, multi-tag watcher, collector.log)
 Status:      2,443 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
@@ -49,6 +49,9 @@ TABLE OF CONTENTS
 
 3. CHECK CURRENT PAPER HARVESTER STATE & PnL:
    python HyperLiquid/HL_Monarch/main.py basis --harvest
+
+   # Service collector's own log (opens, refusals, candidate rotations, dex warnings):
+   Get-Content HyperLiquid\HL_Monarch\data\collector.log -Tail 40
 
 4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
    python -m cross_market.titan_correlator --scan

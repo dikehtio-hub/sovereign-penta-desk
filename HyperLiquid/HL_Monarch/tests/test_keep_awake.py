@@ -54,3 +54,37 @@ def test_the_supervisor_holds_the_host_awake_by_default(tmp_path):
     free = svc.CollectorSupervisor(log_file=tmp_path / "b.jsonl", pid_file=tmp_path / "b.pid", quiet=True,
                                    keep_awake=False)
     assert not free.keep_awake
+
+
+def test_the_child_collector_writes_to_a_log_file_that_rotates(tmp_path):
+    """
+    Round 52. The supervisor spawned the collector with stdout=DEVNULL, so every
+    line the collector logged in service mode was lost. The child now writes
+    to data/collector.log, appended across restarts and rotated once past a cap.
+    """
+    import sys
+    import time
+    log = tmp_path / "collector.log"
+    sup = svc.CollectorSupervisor(log_file=tmp_path / "svc.jsonl", pid_file=tmp_path / "svc.pid", quiet=True,
+                                  keep_awake=False, child_log=log, child_log_max_bytes=100,
+                                  python_executable=sys.executable,
+                                  child_command=["-c", "import sys; print('collector hello'); print('warn', file=sys.stderr)"])
+    proc = sup._spawn()
+    assert proc.wait(timeout=30) == 0
+    sup._child_log_handle.close()
+    text = log.read_text(encoding="utf-8")
+    assert "collector hello" in text and "warn" in text                        # stdout AND stderr, one file
+    # A second spawn APPENDS (a restart must not erase the death's last lines) ...
+    proc = sup._spawn()
+    assert proc.wait(timeout=30) == 0
+    sup._child_log_handle.close()
+    assert log.read_text(encoding="utf-8").count("collector hello") == 2
+    # ... until the cap, after which the file rotates to .1 and a fresh one starts.
+    log.write_text("x" * 200, encoding="utf-8")
+    proc = sup._spawn()
+    assert proc.wait(timeout=30) == 0
+    sup._child_log_handle.close()
+    assert (tmp_path / "collector.log.1").read_text(encoding="utf-8") == "x" * 200
+    assert log.read_text(encoding="utf-8").count("collector hello") == 1
+    events = [__import__("json").loads(l)["event"] for l in (tmp_path / "svc.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert events.count("child_log") == 3

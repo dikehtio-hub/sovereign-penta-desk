@@ -233,6 +233,26 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 
 ## Round 52 findings
 
+- **THIRD service death, found by the research pass, not by an alert.** The
+  supervisor's last coverage report is 23:44:25 UTC (uptime 4506s); the next
+  three never came. At 23:52:59 a dashboard started in STANDALONE mode from the
+  new root open_dashboard.bat (dashboard.jsonl: mode standalone, service_pid
+  8820 read from a stale pid file) and its embedded collector carried
+  ingestion for 44 minutes (newest snapshot 00:36:36 UTC, accruals 52 -> 53,
+  cash +$3.51). All three deaths today (20:43, ~22:00 dashboard, 23:44-23:52)
+  coincide with someone operating console windows. Restored 00:4x UTC: stale
+  pid files removed, standalone dashboard killed, service + read-only
+  dashboard relaunched.
+- **The service collector's log lines went to DEVNULL.** run_collector_service
+  spawned the child with stdout=DEVNULL, so "Basis position opened",
+  "Candidate set rotated", the perpDexs warning and every refusal reason
+  existed only in a console nobody keeps open. The child now writes
+  data/collector.log (append across restarts, rotated once to .1 past
+  COLLECTOR_LOG_MAX_BYTES = 20 MB); the supervisor logs a child_log event
+  with the path. Tested end to end with a real subprocess.
+- **The morning checklist changes**: `tail data/collector.log` is now step 1b.
+- cross_market/titan_identities_cache.json (written by --scan) is ignored.
+
 - **The multi-tag watcher works live** (one-shot into a temp folder, NOT the
   real drop dir): 717 questions - sports 417 (MLB 276, NFL 117, NBA 24),
   crypto 203, fed-rates 97 - and among them a real "Will Bitcoin reach

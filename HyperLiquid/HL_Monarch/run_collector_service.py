@@ -299,8 +299,17 @@ class CollectorSupervisor:
         python_executable: Optional[str] = None,
         pid_file: Path = DEFAULT_PID_FILE,
         keep_awake: bool = True,
+        child_log: Optional[Path] = None,
+        child_log_max_bytes: int = 20_000_000,
+        child_command: Optional[list] = None,
     ):
         self.logger = build_logger(Path(log_file), quiet=quiet)
+        # Round 52: where the child's stdout/stderr go. It was DEVNULL, which made
+        # every collector log line unobservable in service mode.
+        self.child_log = Path(child_log) if child_log else SERVICE_DIR / "data" / "collector.log"
+        self.child_log_max_bytes = int(child_log_max_bytes)
+        self.child_command = list(child_command) if child_command else ["-u", "main.py", "collector"]
+        self._child_log_handle = None
         self.keep_awake = bool(keep_awake)
         self._awake_state: Optional[int] = None
         self.pid_file = Path(pid_file)
@@ -312,12 +321,44 @@ class CollectorSupervisor:
         self.started_at = 0.0
         self._last_coverage_report = 0.0
 
+    def _open_child_log(self):
+        """
+        An append handle on the child log, rotating once (`.1`) when the file
+        has grown past the cap. Falls back to DEVNULL if the file cannot be
+        opened - a log failure must never stop the collector from starting.
+        """
+        try:
+            if self._child_log_handle is not None:
+                try:
+                    self._child_log_handle.close()
+                except Exception:                           # noqa: BLE001
+                    pass
+            self.child_log.parent.mkdir(parents=True, exist_ok=True)
+            if self.child_log.exists() and self.child_log.stat().st_size > self.child_log_max_bytes:
+                rotated = self.child_log.with_suffix(self.child_log.suffix + ".1")
+                try:
+                    if rotated.exists():
+                        rotated.unlink()
+                    self.child_log.rename(rotated)
+                except OSError:
+                    pass
+            self._child_log_handle = open(self.child_log, "ab")
+            return self._child_log_handle
+        except Exception as e:                              # noqa: BLE001
+            log_event(self.logger, "child_log_unavailable", level=logging.WARNING, path=str(self.child_log),
+                      error=f"{type(e).__name__}: {e}")
+            self._child_log_handle = None
+            return subprocess.DEVNULL
+
     def _spawn(self) -> subprocess.Popen:
-        """Start the collector as a child process, inheriting stdio."""
+        """Start the collector as a child process; its stdout/stderr go to the child log."""
+        sink = self._open_child_log()
+        if sink is not subprocess.DEVNULL:
+            log_event(self.logger, "child_log", path=str(self.child_log))
         return subprocess.Popen(
-            [self.python, "-u", "main.py", "collector"],
+            [self.python] + self.child_command,
             cwd=str(SERVICE_DIR),
-            stdout=subprocess.DEVNULL,
+            stdout=sink,
             stderr=subprocess.STDOUT,
             env=dict(os.environ, PYTHONIOENCODING="utf-8"),
         )

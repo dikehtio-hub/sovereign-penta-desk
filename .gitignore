@@ -112,6 +112,9 @@ obsidian_vault/.obsidian/
 # the Round 26 baseline was a snapshot of a live working tree.
 basis_paper_state.json
 collector_status.json
+collector.log
+collector.log.1
+cross_market/titan_identities_cache.json
 paper_trading_state.json
 hyperliquidusers.txt
 **/data/cache/*
