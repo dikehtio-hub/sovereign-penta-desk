@@ -444,3 +444,45 @@ def test_the_alerter_finds_a_webhook_written_after_the_process_started(monkeypat
     # Outside the fallback nothing changes: no variable anywhere means a silent alerter.
     monkeypatch.setattr(mod, "_registry_user_env", lambda name: None)
     assert WebhookAlerter().discord_url is None
+
+
+def test_the_header_shows_watchdog_gave_up_until_the_service_is_back(monkeypatch):
+    """
+    Round 55 (Directive 55-2). Abandonment was a log line and a webhook
+    message; now the header says it in red beside the service badge, with
+    the number of relaunches that failed, and it clears itself on service_back.
+    """
+    from types import SimpleNamespace
+
+    import ui.terminal_dashboard as td
+    from ui.components import watchdog_badge
+    from ui.terminal_dashboard import TerminalDashboard
+
+    assert watchdog_badge(False) == "" and watchdog_badge(False, 3) == ""
+    badge = watchdog_badge(True, 3)
+    assert "WATCHDOG GAVE UP" in badge and "3 relaunch" in badge and "start_collector.bat" in badge
+    assert badge.startswith("[bold red]") and badge.endswith("[/bold red]")
+
+    dash = TerminalDashboard.__new__(TerminalDashboard)
+    dash.service_mode, dash.service_pid, dash._service_alive = True, 4242, True
+    dash._watchdog_last_relaunch, dash._service_dead_since, dash._status_stale_alerted = 0.0, None, False
+    dash._watchdog_attempts, dash._service_abandoned = 0, False
+    dash.status_stale_watch = lambda: None
+    monkeypatch.setattr(td, "read_collector_status", lambda path: {})
+    assert dash._header_status("SVC") == "SVC"
+    quiet = SimpleNamespace(alert_service_down=lambda *a, **k: None, alert_service_abandoned=lambda *a, **k: None)
+    kw = dict(relaunch=lambda: True, alerter=quiet, log=lambda e, **f: None, enabled=True, cooldown=300.0,
+              max_attempts=2)
+    dash.service_watchdog(False, now=1000.0, **kw)
+    dash.service_watchdog(False, now=1300.0, **kw)
+    assert dash._header_status("SVC") == "SVC"                               # two attempts: still trying
+    assert dash.service_watchdog(False, now=1600.0, **kw) == "abandoned"
+    header = dash._header_status("SVC")
+    assert header.startswith("SVC  [bold red]") and "WATCHDOG GAVE UP" in header and "2 relaunch" in header
+    # The drift badge, when present, follows the watchdog badge.
+    monkeypatch.setattr(td, "read_collector_status", lambda path: {"unclassified_dexs": ["zzz"]})
+    parts = dash._header_status("SVC").split("  ")
+    assert [p[:12] for p in parts] == ["SVC", "[bold red]⚠ ", "[bold dark_o"]
+    monkeypatch.setattr(td, "read_collector_status", lambda path: {})
+    assert dash.service_watchdog(True, now=1700.0, **kw) == "back"
+    assert dash._header_status("SVC") == "SVC"                               # cleared with the episode

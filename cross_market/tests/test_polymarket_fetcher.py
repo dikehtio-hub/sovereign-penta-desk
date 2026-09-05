@@ -10,6 +10,7 @@ never touches the network unless asked, and that polling writes only on change.
 """
 
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -543,3 +544,161 @@ class TestTagFamilies(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWatcherLock(Base):
+    """
+    Round 55 (Directive 55-1). One watcher per drop folder. Semantics mirror
+    the collector supervisor: dead / corrupt / not-a-watcher pid files are
+    swept, a live watcher refuses the newcomer, orderly exits release, and the
+    liveness probe never touches the process it inspects.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.folder = Path(self.temp.name)
+        self.lock = self.folder / "polymarket_watcher.pid"
+
+    @staticmethod
+    def watcher_cmdline(pid):
+        return "python -m cross_market.ingestors.polymarket_fetcher --live --watch"
+
+    def test_acquire_claims_and_release_removes_only_our_own_file(self):
+        from cross_market.ingestors import pid_lock
+        self.assertIsNone(pid_lock.acquire(self.lock, pid=os.getpid()))
+        self.assertEqual(pid_lock.read_pid_file(self.lock), os.getpid())
+        self.assertIsNone(pid_lock.acquire(self.lock, pid=os.getpid()))      # re-acquire by the holder: fine
+        self.assertFalse(pid_lock.release(self.lock, pid=os.getpid() + 1))  # not ours: left alone
+        self.assertTrue(self.lock.exists())
+        self.assertTrue(pid_lock.release(self.lock, pid=os.getpid()))
+        self.assertFalse(self.lock.exists())
+        self.assertFalse(pid_lock.release(self.lock, pid=os.getpid()))      # already gone
+
+    def test_stale_files_are_swept_dead_corrupt_or_not_a_watcher(self):
+        from cross_market.ingestors import pid_lock
+        self.lock.write_text("garbage", encoding="utf-8")
+        self.assertTrue(pid_lock.is_stale(self.lock))
+        self.assertIsNone(pid_lock.acquire(self.lock, pid=os.getpid()))      # corrupt: swept, claimed
+        self.lock.write_text("0", encoding="utf-8")
+        self.assertTrue(pid_lock.is_stale(self.lock))                       # non-positive: corrupt
+        self.lock.write_text(str(os.getppid()), encoding="utf-8")
+        self.assertTrue(pid_lock.is_stale(self.lock, alive=lambda pid: False))          # dead
+        self.assertTrue(pid_lock.is_stale(self.lock, probe=lambda pid: "cmd.exe /c something"))  # live, not a watcher
+        self.assertFalse(pid_lock.is_stale(self.lock, probe=self.watcher_cmdline))       # live watcher: holder
+        self.assertFalse(pid_lock.is_stale(self.lock, probe=lambda pid: None))           # no psutil: assume holder
+        self.assertTrue(pid_lock.remove_stale_pid_file(self.lock, probe=lambda pid: "explorer.exe"))
+        self.assertFalse(self.lock.exists())
+        self.assertFalse(pid_lock.remove_stale_pid_file(self.lock))         # nothing to remove
+
+    def test_a_live_watcher_refuses_the_newcomer(self):
+        from cross_market.ingestors import pid_lock
+        parent = os.getppid()
+        self.lock.write_text("%d\n" % parent, encoding="utf-8")
+        self.assertEqual(pid_lock.acquire(self.lock, pid=os.getpid(), probe=self.watcher_cmdline), parent)
+        self.assertEqual(pid_lock.read_pid_file(self.lock), parent)         # untouched
+        # The same live pid that is NOT a watcher is a reused pid: swept and claimed.
+        self.assertIsNone(pid_lock.acquire(self.lock, pid=os.getpid(), probe=lambda pid: "notepad.exe"))
+        self.assertEqual(pid_lock.read_pid_file(self.lock), os.getpid())
+
+    def test_two_starters_that_both_saw_a_stale_file_cannot_both_claim(self):
+        # Round 55: two watchers starting within the same second both find the
+        # predecessor's stale file and both sweep it; a plain write would let
+        # both run. The exclusive create leaves exactly one; the loser gets the
+        # winner's pid, or -1 while the winner's pid is not readable yet.
+        from unittest import mock
+        from cross_market.ingestors import pid_lock
+        parent = os.getppid()
+        self.lock.write_text("999999\n", encoding="utf-8")                   # the dead predecessor
+        real_sweep = pid_lock.remove_stale_pid_file
+
+        def sweep_then_lose_the_race(path, probe=None, mark=pid_lock.WATCHER_MARK, alive=None):
+            removed = real_sweep(path, probe, mark, alive)
+            Path(path).write_text("%d\n" % parent, encoding="utf-8")        # the other starter claimed first
+            return removed
+
+        with mock.patch.object(pid_lock, "remove_stale_pid_file", sweep_then_lose_the_race):
+            self.assertEqual(pid_lock.acquire(self.lock, pid=os.getpid(), probe=self.watcher_cmdline,
+                                              alive=lambda pid: pid == parent), parent)
+        self.assertEqual(pid_lock.read_pid_file(self.lock), parent)         # the winner's file is intact
+        self.lock.write_text("", encoding="utf-8")                          # exists, not readable yet
+        with mock.patch.object(pid_lock, "remove_stale_pid_file", lambda *a, **k: False), \
+                mock.patch.object(pid_lock.time, "sleep", lambda s: None):
+            self.assertEqual(pid_lock.acquire(self.lock, pid=os.getpid()), -1)
+        # A dead holder that reappears between sweep and create is swept on the retry.
+        calls = {"n": 0}
+
+        def sweep_then_a_dead_holder_reappears(path, probe=None, mark=pid_lock.WATCHER_MARK, alive=None):
+            removed = real_sweep(path, probe, mark, alive)
+            calls["n"] += 1
+            if calls["n"] == 1:
+                Path(path).write_text("999999\n", encoding="utf-8")
+            return removed
+
+        self.lock.unlink()
+        with mock.patch.object(pid_lock, "remove_stale_pid_file", sweep_then_a_dead_holder_reappears), \
+                mock.patch.object(pid_lock.time, "sleep", lambda s: None):
+            self.assertIsNone(pid_lock.acquire(self.lock, pid=os.getpid(), alive=lambda pid: pid == os.getpid()))
+        self.assertEqual(pid_lock.read_pid_file(self.lock), os.getpid())
+
+    def test_pid_is_alive_inspects_without_killing(self):
+        import subprocess
+        import sys
+        from cross_market.ingestors import pid_lock
+        self.assertTrue(pid_lock.pid_is_alive(os.getpid()))
+        self.assertFalse(pid_lock.pid_is_alive(0))
+        self.assertFalse(pid_lock.pid_is_alive(-5))
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+        try:
+            self.assertTrue(pid_lock.pid_is_alive(child.pid))
+            self.assertIsNone(child.poll())                                   # still running: the probe did not kill it
+        finally:
+            child.kill()
+            child.wait(timeout=10)
+        self.assertFalse(pid_lock.pid_is_alive(child.pid))
+
+    def test_install_cleanup_registers_atexit_and_signal_handlers(self):
+        import signal
+        from cross_market.ingestors import pid_lock
+        pid_lock.acquire(self.lock, pid=4242)
+        registered, handlers = [], {}
+        cleanup, on_signal, installed = pid_lock.install_cleanup(
+            self.lock, pid=4242, register=registered.append, signals=(signal.SIGINT, 999),
+            set_handler=lambda sig, fn: handlers.__setitem__(sig, fn) if sig != 999 else (_ for _ in ()).throw(ValueError("no")))
+        self.assertEqual(registered, [cleanup])
+        self.assertEqual(installed, (signal.SIGINT,))                       # the unsupported one was skipped
+        self.assertIs(handlers[signal.SIGINT], on_signal)
+        with self.assertRaises(SystemExit) as ctx:
+            on_signal(signal.SIGINT, None)
+        self.assertEqual(ctx.exception.code, 128 + int(signal.SIGINT))
+        self.assertFalse(self.lock.exists())                                # released by the handler
+        self.assertFalse(cleanup())                                         # atexit after the handler: nothing left
+
+    def test_main_watch_refuses_a_live_watcher_and_releases_after_its_own_run(self):
+        from unittest import mock
+        from cross_market.ingestors import pid_lock, polymarket_fetcher
+        parent = os.getppid()
+        self.lock.write_text("%d\n" % parent, encoding="utf-8")
+        with mock.patch.object(pid_lock, "process_cmdline", self.watcher_cmdline), \
+                mock.patch("builtins.print") as fake_print:
+            rc = polymarket_fetcher.main(["--watch", "--max-polls", "1", "--interval", "0",
+                                          "--folder", str(self.folder)])
+        self.assertEqual(rc, 0)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("already_running", printed)
+        self.assertIn(str(parent), printed)
+        self.assertFalse((self.folder / DEFAULT_DROP_NAME).exists())        # it never polled
+        self.assertEqual(pid_lock.read_pid_file(self.lock), parent)         # the holder's file is intact
+        # No live holder: the run claims the lock, polls once, and releases it on the way out.
+        self.lock.unlink()
+        with mock.patch("builtins.print"), mock.patch.object(pid_lock, "install_cleanup", lambda *a, **k: None):
+            rc = polymarket_fetcher.main(["--watch", "--max-polls", "1", "--interval", "0",
+                                          "--folder", str(self.folder)])
+        self.assertEqual(rc, 0)
+        self.assertTrue((self.folder / DEFAULT_DROP_NAME).exists())
+        self.assertFalse(self.lock.exists())
+        # --pid-file relocates the lock.
+        custom = self.folder / "elsewhere" / "w.pid"
+        with mock.patch("builtins.print"), mock.patch.object(pid_lock, "install_cleanup", lambda *a, **k: None),                 mock.patch.object(polymarket_fetcher, "poll",
+                                                             lambda *a, **k: self.assertEqual(pid_lock.read_pid_file(custom), os.getpid())):
+            polymarket_fetcher.main(["--watch", "--max-polls", "1", "--folder", str(self.folder), "--pid-file", str(custom)])
+        self.assertFalse(custom.exists())

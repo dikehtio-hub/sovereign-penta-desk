@@ -44,12 +44,19 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
+
+try:                                                    # Round 55 (Directive 55-1): one watcher per drop folder
+    from cross_market.ingestors import pid_lock
+except ImportError:                                     # run as a bare script, not with -m
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import pid_lock                                     # type: ignore[no-redef]
 
 DEFAULT_DROP_DIR = (Path(__file__).resolve().parents[2]
                     / "Sports_Desk" / "data" / "polymarket_drops")
@@ -615,6 +622,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="prune stamped copies older than this (default %.0f, the ecosystem standard)" % DROP_RETENTION_HOURS)
     parser.add_argument("--interval", type=float, default=300.0)
     parser.add_argument("--max-polls", type=int, default=None)
+    parser.add_argument("--pid-file", type=Path, default=None,
+                        help="single-instance lock for --watch (default: <folder>/%s); a live watcher on the "
+                             "same folder makes this one print already_running and exit 0" % pid_lock.WATCHER_PID_NAME)
     args = parser.parse_args(argv)
 
     folder = Path(args.folder or DEFAULT_DROP_DIR)
@@ -641,8 +651,21 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     split = bool(tags)                                      # Round 53: several tags -> one file per family
     if args.watch:
-        poll(source, folder, name=args.name, interval=args.interval, max_polls=args.max_polls,
-             stamped=not args.no_stamp, retention_hours=args.retention_hours, split=split, sports=sports)
+        # Round 55 (Directive 55-1): a second watcher on the same folder would rewrite the
+        # canonical files and duplicate every stamped copy. Stale locks are swept first.
+        lock = Path(args.pid_file) if args.pid_file else folder / pid_lock.WATCHER_PID_NAME
+        holder = pid_lock.acquire(lock)
+        if holder is not None:
+            who = "watcher pid %d" % holder if holder > 0 else "another starting watcher"
+            print("[LOCK] already_running: %s holds %s - this one exits" % (who, lock))
+            return 0
+        pid_lock.install_cleanup(lock)
+        print("[LOCK] watcher pid %d -> %s" % (os.getpid(), lock))
+        try:
+            poll(source, folder, name=args.name, interval=args.interval, max_polls=args.max_polls,
+                 stamped=not args.no_stamp, retention_hours=args.retention_hours, split=split, sports=sports)
+        finally:
+            pid_lock.release(lock)
         return 0
     questions = validate_questions(source())
     if split:

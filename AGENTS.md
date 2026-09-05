@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 55 complete: WATCHER PID LOCK, WATCHDOG GAVE UP BADGE. The Polymarket
+watcher (--watch) takes a single-instance lock keyed to its drop folder
+(<folder>/polymarket_watcher.pid, or --pid-file); dead / corrupt / not-a-
+watcher pid files are swept, a live watcher makes the newcomer print
+already_running and exit 0, orderly exits release (atexit + SIGINT/SIGTERM/
+SIGBREAK). cross_market/ingestors/pid_lock.py mirrors the supervisor's
+semantics without importing across trees, and its liveness probe never uses
+os.kill(pid, 0). The read-only dashboard header shows a red WATCHDOG GAVE UP
+badge (relaunch count, the launcher to run) while the Round 54 ceiling is
+reached; it clears on service_back. The claim is an exclusive create, so two
+starters that both saw a stale file cannot both run. Watcher restarted under
+the lock and a second watcher proved to refuse. 8 new tests.
+
 Round 54 complete: WATCHDOG CEILING + ABANDONMENT ALERT, USER-LEVEL WEBHOOK
 FALLBACK, LAUNCHER DETACHMENT ROOT CAUSE FIXED. The dashboard watchdog gives
 up after SERVICE_WATCHDOG_MAX_RELAUNCHES (3) relaunches that left the service
@@ -232,7 +245,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 816 OK |
+| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 823 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -256,6 +269,46 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 55 findings
+
+- **The lock is keyed to the drop folder, not the machine.** The harm is two
+  watchers rewriting ONE folder's canonical files and doubling its stamped
+  series; two watchers on two folders are legitimate. So the file lives at
+  <folder>/polymarket_watcher.pid (override: --pid-file), inside a data dir
+  git already ignores. Semantics copied from the supervisor, not imported
+  (HL_Monarch is not a package from the DEV root): dead, corrupt or live-but-
+  not-a-watcher pids are swept; a live watcher wins; psutil absent -> assume
+  the holder. A newcomer prints `[LOCK] already_running: watcher pid N holds
+  ...` and returns 0, as directed.
+- **Cleanup is best effort, the sweep is the guarantee.** atexit plus
+  SIGINT/SIGTERM/SIGBREAK handlers that release and raise SystemExit(128+n)
+  cover Ctrl+C and orderly stops. A closed console window or a task-kill runs
+  none of them on Windows; the next watcher's stale sweep handles that.
+- **The liveness probe is tested for not killing.** pid_is_alive goes through
+  OpenProcess + GetExitCodeProcess on Windows (os.kill(pid, 0) would
+  TerminateProcess, the trap the supervisor documented in Round 36); the test
+  spawns a sleeper, probes it, and asserts it is still running.
+- **The claim is an exclusive create (O_EXCL), not sweep-then-write.** Two
+  watchers starting within the same second both find the predecessor's stale
+  file and both sweep it; with a plain write both would run. Now exactly one
+  creates the file; the loser re-reads it and refuses the live winner (or
+  reports -1 while the winner's pid is not readable yet, treated as running;
+  a dead pid that reappears is swept on a retry). Observed live while proving
+  the lock: my restart launched the "second" watcher before the first had
+  claimed, the second claimed first and the FIRST refused - the lock held, my
+  script's ordering was the bug. Two restart attempts were also lost to the
+  tool: a heredoc-passed kill filter matched the calling shell's own command
+  line (self-kill), and escaped newlines inside heredoc strings arrived
+  unescaped. Patch scripts now go through files; kill filters match argv
+  structure and exclude the caller's ancestors.
+- **The badge needs no new state.** _header_status composes service badge,
+  watchdog badge (from _service_abandoned / _watchdog_attempts set by the
+  Round 54 watchdog) and the NOVEL DEX badge; service_back already resets the
+  flag, so the badge clears with the episode.
+- **Live**: watcher pid 29420 started 02:07:23Z holds polymarket_watcher.pid; a second watcher exited 0 with already_running in 0.1 s; 1 watcher(s) alive after. The restart adds one extra stamped point to the macro series
+  (harmless). Lead-lag stays queued until >24h of stamps: earliest honest run
+  after 2026-09-06T02:00Z.
 
 ## Round 54 findings
 

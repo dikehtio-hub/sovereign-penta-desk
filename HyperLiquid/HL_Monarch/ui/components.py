@@ -116,6 +116,18 @@ def novel_dex_badge(unclassified_dexs) -> str:
     return "[bold dark_orange]⚠ NOVEL DEX: %s · refused until classified[/bold dark_orange]" % ", ".join(names)
 
 
+def watchdog_badge(abandoned: bool, relaunches: int = 0) -> str:
+    """
+    Round 55 (Directive 55-2): the read-only dashboard's watchdog reached its
+    relaunch ceiling (Round 54) and stopped trying. Red, because the only way
+    out is a human running the launcher; it clears itself on service_back.
+    """
+    if not abandoned:
+        return ""
+    return ("[bold red]⚠ WATCHDOG GAVE UP · %d relaunch(es) left the service dead · run start_collector.bat"
+            "[/bold red]" % int(relaunches or 0))
+
+
 def ingestion_badge(alive: bool, pid, started_read_only, newest_snapshot_age_s: Optional[float] = None):
     """
     (mode, badge markup) for the dashboard header - Round 36, Ruling 3.A.

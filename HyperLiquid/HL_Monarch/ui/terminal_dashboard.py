@@ -36,6 +36,7 @@ from analytics.alerter import WebhookAlerter
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 from collectors.market_collector import MarketCollector, read_service_pid, service_collector_alive
+from ui.components import watchdog_badge  # Round 55 (Directive 55-2)
 from ui.components import (append_dashboard_event, ingestion_badge, newest_snapshot_age_seconds,
                            novel_dex_badge, read_collector_status)
 from ui.components import (
@@ -129,11 +130,14 @@ class TerminalDashboard:
         from config.settings import COLLECTOR_STATUS_PATH
         status = read_collector_status(COLLECTOR_STATUS_PATH)
         drift = novel_dex_badge(status.get("unclassified_dexs"))
+        # Round 55 (Directive 55-2): the watchdog ceiling is a header-level fact.
+        gave_up = watchdog_badge(getattr(self, "_service_abandoned", False),
+                                 getattr(self, "_watchdog_attempts", 0))
         try:
             self.status_stale_watch()
         except Exception:                                   # noqa: BLE001 - never break a frame
             pass
-        return "  ".join(part for part in (service_badge, drift) if part)
+        return "  ".join(part for part in (service_badge, gave_up, drift) if part)
 
     @staticmethod
     def relaunch_service(bat=None) -> bool:
