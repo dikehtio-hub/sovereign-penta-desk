@@ -513,8 +513,11 @@ def _measure_sports_history(sports_db: Path, min_wagers: int = 20):
     """
     con = sqlite3.connect("file:%s?mode=ro" % Path(sports_db).as_posix(), uri=True)
     try:
+        # Ruling 63-1: hedged cross-market arb legs (bet_kind "arbitrage") are not directional
+        # wagers; they would flatter the win rate and double-count the desk's cadence.
         rows = con.execute("SELECT placed_at, decimal_odds, outcome FROM placed_bets "
-                           "WHERE outcome IN ('WIN', 'LOSS', 'PUSH')").fetchall()
+                           "WHERE outcome IN ('WIN', 'LOSS', 'PUSH') "
+                           "AND (bet_kind IS NULL OR bet_kind != 'arbitrage')").fetchall()
     except sqlite3.Error:
         return None
     finally:

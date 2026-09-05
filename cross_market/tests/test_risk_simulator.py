@@ -419,19 +419,23 @@ class TestCalibrationFromHistory(unittest.TestCase):
         con.execute("""CREATE TABLE placed_bets (id INTEGER PRIMARY KEY AUTOINCREMENT, placed_at TEXT NOT NULL,
                        event_id TEXT NOT NULL, sport TEXT NOT NULL, market_type TEXT NOT NULL, line TEXT NOT NULL DEFAULT '',
                        selection TEXT NOT NULL, book TEXT NOT NULL, decimal_odds REAL NOT NULL, stake REAL NOT NULL,
-                       outcome TEXT, settled_at TEXT)""")
-        for i, outcome in enumerate(outcomes):
+                       bet_kind TEXT NOT NULL DEFAULT 'single', outcome TEXT, settled_at TEXT)""")
+        for i, entry in enumerate(outcomes):
+            outcome, kind = entry if isinstance(entry, tuple) else (entry, "single")
             con.execute("INSERT INTO placed_bets (placed_at, event_id, sport, market_type, selection, book, decimal_odds, "
-                        "stake, outcome, settled_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        "stake, bet_kind, outcome, settled_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                         ("2026-09-%02dT18:00:00Z" % (1 + i % days), "E%d" % i, "NFL", "moneyline", "Home", "book",
-                         odds + 0.1 * (i % 3), 50.0, outcome, "2026-09-%02dT23:00:00Z" % (1 + i % days) if outcome else None))
+                         odds + 0.1 * (i % 3), 50.0, kind, outcome,
+                         "2026-09-%02dT23:00:00Z" % (1 + i % days) if outcome else None))
         con.commit()
         con.close()
 
     def test_settled_wagers_replace_the_assumed_cadence_and_win_rate_at_twenty(self):
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "sports.db"
-            self.bets_db(db, ["WIN"] * 13 + ["LOSS"] * 9 + ["PUSH"] * 2 + [None] * 3, days=8)   # 24 settled, 3 open
+            # 24 settled directional wagers, 3 open, and 30 settled ARBITRAGE legs that must not count
+            # (Ruling 63-1): they are hedged, not directional, and would flatter the win rate.
+            self.bets_db(db, ["WIN"] * 13 + ["LOSS"] * 9 + ["PUSH"] * 2 + [None] * 3 + [("WIN", "arbitrage")] * 30, days=8)
             cadence, win_prob, odds, wagers, days, pushes = rs._measure_sports_history(db)
             self.assertEqual((wagers, days, pushes), (24, 8, 2))
             self.assertAlmostEqual(cadence, 3.0, places=6)

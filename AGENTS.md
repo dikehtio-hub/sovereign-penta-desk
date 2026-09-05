@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 63 complete: MONARCH SHARK CROSS-MARKET STAKING WIRED TO THE DUTCH
+RECORDER, PAPER MODE, PATH REFUSAL, ARB LEGS OUT OF SPORTS HISTORY. Betslip.
+stake_cross_market(result, pair) records an executed cross-market dutch via
+cross_market.execution_log.record_dutch (refused wholesale when
+worst_after_tax < capital, or without exactly one Polymarket leg; confirm
+prompt; the slip's clock stamps both legs); menu entry [x]. record_dutch
+(paper=True) writes BOTH legs as receipts under cross_market/data/paper_receipts
+(ignored by git) with paper:1 notes and touches neither the Tax imports nor
+placed_bets (Ruling 34-D). The recorder CLI refuses explicit --sports-db /
+--imports-dir paths that do not exist (exit 2, Ruling 63-4).
+_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1). 7 new
+tests; the suite crossed 2,500.
+
 Round 62 complete: CROSS-MARKET DUTCH RECORDER, RECEIPT READER TOLERANCE,
 COMPACT CALIBRATION REPORT. New cross_market/execution_log.py: record_dutch()
 writes the Polymarket leg as an execution receipt (strategy dutched_arb, venue
@@ -341,7 +354,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (18 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log) | 862 OK |
+| master + bridges + cross-market + exporters + ingestors (18 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log) | 869 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -365,6 +378,27 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 63 findings
+
+- **Paper fills must never reach the ledger.** The directive asked that paper
+  or live fills both drop a Polymarket receipt; a receipt in the Tax imports
+  is ingested into the live ledger that Ruling 34-D keeps at $0.00. Paper
+  mode therefore writes both legs as receipts into a paper folder the watcher
+  never reads, and skips placed_bets, whose rows are the desk's live exposure.
+  The paper folder is still measurable by _measure_arb_history (the gross:
+  note prices the dutch; the book leg's price is odds, not a share price).
+- **The Shark is a recorder, not an executor**: stake_cross_market records
+  what the operator executed by hand, exactly as stake_arbitrage does for
+  book-vs-book, with the same wholesale refusal shape. There is still no
+  automated cross-market execution; when one exists it calls record_dutch.
+- **Path refusal is a CLI rule only.** record_dutch() still creates a fresh
+  desk DB or folder when called from code (a first execution on a clean
+  install must work); the CLI refuses explicit paths that do not exist so a
+  typo cannot spawn a stray ledger.
+- **The exclusion of arbitrage legs keeps the sports desk's win rate
+  directional**: 30 settled hedged legs beside 24 directional wagers leave
+  cadence and win rate at the 24 - tested.
 
 ## Round 62 findings
 

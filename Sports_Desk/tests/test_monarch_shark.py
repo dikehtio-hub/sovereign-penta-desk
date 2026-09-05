@@ -397,3 +397,92 @@ class TestInteractiveLoop(SharkTestBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCrossMarketStaking(SharkTestBase):
+    """
+    Round 63 (Directive 63-2). A cross-market dutch the operator executed is
+    recorded through cross_market.execution_log: the Polymarket leg as a tagged
+    execution receipt, the book leg in placed_bets, one arb_group, one
+    timestamp. Refused wholesale when it loses after tax; paper fills never
+    touch the ledger or the desk's exposure.
+    """
+
+    def _pair(self, worst=1_030.0):
+        from types import SimpleNamespace as NS
+        result = NS(leg_a=NS(venue="polymarket", selection="YES", decimal_odds=1 / 0.48, token_id="tok-1", raw_price=0.48),
+                    leg_b=NS(venue="betmgm", selection="Buffalo Bills", decimal_odds=2.10, token_id="", raw_price=None),
+                    capital=1_000.0, stake_a=502.40, stake_b=497.60, gross_arb=0.0458, worst_after_tax=worst)
+        pair = NS(market=NS(token_id="tok-1", question="Will the Bills beat the Chiefs?", market_type="moneyline",
+                            line="", sport="NFL"),
+                  book="betmgm", book_selection="Buffalo Bills", book_decimal_odds=2.10, event_id="G1", quoted_at=QUOTED)
+        return result, pair
+
+    def _bets(self):
+        import sqlite3
+        con = sqlite3.connect(str(self.db))
+        rows = con.execute("SELECT placed_at, book, selection, decimal_odds, stake, bet_kind, arb_group, edge_at_placement "
+                           "FROM placed_bets").fetchall()
+        con.close()
+        return rows
+
+    def test_a_confirmed_cross_market_dutch_records_both_legs_under_one_group(self):
+        imports = self.root / "imports"
+        imports.mkdir()
+        slip = self._slip(answers=("y",))
+        record = slip.stake_cross_market(*self._pair(), imports_dir=imports)
+        self.assertTrue(record["complete"])
+        self.assertFalse(record["paper"])
+        receipts = list(imports.glob("fills_polymarket_dutched_arb_*.csv"))
+        self.assertEqual(len(receipts), 1)
+        self.assertAlmostEqual(record["polymarket"]["shares"], 502.40 / 0.48, places=6)
+        self.assertEqual(record["polymarket"]["market"], "tok-1")
+        self.assertEqual(record["timestamp"], "2026-09-03 18:02:00")            # the slip's clock, both legs
+        rows = self._bets()
+        self.assertEqual(len(rows), 1)
+        placed_at, book, selection, odds, stake, kind, group, edge = rows[0]
+        self.assertEqual((book, selection, odds, stake, kind, group), ("betmgm", "Buffalo Bills", 2.10, 497.60,
+                                                                       "arbitrage", record["arb_group"]))
+        self.assertEqual(placed_at, "2026-09-03T18:02:00+00:00")
+        self.assertAlmostEqual(edge, 0.0458, places=6)
+        self.assertTrue(self._said("Record dutch: $502.40 of Polymarket YES @ 0.4800"))
+        self.assertTrue(self._said("[DUTCH] xm-"))
+        self.assertTrue(self._said("NOT a tax record"))
+
+    def test_a_pair_that_loses_after_tax_is_refused_wholesale(self):
+        imports = self.root / "imports"
+        slip = self._slip(answers=("y",))
+        self.assertIsNone(slip.stake_cross_market(*self._pair(worst=980.0), imports_dir=imports))
+        self.assertTrue(self._said("[refused] cross-market dutch returns $980.00 after tax"))
+        self.assertFalse(imports.exists())
+        self.assertEqual(self._bets(), [])
+        # Two book legs (no Polymarket leg) is not a cross-market dutch either.
+        result, pair = self._pair()
+        result.leg_a.venue = "draftkings"
+        self.assertIsNone(slip.stake_cross_market(result, pair, imports_dir=imports))
+        self.assertTrue(self._said("exactly one Polymarket leg"))
+
+    def test_declining_the_confirmation_records_nothing(self):
+        imports = self.root / "imports"
+        slip = self._slip(answers=("n",))
+        self.assertIsNone(slip.stake_cross_market(*self._pair(), imports_dir=imports))
+        self.assertTrue(self._said("[cancelled] nothing recorded."))
+        self.assertEqual(self._bets(), [])
+        self.assertFalse(imports.exists())
+
+    def test_a_paper_fill_never_touches_the_ledger_or_the_desk(self):
+        paper = self.root / "paper"
+        slip = self._slip(answers=("y",))
+        record = slip.stake_cross_market(*self._pair(), paper=True, imports_dir=paper)
+        self.assertTrue(record["paper"] and record["complete"])
+        self.assertEqual(len(list(paper.glob("fills_*_dutched_arb_*.csv"))), 2)
+        self.assertEqual(self._bets(), [])
+        self.assertTrue(self._said("Record PAPER dutch"))
+        self.assertTrue(self._said("Paper: neither the tax ledger nor placed_bets saw this."))
+
+    def test_the_menu_offers_cross_market_and_a_blank_pick_records_nothing(self):
+        slip = self._slip(answers=("x", "", "q"))
+        recorded = slip.run()
+        self.assertEqual(recorded, 0)
+        self.assertTrue(self._said("[x] cross-market"))
+        self.assertEqual(self._bets(), [])

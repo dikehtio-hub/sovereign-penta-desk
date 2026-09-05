@@ -119,3 +119,5 @@ paper_trading_state.json
 hyperliquidusers.txt
 **/data/cache/*
 *.bak
+# Round 63: paper dutch receipts (cross_market.execution_log --paper) are runtime data
+**/data/paper_receipts/

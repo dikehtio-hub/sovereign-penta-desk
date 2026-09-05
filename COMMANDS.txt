@@ -2360,6 +2360,17 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 63 - SHARK CROSS-MARKET STAKING, PAPER MODE, PATH REFUSAL, ARB LEGS OUT OF SPORTS HISTORY
+     python -m Sports_Desk.interfaces.monarch_shark        menu [x] cross-market: show the pairs, pick one,
+         confirm -> record_dutch (Polymarket leg receipt -> Tax imports, book leg -> placed_bets
+         bet_kind arbitrage, one arb_group, the slip's clock). Refused wholesale when the pair loses
+         after tax on its worse branch. Betslip.stake_cross_market(result, pair, paper=False).
+     python -m cross_market.execution_log ... --paper       both legs as receipts under
+         cross_market\data\paper_receipts (or --imports-dir); nothing reaches the tax imports or
+         placed_bets. Explicit --sports-db / --imports-dir that do not exist -> exit 2 (refused).
+     risk_simulator._measure_sports_history ignores bet_kind "arbitrage" rows (hedged legs are not
+         directional wagers).
+
      ROUND 62 - CROSS-MARKET DUTCH RECORDER, RECEIPT TOLERANCE, COMPACT CALIBRATION REPORT
      python -m cross_market.execution_log --pm-market SYM --pm-price 0.48 --pm-shares 100 --book betmgm
          --selection "Buffalo Bills" --odds 2.10 --stake 47.62 --event-id E1 --sport NFL
@@ -2537,7 +2548,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (18 modules, 862): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (18 modules, 869): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 (Round 50 Milestone)
-Last Update: Round 62 Complete (cross-market dutch recorder, receipt tolerance, compact calibration report)
-Status:      2,498 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
+Last Update: Round 63 Complete (Shark cross-market staking wired, paper mode, path refusal)
+Status:      2,505 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -66,7 +66,7 @@ TABLE OF CONTENTS
 4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,498 tests across all 5 desks):
+5. RUN FULL OFFLINE VERIFICATION (2,505 tests across all 5 desks):
    python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
@@ -373,6 +373,9 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       # Round 62: record an executed cross-market dutch (Polymarket receipt + placed_bets wager, one arb_group):
       python -m cross_market.execution_log --pm-market SYM --pm-price P --pm-shares N --book B --selection S --odds O --stake $ --event-id E --sport NFL [--json]
       # --calibration-report shows the last 7 daily rows per coin; --last-days N / --all.
+      # Round 63: Monarch Shark menu [x] cross-market -> Betslip.stake_cross_market(result, pair) -> record_dutch;
+      # --paper writes both legs to cross_market/data/paper_receipts and touches no ledger; explicit
+      # --sports-db / --imports-dir that do not exist are refused (exit 2). Sports history excludes arbitrage legs.
 
       # Item 18 lead-lag (offline research; needs timestamped Polymarket drops):
       python -m cross_market.lead_lag --coin BTC
@@ -468,11 +471,11 @@ Obsidian Vault Locations:
   Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md
 
 ================================================================================
-5. MASTER OFFLINE TEST SUITES (2,498 Tests Total)
+5. MASTER OFFLINE TEST SUITES (2,505 Tests Total)
 ================================================================================
 
 Every modification MUST be verified offline against all 3 test suites. Never push
-a commit without all 2,498 tests passing!
+a commit without all 2,505 tests passing!
 
 1. HyperLiquid Monarch (pytest — 1,090 tests):
    cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q

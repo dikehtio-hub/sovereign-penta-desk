@@ -109,7 +109,55 @@ class TestRecordDutch(unittest.TestCase):
         # The book legs are wagers in placed_bets too, but < 20 settled: sports stays assumed.
         self.assertEqual(inputs.provenance["sports_bets_per_day"], "assumed (< 20 settled wagers)")
 
+    def test_paper_fills_never_touch_the_ledger_or_placed_bets(self):
+        paper_dir = self.root / "paper"
+        record = self.record(paper=True, imports_dir=paper_dir)
+        self.assertTrue(record["paper"] and record["complete"])
+        self.assertIsNone(record["sportsbook"]["placed_bet_id"])
+        self.assertFalse(self.sports_db.exists())                             # no desk DB was even created
+        self.assertEqual(len(list(self.imports.glob("*.csv"))) if self.imports.exists() else 0, 0)
+        receipts = sorted(paper_dir.glob("fills_*_dutched_arb_*.csv"))
+        self.assertEqual(len(receipts), 2)
+        self.assertTrue(any(r.name.startswith("fills_polymarket_") for r in receipts))
+        self.assertTrue(any(r.name.startswith("fills_sportsbook_") for r in receipts))
+        for path in receipts:
+            with open(path, newline="", encoding="utf-8") as handle:
+                row = next(csv.DictReader(handle))
+            self.assertIn("paper:1;", row["notes"])
+            self.assertIn("arb_group:%s;" % record["arb_group"], row["notes"])
+            self.assertEqual(row["timestamp"], "2026-09-01 14:00:00")
+        text = xl.format_record(record)
+        self.assertIn("PAPER (no ledger, no placed_bets)", text)
+        self.assertIn("PAPER receipt", text)
+        # Paper history is measurable from its own folder, priced from the notes, not from the leg prices.
+        for i in range(1, 10):
+            self.record(i=i, paper=True, imports_dir=paper_dir)
+        arbs = rs._measure_arb_history(paper_dir)
+        self.assertEqual((arbs["fills"], arbs["executions"], arbs["priced_executions"]), (20, 10, 10))
+        self.assertAlmostEqual(arbs["gross_return_mean"], 100.0 / 95.62 - 1.0, places=6)
+
+    def test_cli_refuses_explicit_paths_that_do_not_exist(self):
+        base = ["--pm-market", "M", "--pm-price", "0.48", "--pm-shares", "100", "--book", "b", "--selection", "s",
+                "--odds", "2.10", "--stake", "47.62", "--event-id", "E", "--sport", "NFL", "--json"]
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(xl.main(base + ["--sports-db", str(self.root / "typo.db")]), 2)
+        self.assertIn("refused: --sports-db", fake_print.call_args_list[0].args[0])
+        self.assertFalse((self.root / "typo.db").exists())
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(xl.main(base + ["--imports-dir", str(self.root / "nowhere")]), 2)
+        self.assertIn("refused: --imports-dir", fake_print.call_args_list[0].args[0])
+        self.assertFalse((self.root / "nowhere").exists())
+        self.assertFalse(list(self.root.rglob("fills_*.csv")))                # nothing written anywhere
+        # Existing explicit paths are accepted (paper mode, so no ledger involved).
+        (self.root / "paper").mkdir()
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(xl.main(base + ["--paper", "--imports-dir", str(self.root / "paper")]), 0)
+        self.assertTrue(json.loads(fake_print.call_args_list[0].args[0])["paper"])
+
     def test_cli_records_and_reports(self):
+        from Sports_Desk.data.db import init_market_db
+        self.imports.mkdir()
+        init_market_db(self.sports_db)                                         # explicit paths must exist (Ruling 63-4)
         argv = ["--pm-market", "BILLS_ML_YES", "--pm-price", "0.48", "--pm-shares", "100", "--book", "betmgm",
                 "--selection", "Buffalo Bills", "--odds", "2.10", "--stake", "47.62", "--event-id", "E9", "--sport", "NFL",
                 "--timestamp", "2026-09-05 12:00:00", "--imports-dir", str(self.imports), "--sports-db", str(self.sports_db)]

@@ -171,7 +171,61 @@ class Betslip:
             capital_gain_capacity=capital_gain_capacity,
             prediction_is_wagering=prediction_is_wagering)
         self.write(render_cross_market(results, pairs))
+        self.cross_market_pairs = list(pairs)            # Round 63: kept so a pick can be staked
         return results
+
+    def stake_cross_market(self, result: Any, pair: Any, confirm: bool = True, paper: bool = False,
+                           imports_dir: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+        """
+        Round 63 (Directive 63-2): record an EXECUTED cross-market dutch - the
+        Polymarket leg as an execution receipt for the Tax agent, the book leg in
+        placed_bets - under one arb_group and one timestamp, through
+        cross_market.execution_log.record_dutch.
+
+        REFUSED WHOLESALE when the pair loses on its worse branch after tax
+        (worst_after_tax below the capital): one leg of a rejected dutch is a
+        naked bet. `paper=True` records both legs as paper receipts only; the tax
+        ledger and the desk's exposure never see a paper fill.
+        """
+        from cross_market.execution_log import STAMP_FORMAT, format_record, record_dutch
+        if float(result.worst_after_tax) < float(result.capital):
+            self.write(f"  [refused] cross-market dutch returns ${float(result.worst_after_tax):,.2f} after tax "
+                       f"on ${float(result.capital):,.2f} staked on its worse branch - every time, not on average.")
+            return None
+        legs = ((result.leg_a, result.stake_a), (result.leg_b, result.stake_b))
+        pm = [(leg, stake) for leg, stake in legs if str(getattr(leg, "venue", "")).lower() == "polymarket"]
+        book = [(leg, stake) for leg, stake in legs if str(getattr(leg, "venue", "")).lower() != "polymarket"]
+        if len(pm) != 1 or len(book) != 1:
+            self.write("  [refused] a cross-market dutch needs exactly one Polymarket leg and one book leg.")
+            return None
+        (pm_leg, pm_stake), (book_leg, book_stake) = pm[0], book[0]
+        price = float(getattr(pm_leg, "raw_price", None) or (1.0 / float(pm_leg.decimal_odds)))
+        shares = float(pm_stake) / price if price > 0 else 0.0
+        if confirm:
+            self.write(f"  Record {'PAPER ' if paper else ''}dutch: ${float(pm_stake):,.2f} of Polymarket "
+                       f"{pm_leg.selection} @ {price:.4f} ({shares:,.2f} shares) + ${float(book_stake):,.2f} on "
+                       f"{book_leg.selection} @ {float(book_leg.decimal_odds):.3f} ({book_leg.venue}) for "
+                       f"{float(result.gross_arb) * 100:.2f}% gross?")
+            if not _yes(self.read("  [y/N] ")):
+                self.write("  [cancelled] nothing recorded.")
+                return None
+        market = getattr(pair, "market", None)
+        record = record_dutch(
+            pm_market=str(getattr(market, "token_id", "") or getattr(market, "question", "") or pm_leg.selection),
+            pm_price=price, pm_shares=shares, book=str(book_leg.venue), selection=str(book_leg.selection),
+            decimal_odds=float(book_leg.decimal_odds), stake=float(book_stake),
+            event_id=str(getattr(pair, "event_id", "") or ""), sport=str(getattr(market, "sport", "") or ""),
+            market_type=str(getattr(market, "market_type", "") or ""), line=str(getattr(market, "line", "") or ""),
+            pm_tx_hash=None, timestamp=(self.now.strftime(STAMP_FORMAT) if self.now else None),
+            edge_at_placement=float(result.gross_arb), sports_db=self.db_path, imports_dir=imports_dir, paper=paper)
+        self.write(format_record(record))
+        if paper:
+            self.write("  Paper: neither the tax ledger nor placed_bets saw this. Receipts are under "
+                       f"{record['receipts_dir']}.")
+        else:
+            self.write("  The Polymarket leg is a tagged execution receipt for the Tax agent. The book leg is "
+                       "NOT a tax record - import the book's own export through Tax_Reserve_Agent.")
+        return record
 
     def _load_polymarket_questions(self) -> List[Dict[str, Any]]:
         """
@@ -440,7 +494,7 @@ class Betslip:
         rows = self.show_hotlist()
         while True:
             self.write("")
-            self.write("  [n] stake by number   [a] arbitrage   [c] execution CLV")
+            self.write("  [n] stake by number   [a] arbitrage   [x] cross-market   [c] execution CLV")
             self.write("  [p] desk performance  [s] tax-ledger sync   [r] refresh   [q] quit")
             choice = (self.read("  > ") or "").strip().lower()
             if choice in ("q", "quit", "exit", ""):
@@ -455,6 +509,16 @@ class Betslip:
                     index = _index(pick, len(opportunities))
                     if index is not None:
                         recorded += len(self.stake_arbitrage(opportunities[index]))
+            elif choice in ("x", "cross", "cross-market"):
+                results = self.show_cross_market()
+                pairs = getattr(self, "cross_market_pairs", [])
+                if results and pairs:
+                    pick = (self.read("  record which cross-market dutch? [1-%d, blank to skip] "
+                                      % len(results)) or "").strip()
+                    index = _index(pick, len(results))
+                    if index is not None and index < len(pairs):
+                        record = self.stake_cross_market(results[index], pairs[index])
+                        recorded += 1 if record and record.get("complete") else 0
             elif choice in ("c", "clv"):
                 self.show_clv()
             elif choice in ("p", "perf", "performance"):
