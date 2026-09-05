@@ -11,7 +11,7 @@ tags:
 - roadmap
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:48:24Z'
+  at: '2026-09-05T21:27:19Z'
 status: draft
 sources:
 - id: top20-registry

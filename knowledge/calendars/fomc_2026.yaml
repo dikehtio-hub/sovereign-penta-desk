@@ -1,0 +1,27 @@
+# FOMC statement calendar, remaining 2026 meetings. Committed by hand from
+# https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm (Round 98, B7).
+# The statement prints at 14:00 Eastern: 18:00Z while EDT holds, 19:00Z once the
+# clocks change on 2026-11-01. The December entry is the reason this file exists.
+kind: fed_rate
+source: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+window_before_minutes: 2
+window_after_minutes: 5
+meetings:
+  - id: fomc_2026-09-16
+    meeting: 2026-09-15/16
+    statement_utc: "2026-09-16T18:00:00Z"
+    press_conference_utc: "2026-09-16T18:30:00Z"
+    sep: true
+    note: rules pre-registered in cross_market/experiments/fomc_2026-09-16.rules.json; drill task Monarch_FOMC_Drill at 13:58 EDT
+  - id: fomc_2026-10-28
+    meeting: 2026-10-27/28
+    statement_utc: "2026-10-28T18:00:00Z"
+    press_conference_utc: "2026-10-28T18:30:00Z"
+    sep: false
+    note: rules not yet registered; register before 2026-10-28T17:58Z, never inside the window
+  - id: fomc_2026-12-09
+    meeting: 2026-12-08/09
+    statement_utc: "2026-12-09T19:00:00Z"
+    press_conference_utc: "2026-12-09T19:30:00Z"
+    sep: true
+    note: 14:00 EST = 19:00Z after the 2026-11-01 clock change; SEP and dot plot released with the statement

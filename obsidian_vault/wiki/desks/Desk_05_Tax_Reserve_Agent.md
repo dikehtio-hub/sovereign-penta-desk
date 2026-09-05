@@ -8,7 +8,7 @@ tags:
 - desk-5
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:48:24Z'
+  at: '2026-09-05T21:27:19Z'
 status: draft
 sources:
 - id: top20-registry
@@ -68,6 +68,14 @@ The accountant every desk asks before sizing: lot engine, IRC 1256 60/40, IRC 16
 ## Rulings
 
 - [[Ruling_R95|R95 - Ratification of the knowledge layer (R95-A to R95-G)]]
+
+## Registers (machine-maintained)
+
+- [[experiments_register|Experiments register]]
+- [[rulings_register|Rulings register]]
+- [[computations_register|Computations register]]
+- [[events_register|Events register]]
+- [[markets_register|Markets register]]
 
 ## Other desks
 

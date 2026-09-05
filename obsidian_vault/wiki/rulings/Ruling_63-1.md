@@ -1,0 +1,42 @@
+---
+type: Ruling
+title: 'Ruling 63-1: ).…'
+description: _measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
+tags:
+- ruling
+- ruling
+- round-63
+- extracted
+generated:
+  by: claude-code/fable-5.1
+  at: '2026-09-05T21:32:39Z'
+status: draft
+sources:
+- id: agents-md
+  resource: AGENTS.md
+  title: AGENTS.md · Status
+  author: human:operator
+dev:
+  round: 63
+  ruling_id: R63-1
+  kind: ruling
+  citations:
+  - section: Status
+    line: 439
+    excerpt: …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
+  asserts:
+  - file: AGENTS.md
+    pattern: Ruling\s+63-1\b
+    claim: the citation still exists in the handoff log
+---
+# Ruling 63-1
+
+> Extracted from the handoff log by number; `status: draft` until Antigravity ratifies the text (R95-D).
+
+## Citations
+
+- **Status** (line 439): …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
+
+## Related
+
+- [[rulings_register|Rulings register]]

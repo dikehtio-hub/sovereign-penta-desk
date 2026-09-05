@@ -9,7 +9,7 @@ tags:
 - desk-2
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:48:24Z'
+  at: '2026-09-05T21:27:19Z'
 status: draft
 sources:
 - id: top20-registry
@@ -32,6 +32,10 @@ dev:
     file: Sports_Desk/engine/fair_value.py
     pattern: 'def kelly_fraction\(fair_prob: float, offered_odds: float, fraction:
       float = ([0-9.]+)\)'
+  - name: fee_rate
+    value: 0.0
+    file: cross_market/ingestors/polymarket_fetcher.py
+    pattern: 'fee_rate: float = ([0-9.]+),'
 ---
 # Desk 2: Sports Desk
 
@@ -63,6 +67,14 @@ Sportsbook desk: multi-book odds ingestion, Shin/Power devigging to fair value, 
 ## Rulings
 
 - [[Ruling_R95|R95 - Ratification of the knowledge layer (R95-A to R95-G)]]
+
+## Registers (machine-maintained)
+
+- [[experiments_register|Experiments register]]
+- [[rulings_register|Rulings register]]
+- [[computations_register|Computations register]]
+- [[events_register|Events register]]
+- [[markets_register|Markets register]]
 
 ## Other desks
 

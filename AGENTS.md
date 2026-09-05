@@ -5,6 +5,31 @@ the detail.
 
 ## Status
 
+Round 98 complete (2026-09-05): KNOWLEDGE - COMPILE WHAT EXISTS (backlog B3, B4, B6, B7,
+B9; Antigravity's Round 97/97b rulings applied). B3: ingest.experiments now reads
+HyperLiquid/HL_Monarch/data/experiments/*.meta.json too - registrations (acceptance_bar
+and other numeric blocks as json_path dev:parameters; the control as dev:requires_files)
+and archived controls (result numbers guarded, so overwriting the N=12 baseline is a C1
+finding). B4: NEW ingest/rulings.py extracts every distinct Directive/Ratification/Ruling
+N-N from AGENTS.md (27 pages, status draft, dev:citations with section+line+sentence
+window, dev:asserts pins the citation) and maintains rulings_register. B6: NEW
+knowledge/computations.py files the two dashboard shell twins and the knowledge CLIs as
+OKF Attested Computation pages (runtime, computation, executor.receipt, attester;
+declarative per R95-C). B7: committed knowledge/calendars/fomc_2026.yaml (Sep 16 18:00Z,
+Oct 28 18:00Z, Dec 9 19:00Z after the clock change, SEP flags) and tax_2026.yaml (Q3 due
+2026-09-15, Q4 due 2027-01-15); NEW ingest/calendar.py -> Event pages with T-2..T+5
+dev:window (FOMC) or stale_after = due (tax); clob ingest now ENRICHES a calendar Event
+(keeps window/sep/meeting). B9: NEW ingest/markets.py -> 97 Market pages from the
+rules tokens, Experiment dev:tokens and the newest macro drop's FED-RATES family (identity
+only, no prices); lint --fix-safe now deprecates a Market whose token left the drops
+(ruling A5). NEW knowledge/registers.py: five machine-maintained register pages, all
+linked from every Desk page (seed --force). Regime page carries latest_verdict +
+regime_consensus_3 (ruling A3). Desk parameters for C3 (ruling A6): confidence_floor
+0.99, fee_rate 0.0 x2 (after_tax_edge_hurdle is a method, not a constant - no parameter).
+REAL VAULT: 184 pages + constitution, lint CLEAN. Tests: module 23 = 75; master 23
+modules 1,011; total 1,093 + 1,011 + 546 = 2,650, all green offline. Daemons and tonight's
+tasks untouched.
+
 Round 97 complete (2026-09-05): KNOWLEDGE PHASE 2 - CONSTITUTION RATIFIED, INGEST
 ADAPTERS, RAW MANIFEST, LINT C2/C3 (Antigravity rulings 1-13 on Round 96 applied).
 WIKI_SCHEMA.md now carries verified: antigravity/architect and status stable
@@ -897,6 +922,21 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 98 findings
+
+- Every compiled type now has a register page and every Desk page links all five;
+  that is the whole answer to L3 for adapter-written pages, and it means a new
+  adapter needs exactly one line in registers.SPECS to be orphan-safe.
+- The archived N=12 control's result numbers are dev:parameters on its own page:
+  the memory rule "never overwrite the baseline" is now a lint C1 finding, not a
+  sentence in a notes file.
+- A calendar Event and a recorded Event are the same page: clob.compile_event merges
+  window/sep/meeting from the registered page and keeps the recording's release_utc.
+- Attested Computation pages cite their module as a source only when the file exists
+  (L5 otherwise); requires_files likewise. The fixture proved both.
+- The December FOMC statement is 19:00Z. It is asserted in a test, written in the
+  YAML comment, and rendered on the page; three places for one copied-state trap.
 
 ## Round 97 findings
 

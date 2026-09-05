@@ -9,7 +9,7 @@ tags:
 - desk-3
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:48:24Z'
+  at: '2026-09-05T21:27:19Z'
 status: draft
 sources:
 - id: top20-registry
@@ -39,6 +39,14 @@ dev:
     value: 0.25
     file: cross_market/latency_sniper.py
     pattern: ^KELLY_FRACTION = ([0-9.]+)
+  - name: confidence_floor
+    value: 0.99
+    file: cross_market/latency_sniper.py
+    pattern: ^MIN_CONFIDENCE = ([0-9.]+)
+  - name: fee_rate
+    value: 0.0
+    file: cross_market/latency_sniper.py
+    pattern: '^\s+fee_rate: float = ([0-9.]+)$'
 ---
 # Desk 3: Cross-Market Desk
 
@@ -85,6 +93,14 @@ Cross-venue desk: Polymarket vs sportsbook dutching arb, Titan correlator and le
 - [[Ruling_R05|R5 - record the rewards pool rate (pending)]]
 - [[Ruling_R06|R6 - competitor Q is measured from recorded books]]
 - [[Ruling_R95|R95 - Ratification of the knowledge layer (R95-A to R95-G)]]
+
+## Registers (machine-maintained)
+
+- [[experiments_register|Experiments register]]
+- [[rulings_register|Rulings register]]
+- [[computations_register|Computations register]]
+- [[events_register|Events register]]
+- [[markets_register|Markets register]]
 
 ## Compiled pages (Phase 2 adapters)
 

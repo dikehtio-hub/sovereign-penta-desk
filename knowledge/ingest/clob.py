@@ -111,16 +111,19 @@ def compile_event(result: dict[str, Any], event_id: str, profiles: list[Page], v
     ev = result.get("event") or {}
     path = page_path(vault, "Event", event_id)
     existing = load_page(path)
-    prior = existing.meta.get("dev", {}).get("profiles", []) if existing else []
+    prior_dev = (existing.meta.get("dev") or {}) if existing else {}
+    prior = prior_dev.get("profiles", [])
     names = sorted(set(prior) | {p.path.stem for p in profiles})
+    # a calendar-registered Event keeps its window / sep / meeting / calendar when the recording enriches it
+    keep = {k: prior_dev[k] for k in ("window", "sep", "meeting", "calendar") if k in prior_dev}
     body = [f"# Event: {event_id}", "", f"> kind `{ev.get('kind')}` · payload `{json.dumps(ev.get('payload'))}` · confidence {ev.get('confidence')}", "",
             "## Timing", "", f"- observed_at (anchor): `{result.get('anchor')}`", f"- release_utc: `{result.get('release_utc')}`",
             f"- anchor minus release: {result.get('anchor_minus_release_s')} s", f"- stamps replayed: {result.get('stamps')} at {result.get('step_seconds')} s", "",
             "## Reaction profiles", "", *[f"- [[{n}]]" for n in names], "",
             "## Related", "", f"- [[{CONCEPT_FILE}|Latency decay across events]]", "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
             "- [[Item_12_Polymarket_Breaking_News_Oracle_Latency_Sniper|Item 12: Polymarket Breaking News & Oracle Latency Sniper]]", ""]
-    dev = {"desk": 3, "item": 12, "kind": str(ev.get("kind")), "payload": ev.get("payload"), "confidence": ev.get("confidence"),
-           "anchor": result.get("anchor"), "release_utc": result.get("release_utc"), "profiles": names}
+    dev = {**keep, "desk": 3, "item": 12, "kind": str(ev.get("kind")), "payload": ev.get("payload"), "confidence": ev.get("confidence"),
+           "anchor": result.get("anchor"), "release_utc": result.get("release_utc") or prior_dev.get("release_utc"), "profiles": names}
     meta = make_meta("Event", f"Event: {event_id}", f"{ev.get('kind')} event {event_id}: {len(names)} reaction profile(s) recorded.",
                      tags=["event", "desk-3", "item-12", str(ev.get("kind"))], generated_by=by, at=at, status="draft",
                      sources=[{"id": "survival-json", "resource": source, "title": "latency_sniper --survival-curve --json",

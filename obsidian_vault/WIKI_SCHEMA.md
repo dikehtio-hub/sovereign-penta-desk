@@ -149,6 +149,7 @@ hand-edited.
 | Journal Entry, Debrief | journal, journal/debriefs | receipts, Risk Sentinel state, escrow note, the operator's plan |
 | Lint Report | wiki/lint | `knowledge.lint --json` |
 | Blueprint, Constitution | wiki/concepts, vault root | this layer's own design documents |
+| Register (a Concept) | wiki/concepts/*_register.md | machine-maintained lists of every page of one compiled type (experiments, rulings, computations, events, markets); every Desk page links every register, so nothing compiled is an orphan; hand edits are overwritten |
 
 File names are `Type_NN_Slug.md` for numbered things (`Desk_03_Cross_Market_Desk.md`,
 `Item_12_Polymarket_Breaking_News_Oracle_Latency_Sniper.md`, `Ruling_R04.md`),
@@ -233,14 +234,14 @@ The debrief places no orders and changes no threshold.
 | L4 | `stale_after` passed and not `deprecated` |
 | L5 | a local `sources[].resource` no longer on disk |
 | C1 | `dev.asserts` pattern no longer matches; `dev.parameters` value drifted (float comparison when both sides parse, ruling 2); `dev.requires_files` entry gone |
-| C2 | a `dev.token_id` / `dev.tokens[]` entry on a non-deprecated page that is absent from the newest macro and sports drops (warning: resolved, delisted, or never listed); a missing drops folder is itself one warning |
+| C2 | a `dev.token_id` / `dev.tokens[]` entry on a non-deprecated page that is absent from the newest macro and sports drops (warning: resolved, delisted, or never listed); a missing drops folder is itself one warning. `lint --fix-safe` sets `status: deprecated` on a Market page so flagged and logs it (Round 97 ruling A5) |
 | C3 | the same `dev.parameters[].name` with different values on two or more pages (error) |
 | C5 | `generated.at` inside the page's own `dev.window` is an error; only the file mtime inside it is a warning, because a checkout can do that (ruling 3) |
 | C4 C6 | Phase 3: unhedged tax liability; the weekly LLM contradiction pass |
 
-Lint writes nothing. `--fix-safe` (Phase 3) may only regenerate `index.md`,
-append to `log.md`, and set `status: deprecated` on a Market page whose
-token is gone.
+Lint writes nothing without `--fix-safe`, and with it may only set
+`status: deprecated` on a Market page whose token is gone and append one
+`**Lint**` bullet to `log.md`. Anything else stays a report.
 
 ## 8. Refusals (fail closed, exit 3)
 
@@ -263,8 +264,18 @@ python -m knowledge.ingest.lead_lag --result verdict.json --tier 1|2|2b
                                                                    -> wiki/experiments/ verdict + wiki/regimes/btc_macro_regime.md
 python -m knowledge.ingest.clob --result curve.json --event fomc_2026-09-16
                                                                    -> wiki/profiles/, wiki/events/, wiki/concepts/latency_decay.md
+python -m knowledge.ingest.rulings [--agents AGENTS.md] [--force]  -> wiki/rulings/ Directive_/Ratification_/Ruling_N-N (draft)
+python -m knowledge.computations [--force]                         -> wiki/computations/ (shell twins + knowledge CLIs, declarative)
+python -m knowledge.ingest.calendar [--dir knowledge/calendars]    -> wiki/events/ (FOMC statements with windows; tax deadlines)
+python -m knowledge.ingest.markets [--family FED-RATES ...]        -> wiki/markets/ (tokens from rules, Experiments, the newest drop)
+python -m knowledge.lint --fix-safe                                deprecates Market pages whose token left the drops
 python -m unittest knowledge.tests.test_knowledge                  (Master Module 23)
 ```
+
+Registers: `wiki/concepts/{experiments,rulings,computations,events,markets}_register.md`
+are rebuilt by the adapter that owns the type; every Desk page links all five.
+Calendars are committed YAML under `knowledge/calendars/` (FOMC from
+federalreserve.gov by hand; the December statement is 19:00Z, not 18:00Z).
 
 The seed skips pages that already exist unless `--force`, so a re-run never
 clobbers a page an ingest or a human improved. Its default `generated.at` is

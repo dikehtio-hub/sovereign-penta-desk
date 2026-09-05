@@ -2360,6 +2360,31 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 98 - KNOWLEDGE: COMPILE WHAT EXISTS (HL registrations, directives catalogue, attested computations, calendars, markets)
+     python -m knowledge.ingest.experiments [--dir DIR ...] [--force]
+         Now also reads HyperLiquid/HL_Monarch/data/experiments/*.meta.json: registrations (acceptance_bar etc. as
+         json_path-guarded dev:parameters, the control as dev:requires_files) and archived controls (result numbers guarded,
+         so overwriting the N=12 baseline is a lint C1 finding). The baseline data file itself is not a registration.
+     python -m knowledge.ingest.rulings [--agents AGENTS.md] [--force]
+         Every distinct `Directive N-N` / `Ratification N-N` / `Ruling N-N` in the handoff log -> wiki/rulings/Directive_75-1.md etc.
+         (status draft, dev:round, dev:citations with section + line + sentence window, dev:asserts pins the citation to AGENTS.md).
+         Antigravity ratifies in batches (R95-D). Maintains wiki/concepts/rulings_register.md.
+     python -m knowledge.computations [--force]
+         wiki/computations/: the two dashboard shell twins (lead_lag --check-data, risk_simulator --iterations 20000 --json) and the
+         knowledge CLIs as OKF Attested Computation pages (runtime, computation, executor.receipt, attester). Declarative (R95-C).
+     python -m knowledge.ingest.calendar [--dir knowledge/calendars] [--force]
+         knowledge/calendars/fomc_2026.yaml (Sep 16 18:00Z, Oct 28 18:00Z, Dec 9 19:00Z after the clock change; SEP flags) and
+         tax_2026.yaml (Q3 due 2026-09-15, Q4 due 2027-01-15) -> wiki/events/ with dev:window T-2..T+5 (FOMC) or stale_after = due
+         (tax). clob ingest ENRICHES a calendar Event (keeps window/sep/meeting) instead of replacing it.
+     python -m knowledge.ingest.markets [--drops DIR] [--family FED-RATES ...] [--force]
+         Tokens from *.rules.json, Experiment dev:tokens and the newest macro drop's FED-RATES family -> wiki/markets/<market_slug>.md
+         (token_id, condition_id, slugs, first_seen, neg_risk from rules; NO prices). Lint C2 warns when a token leaves the drops;
+         `python -m knowledge.lint --fix-safe` sets status deprecated and logs it (Round 97 ruling A5).
+     Registers: wiki/concepts/{experiments,rulings,computations,events,markets}_register.md, rebuilt by the owning adapter; every
+         Desk page links all five (seed --force to refresh). Regime page now carries latest_verdict + regime_consensus_3 (ruling A3).
+     Desk parameters added for C3 (ruling A6): confidence_floor 0.99 and fee_rate 0.0 (latency_sniper), fee_rate 0.0 (polymarket_fetcher).
+     Tests: python -m unittest knowledge.tests.test_knowledge   (master module 23, 75 tests)
+
      ROUND 97 - KNOWLEDGE PHASE 2: CONSTITUTION RATIFIED, INGEST ADAPTERS, RAW MANIFEST, LINT C2/C3 (knowledge/ingest/, knowledge/raw_manifest.py)
      python -m knowledge.ingest.experiments [--dir cross_market/experiments] [--force] [--at ISO]
          Pre-registrations -> Experiment pages: *.meta.json bars become dev:parameters (C1 guards them), *.rules.json tokens become
@@ -2777,7 +2802,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (23 modules, 997): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
+     MASTER SUITE (23 modules, 1,011): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

@@ -126,17 +126,42 @@ def _lag(v) -> str:
     return "-" if v is None else str(v)
 
 
+def current_state(history: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Per (tier, scope): the latest verdict and the trailing-3 consensus (Round 97 ruling A3).
+    consensus is the class when the last three runs agree, `mixed` when they do not, and
+    `insufficient-history` with fewer than three runs."""
+    keyed: dict[str, list[dict[str, Any]]] = {}
+    for r in history:
+        keyed.setdefault(f"tier {r.get('tier')} {r.get('scope')}", []).append(r)
+    out: dict[str, dict[str, Any]] = {}
+    for key, rows in keyed.items():
+        last3 = rows[-3:]
+        latest = str(last3[-1].get("class"))
+        if len(last3) < 3:
+            consensus = "insufficient-history"
+        elif len({str(r.get("class")) for r in last3}) == 1:
+            consensus = latest
+        else:
+            consensus = "mixed"
+        out[key] = {"latest_verdict": latest, "regime_consensus_3": consensus, "runs": len(rows)}
+    return out
+
+
 def _render_regime(history: list[dict[str, Any]]) -> str:
     latest: dict[str, dict[str, Any]] = {}
     for row in history:  # history is chronological; the last row per (tier, scope) wins
         latest[f"{row.get('tier')}|{row.get('scope')}"] = row
+    state = current_state(history)
     lines = ["# BTC macro regime", "",
              "> One row per lead-lag verdict. The class vocabulary is fixed in WIKI_SCHEMA.md s.7; where Tier 2 and",
-             "> Tier 2b disagree for the same scope, that disagreement is the finding (the dual-tagged markets carry it).", "",
-             "## Current, per tier and scope", "", "| Tier | Scope | Membership | Class | Lag (min) | Corr | n | As of |", "|---|---|---|---|---|---|---|---|"]
+             "> Tier 2b disagree for the same scope, that disagreement is the finding (the dual-tagged markets carry it).",
+             "> `Consensus (3)` is the class only when the last three runs of that tier and scope agree.", "",
+             "## Current, per tier and scope", "",
+             "| Tier | Scope | Membership | Latest | Consensus (3) | Lag (min) | Corr | n | As of |", "|---|---|---|---|---|---|---|---|---|"]
     for key in sorted(latest):
         r = latest[key]
-        lines.append(f"| {r.get('tier')} | {r.get('scope')} | {r.get('membership')} | **{r.get('class')}** | "
+        st = state.get(f"tier {r.get('tier')} {r.get('scope')}", {})
+        lines.append(f"| {r.get('tier')} | {r.get('scope')} | {r.get('membership')} | **{r.get('class')}** | {st.get('regime_consensus_3', '-')} | "
                      f"{_lag(r.get('lag'))} | {_corr(r.get('corr'))} | {r.get('n')} | {r.get('at')} |")
     lines += ["", "## Disagreements", ""]
     by_scope: dict[str, dict[str, str]] = {}
@@ -164,7 +189,7 @@ def update_regime(vault: Path, verdict: Page, *, at: datetime, by: str = GENERAT
     history.append({"at": iso(at), "tier": d["tier"], "scope": scope_of(d), "membership": d["membership"],
                     "class": d["classification"], "lag": d["best_lag_minutes"], "corr": d["correlation"], "n": d["n"],
                     "page": verdict.path.stem})
-    current = {f"tier {r['tier']} {r['scope']}": r["class"] for r in history}
+    current = current_state(history)
     meta = make_meta("Regime", "BTC macro regime",
                      "Rolling classification of the Polymarket macro / Hyperliquid BTC lead-lag verdicts, per tier and scope, with the full history.",
                      tags=["regime", "desk-3", "item-18", "lead-lag"], generated_by=by, at=at, status="draft",

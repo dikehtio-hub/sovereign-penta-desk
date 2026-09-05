@@ -1,0 +1,20 @@
+# Federal estimated-tax deadlines for tax year 2026 (Round 98, B7). The quarters
+# are not quarters: Q2 is two months and Q4 is four. Source of the rule:
+# Tax_Reserve_Agent/interfaces/tax_calendar.py QUARTER_DEFINITIONS; dates already
+# rolled to the next business day where needed (none needed in 2026-27).
+kind: estimated_tax
+source: Tax_Reserve_Agent/interfaces/tax_calendar.py
+tax_year: 2026
+deadlines:
+  - id: tax_estimated_2026_q3
+    quarter: Q3
+    period_start: 2026-06-01
+    period_end: 2026-08-31
+    due: 2026-09-15
+    months: 3
+  - id: tax_estimated_2026_q4
+    quarter: Q4
+    period_start: 2026-09-01
+    period_end: 2026-12-31
+    due: 2027-01-15
+    months: 4

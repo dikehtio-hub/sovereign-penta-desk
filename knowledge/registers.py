@@ -1,0 +1,64 @@
+"""Register pages: one machine-maintained Concept page per compiled type.
+
+Every adapter writes pages that nothing else links to yet (a registration, a
+computation, an event, a market). The register for that type lists them all,
+so lint L3 never sees an orphan, and every Desk page links every register, so
+the graph has one hop from a desk to anything compiled. Hand edits to a
+register are overwritten on the next run; that is what "machine-maintained"
+means in WIKI_SCHEMA.md s.4.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+
+from . import GENERATED_BY
+from .pages import Page, load_pages, make_meta, page_path
+
+# type -> (stem, title, description, columns shown after the page link)
+SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
+    "Experiment": ("experiments_register", "Experiments register",
+                   "Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured.",
+                   ("kind",)),
+    "Ruling": ("rulings_register", "Rulings register",
+               "Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log.",
+               ("kind", "round")),
+    "Attested Computation": ("computations_register", "Computations register",
+                             "Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C).",
+                             ("runtime", "kind")),
+    "Event": ("events_register", "Events register",
+              "Every Event page: scheduled prints with their windows, tax deadlines, and recorded events.",
+              ("kind", "release_utc")),
+    "Market": ("markets_register", "Markets register",
+               "Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it.",
+               ("family",)),
+}
+
+REGISTER_STEMS = tuple(spec[0] for spec in SPECS.values())
+
+
+def register_stem(type_: str) -> str:
+    return SPECS[type_][0]
+
+
+def _cell(page: Page, col: str) -> str:
+    dev = page.meta.get("dev") or {}
+    v = page.meta.get(col, dev.get(col, "-"))
+    return "-" if v in (None, "") else str(v)
+
+
+def update_register(vault, type_: str, *, at: datetime, by: str = GENERATED_BY) -> Page:
+    stem, title, description, cols = SPECS[type_]
+    pages = sorted((p for p in load_pages(vault) if p.type == type_), key=lambda p: p.path.name)
+    head = "| Page | " + " | ".join(c.replace("_", " ") for c in cols) + " | Status | Generated |"
+    sep = "|---|" + "---|" * len(cols) + "---|---|"
+    lines = [f"# {title}", "", f"> {description}", "> Maintained by the knowledge layer; hand edits are overwritten.", "", head, sep]
+    for p in pages:
+        gen = (p.meta.get("generated") or {}).get("at", "")
+        cells = " | ".join(_cell(p, c) for c in cols)
+        lines.append(f"| [[{p.path.stem}\\|{p.title}]] | {cells} | {p.meta.get('status', 'stable')} | {gen} |")
+    lines += ["", f"{len(pages)} page(s).", "", "## Related", "", "- [[WIKI_SCHEMA|Constitution]] s.4 (registers)", ""]
+    meta = make_meta("Concept", title, f"{description} {len(pages)} page(s) today.",
+                     tags=["concept", "register", type_.lower().replace(" ", "-").replace("/", "-")],
+                     generated_by=by, at=at, status="draft",
+                     dev={"register_for": type_, "count": len(pages), "pages": [p.path.stem for p in pages]})
+    return Page(page_path(vault, "Concept", stem), meta, "\n".join(lines))

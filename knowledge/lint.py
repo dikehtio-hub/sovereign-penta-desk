@@ -275,12 +275,16 @@ def check_c1(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]
     return out
 
 
-def _newest(drops: Path, prefix: str) -> Path | None:
+def newest_drop(drops: Path, prefix: str) -> Path | None:
+    """The newest stamped drop for a prefix, else the canonical file, else None."""
     stamped = sorted(drops.glob(f"{prefix}_*.json"))
     if stamped:
         return stamped[-1]
     canonical = drops / f"{prefix}.json"
     return canonical if canonical.is_file() else None
+
+
+_newest = newest_drop
 
 
 def load_live_tokens(drops: Path) -> tuple[set[str], list[str]]:
@@ -409,6 +413,30 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     return findings
 
 
+def apply_fix_safe(findings: list[Finding], vault: Path, now: datetime | None = None) -> list[str]:
+    """The only writes lint may make (WIKI_SCHEMA.md s.7): deprecate a Market page whose token left
+    the drops (C2). index.md is untouched (status is not an index column); one log bullet records it."""
+    from .pages import append_log, iso, load_page, write_page  # local import keeps lint importable by pages' users
+
+    now = now or datetime.now(timezone.utc)
+    changed: list[str] = []
+    for f in findings:
+        if f.code != "C2" or f.path.startswith("("):
+            continue
+        page = load_page(vault / f.path)
+        if page is None or page.type != "Market" or page.meta.get("status") == "deprecated":
+            continue
+        page.meta["status"] = "deprecated"
+        dev = page.meta.setdefault("dev", {})
+        dev["deprecated"] = {"at": iso(now), "reason": f.message}
+        write_page(page, vault, now=now)
+        changed.append(f.path)
+    if changed:
+        append_log(vault, "Lint", f"--fix-safe deprecated {len(changed)} Market page(s) whose token left the newest drops: "
+                   + ", ".join(f"[[{Path(p).stem}]]" for p in changed), when=now)
+    return changed
+
+
 def summarize(findings: list[Finding], pages: int) -> dict:
     return {
         "pages": pages,
@@ -428,6 +456,8 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap.add_argument("--dev-root", type=Path, default=DEV_ROOT)
     ap.add_argument("--drops", type=Path, default=None, help=f"default <dev-root>/{DEFAULT_DROPS.as_posix()}")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--fix-safe", action="store_true",
+                    help="apply the only permitted fixes: deprecate Market pages whose token left the drops (C2)")
     args = ap.parse_args(argv)
 
     if halted(args.dev_root):
@@ -438,6 +468,11 @@ def main(argv: list[str] | None = None, out=None) -> int:
         return EXIT_HALT
 
     findings = lint_vault(args.vault, args.dev_root, drops=args.drops)
+    if args.fix_safe:
+        changed = apply_fix_safe(findings, args.vault)
+        if changed:
+            print(f"[FIX-SAFE] deprecated {len(changed)} Market page(s): {', '.join(changed)}", file=out)
+            findings = lint_vault(args.vault, args.dev_root, drops=args.drops)
     pages = sum(1 for d in load_documents(args.vault) if not d.constitution)
     summary = summarize(findings, pages)
     if args.json:

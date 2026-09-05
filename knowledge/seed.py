@@ -163,6 +163,8 @@ DESKS: tuple[DeskSpec, ...] = (
         parameters=(
             {"name": "kelly_fraction", "value": 0.25, "file": "Sports_Desk/engine/fair_value.py",
              "pattern": r"def kelly_fraction\(fair_prob: float, offered_odds: float, fraction: float = ([0-9.]+)\)"},
+            {"name": "fee_rate", "value": 0.0, "file": "cross_market/ingestors/polymarket_fetcher.py",
+             "pattern": r"fee_rate: float = ([0-9.]+),"},
         ),
     ),
     DeskSpec(
@@ -188,6 +190,10 @@ DESKS: tuple[DeskSpec, ...] = (
              "pattern": r'"latency_minutes_crypto":\s*([0-9.]+)'},
             {"name": "kelly_fraction", "value": 0.25, "file": "cross_market/latency_sniper.py",
              "pattern": r"^KELLY_FRACTION = ([0-9.]+)"},
+            {"name": "confidence_floor", "value": 0.99, "file": "cross_market/latency_sniper.py",
+             "pattern": r"^MIN_CONFIDENCE = ([0-9.]+)"},
+            {"name": "fee_rate", "value": 0.0, "file": "cross_market/latency_sniper.py",
+             "pattern": r"^\s+fee_rate: float = ([0-9.]+)$"},
         ),
     ),
     DeskSpec(
@@ -462,6 +468,10 @@ def build_desk_page(d: DeskSpec, items: list[ItemSpec], vault: Path, dev_root: P
              f" · {'deployed' if i.checked else 'roadmap'}" for i in mine] or ["- (none in the registry)"]
     body += ["", "## Rulings", ""]
     body += [f"- [[{ruling_filename(r)[:-3]}|{r.title}]]" for r in rulings]
+    body += ["", "## Registers (machine-maintained)", "",
+             "- [[experiments_register|Experiments register]]", "- [[rulings_register|Rulings register]]",
+             "- [[computations_register|Computations register]]", "- [[events_register|Events register]]",
+             "- [[markets_register|Markets register]]"]
     if d.number == 3:
         body += ["", "## Compiled pages (Phase 2 adapters)", "",
                  "- [[experiments_register|Experiments register]] - pre-registrations and verdicts",
