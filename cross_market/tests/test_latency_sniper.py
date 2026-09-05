@@ -16,7 +16,7 @@ from unittest import mock
 
 from cross_market import latency_sniper as ls
 
-NOW = datetime(2026, 9, 17, 18, 0, 5, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 16, 18, 0, 5, tzinfo=timezone.utc)   # the FOMC statement minute, 2026-09-16 18:00Z
 
 
 def fair_breakeven(odds):
