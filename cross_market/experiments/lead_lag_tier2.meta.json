@@ -1,0 +1,57 @@
+{
+  "experiment": "lead_lag_tier2_subfamilies",
+  "registered_utc": "2026-09-05T10:00:03.614113+00:00",
+  "status": "PRE-REGISTERED - runs only AFTER the Tier 1 maiden run has written its verdict to Cross_Market_Titans.md",
+  "tier1_unchanged": {
+    "family": "macro",
+    "min_abs_corr": 0.2,
+    "min_events": 5,
+    "min_points": 60,
+    "readiness": {
+      "min_span_hours": 24,
+      "min_points": 200,
+      "max_gap_minutes": 60
+    },
+    "due_utc": "2026-09-06T01:39:49Z",
+    "rule": "Ruling 74-2: the Tier 1 bar and gate are not moved, relaxed or amended by anything below."
+  },
+  "why": "The macro family mixes exogenous policy questions (Fed decisions) with crypto milestone questions ('Will the price of Bitcoin be above $80,000 on September 5?') whose probability moves BECAUSE BTC moved. Pooled, the mechanical group dominates the correlation, and any lead it shows can be the watcher's 5-minute poll latency rather than prediction.",
+  "subfamilies": {
+    "fed-rates": {
+      "filter": "drop question label `sport` == FED-RATES (the Gamma tag it was fetched under)",
+      "role": "exogenous: a policy repricing that BTC may or may not follow",
+      "reading": "the Tier 1 interpretation, unchanged"
+    },
+    "crypto": {
+      "filter": "drop question label `sport` == CRYPTO",
+      "role": "endogenous: the question is a function of the BTC price",
+      "reading": "a peak with |lag| <= 5 min (POLL_INTERVAL_MINUTES) is 'contemporaneous repricing within the poll interval: latency, not a lead'; only a peak OUTSIDE the poll interval that clears the bar may be called a lead"
+    }
+  },
+  "bars": {
+    "min_abs_corr": 0.2,
+    "min_events": 5,
+    "min_points": 60,
+    "insufficient_rule": "a subfamily under min_events or min_points is 'insufficient', not a verdict",
+    "latency_minutes_crypto": 5.0,
+    "latency_minutes_fed_rates": 0.0
+  },
+  "commands": [
+    "python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates",
+    "python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5"
+  ],
+  "state_at_registration": {
+    "newest_macro_drop": "polymarket_macro_20260905T095913_223758Z.json",
+    "questions_by_label": {
+      "crypto": 212,
+      "fed-rates": 97
+    },
+    "note": "counts only: NO subfamily correlation was run before registering. The Tier 1 preview of 2026-09-05 (macro pooled, forced, 8-hour partial series) read corr -0.195 at -33 min; that number was seen before this registration and is recorded here for honesty, not used to set a bar."
+  },
+  "caveats": [
+    "collect_live_questions dedupes by token with FIRST TAG WINS; the launcher fetches crypto before fed-rates, so a market carrying both tags is labelled CRYPTO.",
+    "Drop records carry no tag_slug field; the label lives in `sport` (Round 52 category labelling).",
+    "The two subfamilies share the BTC return series, so their results are not independent tests."
+  ],
+  "enforced_in_code": "lead_lag.load_drop_records(subfamily=...), lead_lag_report(latency_minutes=...)"
+}

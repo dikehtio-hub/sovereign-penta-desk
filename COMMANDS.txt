@@ -2360,6 +2360,21 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 74 - ONE EXPORTER LOOP (PID LOCK + --status), TIER 2 PRE-REGISTERED
+     python -m cross_market.interfaces.obsidian_exporter --status [--json] [--pid-file FILE]
+         exit 0 = a loop holds cross_market\data\cross_market_exporter.pid, 3 = none. Also prints the Item 18
+         state: last lead-lag run (from the Titans note), macro series READY/NOT READY, ETA.
+     start_cross_market_exporter.bat   now guarded by --status (a live loop is kept); the sync bat calls it
+         behind `if errorlevel 3` - no console Arb exporter any more.
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5
+         Tier 2 (Ruling 74-2), pre-registered in cross_market\experiments\lead_lag_tier2.meta.json.
+         Run ONLY after the Tier 1 maiden run has written its verdict (~2026-09-06T01:40Z).
+     MAIDEN RUN VERIFICATION (Directive 74-2, at ~01:40Z 2026-09-06):
+         python -m cross_market.interfaces.obsidian_exporter --status        -> "last run <ISO>; macro series READY"
+         findstr /c:"lead-lag: RAN" cross_market\data\cross_market_exporter.log
+         findstr /c:"lead-lag-run-at" obsidian_vault\Cross_Market_Titans.md
+
      ROUND 73 REVIEW - MACRO-FAMILY REGRESSION, DETACHED LOOPS
      python -m cross_market.lead_lag --coin BTC [--family macro|sports|any] [--force]
          --family filters the drops the correlation reads (the automated run uses macro; default = all).
@@ -2623,7 +2638,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (19 modules, 891): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (19 modules, 895): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

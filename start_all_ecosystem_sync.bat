@@ -50,8 +50,15 @@ if errorlevel 3 (
 :: 5. Launch Sports Desk + Cross-Market Arb Exporters (one slot, two windows)
 cd /d "C:\Users\ixis1\Desktop\DEV"
 start "Sports Desk Obsidian Sync" python -m Sports_Desk.interfaces.obsidian_exporter --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
-start "Cross-Market Arb Obsidian Sync" python -m cross_market.interfaces.obsidian_exporter --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault" --risk-stress 0.5
-echo ✓ [5/5] Sports Desk + Cross-Market Arb sync watchers launched.
+:: Round 74 (Ruling 74-1): the Arb exporter runs DETACHED and single-instance - its launcher is
+:: called only when --status says no loop holds cross_market\data\cross_market_exporter.pid.
+python -m cross_market.interfaces.obsidian_exporter --status
+if errorlevel 3 (
+    call "%~dp0start_cross_market_exporter.bat"
+    echo ✓ [5/5] Sports Desk sync watcher + detached Cross-Market Arb exporter launched.
+) else (
+    echo ✓ [5/5] Sports Desk sync watcher launched; Cross-Market Arb exporter already running - kept.
+)
 
 echo ======================================================================
 echo 🌟 All 5 Trading Desks are actively streaming live telemetry into:

@@ -85,16 +85,32 @@ def _file_matches_family(name: str, family: Optional[str]) -> bool:
     return name.startswith("polymarket_%s" % family)
 
 
-def load_drop_records(drop_dirs: Iterable[Path], family: Optional[str] = None) -> List[Dict[str, Any]]:
+# Round 74 (Ruling 74-2, Tier 2): inside the macro family a question carries the Gamma tag
+# it was fetched under as its `sport` label (CRYPTO, FED-RATES). The diagnostic split reads
+# that label; drops carry no tag_slug field. First tag wins in the fetcher's dedupe, so a
+# market tagged both ways is labelled by the earlier --tags entry (crypto in the launcher).
+SUBFAMILY_LABEL = "sport"
+POLL_INTERVAL_MINUTES = 5.0                      # the watcher's cadence: a lag inside it is latency, not a lead
+
+
+def record_subfamily(question: Dict[str, Any]) -> str:
+    """The tag label a drop question was fetched under, lower-case ("crypto", "fed-rates"), or ""."""
+    return str(question.get(SUBFAMILY_LABEL) or "").strip().lower()
+
+
+def load_drop_records(drop_dirs: Iterable[Path], family: Optional[str] = None,
+                      subfamily: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Every question in every *.json drop under `drop_dirs` as
-    {ts_ms, key, probability, question, file}. A question's key is its token_id,
+    {ts_ms, key, probability, question, file, label}. A question's key is its token_id,
     else its text. Unreadable files and unpriced questions are skipped. `family`
     keeps only that tag family's drops, so a macro correlation is not fed 400
     NFL questions (the sentinel gates on macro stamps; the regression should read
-    the same series).
+    the same series). `subfamily` (Round 74, Tier 2) keeps only the questions whose
+    tag label matches, e.g. "fed-rates" or "crypto" inside the macro drops.
     """
     records: List[Dict[str, Any]] = []
+    wanted = str(subfamily).strip().lower() if subfamily else None
     for directory in drop_dirs:
         try:
             files = sorted(Path(directory).glob("*.json"))
@@ -122,8 +138,11 @@ def load_drop_records(drop_dirs: Iterable[Path], family: Optional[str] = None) -
                 key = str(q.get("token_id") or q.get("question") or "")
                 if not key:
                     continue
+                label = record_subfamily(q)
+                if wanted is not None and label != wanted:
+                    continue
                 records.append({"ts_ms": ts, "key": key, "probability": prob,
-                                "question": str(q.get("question") or ""), "file": path.name})
+                                "question": str(q.get("question") or ""), "file": path.name, "label": label})
     records.sort(key=lambda r: (r["ts_ms"], r["key"]))
     return records
 
@@ -253,14 +272,20 @@ def cross_correlation(shifts: Dict[int, float], returns: Dict[int, float], max_l
 
 
 def lead_lag_report(shifts: List[Dict[str, Any]], marks: List[Tuple[int, float]], max_lag: int = 60,
-                    min_events: int = 5, min_points: int = 60, min_abs_corr: float = 0.2) -> Dict[str, Any]:
+                    min_events: int = 5, min_points: int = 60, min_abs_corr: float = 0.2,
+                    latency_minutes: float = 0.0) -> Dict[str, Any]:
     """
     The lag at which probability shifts and price returns line up best, with
-    the evidence behind it - or the reason there is no answer.
+    the evidence behind it - or the reason there is no answer. `latency_minutes`
+    (Round 74, Tier 2, pre-registered) is the poll cadence: a peak whose |lag| sits
+    inside it is reported as contemporaneous repricing - a market whose question
+    IS the price ("BTC above $80,000 today") re-marks when BTC moves, and the
+    watcher sees it up to one poll later. That is latency, never a lead. 0 = off
+    (the Tier 1 reading, unchanged).
     """
     result: Dict[str, Any] = {"events": len(shifts), "price_points": len(marks), "max_lag": max_lag,
                               "sufficient": False, "reason": "", "best_lag_minutes": None, "correlation": None,
-                              "n": 0, "interpretation": "", "curve": []}
+                              "n": 0, "interpretation": "", "curve": [], "latency_minutes": float(latency_minutes)}
     if len(shifts) < min_events:
         result["reason"] = f"{len(shifts)} probability shifts < {min_events} required"
         return result
@@ -278,6 +303,9 @@ def lead_lag_report(shifts: List[Dict[str, Any]], marks: List[Tuple[int, float]]
     tau, corr = best["lag_minutes"], best["correlation"]
     if abs(corr) < min_abs_corr:
         result["interpretation"] = f"no measurable lead-lag (peak |corr| {abs(corr):.2f} < {min_abs_corr})"
+    elif latency_minutes > 0 and abs(tau) <= latency_minutes:
+        result["interpretation"] = (f"contemporaneous repricing within the {latency_minutes:g}-min poll interval "
+                                    f"(lag {tau:+d} min, corr {corr:+.2f}, n={best['n']}): latency, not a lead")
     elif tau > 0:
         result["interpretation"] = f"Polymarket leads HyperLiquid by {tau} min (corr {corr:+.2f}, n={best['n']})"
     elif tau < 0:
@@ -290,7 +318,9 @@ def lead_lag_report(shifts: List[Dict[str, Any]], marks: List[Tuple[int, float]]
 # ------------------------------------------------------------------ CLI
 
 def format_report(result: Dict[str, Any], coin: str, keys: int) -> str:
-    lines = ["", f"ITEM 18 - LEAD-LAG: Polymarket probability shifts vs HyperLiquid {coin} returns",
+    scope = " / ".join(str(s) for s in (result.get("family"), result.get("subfamily")) if s)
+    lines = ["", f"ITEM 18 - LEAD-LAG: Polymarket probability shifts vs HyperLiquid {coin} returns"
+             + (f"  [{scope}]" if scope else ""),
              f"  markets: {keys}   probability shifts: {result['events']}   price points: {result['price_points']}   "
              f"max lag: +/-{result['max_lag']} min"]
     if not result["sufficient"]:
@@ -309,8 +339,10 @@ def format_report(result: Dict[str, Any], coin: str, keys: int) -> str:
 
 def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_shift: float,
         min_events: int, min_points: int, events_csv: Optional[Path] = None,
-        family: Optional[str] = None) -> Tuple[Dict[str, Any], int]:
-    records = load_event_csv(events_csv) if events_csv else load_drop_records(drop_dirs, family=family)
+        family: Optional[str] = None, subfamily: Optional[str] = None,
+        latency_minutes: float = 0.0) -> Tuple[Dict[str, Any], int]:
+    records = (load_event_csv(events_csv) if events_csv
+               else load_drop_records(drop_dirs, family=family, subfamily=subfamily))
     series = probability_series(records)
     shifts = probability_shifts(series, min_shift=min_shift)
     marks: List[Tuple[int, float]] = []
@@ -321,7 +353,10 @@ def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_s
             marks = load_mark_series(db_path, coin, start, end)
         except Exception:                                   # noqa: BLE001 - a missing database is "no prices"
             marks = []
-    return lead_lag_report(shifts, marks, max_lag=max_lag, min_events=min_events, min_points=min_points), len(series)
+    report = lead_lag_report(shifts, marks, max_lag=max_lag, min_events=min_events, min_points=min_points,
+                             latency_minutes=latency_minutes)
+    report["family"], report["subfamily"] = family, subfamily
+    return report, len(series)
 
 
 # ------------------------------------------------------------------ data readiness (Round 56)
@@ -442,6 +477,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--family", default=None, choices=("macro", "sports", "any"),
                         help="which tag family to read: with --check-data the sentinel's series (default macro); "
                              "for the correlation the drops to correlate (default: every drop, the Round 51 behaviour)")
+    parser.add_argument("--subfamily", default=None,
+                        help="Round 74 (Tier 2, pre-registered in cross_market/experiments/lead_lag_tier2.meta.json): "
+                             "keep only questions fetched under this tag label inside the family, e.g. fed-rates "
+                             "(exogenous policy) or crypto (self-referential price milestones)")
+    parser.add_argument("--latency-minutes", type=float, default=0.0,
+                        help="Tier 2 reading rule: a peak within this many minutes of zero is contemporaneous "
+                             "repricing (poll latency), not a lead; the Tier 2 crypto run passes %g. Default 0 = off"
+                             % POLL_INTERVAL_MINUTES)
     parser.add_argument("--min-span-hours", type=float, default=READY_MIN_SPAN_HOURS)
     parser.add_argument("--min-ready-points", type=int, default=READY_MIN_POINTS)
     parser.add_argument("--max-gap-minutes", type=float, default=READY_MAX_GAP_MINUTES)
@@ -467,7 +510,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return EXIT_NOT_READY
     result, keys = run(args.coin.upper(), drop_dirs, Path(args.db) if args.db else DEFAULT_HL_DB, args.max_lag,
                        args.min_shift, args.min_events, args.min_points,
-                       events_csv=Path(args.events) if args.events else None, family=args.family)
+                       events_csv=Path(args.events) if args.events else None, family=args.family,
+                       subfamily=args.subfamily, latency_minutes=args.latency_minutes)
     print(format_report(result, args.coin.upper(), keys))
     return 0
 

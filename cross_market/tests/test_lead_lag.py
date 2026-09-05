@@ -298,3 +298,66 @@ class TestFamilyFilter(LeadLagCase):
         with mock.patch("builtins.print"), mock.patch.object(ll, "run", wraps=ll.run) as runner:
             ll.main(["--coin", "btc", "--drops", str(self.drops), "--db", str(self.db), "--family", "macro"])
             self.assertEqual(runner.call_args.kwargs.get("family"), "macro")
+
+
+class TestTier2Subfamily(LeadLagCase):
+    """Round 74 (Ruling 74-2, Tier 2): a pre-registered split inside the macro family, with the latency rule."""
+
+    def _labelled_drops(self):
+        for i in range(4):
+            (self.drops / f"polymarket_macro_2026090{5}T0{i}0000_000000Z.json").write_text(json.dumps([
+                {"question": "Will the Fed cut?", "token_id": "tok-fed", "yes_price": f"{0.40 + 0.05 * i:.2f}",
+                 "fetched_at": (T0 + i * 60 * MIN) // 1000, "sport": "FED-RATES"},
+                {"question": "Will BTC be above $80k?", "token_id": "tok-btc", "yes_price": f"{0.60 - 0.05 * i:.2f}",
+                 "fetched_at": (T0 + i * 60 * MIN) // 1000, "sport": "CRYPTO"},
+                {"question": "Unlabelled?", "token_id": "tok-none", "yes_price": "0.50",
+                 "fetched_at": (T0 + i * 60 * MIN) // 1000}]), encoding="utf-8")
+
+    def test_subfamily_reads_the_sport_label_inside_the_family(self):
+        from unittest import mock
+        self._labelled_drops()
+        keys = lambda **kw: sorted({r["key"] for r in ll.load_drop_records([self.drops], **kw)})
+        self.assertEqual(keys(family="macro"), ["tok-btc", "tok-fed", "tok-none"])
+        self.assertEqual(keys(family="macro", subfamily="fed-rates"), ["tok-fed"])
+        self.assertEqual(keys(family="macro", subfamily="CRYPTO"), ["tok-btc"])       # case-insensitive
+        self.assertEqual(keys(family="macro", subfamily="sports"), [])
+        self.assertEqual({r["label"] for r in ll.load_drop_records([self.drops], subfamily="crypto")}, {"crypto"})
+        self.assertEqual(ll.record_subfamily({"sport": " Fed-Rates "}), "fed-rates")
+        self.assertEqual(ll.record_subfamily({}), "")
+        # run() labels its report and the CLI passes both knobs through
+        result, n = ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60, family="macro", subfamily="fed-rates")
+        self.assertEqual((result["family"], result["subfamily"], n), ("macro", "fed-rates", 1))
+        with mock.patch("builtins.print") as fake_print, mock.patch.object(ll, "run", wraps=ll.run) as runner:
+            ll.main(["--coin", "btc", "--drops", str(self.drops), "--db", str(self.db), "--family", "macro",
+                     "--subfamily", "crypto", "--latency-minutes", "5"])
+        self.assertEqual(runner.call_args.kwargs.get("subfamily"), "crypto")
+        self.assertEqual(runner.call_args.kwargs.get("latency_minutes"), 5.0)
+        self.assertIn("[macro / crypto]", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+
+    def test_the_latency_rule_reads_a_peak_inside_the_poll_interval_as_repricing_not_a_lead(self):
+        # A planted 3-minute lag is a "lead" under Tier 1 and "contemporaneous repricing" under the crypto rule;
+        # a 20-minute lag stays a lead under both. Tier 1 itself is untouched: latency 0 keeps the old reading.
+        self.plant(lag_minutes=3)
+        tier1, _ = ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60)
+        self.assertTrue(tier1["sufficient"]) ; self.assertEqual(tier1["best_lag_minutes"], 3)
+        self.assertIn("Polymarket leads HyperLiquid by 3 min", tier1["interpretation"])
+        self.assertEqual(tier1["latency_minutes"], 0.0)
+        tier2, _ = ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60, latency_minutes=ll.POLL_INTERVAL_MINUTES)
+        self.assertEqual(tier2["best_lag_minutes"], 3)
+        self.assertIn("contemporaneous repricing within the 5-min poll interval", tier2["interpretation"])
+        self.assertIn("latency, not a lead", tier2["interpretation"])
+        for f in self.drops.glob("*.json"):
+            f.unlink()
+        con = sqlite3.connect(str(self.db)) ; con.execute("DELETE FROM asset_snapshots") ; con.commit() ; con.close()
+        self.plant(lag_minutes=20)
+        far, _ = ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60, latency_minutes=5)
+        self.assertEqual(far["best_lag_minutes"], 20)
+        self.assertIn("Polymarket leads HyperLiquid by 20 min", far["interpretation"])
+        # the registration file exists, names the same bars as Tier 1, and never touches them
+        meta = json.loads((Path(__file__).resolve().parents[1] / "experiments" / "lead_lag_tier2.meta.json")
+                          .read_text(encoding="utf-8"))
+        self.assertEqual(meta["tier1_unchanged"]["min_abs_corr"], 0.2)
+        self.assertEqual(meta["bars"]["min_abs_corr"], 0.2)
+        self.assertEqual(meta["bars"]["latency_minutes_crypto"], ll.POLL_INTERVAL_MINUTES)
+        self.assertEqual(sorted(meta["subfamilies"]), ["crypto", "fed-rates"])
+        self.assertIn("counts only", meta["state_at_registration"]["note"])

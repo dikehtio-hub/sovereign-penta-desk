@@ -5,6 +5,23 @@ the detail.
 
 ## Status
 
+Round 74 complete (2026-09-05): ONE EXPORTER LOOP, TIER 2 PRE-REGISTERED.
+Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds
+cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word
+"cross_market" so a Sports Desk exporter never passes as the holder), --status
+(exit 0 running / 3 stopped; also prints the Item 18 state: last lead-lag run
+from the Titans note, macro series readiness, ETA), --json, --pid-file.
+start_cross_market_exporter.bat is guarded by --status like the watcher's
+launcher, and start_all_ecosystem_sync.bat calls it behind `if errorlevel 3`
+instead of opening a console loop - every loop the sync bat starts for the
+arb desk is now detached and single-instance. Ruling 74-2: Tier 1 untouched;
+Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json
+(counts only, no subfamily correlation run) and enforced in code:
+lead_lag --subfamily fed-rates|crypto reads the `sport` label the fetcher
+stamped (drops carry no tag_slug), --latency-minutes 5 reports a peak inside
+the poll interval as "contemporaneous repricing ... latency, not a lead".
+4 new tests. Live 10:01Z: Arb exporter restarted through the guarded launcher - pythonw pid 35080 holds cross_market/data/cross_market_exporter.pid (the pre-lock loop 3556 was terminated first); a second launcher run printed "already running - kept"; --status: RUNNING, last run never, macro series NOT READY (span 8.3h, points 100), ETA 2026-09-06T01:39:49Z. Watcher pid 49812 untouched.
+
 Round 73 REVIEW (end of 2026-09-05): MAIDEN RUN READS THE MACRO FAMILY, LOOPS
 DETACHED. Research showed the forced maiden run was already "sufficient" -
 but it correlated every drop (1,084 markets incl. 400 NFL questions) while
@@ -457,7 +474,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 891 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 895 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -481,6 +498,35 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 74 findings
+
+- **The running exporter predated its lock.** Deploying a lock does not
+  retrofit a holder: pid 3556 held nothing, so `--status` would have said
+  STOPPED and the guarded sync bat would have started a second loop. The
+  loop was restarted through the launcher the moment the code landed; the
+  cooldown lives in the note and readiness in the stamps, so a restart costs
+  nothing.
+- **The mark word is the lock's identity.** `is_stale` treats a live process
+  whose command line lacks the mark as a stale holder. "obsidian_exporter"
+  would have accepted a Sports Desk exporter after pid reuse; "cross_market"
+  is in every way this loop can be started (-m or path) and in no other
+  exporter.
+- **Tier 2 reads a label that already exists.** Antigravity's `tag_slug` is
+  not a drop field; Round 52 stored the Gamma tag as the question's `sport`
+  (CRYPTO 212 / FED-RATES 97 in the newest drop). First tag wins in the
+  fetcher's dedupe, so a market tagged both ways is CRYPTO - recorded as a
+  caveat, not fixed, because changing the fetcher's labelling before the
+  maiden run would change the Tier 1 series.
+- **The latency rule is a reading rule, not a bar.** A crypto milestone
+  question re-marks because BTC moved, and the watcher sees it up to one
+  poll later; a peak within 5 min is reported as repricing. Tier 1 passes
+  latency 0 and keeps its wording; a planted 3-min lag reads "leads by 3 min"
+  under Tier 1 and "contemporaneous repricing" under Tier 2 - both true.
+- **Verification protocol strings checked against the code**: the loop
+  prints `lead-lag: RAN BTC -> Cross_Market_Titans.md written (<verdict>)`
+  once, then `lead-lag: READY, next run in 24.0 h` counting down each cycle;
+  `--status` shows `last run <ISO>` from the note's run-at marker.
 
 ## Round 73 review findings
 

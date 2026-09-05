@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -28,6 +29,7 @@ from Sports_Desk.interfaces.obsidian_exporter import (HUB_NOTE, fmt_usd, resolve
                                                       write_note_if_changed)
 from cross_market.hud import _adverse_hurdle, scan_cross_market
 from cross_market.hybrid_arb import MIN_CAPITAL
+from cross_market.ingestors import pid_lock
 from cross_market.matcher import DEFAULT_DB_PATH
 
 CROSS_MARKET_ARB_NOTE = "Cross_Market_Arb"
@@ -42,6 +44,17 @@ HURDLE_WAGERING = 0.2393
 # not depend on capital (the hurdle is a property of shape and tax), so a nominal
 # figure gives the same yes/no; only the dollar stakes are notional.
 NOMINAL_CAPITAL = 1_000.0
+
+# Round 74 (Directive 74-1): ONE exporter loop. Two loops on one vault rewrite the same
+# notes and would each try the Item 18 maiden run. The lock is a fixed file (the loop's
+# product is one vault; --pid-file for a second vault) with the watcher's semantics:
+# stale = dead pid, corrupt value, or a live process that is not this exporter. The
+# mark word is "cross_market", not "obsidian_exporter": the Sports Desk exporter's
+# command line says obsidian_exporter too and a reused pid must not pass as a holder.
+EXPORTER_PID_NAME = "cross_market_exporter.pid"
+DEFAULT_PID_FILE = Path(__file__).resolve().parents[1] / "data" / EXPORTER_PID_NAME
+EXPORTER_MARK = "cross_market"
+STATUS_EXIT_STOPPED = 3                                 # --status: 0 = a loop holds the lock, 3 = none does
 
 
 def load_questions(drop_dir: Path = DEFAULT_QUESTIONS_DIR) -> List[Dict[str, Any]]:
@@ -382,6 +395,76 @@ class RiskRefresher:
         return "risk: next in %d cycle(s)" % max(0, self.every_cycles - (cycle - self.last_cycle))
 
 
+def exporter_status(pid_file=None, vault: Optional[str] = None, drop_dirs=None, now: Optional[datetime] = None,
+                    probe=None, alive=None, family: str = "macro") -> Dict[str, Any]:
+    """
+    Round 74 (Directive 74-1): the operator's read-only view before touching the loop -
+    whether one holds the lock (pid, start, command), whether a stale lock is lying
+    around, and the Item 18 state the loop acts on: when the lead-lag block was last
+    written (the cooldown clock, read from the Titans note) and whether the macro
+    series is READY. Never starts, stops or sweeps anything.
+    """
+    lock = Path(pid_file or DEFAULT_PID_FILE)
+    now = now or datetime.now(timezone.utc)
+    holder = pid_lock.read_pid_file(lock)
+    running = holder is not None and not pid_lock.is_stale(lock, probe=probe, mark=EXPORTER_MARK, alive=alive)
+    info: Dict[str, Any] = {
+        "running": running, "holder_pid": holder if running else None, "pid_file": str(lock),
+        "stale_pid_file": bool(lock.exists() and not running), "holder_started": None, "holder_cmdline": None,
+        "checked_at": now.isoformat(), "titans_note": None, "lead_lag_last_run": None, "lead_lag_ready": None,
+        "lead_lag_reasons": [], "lead_lag_eta": None, "lead_lag_points": None, "lead_lag_span_hours": None,
+    }
+    if running:
+        try:
+            import psutil
+            proc = psutil.Process(holder)
+            info["holder_started"] = datetime.fromtimestamp(proc.create_time(), timezone.utc).isoformat()
+            info["holder_cmdline"] = " ".join(proc.cmdline())
+        except Exception:                                   # noqa: BLE001 - psutil absent, access denied, gone
+            pass
+    try:
+        from cross_market.lead_lag import DEFAULT_DROP_DIRS, data_readiness, stamped_moments
+        from cross_market.titan_correlator import TITANS_NOTE, lead_lag_last_run
+        note = resolve_vault(vault) / ("%s.md" % TITANS_NOTE)
+        info["titans_note"] = str(note) if note.exists() else None
+        last = lead_lag_last_run(note) if note.exists() else None
+        info["lead_lag_last_run"] = last.isoformat() if last else None
+        dirs = [Path(d) for d in (drop_dirs if drop_dirs is not None else DEFAULT_DROP_DIRS)]
+        ready = data_readiness(stamped_moments(dirs, family), now=now)
+        info.update(lead_lag_ready=bool(ready["ready"]), lead_lag_reasons=list(ready["reasons"]),
+                    lead_lag_eta=ready["eta"], lead_lag_points=ready["points"], lead_lag_span_hours=ready["span_hours"])
+    except Exception as exc:                                # noqa: BLE001 - the lock verdict must still print
+        info["lead_lag_error"] = "%s: %s" % (type(exc).__name__, exc)
+    return info
+
+
+def format_exporter_status(info: Dict[str, Any]) -> str:
+    lines = []
+    if info["running"]:
+        started = (" started %s" % info["holder_started"]) if info.get("holder_started") else ""
+        lines.append("[STATUS] exporter RUNNING - pid %s%s holds %s" % (info["holder_pid"], started, info["pid_file"]))
+        if info.get("holder_cmdline"):
+            lines.append("[STATUS]   command: %s" % info["holder_cmdline"])
+    elif info.get("stale_pid_file"):
+        lines.append("[STATUS] exporter STOPPED - stale lock %s (swept at the next start)" % info["pid_file"])
+    else:
+        lines.append("[STATUS] exporter STOPPED - no lock at %s" % info["pid_file"])
+    if info.get("lead_lag_error"):
+        lines.append("[STATUS] lead-lag: unreadable (%s)" % info["lead_lag_error"])
+        return "\n".join(lines)
+    last = info.get("lead_lag_last_run") or "never"
+    if info.get("lead_lag_ready"):
+        series = "READY (%s points, %.1fh)" % (info.get("lead_lag_points"), info.get("lead_lag_span_hours") or 0.0)
+    else:
+        series = "NOT READY - %s" % "; ".join(info.get("lead_lag_reasons") or ["no data"])
+    lines.append("[STATUS] lead-lag: last run %s; macro series %s" % (last, series))
+    if not info.get("lead_lag_ready") and info.get("lead_lag_eta"):
+        lines.append("[STATUS]   ETA %s" % info["lead_lag_eta"])
+    if not info.get("titans_note"):
+        lines.append("[STATUS]   no Titans note yet (run titan_correlator --scan)")
+    return "\n".join(lines)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Cross-Market Arb -> Obsidian exporter")
     parser.add_argument("--vault", type=str, default=None)
@@ -405,6 +488,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--no-lead-lag", action="store_true", help="never run the lead-lag regression from this loop")
     parser.add_argument("--log-file", type=Path, default=None,
                         help="append every line to this file as well (the only output under pythonw)")
+    parser.add_argument("--status", action="store_true",
+                        help="Round 74: report whether an exporter loop holds the lock (pid, start, command), whether a "
+                             "stale lock exists, and the Item 18 state (last lead-lag run, series readiness); "
+                             "exit 0 = running, %d = stopped" % STATUS_EXIT_STOPPED)
+    parser.add_argument("--json", action="store_true", help="with --status: print JSON instead of lines")
+    parser.add_argument("--pid-file", type=Path, default=None,
+                        help="single-instance lock for --watch (default %s); a live loop on it makes this one "
+                             "print already_running and exit 0" % DEFAULT_PID_FILE)
     args = parser.parse_args(argv)
     if args.log_file:
         from cross_market.console_log import tee_stdout
@@ -413,6 +504,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     qdir = Path(args.questions or DEFAULT_QUESTIONS_DIR)
 
     sentinel_dirs = [qdir] if args.questions else None    # explicit drops -> the sentinel reads the same
+    if args.status:                                         # Round 74 (Directive 74-1): read-only
+        info = exporter_status(args.pid_file, args.vault, sentinel_dirs)
+        print(json.dumps(info, indent=2) if args.json else format_exporter_status(info))
+        return 0 if info["running"] else STATUS_EXIT_STOPPED
     loader = None
     if args.risk_assume_defaults:
         from cross_market.risk_simulator import RiskInputs
@@ -430,6 +525,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("[OK] %s" % (risk.run(args.vault, 0) if risk.due(0) else risk.status(0)))
         print("[OK] %s" % (lead_lag.run(args.vault) if lead_lag else "lead-lag: off"))
         return 0
+    # Round 74 (Directive 74-1): a second loop on the same vault would rewrite the same notes
+    # and race the Item 18 maiden run. Stale locks are swept first; a live holder wins.
+    lock = Path(args.pid_file or DEFAULT_PID_FILE)
+    holder = pid_lock.acquire(lock, mark=EXPORTER_MARK)
+    if holder is not None:
+        who = "exporter pid %d" % holder if holder > 0 else "another starting exporter"
+        print("[LOCK] already_running: %s holds %s - this one exits" % (who, lock))
+        return 0
+    pid_lock.install_cleanup(lock)
+    print("[LOCK] exporter pid %d -> %s" % (os.getpid(), lock))
     print("[SYNC] Cross-Market Arb -> %s every %gs. Ctrl-C to stop."
           % (resolve_vault(args.vault), args.interval))
     cycle = 0
@@ -446,6 +551,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print("\n[STOP] Cross-Market Arb exporter stopped.")
+    finally:
+        pid_lock.release(lock)
     return 0
 
 

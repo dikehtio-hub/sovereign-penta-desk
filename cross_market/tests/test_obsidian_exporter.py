@@ -443,3 +443,105 @@ class TestReviewResilience(ExporterBase):
         sync = (dev / "start_all_ecosystem_sync.bat").read_text(encoding="utf-8", errors="replace")
         self.assertIn('call "%~dp0start_polymarket_watcher.bat"', sync)
         self.assertNotIn('start "Polymarket Watcher" python', sync)
+
+
+class TestExporterLock(ExporterBase):
+    """Round 74 (Directive 74-1): one exporter loop per vault; --status is the operator's read-only view."""
+
+    def _args(self, *extra):
+        return ["--vault", str(self.vault), "--db", str(self.db), "--questions", str(self.questions),
+                "--risk-every", "0", "--no-lead-lag", "--pid-file", str(self.root / "exporter.pid")] + list(extra)
+
+    def test_status_reads_the_lock_and_the_item_18_state_without_writing(self):
+        import os
+        from unittest import mock
+        from cross_market.interfaces import obsidian_exporter as ex
+        from cross_market import titan_correlator as tc
+        lock = self.root / "exporter.pid"
+        now = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+        info = ex.exporter_status(lock, str(self.vault), [self.questions], now=now)
+        self.assertFalse(info["running"]) ; self.assertFalse(info["stale_pid_file"])
+        self.assertIsNone(info["lead_lag_last_run"]) ; self.assertFalse(info["lead_lag_ready"])
+        self.assertIn("no stamped drops", info["lead_lag_reasons"])
+        text = ex.format_exporter_status(info)
+        self.assertIn("exporter STOPPED - no lock", text) ; self.assertIn("last run never", text)
+        self.assertIn("no Titans note yet", text)
+        # a dead holder is a stale lock; a live process that is not this exporter is stale too
+        lock.write_text("%d\n" % (os.getpid() + 40_000), encoding="utf-8")
+        info = ex.exporter_status(lock, str(self.vault), [self.questions], now=now, alive=lambda pid: False)
+        self.assertFalse(info["running"]) ; self.assertTrue(info["stale_pid_file"])
+        self.assertIn("stale lock", ex.format_exporter_status(info))
+        info = ex.exporter_status(lock, str(self.vault), [self.questions], now=now, alive=lambda pid: True,
+                                  probe=lambda pid: "python -m Sports_Desk.interfaces.obsidian_exporter --watch")
+        self.assertFalse(info["running"], "the Sports Desk exporter must not pass as the holder")
+        # a live exporter: running, and the Item 18 clocks come from the note and the stamps
+        self.vault.mkdir(parents=True, exist_ok=True)
+        note = self.vault / ("%s.md" % tc.TITANS_NOTE)
+        note.write_text("# T\n%s\n<!-- lead-lag-run-at: 2026-09-06T01:40:00+00:00 -->\nx\n%s\n"
+                        % (tc.LEADLAG_START, tc.LEADLAG_END), encoding="utf-8")
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        for i in range(300):
+            (self.questions / stamped_drop_name(now - timedelta(minutes=3 + 5 * i), family="macro")).write_text("[]")
+        info = ex.exporter_status(lock, str(self.vault), [self.questions], now=now, alive=lambda pid: True,
+                                  probe=lambda pid: "pythonw -m cross_market.interfaces.obsidian_exporter --watch")
+        self.assertTrue(info["running"]) ; self.assertEqual(info["holder_pid"], os.getpid() + 40_000)
+        self.assertTrue(info["lead_lag_ready"]) ; self.assertEqual(info["lead_lag_last_run"], "2026-09-06T01:40:00+00:00")
+        text = ex.format_exporter_status(info)
+        self.assertIn("exporter RUNNING - pid", text) ; self.assertIn("macro series READY", text)
+        # the CLI: exit codes, JSON, and never a note written
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex.main(self._args("--status")), ex.STATUS_EXIT_STOPPED)   # real probe: pid is not alive
+        self.assertIn("exporter STOPPED", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+        lock.unlink()
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex.main(self._args("--status", "--json")), ex.STATUS_EXIT_STOPPED)
+        payload = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertFalse(payload["running"]) ; self.assertEqual(payload["pid_file"], str(lock))
+        self.assertFalse((self.vault / ("%s.md" % CROSS_MARKET_ARB_NOTE)).exists())      # --status never writes
+
+    def test_watch_claims_the_lock_releases_it_and_yields_to_a_live_holder(self):
+        import os
+        from unittest import mock
+        from cross_market.interfaces import obsidian_exporter as ex
+        from cross_market.ingestors import pid_lock
+        lock = self.root / "exporter.pid"
+        seen = {}
+
+        def sleep_then_stop(_seconds):
+            seen["held"] = pid_lock.read_pid_file(lock)
+            raise KeyboardInterrupt
+        with mock.patch.object(ex.time, "sleep", side_effect=sleep_then_stop), \
+                mock.patch.object(pid_lock, "install_cleanup") as installed, \
+                mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex.main(self._args("--watch", "--interval", "0")), 0)
+        self.assertEqual(seen["held"], os.getpid())                                     # claimed for the loop
+        self.assertFalse(lock.exists(), "released in finally")
+        self.assertEqual(installed.call_args.args[0], lock)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("[LOCK] exporter pid %d" % os.getpid(), printed)
+        self.assertIn("Cross_Market_Arb.md", printed)
+        # a live holder (another exporter) makes a newcomer print already_running and exit 0 without a cycle
+        lock.write_text("%d\n" % (os.getpid() + 40_000), encoding="utf-8")
+        with mock.patch.object(pid_lock, "pid_is_alive", return_value=True), \
+                mock.patch.object(pid_lock, "process_cmdline",
+                                  return_value="pythonw -m cross_market.interfaces.obsidian_exporter --watch"), \
+                mock.patch.object(ex, "export_cross_market_arb") as exported, \
+                mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex.main(self._args("--watch")), 0)
+        self.assertIn("already_running: exporter pid %d" % (os.getpid() + 40_000),
+                      " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+        exported.assert_not_called()
+        self.assertTrue(lock.exists(), "a live holder's lock is left alone")
+        # launchers: the exporter launcher is guarded like the watcher's, and the sync bat calls it behind the guard
+        dev = Path(__file__).resolve().parents[2]
+        launcher = (dev / "start_cross_market_exporter.bat").read_text(encoding="utf-8", errors="replace")
+        self.assertIn("obsidian_exporter --status", launcher)
+        self.assertLess(launcher.index('set "PYW='), launcher.index("if errorlevel 3 ("))
+        block = launcher[launcher.index("if errorlevel 3 ("):launcher.index(") else (")]
+        for line in block.splitlines():
+            if line.strip().startswith("echo"):
+                self.assertNotIn(")", line) ; self.assertNotIn("(", line)
+        sync = (dev / "start_all_ecosystem_sync.bat").read_text(encoding="utf-8", errors="replace")
+        self.assertIn('call "%~dp0start_cross_market_exporter.bat"', sync)
+        self.assertNotIn('start "Cross-Market Arb Obsidian Sync"', sync)
+        self.assertLess(sync.index("obsidian_exporter --status"), sync.index('call "%~dp0start_cross_market_exporter.bat"'))
