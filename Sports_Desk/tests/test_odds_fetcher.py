@@ -245,3 +245,19 @@ class TestRecurringPoller(FetcherBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCallTimeLog(unittest.TestCase):
+    """Round 78 (Ratification 77-3): poll() must not freeze builtins.print as a default at import time."""
+
+    def test_the_default_log_resolves_print_when_called_not_when_imported(self):
+        import inspect
+        from unittest import mock
+        from Sports_Desk.ingestors import odds_fetcher as of
+        self.assertIs(inspect.signature(of.poll).parameters["log"].default, of._emit)
+        with mock.patch("builtins.print") as fake_print:
+            of._emit("hello")
+        fake_print.assert_called_once_with("hello")
+        with mock.patch("builtins.print") as later:              # a fresh patch is honoured too: no frozen binding
+            of._emit("again")
+        later.assert_called_once_with("again")

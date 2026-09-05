@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+Round 78 PREPARED (2026-09-05): AUDIT ITEM CLOSED, NOTHING LIVE TOUCHED. The
+Round 78 prompt again reached this session truncated after Directive 78-1
+(the protocol at ~01:40Z 2026-09-06, time-gated, not run) - both times the
+cut lands at a ```cmd fence, so the paste is losing everything after it.
+Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll() no
+longer binds `log=print` at import (`_emit` resolves print at call time);
+a tree-wide grep confirms no `= print` default remains outside tests.
+1 new test. Exporter pid 56412 and watcher pid 49812 untouched.
+
 Round 77 PREPARED (2026-09-05): TIER 2b PRE-REGISTERED IN A NEW FILE. The
 Round 77 prompt reached this session truncated after Directive 77-1 (the
 protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of that
@@ -523,7 +532,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 901 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 902 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 

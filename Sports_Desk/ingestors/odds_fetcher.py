@@ -257,12 +257,22 @@ def price_fingerprint(rows: Sequence[Dict[str, Any]]) -> str:
     return digest.hexdigest()
 
 
+def _emit(message: str) -> None:
+    """
+    Default `log` for poll(). Resolves `print` at CALL time (Round 78, Ratification
+    77-3): a default of `log=print` binds whatever `builtins.print` is when this module
+    is first imported, so a test that imports it lazily under mock.patch("builtins.print")
+    would leave a dead mock as the default for the rest of the process.
+    """
+    print(message)
+
+
 def poll(source: Callable[[], List[Dict[str, Any]]],
          drop_folder: Path = DEFAULT_DROP_FOLDER, db_path: Path = DEFAULT_DB_PATH,
          interval: float = 300.0, max_polls: Optional[int] = None,
          hurdle: Optional[Callable[[float], float]] = None, archive: bool = True,
          run_watcher_after: bool = True, sleep: Callable[[float], None] = time.sleep,
-         log: Callable[[str], None] = print) -> Dict[str, int]:
+         log: Callable[[str], None] = _emit) -> Dict[str, int]:
     """
     Fetch on a timer; drop a file ONLY when the prices changed; price it.
 
