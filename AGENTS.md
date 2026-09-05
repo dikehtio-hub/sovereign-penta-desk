@@ -5,6 +5,23 @@ the detail.
 
 ## Status
 
+Round 58 complete: ITEM 19 MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR.
+cross_market/risk_simulator.py runs one joint numpy simulation of the trading
+bankroll across the basis book (funding level decaying from the measured mean
+toward a long-run APR, hourly AR(1) noise, Student-t perp moves, liquidation
+past 1/leverage - maintenance), quarter-Kelly sports wagers, Poisson arb
+arrivals with leg failures, and quarterly tax escrow (NJ 32.37%). 100,000
+paths x 365 d in ~10 s (only running equity / peak / drawdown are kept).
+Reports hard ruin (equity <= 0) AND practical ruin (-50% drawdown), max-
+drawdown VaR 95/99 at 30 d and the horizon, terminal equity, escrow, per-desk
+P&L, and a Kelly shrinkage grid (max median log growth s.t. practical ruin
+<= 5% and allocation <= 100%) with the binding constraint named. Inputs are
+measured from basis_paper_state.json, hyperliquid_data.db (funding mean/std/
+persistence, realized vol of the held coins), sports_market.db edge rows and
+Tax_Reserve_Agent.config, else labelled assumed. CLI --iterations/--json/
+--inputs/--assume-defaults/--no-grid/--no-vault; writes
+obsidian_vault/Risk_Sentinel.md. 12 tests; master suite is 17 modules now.
+
 Round 57 complete: SENTINEL CARD IN Cross_Market_Titans.md, LEAD-LAG LIVE GATE.
 The Titan correlator renders a "Lead-Lag Data Readiness Sentinel (Item 18)"
 callout between HTML markers (verdict, segment points/span/rate, blocking
@@ -268,7 +285,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 835 OK |
+| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 847 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -292,6 +309,34 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 58 findings
+
+- **The first live run was wrong by 40x and the inputs said why.** With the
+  book's entry funding APR as a year-long mean, the basis desk earned $295k
+  on $40k: para:ANSEM was opened at 2,924.7% APR and the 69 h snapshot mean
+  is still 589.6%. No desk earns that for a year, and the harvester's own
+  gate rotates such positions out. The model now starts the funding level at
+  the DB-measured mean and decays it toward basis_funding_long_run_apr (25%,
+  the entry gate, assumed) with basis_funding_half_life_days (7 d, assumed);
+  the entry APR is kept in the provenance text as context. Basis P&L became
+  $6.4k / yr.
+- **Ruin never binds for a spot-backed book, so the grid needed a second
+  constraint.** Without it the shrinkage always pointed at the top of the
+  grid. Allocation (basis capital + sports bankroll + one arb) must fit inside
+  the equity; rows over 100% are marked and excluded. The result names its
+  binding constraint - today "allocation": x2.00 fits (92%) with zero ruin,
+  which means risk is not the limit at these sizes, not "double the book".
+- **Two ruins, both honest.** Hard ruin (equity <= 0) is 0.0000 everywhere
+  and would stay so; practical ruin (-50%) is the number to watch. Tax
+  escrow leaves the trading bankroll and counts as drawdown by design.
+- **Liquidations at 1x are real but rare**: Student-t(3) daily moves at the
+  measured 12% vol (XPL 8%, ANSEM 16%) liquidate the short leg ~0.16 times a
+  year; the test bound was loosened to that reality.
+- **Live at close (measured inputs, 100k paths, seed 7)**: ruin: practical (-50%)   30d 0.0000 | 365d 0.0000; max drawdown VaR: 95% 30d 0.71% | 99% 30d 1.13% | 95% 365d 2.94% | 99% 365d 3.51% (median 365d 2.03%); terminal equity p05 $105,928 | p50 $109,238 | p95 $112,544; median log growth +0.0852; escrow median $4,261; desk mean P&L: basis $6,437 | sports $2,285 | arb $4,470 | tax -$4,273; liquidations/path 0.156; buffer: keep $3,524 unallocated (VaR99 365d drawdown = 3.5% of equity); size every desk at x2.00.
+- **Test premises fixed, not the engine**: the "doom" wager used 1.05 odds
+  where Kelly is negative (nothing staked); the 1x liquidation bound ignored
+  fat tails.
 
 ## Round 57 findings
 
