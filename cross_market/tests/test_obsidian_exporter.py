@@ -371,3 +371,75 @@ class TestLeadLagRefresher(ExporterBase):
             ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db), "--questions", str(self.questions),
                      "--risk-every", "0", "--no-lead-lag"])
         self.assertIn("lead-lag: off", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+
+
+class TestReviewResilience(ExporterBase):
+    """Round 73 review: the maiden run reads the macro family; loops can log to a file; launchers are detached."""
+
+    def test_the_default_runner_reads_the_macro_family(self):
+        from unittest import mock
+        from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        from cross_market import titan_correlator as tc
+        now = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+        for i in range(300):
+            (self.questions / stamped_drop_name(now - timedelta(minutes=3 + 5 * i), family="macro")).write_text("[]")
+        self.vault.mkdir(parents=True, exist_ok=True)
+        (self.vault / ("%s.md" % tc.TITANS_NOTE)).write_text("# T\n%s\nx\n%s\n" % (tc.SENTINEL_START, tc.SENTINEL_END))
+        fake = mock.Mock(return_value=({"events": 0, "price_points": 0, "max_lag": 60, "sufficient": False,
+                                        "reason": "0 probability shifts < 5 required", "curve": []}, 0))
+        with mock.patch("cross_market.lead_lag.run", fake):
+            status = LeadLagRefresher(drop_dirs=[self.questions], db_path=self.root / "none.db").run(str(self.vault), now=now)
+        self.assertTrue(status.startswith("lead-lag: RAN BTC"), status)
+        self.assertEqual(fake.call_args.kwargs.get("family"), "macro")
+
+    def test_log_file_tees_the_loop_output_and_launchers_are_detached(self):
+        from unittest import mock
+        from cross_market.console_log import Tee, tee_stdout
+        from cross_market.ingestors import polymarket_fetcher as pf
+        log = self.root / "logs" / "watcher.log"
+        import sys
+        original = sys.stdout, sys.stderr
+        try:
+            with mock.patch("builtins.print"):                                  # the tee is below print
+                pass
+            self.assertEqual(tee_stdout(log), log)
+            self.assertIsInstance(sys.stdout, Tee)
+            print("hello from the loop")
+            sys.stdout.flush()
+        finally:
+            sys.stdout, sys.stderr = original
+        self.assertIn("hello from the loop", log.read_text(encoding="utf-8"))
+        # A fetcher run with --log-file lands its lines in the file.
+        log2 = self.root / "logs" / "fetcher.log"
+        try:
+            pf.main(["--watch", "--max-polls", "1", "--interval", "0", "--folder", str(self.questions),
+                     "--log-file", str(log2)])
+        finally:
+            sys.stdout, sys.stderr = original
+        self.assertIn("[DROP]", log2.read_text(encoding="utf-8"))
+        self.assertIsNone(tee_stdout(Path("?:/nowhere/x.log")))                # never raises
+        # Launchers: detached (Start-Process + pythonw), logging, and the watcher guarded by --status.
+        dev = Path(__file__).resolve().parents[2]
+        watcher = (dev / "start_polymarket_watcher.bat").read_text(encoding="utf-8", errors="replace")
+        exporter = (dev / "start_cross_market_exporter.bat").read_text(encoding="utf-8", errors="replace")
+        for text, log_name in ((watcher, "polymarket_watcher.log"), (exporter, "cross_market_exporter.log")):
+            self.assertIn("Start-Process", text)
+            self.assertIn("pythonw", text)
+            self.assertIn("--log-file", text)
+            self.assertIn(log_name, text)
+        self.assertIn("polymarket_fetcher --status", watcher)
+        self.assertIn("errorlevel 3", watcher)
+        # Two cmd traps found live (rc 255): %PYW% is expanded when the whole if-block is parsed, so the
+        # lookup must precede the block; and a bare ")" in an echo inside the block closes it early.
+        self.assertLess(watcher.index('set "PYW='), watcher.index("if errorlevel 3 ("))
+        block = watcher[watcher.index("if errorlevel 3 ("):watcher.index(") else (")]
+        for line in block.splitlines():
+            if line.strip().startswith("echo"):
+                self.assertNotIn(")", line)
+                self.assertNotIn("(", line)
+        # The doubled-quote form '""a b""' reached the child with a trailing space; \" is exact.
+        self.assertIn('\\"fed,rate cut,bitcoin,btc\\"', watcher)
+        sync = (dev / "start_all_ecosystem_sync.bat").read_text(encoding="utf-8", errors="replace")
+        self.assertIn('call "%~dp0start_polymarket_watcher.bat"', sync)
+        self.assertNotIn('start "Polymarket Watcher" python', sync)

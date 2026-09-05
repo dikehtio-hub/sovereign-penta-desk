@@ -270,3 +270,31 @@ class TestLiveGate(LeadLagCase):
         with mock.patch.object(ll, "DEFAULT_DROP_DIRS", [self.drops]), mock.patch("builtins.print") as fake_print:
             self.assertEqual(ll.main(["--db", str(self.db), "--drops", str(self.drops)]), 0)
         self.assertNotIn("[GATE]", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+
+
+class TestFamilyFilter(LeadLagCase):
+    """Round 73 review: the correlation can read one tag family, the series the sentinel gates on."""
+
+    def test_family_selects_drops_by_name_and_the_default_reads_everything(self):
+        from unittest import mock
+        rec = json.dumps([{"question": "Q?", "token_id": "tok-m", "yes_price": "0.50", "fetched_at": T0 // 1000}])
+        (self.drops / "polymarket_macro.json").write_text(rec, encoding="utf-8")
+        (self.drops / "polymarket_macro_20260905T010000_000000Z.json").write_text(rec, encoding="utf-8")
+        (self.drops / "polymarket_sports.json").write_text(rec.replace("tok-m", "tok-s"), encoding="utf-8")
+        (self.drops / "polymarket_20260905T010000_000000Z.json").write_text(rec.replace("tok-m", "tok-u"), encoding="utf-8")
+        (self.drops / "polymarket_0001.json").write_text(rec.replace("tok-m", "tok-r"), encoding="utf-8")
+        self.assertEqual(sorted({r["key"] for r in ll.load_drop_records([self.drops], family="macro")}), ["tok-m"])
+        self.assertEqual(sorted({r["key"] for r in ll.load_drop_records([self.drops], family="sports")}), ["tok-s", "tok-u"])
+        self.assertEqual(sorted({r["key"] for r in ll.load_drop_records([self.drops])}), ["tok-m", "tok-r", "tok-s", "tok-u"])
+        self.assertEqual(sorted({r["key"] for r in ll.load_drop_records([self.drops], family="any")}), ["tok-m", "tok-r", "tok-s", "tok-u"])
+        self.assertTrue(ll._file_matches_family("polymarket_macro_x.json", "macro"))
+        self.assertFalse(ll._file_matches_family("polymarket_sports.json", "macro"))
+        # run() and the CLI pass the family through; the default stays "every drop" for research fixtures.
+        with mock.patch.object(ll, "load_drop_records", wraps=ll.load_drop_records) as loader:
+            ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60, family="macro")
+            self.assertEqual(loader.call_args.kwargs.get("family"), "macro")
+            ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60)
+            self.assertIsNone(loader.call_args.kwargs.get("family"))
+        with mock.patch("builtins.print"), mock.patch.object(ll, "run", wraps=ll.run) as runner:
+            ll.main(["--coin", "btc", "--drops", str(self.drops), "--db", str(self.db), "--family", "macro"])
+            self.assertEqual(runner.call_args.kwargs.get("family"), "macro")

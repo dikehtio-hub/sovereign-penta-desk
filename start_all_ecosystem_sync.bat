@@ -42,7 +42,7 @@ cd /d "C:\Users\ixis1\Desktop\DEV"
 :: its pid, start time and command (exit 0 = running, 3 = stopped) before we decide.
 python -m cross_market.ingestors.polymarket_fetcher --status
 if errorlevel 3 (
-    start "Polymarket Watcher" python -m cross_market.ingestors.polymarket_fetcher --live --watch --interval 300 --tags sports,crypto,fed-rates --keywords "fed,rate cut,bitcoin,btc"
+    call "%~dp0start_polymarket_watcher.bat"
     echo ✓ [4b] Polymarket watcher launched.
 ) else (
     echo ✓ [4b] Polymarket watcher already running - kept. Holder shown above.

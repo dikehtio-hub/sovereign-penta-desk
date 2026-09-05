@@ -707,12 +707,17 @@ def main(argv: Optional[List[str]] = None) -> int:
                              "stale lock exists, and the newest stamped drop per family; exit 0 = running, "
                              "%d = stopped" % STATUS_EXIT_STOPPED)
     parser.add_argument("--json", action="store_true", help="with --status: print JSON instead of lines")
+    parser.add_argument("--log-file", type=Path, default=None,
+                        help="append every line to this file as well (the only output under pythonw)")
     parser.add_argument("--pid-file", type=Path, default=None,
                         help="single-instance lock for --watch (default: <folder>/%s); a live watcher on the "
                              "same folder makes this one print already_running and exit 0" % pid_lock.WATCHER_PID_NAME)
     args = parser.parse_args(argv)
 
     folder = Path(args.folder or DEFAULT_DROP_DIR)
+    if args.log_file:
+        from cross_market.console_log import tee_stdout
+        tee_stdout(args.log_file)
     if args.status:                                         # Round 56 (Directive 56-1): read-only
         info = watcher_status(folder, args.pid_file)
         print(json.dumps(info, indent=2) if args.json else format_status(info))

@@ -31,6 +31,7 @@ import argparse
 import csv
 import json
 import math
+import re
 import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
@@ -66,11 +67,32 @@ def _epoch_ms(value: Any) -> Optional[int]:
         return None
 
 
-def load_drop_records(drop_dirs: Iterable[Path]) -> List[Dict[str, Any]]:
+_UNPREFIXED_STAMP = re.compile(r"^polymarket_\d{8}T\d{6}_\d{6}Z\.json$")
+
+
+def _file_matches_family(name: str, family: Optional[str]) -> bool:
+    """
+    Round 73 review: which drops belong to a tag family. macro -> polymarket_macro*.json;
+    sports -> polymarket_sports*.json and the unprefixed single-tag stamps of Round 52;
+    None / "any" -> every file (the Round 51 behaviour, which research fixtures rely on).
+    """
+    if not family or family == "any":
+        return True
+    if family == "macro":
+        return name.startswith("polymarket_macro")
+    if family == "sports":
+        return name.startswith("polymarket_sports") or bool(_UNPREFIXED_STAMP.match(name))
+    return name.startswith("polymarket_%s" % family)
+
+
+def load_drop_records(drop_dirs: Iterable[Path], family: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Every question in every *.json drop under `drop_dirs` as
     {ts_ms, key, probability, question, file}. A question's key is its token_id,
-    else its text. Unreadable files and unpriced questions are skipped.
+    else its text. Unreadable files and unpriced questions are skipped. `family`
+    keeps only that tag family's drops, so a macro correlation is not fed 400
+    NFL questions (the sentinel gates on macro stamps; the regression should read
+    the same series).
     """
     records: List[Dict[str, Any]] = []
     for directory in drop_dirs:
@@ -79,6 +101,8 @@ def load_drop_records(drop_dirs: Iterable[Path]) -> List[Dict[str, Any]]:
         except Exception:                                   # noqa: BLE001
             continue
         for path in files:
+            if not _file_matches_family(path.name, family):
+                continue
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except Exception:                               # noqa: BLE001
@@ -284,8 +308,9 @@ def format_report(result: Dict[str, Any], coin: str, keys: int) -> str:
 
 
 def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_shift: float,
-        min_events: int, min_points: int, events_csv: Optional[Path] = None) -> Tuple[Dict[str, Any], int]:
-    records = load_event_csv(events_csv) if events_csv else load_drop_records(drop_dirs)
+        min_events: int, min_points: int, events_csv: Optional[Path] = None,
+        family: Optional[str] = None) -> Tuple[Dict[str, Any], int]:
+    records = load_event_csv(events_csv) if events_csv else load_drop_records(drop_dirs, family=family)
     series = probability_series(records)
     shifts = probability_shifts(series, min_shift=min_shift)
     marks: List[Tuple[int, float]] = []
@@ -414,8 +439,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--check-data", "--status", dest="check_data", action="store_true",
                         help="Round 56: report whether the stamped series clears the bar for a first live run "
                              "(exit 0 = ready, %d = not ready); no database needed" % EXIT_NOT_READY)
-    parser.add_argument("--family", default="macro", choices=("macro", "sports", "any"),
-                        help="with --check-data: which stamped family to inspect (default macro)")
+    parser.add_argument("--family", default=None, choices=("macro", "sports", "any"),
+                        help="which tag family to read: with --check-data the sentinel's series (default macro); "
+                             "for the correlation the drops to correlate (default: every drop, the Round 51 behaviour)")
     parser.add_argument("--min-span-hours", type=float, default=READY_MIN_SPAN_HOURS)
     parser.add_argument("--min-ready-points", type=int, default=READY_MIN_POINTS)
     parser.add_argument("--max-gap-minutes", type=float, default=READY_MAX_GAP_MINUTES)
@@ -426,9 +452,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
     drop_dirs = [Path(d) for d in args.drops] if args.drops else DEFAULT_DROP_DIRS
     if args.check_data:
-        info = data_readiness(stamped_moments(drop_dirs, args.family), min_span_hours=args.min_span_hours,
+        family = args.family or "macro"
+        info = data_readiness(stamped_moments(drop_dirs, family), min_span_hours=args.min_span_hours,
                               min_points=args.min_ready_points, max_gap_minutes=args.max_gap_minutes)
-        print(json.dumps(info, indent=2) if args.json else format_readiness(info, args.family))
+        print(json.dumps(info, indent=2) if args.json else format_readiness(info, family))
         return 0 if info["ready"] else EXIT_NOT_READY
     if not args.drops and not args.events and not args.force:
         # Round 57 (Directive 57-2): the first live evaluation waits for the sentinel.
@@ -440,7 +467,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             return EXIT_NOT_READY
     result, keys = run(args.coin.upper(), drop_dirs, Path(args.db) if args.db else DEFAULT_HL_DB, args.max_lag,
                        args.min_shift, args.min_events, args.min_points,
-                       events_csv=Path(args.events) if args.events else None)
+                       events_csv=Path(args.events) if args.events else None, family=args.family)
     print(format_report(result, args.coin.upper(), keys))
     return 0
 

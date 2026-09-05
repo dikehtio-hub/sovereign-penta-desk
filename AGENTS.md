@@ -5,6 +5,20 @@ the detail.
 
 ## Status
 
+Round 73 REVIEW (end of 2026-09-05): MAIDEN RUN READS THE MACRO FAMILY, LOOPS
+DETACHED. Research showed the forced maiden run was already "sufficient" -
+but it correlated every drop (1,084 markets incl. 400 NFL questions) while
+the gate counts macro stamps. lead_lag.load_drop_records/run/--family now
+filter by tag family and LeadLagRefresher passes family="macro"; the macro-
+only preview: 413 markets, 384 shifts, best lag -33 min, corr -0.195 -> "no
+measurable lead-lag" (|corr| < 0.2). That is the likely honest verdict
+tomorrow. Resilience: cross_market/console_log.tee_stdout + --log-file on
+the watcher and the Arb exporter; start_polymarket_watcher.bat and
+start_cross_market_exporter.bat launch both DETACHED (pythonw,
+Start-Process) with logs under data/ (ignored); the sync bat calls the
+watcher launcher. Both loops were restarted detached tonight, so the
+01:39:49Z opening is unattended. 3 new tests. Live 09:19Z: watcher pythonw pid 49812 (lock 49812, stamp 09:18:49Z, 12 min after the last console stamp - series continuous), Arb exporter pythonw pid 3556 (log: lead-lag gated NOT READY), maiden regression due ~2026-09-06T01:39:49Z on macro drops.
+
 Round 73 complete: ITEM 18 MAIDEN RUN AUTOMATED BEHIND THE SENTINEL GATE.
 The Cross-Market Arb exporter's loop carries a LeadLagRefresher: every
 cycle it re-reads data_readiness on the stamped drops; while NOT READY it
@@ -443,7 +457,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 888 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 891 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -467,6 +481,25 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 73 review findings
+
+- **The regression and the gate read different series.** The sentinel
+  counts macro stamps; load_drop_records read every *.json in the folder,
+  sports included. Forced today: all drops 1,084 markets / 2,263 shifts /
+  corr -0.178; macro only 413 / 384 / corr -0.195. Both "no measurable
+  lead-lag" - and both already "sufficient", so the maiden run will not say
+  "insufficient" as feared; it will say there is no lead-lag at |corr| 0.2.
+  The refresher now reads family="macro"; research CLI default unchanged.
+- **A batch-file trap cost the watcher a minute**: `for /f ... set PYW`
+  inside `if errorlevel 3 ( ... )` is expanded at parse time, so
+  Start-Process got an empty path (rc 255). The lookup now precedes the
+  block (start_collector.bat had it at top level all along).
+- **Detached loops log to files** because pythonw has no stdout: tee_stdout
+  routes prints to the console when there is one and always to the file.
+- **Two exporters on one vault are safe**: hash-skip on notes, the lead-lag
+  cooldown in the note, the risk card judged by mtime - so the operator's
+  sync bat may start a second console loop without a double maiden run.
 
 ## Round 73 findings
 

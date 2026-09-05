@@ -121,3 +121,5 @@ hyperliquidusers.txt
 *.bak
 # Round 63: paper dutch receipts (cross_market.execution_log --paper) are runtime data
 **/data/paper_receipts/
+# Round 73 review: detached loop logs (watcher, cross-market exporter)
+**/data/*.log

@@ -277,7 +277,7 @@ class LeadLagRefresher:
                 from cross_market.lead_lag import DEFAULT_DROP_DIRS, DEFAULT_HL_DB, run as lead_lag_run
                 dirs = [Path(d) for d in (self.drop_dirs if self.drop_dirs is not None else DEFAULT_DROP_DIRS)]
                 result, keys = lead_lag_run(self.coin, dirs, Path(self.db_path or DEFAULT_HL_DB), self.max_lag,
-                                            self.min_shift, self.min_events, self.min_points)
+                                            self.min_shift, self.min_events, self.min_points, family=self.family)
             block = render_lead_lag_block(result, self.coin, keys, ran_at=now, cooldown_hours=self.cooldown_hours)
             path, changed = refresh_marked_block(note, block, LEADLAG_START, LEADLAG_END)
         except Exception as exc:                            # noqa: BLE001 - never break the arb export
@@ -403,7 +403,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--lead-lag-cooldown-hours", type=float, default=24.0,
                         help="hours between lead-lag runs once READY (default 24)")
     parser.add_argument("--no-lead-lag", action="store_true", help="never run the lead-lag regression from this loop")
+    parser.add_argument("--log-file", type=Path, default=None,
+                        help="append every line to this file as well (the only output under pythonw)")
     args = parser.parse_args(argv)
+    if args.log_file:
+        from cross_market.console_log import tee_stdout
+        tee_stdout(args.log_file)
     db_path = Path(args.db or DEFAULT_DB_PATH)
     qdir = Path(args.questions or DEFAULT_QUESTIONS_DIR)
 
