@@ -88,3 +88,47 @@ def test_the_child_collector_writes_to_a_log_file_that_rotates(tmp_path):
     assert log.read_text(encoding="utf-8").count("collector hello") == 1
     events = [__import__("json").loads(l)["event"] for l in (tmp_path / "svc.jsonl").read_text(encoding="utf-8").splitlines()]
     assert events.count("child_log") == 3
+
+
+def test_the_logger_has_no_console_handler_when_there_is_no_console(tmp_path, monkeypatch):
+    """Round 53 (Ruling 53-1): pythonw sets sys.stdout to None; a stream handler on it would fail per event."""
+    import logging
+    monkeypatch.setattr(svc.sys, "stdout", None)
+    logger = svc.build_logger(tmp_path / "a.jsonl", quiet=False)
+    assert all(not isinstance(h, logging.StreamHandler) or isinstance(h, logging.FileHandler) for h in logger.handlers)
+    svc.log_event(logger, "probe")                                              # and logging still works
+    assert "probe" in (tmp_path / "a.jsonl").read_text(encoding="utf-8")
+
+
+def test_stale_pid_files_are_removed_but_a_live_collector_is_left_alone(tmp_path):
+    """Round 53 (Ruling 53-5): a killed supervisor leaves pid files behind; the next start cleans them."""
+    import os
+    dead = tmp_path / "dead.pid"
+    dead.write_text("999999", encoding="utf-8")                                  # almost certainly not a live pid
+    corrupt = tmp_path / "corrupt.pid"
+    corrupt.write_text("abc", encoding="utf-8")
+    not_collector = tmp_path / "other.pid"
+    not_collector.write_text(str(os.getpid()), encoding="utf-8")                 # alive, but its cmdline is pytest
+    live = tmp_path / "live.pid"
+    live.write_text(str(os.getpid()), encoding="utf-8")
+    absent = tmp_path / "absent.pid"
+
+    def probe(pid):
+        return "python -u main.py collector" if pid == os.getpid() else ""
+
+    removed = svc.remove_stale_pid_files([dead, corrupt, absent, live], probe=probe)
+    assert sorted(r.name for r in removed) == ["corrupt.pid", "dead.pid"]
+    assert live.exists()
+    removed = svc.remove_stale_pid_files([not_collector], probe=lambda pid: "pytest -q")
+    assert [r.name for r in removed] == ["other.pid"]
+    # No psutil answer (None) means "cannot tell": a live pid is kept.
+    keep = tmp_path / "keep.pid"
+    keep.write_text(str(os.getpid()), encoding="utf-8")
+    assert svc.remove_stale_pid_files([keep], probe=lambda pid: None) == []
+    # The supervisor runs the sweep on construction and logs what it removed.
+    stale = tmp_path / "svc.pid"
+    stale.write_text("999999", encoding="utf-8")
+    sup = svc.CollectorSupervisor(log_file=tmp_path / "svc.jsonl", pid_file=stale, quiet=True, keep_awake=False)
+    assert not stale.exists()
+    assert "stale_pid_removed" in (tmp_path / "svc.jsonl").read_text(encoding="utf-8")
+    assert sup._stale_pids_removed == [stale]

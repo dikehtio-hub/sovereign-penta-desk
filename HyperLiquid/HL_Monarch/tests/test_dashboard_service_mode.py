@@ -263,3 +263,73 @@ def test_the_dashboard_logs_its_start_stop_and_crash(tmp_path, monkeypatch):
     last = json.loads(log.read_text(encoding="utf-8").splitlines()[-1])
     assert last["event"] == "dashboard_crash" and "terminal gone" in last["error"] and "Traceback" in last["traceback"]
     assert dash.running is False
+
+
+def test_a_read_only_dashboard_relaunches_a_dead_service_once_per_cooldown_and_alerts(tmp_path, monkeypatch):
+    """
+    Round 53 (Rulings 53-1/53-2). Three silent service deaths in one day; the
+    viewer that noticed each one did nothing. Now a dashboard that STARTED read-
+    only logs the death, alerts once per episode, issues the detached relaunch
+    at most once per cooldown, and logs when the service is back. A standalone
+    dashboard is the ingester itself and never relaunches.
+    """
+    from ui.terminal_dashboard import TerminalDashboard
+
+    class Alerter:
+        def __init__(self):
+            self.down, self.stale = [], []
+
+        def alert_service_down(self, pid, reason="process gone"):
+            self.down.append(pid)
+
+        def alert_status_stale(self, age, max_age):
+            self.stale.append(round(age))
+
+    events, relaunches = [], []
+    log = lambda event, **f: events.append((event, f))
+    dash = TerminalDashboard.__new__(TerminalDashboard)
+    dash.service_mode, dash.service_pid, dash._service_alive = True, 4242, True
+    dash._watchdog_last_relaunch, dash._service_dead_since, dash._status_stale_alerted = 0.0, None, False
+    alerter = Alerter()
+    kw = dict(relaunch=lambda: relaunches.append(1) or True, alerter=alerter, log=log, enabled=True, cooldown=300.0)
+
+    assert dash.service_watchdog(True, now=1000.0, **kw) is None                 # alive: nothing to do
+    assert dash.service_watchdog(False, now=1005.0, **kw) == "relaunched"        # dies: log, alert, relaunch
+    assert [e for e, _ in events] == ["service_dead", "service_relaunch"]
+    assert alerter.down == [4242] and relaunches == [1]
+    assert dash.service_watchdog(False, now=1010.0, **kw) == "dead"              # still dead: no second relaunch
+    assert dash.service_watchdog(False, now=1305.0, **kw) == "relaunched"        # cooldown passed: try again
+    assert len(relaunches) == 2 and alerter.down == [4242]                       # one alert per episode
+    assert dash.service_watchdog(True, now=1400.0, **kw) == "back"
+    assert events[-1][0] == "service_back" and events[-1][1]["dead_for_s"] == 395.0
+    assert dash._service_dead_since is None
+    # A relaunch whose command cannot be issued is logged as such.
+    assert dash.service_watchdog(False, now=2000.0, relaunch=lambda: False, alerter=alerter, log=log,
+                                 enabled=True, cooldown=300.0) == "relaunch_failed"
+    assert events[-1] == ("service_relaunch", {"issued": False, "service_pid": 4242})
+    # Watchdog disabled: the death is still logged and alerted, nothing is launched.
+    dash._service_dead_since, dash._watchdog_last_relaunch = None, 0.0
+    assert dash.service_watchdog(False, now=3000.0, relaunch=lambda: relaunches.append(9), alerter=alerter,
+                                 log=log, enabled=False, cooldown=300.0) == "dead"
+    assert 9 not in relaunches
+    # A STANDALONE dashboard never relaunches: it is the ingester.
+    dash.service_mode = False
+    assert dash.service_watchdog(False, now=4000.0, **kw) is None
+    # relaunch_service refuses when the launcher does not exist, and never raises.
+    assert TerminalDashboard.relaunch_service(tmp_path / "missing.bat") is False
+
+    # Stale status file while the service is alive: one alert per episode, reset when fresh.
+    import json
+    import time
+    dash.service_mode, dash._service_alive = True, True
+    status = tmp_path / "collector_status.json"
+    status.write_text(json.dumps({"unclassified_dexs": [], "checked_at": time.time() - 3 * 3600}), encoding="utf-8")
+    assert dash.status_stale_watch(status, alerter=alerter, log=log) is True
+    assert dash.status_stale_watch(status, alerter=alerter, log=log) is True
+    assert alerter.stale == [10800] and events[-1][0] == "status_stale"
+    status.write_text(json.dumps({"unclassified_dexs": [], "checked_at": time.time()}), encoding="utf-8")
+    assert dash.status_stale_watch(status, alerter=alerter, log=log) is False
+    assert dash._status_stale_alerted is False
+    dash._service_alive = False
+    status.write_text(json.dumps({"unclassified_dexs": [], "checked_at": 1.0}), encoding="utf-8")
+    assert dash.status_stale_watch(status, alerter=alerter, log=log) is False    # dead service: the watchdog's job

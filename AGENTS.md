@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+Round 53 complete: DETACHED SUPERVISOR, DASHBOARD WATCHDOG + ALERTS, TAG-FAMILY
+DROPS, LIVE WATCHER WIRED. start_collector.bat now launches the supervisor
+under pythonw (no console window to close; the logger skips its console
+handler when there is none); a fresh supervisor removes stale pid files
+before claiming the lock. A read-only dashboard whose service dies logs it,
+alerts through WebhookAlerter, and issues the detached relaunch at most once
+per 5 min; a status file older than 2h alerts once per episode. The
+Polymarket watcher writes polymarket_sports.json and polymarket_macro.json
+separately (stamped copies carry the family); start_all_ecosystem_sync.bat
+starts it with --tags sports,crypto,fed-rates. The real drop dir now holds
+LIVE sports + macro questions (one-shot). 5 new tests.
+
 Round 52 complete: STAMPED POLYMARKET DROPS, MULTI-TAG WATCHER, LEAK FIX, VAULT
 TRACKED. `--watch` now writes a stamped copy (`polymarket_<UTC stamp>Z.json`)
 beside the canonical file on every price change and prunes copies older than
@@ -206,7 +218,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 814 OK |
+| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 816 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -230,6 +242,45 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 53 findings
+
+- **pythonw is safe for the supervisor**: sys.stdout is None there, so
+  build_logger now adds its console handler only when a console exists; the
+  jsonl file handler is unchanged and the child's output goes to
+  collector.log regardless. The bat resolves pythonw.exe beside whatever
+  `python` resolves to (the WindowsApps shim's own pythonw is a different
+  interpreter) and falls back to `pythonw` on PATH.
+- **The watchdog is a pure method** (`service_watchdog(alive, now, relaunch,
+  alerter, log, enabled, cooldown)`) so the whole state machine is tested
+  without spawning anything: dead -> log + one alert + relaunch; still dead
+  inside the cooldown -> nothing; cooldown passed -> relaunch again; back ->
+  log with dead_for_s; standalone dashboards never relaunch. The relaunch
+  itself runs the bat with CREATE_NO_WINDOW.
+- **Alerts are no-ops until a webhook is configured** (DISCORD_WEBHOOK_URL or
+  the Telegram pair); the events still land in dashboard.jsonl.
+- **Family split only when several tags are requested**; the single-tag
+  path keeps one canonical file and unprefixed stamps, so Round 34-52
+  behaviour and tests stand. Empty families write no file until they have
+  had content once.
+- **Live activation**: the real drop dir now carries live sports (410) and
+  macro (300) questions from a one-shot run; the WATCHER itself is an
+  operator-session process in start_all_ecosystem_sync.bat (Ruling 50-3).
+  Drop files are not tracked (data rules), so the live fetch did not dirty git.
+- **The macro block measured 3 of 3 for the first time**: Fed cut PM 93%
+  (polymarket_macro.json) against longs paying +7.5% APR with OI -0.6%/24h
+  -> DIVERGENT (PM yes; perps not confirming); Bitcoin $100k PM 5% ->
+  DIVERGENT (PM no; perps long); flow LONGS PAYING, OI FLAT OR SHRINKING.
+  `--scan --resolve` seeded 1,685 Gamma identities into the cache, yet 0
+  titans match: no HyperLiquid whale wallet in the DB resolves to a Polymarket
+  sharp trader. The cache file was TRACKED (a9c547d) - untracked now so the
+  ignore rule applies.
+- **The launcher hangs its caller**: `cmd /c start_collector.bat` from a
+  non-interactive shell blocked after starting the service (the bat's
+  `timeout /t 3` waits on a console that is not there). Harmless when double-
+  clicked; the dashboard watchdog runs it with CREATE_NO_WINDOW and does not
+  wait. Trailing `timeout` calls in launchers are worth a `>nul 2>&1` or
+  removal - noted, not changed.
 
 ## Round 52 findings
 

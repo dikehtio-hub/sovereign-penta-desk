@@ -8,13 +8,13 @@ tags:
   - polymarket
   - quant-trading-lab
   - dashboard
-last_synced: "2026-09-05 00:11:21 UTC"
+last_synced: "2026-09-05 01:09:36 UTC"
 ---
 
 # 👑 Cross-Market Titan & Macro Intelligence Desk
 
 > [!INFO] **Executive Overview**
-> - **Last Synchronized**: `2026-09-05 00:11:21 UTC`
+> - **Last Synchronized**: `2026-09-05 01:09:36 UTC`
 > - **Target Vault**: `C:\Users\ixis1\Desktop\DEV\obsidian_vault`
 > - **Confirmed Titan Entities**: `0` institutional actors
 > - **Active Macro Signals**: `3` convergent vectors
@@ -40,9 +40,9 @@ Tracks alignment between **Polymarket event market sentiment**, **HyperLiquid pe
 
 | Macro Theme | Polymarket Sentiment | HyperLiquid Perp Flow | Co-Positioning State | Signal Strength |
 | :--- | :--- | :--- | :--- | :---: |
-| **Federal Reserve Interest Rate Cut** | `[NO LIVE MARKET FOUND]` | `Longs paying (OI-weighted funding +9.7% APR), OI $5.74B -0.1% / 24h` | ⚪ UNMEASURED (a venue is missing) | `n/a` |
-| **Bitcoin Milestone ($100k)** | `[NO LIVE MARKET FOUND]` | `Longs paying (OI-weighted funding +9.7% APR), OI $5.74B -0.1% / 24h` | ⚪ UNMEASURED (a venue is missing) | `n/a` |
-| **Crypto Majors Perp Flow (BTC/ETH/SOL)** | `n/a (HyperLiquid-only telemetry)` | `Longs paying (OI-weighted funding +9.7% APR), OI $5.74B -0.1% / 24h` | 🟡 LONGS PAYING, OI FLAT OR SHRINKING | `LOW` |
+| **Federal Reserve Interest Rate Cut** | `YES 93% implied (Will no Fed rate cuts happen in 2026?)` | `Longs paying (OI-weighted funding +7.4% APR), OI $5.72B -0.6% / 24h` | ⚡ DIVERGENT (PM yes; perps not confirming) | `MEDIUM` |
+| **Bitcoin Milestone ($100k)** | `YES 5% implied (Will Bitcoin reach $100,000 in September?)` | `Longs paying (OI-weighted funding +7.4% APR), OI $5.72B -0.6% / 24h` | ⚡ DIVERGENT (PM no; perps long) | `MEDIUM` |
+| **Crypto Majors Perp Flow (BTC/ETH/SOL)** | `n/a (HyperLiquid-only telemetry)` | `Longs paying (OI-weighted funding +7.4% APR), OI $5.72B -0.6% / 24h` | 🟡 LONGS PAYING, OI FLAT OR SHRINKING | `LOW` |
 
 ---
 

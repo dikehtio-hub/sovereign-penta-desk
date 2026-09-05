@@ -482,5 +482,64 @@ class TestTagsAndKeywords(unittest.TestCase):
             self.assertAlmostEqual(find_market_probability(FED_CUT_KEYWORDS, [Path(tmp)])["probability"], 0.88)
 
 
+class TestTagFamilies(Base):
+    """Round 53 (Ruling 53-3): sports and macro questions land in separate canonical files, stamped per family."""
+
+    def test_multi_tag_polls_write_one_canonical_file_per_family(self):
+        from datetime import timedelta
+        from cross_market.ingestors.polymarket_fetcher import (MACRO_DROP_NAME, family_of, is_stamped_drop,
+                                                               poll, prune_stamped_drops, split_families, stamp_of)
+        from cross_market import lead_lag
+        sports = sample_questions(now=NOW)
+        macro = [{"question": "Will Bitcoin reach $100,000 in September?", "yes_price": "0.05", "yes_bid": "0.04",
+                  "token_id": "tok-btc", "sport": "CRYPTO", "fetched_at": "2026-09-04T12:00:00Z", "source": "gamma",
+                  "fee_rate": 0.0, "event_slug": "btc", "start_time": ""},
+                 {"question": "Fed rate cut in September?", "yes_price": "0.88", "yes_bid": "0.87",
+                  "token_id": "tok-fed", "sport": "FED-RATES", "fetched_at": "2026-09-04T12:00:00Z", "source": "gamma",
+                  "fee_rate": 0.0, "event_slug": "fed", "start_time": ""}]
+        self.assertEqual(family_of(sports[0]), "sports")
+        self.assertEqual(family_of(macro[0]), "macro")
+        self.assertEqual({k: len(v) for k, v in split_families(sports + macro).items()}, {"sports": len(sports), "macro": 2})
+
+        prices = iter([0.05, 0.05, 0.12, 0.12])             # only the BTC macro market moves, on poll 3
+        moments = iter(NOW + timedelta(minutes=5 * i) for i in range(20))
+
+        def source():
+            price = next(prices)
+            return sports + [dict(macro[0], yes_price=str(price)), macro[1]]
+
+        stats = poll(source, self.drop, interval=0, max_polls=4, sleep=lambda s: None, log=lambda m: None,
+                     stamped=True, clock=lambda: next(moments), split=True)
+        # Poll 1 writes both families; poll 3 rewrites macro only (sports unchanged, not re-stamped).
+        self.assertEqual((stats["drops"], stats["stamped"], stats["skipped_unchanged"]), (3, 3, 5))
+        sports_file = json.loads((self.drop / DEFAULT_DROP_NAME).read_text(encoding="utf-8"))
+        macro_file = json.loads((self.drop / MACRO_DROP_NAME).read_text(encoding="utf-8"))
+        self.assertTrue(all(q["sport"] not in ("CRYPTO", "FED-RATES") for q in sports_file))   # the arb desk's file is clean
+        self.assertEqual({q["token_id"] for q in macro_file}, {"tok-btc", "tok-fed"})
+        self.assertEqual(float(next(q for q in macro_file if q["token_id"] == "tok-btc")["yes_price"]), 0.12)
+        names = sorted(f.name for f in self.drop.glob("polymarket_*Z.json"))
+        self.assertEqual([n.split("_")[1] for n in names], ["macro", "macro", "sports"])
+        self.assertTrue(all(is_stamped_drop(self.drop / n) and stamp_of(self.drop / n) is not None for n in names))
+        # The exporter's dedup still yields one price per market; Item 18 sees the macro series and its one shift.
+        loaded = load_questions(self.drop)
+        self.assertEqual([float(q["yes_price"]) for q in loaded if q["token_id"] == "tok-btc"], [0.12])
+        series = lead_lag.probability_series(lead_lag.load_drop_records([self.drop]))
+        self.assertEqual(len(lead_lag.probability_shifts({"tok-btc": series["tok-btc"]}, min_shift=0.02)), 1)
+        # Retention prunes family-stamped copies by name too. The fake clock ticks 5 min per call
+        # (write, then prune), so the poll-1 copies are stamped NOW (sports) and NOW+10m (macro).
+        deleted = prune_stamped_drops(self.drop, retention_hours=192.0, now=NOW + timedelta(hours=192, minutes=11))
+        self.assertEqual(sorted(d.name.split("_")[1] for d in deleted), ["macro", "sports"])   # the two poll-1 copies
+        self.assertTrue((self.drop / DEFAULT_DROP_NAME).exists() and (self.drop / MACRO_DROP_NAME).exists())
+
+    def test_a_single_tag_run_keeps_one_file_and_unstamped_names(self):
+        from cross_market.ingestors.polymarket_fetcher import poll, stamped_drop_name
+        stats = poll(lambda: sample_questions(now=NOW), self.drop, interval=0, max_polls=1,
+                     sleep=lambda s: None, log=lambda m: None, stamped=True, clock=lambda: NOW)
+        self.assertEqual(stats["drops"], 1)
+        self.assertEqual(sorted(f.name for f in self.drop.glob("*.json")),
+                         sorted([DEFAULT_DROP_NAME, "polymarket_20260904T120000_000000Z.json"]))
+        self.assertEqual(stamped_drop_name(NOW, family="macro"), "polymarket_macro_20260904T120000_000000Z.json")
+
+
 if __name__ == "__main__":
     unittest.main()

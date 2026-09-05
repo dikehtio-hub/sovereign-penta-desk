@@ -125,11 +125,52 @@ def build_logger(log_file: Path, quiet: bool = False) -> logging.Logger:
     file_handler.setFormatter(JsonLineFormatter())
     logger.addHandler(file_handler)
 
-    if not quiet:
+    # Round 53: under pythonw (Ruling 53-1, detached launch) there is no console -
+    # sys.stdout is None - and a stream handler on None would fail on every event.
+    if not quiet and sys.stdout is not None:
         console = logging.StreamHandler(sys.stdout)
         console.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
         logger.addHandler(console)
     return logger
+
+
+def _process_cmdline(pid: int) -> Optional[str]:
+    """The command line of `pid`, "" when it cannot be read, None when psutil is absent."""
+    try:
+        import psutil
+    except ImportError:
+        return None
+    try:
+        return " ".join(psutil.Process(pid).cmdline())
+    except Exception:                                       # noqa: BLE001 - access denied, zombie, gone
+        return ""
+
+
+def remove_stale_pid_files(pid_files, probe=None) -> list:
+    """
+    Delete pid files that name a dead process, a corrupt value, or a live
+    process whose command line does not say "collector" (Round 53, Ruling
+    53-5). A file naming a live collector is left alone - that is the single-
+    instance guard's job. Returns the paths removed. Never raises.
+    """
+    probe = probe or _process_cmdline
+    removed = []
+    for raw in pid_files:
+        path = Path(raw)
+        if not path.exists():
+            continue
+        pid = read_pid_file(path)
+        stale = pid is None or not pid_is_alive(pid)
+        if not stale:
+            cmdline = probe(pid)
+            stale = cmdline is not None and "collector" not in cmdline.lower()
+        if stale:
+            try:
+                path.unlink()
+                removed.append(path)
+            except OSError:
+                pass
+    return removed
 
 
 def log_event(logger: logging.Logger, event: str, level: int = logging.INFO, **fields):
@@ -320,6 +361,16 @@ class CollectorSupervisor:
         self.restarts = 0
         self.started_at = 0.0
         self._last_coverage_report = 0.0
+        # Round 53 (Ruling 53-5): a killed supervisor cannot clean up after itself,
+        # so the next one does - before it claims the lock.
+        # The supervisor's OWN lock is judged by liveness only - a live holder,
+        # whatever its command line, is the single-instance guard's business;
+        # the child's pid file also has to look like a collector.
+        child_pid_file = SERVICE_DIR / "data" / "collector.pid"
+        self._stale_pids_removed = (remove_stale_pid_files([self.pid_file], probe=lambda pid: None)
+                                    + remove_stale_pid_files([child_pid_file]))
+        for path in self._stale_pids_removed:
+            log_event(self.logger, "stale_pid_removed", level=logging.WARNING, path=str(path))
 
     def _open_child_log(self):
         """

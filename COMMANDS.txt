@@ -2360,6 +2360,19 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 53 - DETACHED SUPERVISOR, WATCHDOG + ALERTS, TAG-FAMILY DROPS
+     start_collector.bat -> pythonw run_collector_service.py --quiet (DETACHED: no window;
+         closing terminals cannot kill it). Watch it via data\collector_service.jsonl,
+         data\collector.log, or  python run_collector_service.py --status.
+         A fresh supervisor deletes stale pid files (dead / corrupt / not a collector).
+     Dashboard (read-only): service dies -> dashboard.jsonl service_dead + webhook alert +
+         service_relaunch (runs start_collector.bat, no window) once per
+         SERVICE_WATCHDOG_COOLDOWN_SECONDS (300); service_back when it returns.
+         collector_status.json older than 2h with the service alive -> status_stale + alert.
+     Polymarket drops by family: polymarket_sports.json (arb desk) + polymarket_macro.json
+         (Titan macro block) + polymarket_<family>_<stamp>Z.json (Item 18 series).
+         start_all_ecosystem_sync.bat now also starts the multi-tag watcher.
+
      ROUND 52 - STAMPED DROPS, MULTI-TAG WATCHER, LEAK FIX
      python -m cross_market.ingestors.polymarket_fetcher --live --watch --interval 300
          --tags sports,crypto,fed-rates --keywords "fed,rate cut,bitcoin,btc"
@@ -2416,7 +2429,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (16 modules, 814): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (16 modules, 816): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

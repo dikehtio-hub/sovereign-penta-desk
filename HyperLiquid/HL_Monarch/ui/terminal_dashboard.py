@@ -7,6 +7,7 @@ import time
 import signal
 import threading
 import asyncio
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 # Ensure UTF-8 output on Windows console
@@ -31,6 +32,7 @@ from analytics.market_intelligence import MarketIntelligence
 from analytics.liquidation_engine import LiquidationEngine
 from analytics.position_scanner import PositionScanner
 from analytics.funding_arbitrage import FundingArbitrageEngine
+from analytics.alerter import WebhookAlerter
 from execution.paper_trader import PaperTrader
 from execution.strategies.liquidation_fade_strategy import LiquidationFadeStrategy
 from collectors.market_collector import MarketCollector, read_service_pid, service_collector_alive
@@ -66,6 +68,11 @@ class TerminalDashboard:
         self.service_pid: Optional[int] = None
         self._service_alive: bool = False
         self._service_badge: str = ""
+        # Round 53: dead-service watchdog + alerts (Rulings 53-1/53-2).
+        self.alerter = WebhookAlerter()
+        self._watchdog_last_relaunch: float = 0.0
+        self._service_dead_since: Optional[float] = None
+        self._status_stale_alerted = False
         self._service_checked_at: float = 0.0
         self.focus_asset = focus_asset
         self.active_tab = "ALL"  # 'ALL', 'STOCKS', 'COMMODITIES', 'INDICES_FX', 'CRYPTO', 'WHALES', 'ARB', 'PAPER'
@@ -120,7 +127,99 @@ class TerminalDashboard:
         from config.settings import COLLECTOR_STATUS_PATH
         status = read_collector_status(COLLECTOR_STATUS_PATH)
         drift = novel_dex_badge(status.get("unclassified_dexs"))
+        try:
+            self.status_stale_watch()
+        except Exception:                                   # noqa: BLE001 - never break a frame
+            pass
         return "  ".join(part for part in (service_badge, drift) if part)
+
+    @staticmethod
+    def relaunch_service(bat=None) -> bool:
+        """Run the detached launcher without a window; True if the command was issued."""
+        import subprocess
+        from config.settings import START_COLLECTOR_BAT
+        bat = Path(bat or START_COLLECTOR_BAT)
+        if not bat.exists():
+            return False
+        try:
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            subprocess.Popen(["cmd", "/c", str(bat)], cwd=str(bat.parent), creationflags=flags,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        except Exception:                                   # noqa: BLE001 - a failed relaunch is logged, not fatal
+            return False
+
+    def service_watchdog(self, alive: bool, now: Optional[float] = None, relaunch=None,
+                         alerter=None, log=None, enabled: Optional[bool] = None,
+                         cooldown: Optional[float] = None) -> Optional[str]:
+        """
+        Round 53 (Rulings 53-1/53-2). Only a dashboard that STARTED read-only
+        acts: when its service dies it logs service_dead, alerts once per
+        episode, and issues the detached relaunch at most once per cooldown;
+        when the service is back it logs service_back. A standalone dashboard
+        is the ingester itself and never relaunches anything. Returns the
+        action taken, for the log and the tests.
+        """
+        from config.settings import (DASHBOARD_LOG_PATH, SERVICE_WATCHDOG_COOLDOWN_SECONDS,
+                                     SERVICE_WATCHDOG_ENABLED)
+        if not self.service_mode:
+            return None
+        now = time.monotonic() if now is None else now
+        relaunch = relaunch or self.relaunch_service
+        alerter = alerter or self.alerter
+        log = log or (lambda event, **fields: append_dashboard_event(DASHBOARD_LOG_PATH, event, **fields))
+        enabled = SERVICE_WATCHDOG_ENABLED if enabled is None else enabled
+        cooldown = SERVICE_WATCHDOG_COOLDOWN_SECONDS if cooldown is None else cooldown
+        if alive:
+            if self._service_dead_since is not None:
+                log("service_back", service_pid=self.service_pid,
+                    dead_for_s=round(now - self._service_dead_since, 1))
+                self._service_dead_since = None
+                return "back"
+            return None
+        action = "dead"
+        if self._service_dead_since is None:
+            self._service_dead_since = now
+            log("service_dead", service_pid=self.service_pid)
+            try:
+                alerter.alert_service_down(self.service_pid)
+            except Exception:                               # noqa: BLE001 - alerting must not break the viewer
+                pass
+        if enabled and now - self._watchdog_last_relaunch >= cooldown:
+            self._watchdog_last_relaunch = now
+            issued = bool(relaunch())
+            log("service_relaunch", issued=issued, service_pid=self.service_pid)
+            action = "relaunched" if issued else "relaunch_failed"
+        return action
+
+    def status_stale_watch(self, status_path=None, now: Optional[float] = None, alerter=None,
+                           log=None) -> bool:
+        """
+        Round 53 (Ruling 53-2): while the service is alive, a status file older
+        than COLLECTOR_STATUS_MAX_AGE_SECONDS means the hourly cycle stopped
+        writing. Alert once per stale episode; reset when it is fresh again.
+        """
+        from config.settings import (COLLECTOR_STATUS_MAX_AGE_SECONDS, COLLECTOR_STATUS_PATH,
+                                     DASHBOARD_LOG_PATH)
+        status = read_collector_status(status_path or COLLECTOR_STATUS_PATH, max_age_s=None)
+        if not status or not self._service_alive:
+            return False
+        try:
+            age = (now if now is not None else time.time()) - float(status.get("checked_at") or 0.0)
+        except (TypeError, ValueError):
+            return False
+        stale = age > COLLECTOR_STATUS_MAX_AGE_SECONDS
+        if stale and not self._status_stale_alerted:
+            self._status_stale_alerted = True
+            (log or (lambda event, **f: append_dashboard_event(DASHBOARD_LOG_PATH, event, **f)))(
+                "status_stale", age_s=round(age, 1))
+            try:
+                (alerter or self.alerter).alert_status_stale(age, COLLECTOR_STATUS_MAX_AGE_SECONDS)
+            except Exception:                               # noqa: BLE001
+                pass
+        elif not stale:
+            self._status_stale_alerted = False
+        return stale
 
     def _refresh_service_badge(self, force: bool = False, ttl: float = 5.0,
                                newest_snapshot_age_s: Optional[float] = None) -> str:
@@ -138,6 +237,7 @@ class TerminalDashboard:
             self._service_alive = service_collector_alive()
             if self._service_alive:
                 self.service_pid = read_service_pid()
+            self.service_watchdog(self._service_alive, now=now)
         _, self._service_badge = ingestion_badge(self._service_alive, self.service_pid, self.service_mode,
                                                  newest_snapshot_age_s=newest_snapshot_age_s)
         return self._service_badge

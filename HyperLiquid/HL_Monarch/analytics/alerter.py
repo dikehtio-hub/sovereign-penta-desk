@@ -122,6 +122,24 @@ class WebhookAlerter:
         )
         self._dispatch_alert(title, description, 0x00BFFF)
 
+    def alert_service_down(self, pid, reason: str = "process gone"):
+        """Round 53 (Ruling 53-2): the collector service died under a read-only dashboard."""
+        if not self.should_send("service", "COLLECTOR"):
+            return
+        self._dispatch_alert("🛑 COLLECTOR SERVICE DOWN",
+                             f"**Service PID:** `{pid}`\n**Reason:** `{reason}`\n"
+                             "**Effect:** no ingestion until relaunched (the dashboard's watchdog tries once per cooldown)",
+                             0xFF0000)
+
+    def alert_status_stale(self, age_seconds: float, max_age_seconds: float):
+        """Round 53 (Ruling 53-2): the collector status file is older than its window while the service is alive."""
+        if not self.should_send("status", "COLLECTOR"):
+            return
+        self._dispatch_alert("⚠️ COLLECTOR STATUS STALE",
+                             f"**Age:** `{age_seconds / 3600.0:.1f}h` (window `{max_age_seconds / 3600.0:.1f}h`)\n"
+                             "**Meaning:** the hourly cycle is not writing collector_status.json - check data/collector.log",
+                             0xFFA500)
+
     def _cooldown_key(self, category: str, coin: str) -> str:
         return f"{category}:{str(coin).strip().upper()}"
 

@@ -59,7 +59,11 @@ DEFAULT_DROP_NAME = "polymarket_sports.json"      # ONE current file, overwritte
 # The canonical file stays the exporter's "latest"; stamped copies are pruned
 # on the ecosystem's 192h retention standard, by the stamp in their name.
 STAMP_FORMAT = "%Y%m%dT%H%M%S_%fZ"
-STAMPED_PATTERN = re.compile(r"^polymarket_(\d{8}T\d{6}_\d{6})Z\.json$")
+# Round 53 (Ruling 53-3): canonical drops are kept PER TAG FAMILY so the arb desk's
+# file holds sports questions only and the macro file feeds the Titan block.
+# Stamped copies carry the family: polymarket_<family>_<stamp>Z.json.
+MACRO_DROP_NAME = "polymarket_macro.json"
+STAMPED_PATTERN = re.compile(r"^polymarket_(?:([a-z]+)_)?(\d{8}T\d{6}_\d{6})Z\.json$")
 DROP_RETENTION_HOURS = 192.0
 # Round 52 (Ruling 51-2): tags are Gamma tag SLUGS (verified live 2026-09-05:
 # /events?tag_slug=crypto pages like tag_id does; /tags/slug/crypto -> id 21).
@@ -453,10 +457,27 @@ def write_drop(questions: Sequence[Dict[str, Any]], drop_dir: Path = DEFAULT_DRO
     return target
 
 
-def stamped_drop_name(now: Optional[datetime] = None) -> str:
-    """polymarket_<UTC stamp to the microsecond>Z.json - never collides with the canonical name."""
+def stamped_drop_name(now: Optional[datetime] = None, family: Optional[str] = None) -> str:
+    """polymarket_[<family>_]<UTC stamp to the microsecond>Z.json - never collides with a canonical name."""
     now = now or datetime.now(timezone.utc)
-    return "polymarket_%s.json" % now.strftime(STAMP_FORMAT)
+    prefix = "polymarket_%s_" % str(family).strip().lower() if family else "polymarket_"
+    return prefix + now.strftime(STAMP_FORMAT) + ".json"
+
+
+def family_of(question: Dict[str, Any], sports: Sequence[str] = DEFAULT_SPORTS) -> str:
+    """"sports" when the question's league label is one of `sports`, else "macro"."""
+    label = str(question.get("sport") or "").strip().upper()
+    return "sports" if label in {str(x).strip().upper() for x in sports} else "macro"
+
+
+def split_families(questions: Sequence[Dict[str, Any]], sports: Sequence[str] = DEFAULT_SPORTS) -> Dict[str, List[Dict[str, Any]]]:
+    out: Dict[str, List[Dict[str, Any]]] = {"sports": [], "macro": []}
+    for q in questions:
+        out[family_of(q, sports)].append(q)
+    return out
+
+
+FAMILY_DROP_NAMES = {"sports": DEFAULT_DROP_NAME, "macro": MACRO_DROP_NAME}
 
 
 def is_stamped_drop(path: Path) -> bool:
@@ -469,15 +490,15 @@ def stamp_of(path: Path) -> Optional[datetime]:
     if not match:
         return None
     try:
-        return datetime.strptime(match.group(1) + "Z", STAMP_FORMAT).replace(tzinfo=timezone.utc)
+        return datetime.strptime(match.group(2) + "Z", STAMP_FORMAT).replace(tzinfo=timezone.utc)
     except ValueError:
         return None
 
 
 def write_stamped_copy(questions: Sequence[Dict[str, Any]], drop_dir: Path = DEFAULT_DROP_DIR,
-                       now: Optional[datetime] = None) -> Path:
+                       now: Optional[datetime] = None, family: Optional[str] = None) -> Path:
     """The same questions under a stamped name (Round 52) - the series Item 18 reads."""
-    return write_drop(questions, drop_dir, name=stamped_drop_name(now))
+    return write_drop(questions, drop_dir, name=stamped_drop_name(now, family=family))
 
 
 def prune_stamped_drops(drop_dir: Path = DEFAULT_DROP_DIR, retention_hours: float = DROP_RETENTION_HOURS,
@@ -515,7 +536,8 @@ def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DR
          max_polls: Optional[int] = None, sleep: Callable[[float], None] = time.sleep,
          log: Callable[[str], None] = print, stamped: bool = False,
          retention_hours: float = DROP_RETENTION_HOURS,
-         clock: Optional[Callable[[], datetime]] = None) -> Dict[str, int]:
+         clock: Optional[Callable[[], datetime]] = None,
+         split: bool = False, sports: Sequence[str] = DEFAULT_SPORTS) -> Dict[str, int]:
     """
     Re-fetch on a timer and write ONLY when the prices changed.
 
@@ -524,7 +546,7 @@ def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DR
     never quoted.
     """
     stats = {"polls": 0, "drops": 0, "skipped_unchanged": 0, "errors": 0, "stamped": 0, "pruned": 0}
-    last: Optional[str] = None
+    last: Dict[str, Optional[str]] = {}
     clock = clock or (lambda: datetime.now(timezone.utc))
     while True:
         stats["polls"] += 1
@@ -534,19 +556,26 @@ def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DR
             stats["errors"] += 1
             log("[ERROR] poll %d: %s: %s" % (stats["polls"], type(exc).__name__, exc))
         else:
-            current = fingerprint(questions)
-            if current == last:
-                stats["skipped_unchanged"] += 1
-                log("[SKIP] poll %d: %d question(s) unchanged since the last drop - not re-stamped"
-                    % (stats["polls"], len(questions)))
-            else:
-                target = write_drop(questions, drop_dir, name=name)
+            # Round 53 (Ruling 53-3): one file per tag family, each written only when
+            # ITS prices changed. Unsplit runs keep the single canonical file.
+            batches = split_families(questions, sports) if split else {"all": list(questions)}
+            for family, subset in batches.items():
+                if not subset and last.get(family) is None:
+                    continue                                # nothing yet for this family: no empty file
+                current = fingerprint(subset)
+                if current == last.get(family):
+                    stats["skipped_unchanged"] += 1
+                    log("[SKIP] poll %d: %s %d question(s) unchanged since the last drop - not re-stamped"
+                        % (stats["polls"], family, len(subset)))
+                    continue
+                canonical = name if (family == "all" or (family == "sports" and name)) else FAMILY_DROP_NAMES.get(family)
+                target = write_drop(subset, drop_dir, name=canonical)
                 stats["drops"] += 1
-                last = current
-                log("[DROP] poll %d: %d question(s) -> %s" % (stats["polls"], len(questions), target))
+                last[family] = current
+                log("[DROP] poll %d: %s %d question(s) -> %s" % (stats["polls"], family, len(subset), target))
                 if stamped:
                     # Round 52 (Ruling 51-1): the series copy, and the retention sweep.
-                    copy = write_stamped_copy(questions, drop_dir, now=clock())
+                    copy = write_stamped_copy(subset, drop_dir, now=clock(), family=None if family == "all" else family)
                     stats["stamped"] += 1
                     pruned = prune_stamped_drops(drop_dir, retention_hours=retention_hours, now=clock())
                     stats["pruned"] += len(pruned)
@@ -610,11 +639,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         def source() -> List[Dict[str, Any]]:
             return sample_questions()
 
+    split = bool(tags)                                      # Round 53: several tags -> one file per family
     if args.watch:
         poll(source, folder, name=args.name, interval=args.interval, max_polls=args.max_polls,
-             stamped=not args.no_stamp, retention_hours=args.retention_hours)
+             stamped=not args.no_stamp, retention_hours=args.retention_hours, split=split, sports=sports)
         return 0
     questions = validate_questions(source())
+    if split:
+        for family, subset in split_families(questions, sports).items():
+            if not subset:
+                continue
+            target = write_drop(subset, folder, name=FAMILY_DROP_NAMES[family] if family != "sports" or not args.name else args.name)
+            print("[DROP] %s: %d question(s) from gamma -> %s" % (family, len(subset), target))
+        return 0
     target = write_drop(questions, folder, name=args.name)
     print("[DROP] %d question(s) from %s -> %s" % (len(questions), "gamma" if args.live else "bundled sample", target))
     return 0

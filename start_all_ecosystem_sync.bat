@@ -34,6 +34,11 @@ cd /d "C:\Users\ixis1\Desktop\DEV"
 start "Tax Reserve Sync" python -m Tax_Reserve_Agent.obsidian_sync --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
 echo ✓ [4/5] Tax & Bankroll sync watcher launched.
 
+:: 4b. Round 53 (Ruling 53-3): ONE Polymarket watcher feeds both desks - sports for the arb
+::     desk (polymarket_sports.json), crypto + fed-rates for the Titan macro block
+::     (polymarket_macro.json), stamped copies for Item 18. Writes only on price change.
+cd /d "C:\Users\ixis1\Desktop\DEV"
+start "Polymarket Watcher" python -m cross_market.ingestors.polymarket_fetcher --live --watch --interval 300 --tags sports,crypto,fed-rates --keywords "fed,rate cut,bitcoin,btc"
 :: 5. Launch Sports Desk + Cross-Market Arb Exporters (one slot, two windows)
 cd /d "C:\Users\ixis1\Desktop\DEV"
 start "Sports Desk Obsidian Sync" python -m Sports_Desk.interfaces.obsidian_exporter --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"

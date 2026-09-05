@@ -490,6 +490,14 @@ DASHBOARD_LOG_PATH = DATA_DIR / "dashboard.jsonl"
 # now writes here, rotated once at this size (collector.log -> collector.log.1).
 COLLECTOR_LOG_PATH = DATA_DIR / "collector.log"
 COLLECTOR_LOG_MAX_BYTES = 20_000_000
+# Round 53 (Rulings 53-1/53-2): a read-only dashboard whose service died can
+# relaunch the DETACHED supervisor (scripts/launchers/start_collector.bat, which
+# resolves pythonw.exe so no console window exists to be closed), at most once
+# per cooldown, and alerts through WebhookAlerter (no-op unless a webhook is
+# configured) when the service dies or the status file goes stale.
+SERVICE_WATCHDOG_ENABLED = True
+SERVICE_WATCHDOG_COOLDOWN_SECONDS = 300.0
+START_COLLECTOR_BAT = BASE_DIR / "scripts" / "launchers" / "start_collector.bat"
 # How old the collector's status file may be before the dashboard stops trusting
 # it: a dead collector's last write must not keep claiming a badge.
 COLLECTOR_STATUS_MAX_AGE_SECONDS = 7200.0
