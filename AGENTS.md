@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+Round 51 complete: MEASURED MACRO SIGNALS & ITEM 18 LEAD-LAG (OFFLINE). The
+Titan note's macro block is no longer three hard-coded narratives: Polymarket
+probabilities are looked up in whale_trades and in drop files (keyword groups
+for a Fed cut and a BTC $100k milestone), HyperLiquid flow is measured from
+latest_snapshots/asset_snapshots (OI-weighted funding APR, total OI, 24h OI
+change) and every signal carries measured/source; a missing input is
+"[NO LIVE MARKET FOUND]" or "[UNMEASURED: reason]", never a number. New
+`cross_market/lead_lag.py` (Item 18) finds the lag at which probability shifts
+and perp returns line up, from timestamped drops and a READ-ONLY snapshot DB,
+and refuses to name one on thin evidence. 11 new tests; master suite is 16
+modules. No collector code changed; no restart.
+
 Round 50 complete - MILESTONE. Titan correlator gains `--scan` / `--report` CLI
 with a printed summary (its macro block is labelled as the static placeholder
 it is); all five desk notes, the hub, the canvas and today's tax note were
@@ -184,7 +196,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (15 modules, incl. test_titan_correlator) | 798 OK |
+| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 809 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -208,6 +220,28 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 51 findings
+
+- **Live macro block today: 1 measured, 2 unmeasured.** HyperLiquid flow across
+  BTC/ETH/SOL: longs paying, OI-weighted funding +9.7% APR, OI $5.74B, -0.1%
+  over 24h -> "LONGS PAYING, OI FLAT OR SHRINKING". Fed-cut and BTC-$100k
+  markets: NO LIVE MARKET FOUND - polymarket_whales.db has no market table
+  (whale_trades is empty; the other tables are wallets) and the only local drop
+  is the sports sample. The tags are the truth; the old 88% / 64% were not.
+- **Item 18 cannot measure anything on today's data**: 7 markets, 0 shifts.
+  The Polymarket fetcher overwrites ONE drop file in place, so no probability
+  time series exists on disk. The correlator is verified on planted lags
+  (+10 and -15 minutes found exactly; noise -> "no measurable lead-lag"; two
+  events -> refused). To measure for real, the fetcher must keep timestamped
+  drops (polymarket_<stamp>.json, like the odds fetcher) - the exporter already
+  dedups by token across files, so that is a fetcher-only change. Ruling asked.
+- Co-positioning is now RULES, not narrative: CONVERGENT / DIVERGENT / NEUTRAL /
+  UNMEASURED from (PM probability, weighted funding sign, OI change sign);
+  strength from probability distance and OI change magnitude. All pinned.
+- Safety: both tools read drops and a read-only sqlite URI; neither opens a
+  socket or touches the harvester. The bankroll gate and quarantine sets are
+  untouched.
 
 ## Round 50 closeout (session end, 2026-09-04 ~23:05 UTC)
 

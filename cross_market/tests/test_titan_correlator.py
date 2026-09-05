@@ -199,7 +199,8 @@ class TestTitanCorrelator(unittest.TestCase):
         self.assertIn("SCAN REPORT", text)
         self.assertIn("titans matched across HyperLiquid and Polymarket: 2", text)
         self.assertIn("SharpTitan-Alpha", text)
-        self.assertIn("STATIC PLACEHOLDERS", text)
+        self.assertIn("[NO LIVE MARKET FOUND]", text)                    # the fixture has no macro markets
+        self.assertIn("0 measured, 3 unmeasured", text)
         self.assertFalse(note.exists())                                   # --report writes nothing
 
         out = io.StringIO()
@@ -216,6 +217,142 @@ class TestTitanCorrelator(unittest.TestCase):
         self.assertEqual(len(first), 2)
         self.assertTrue(first[0].strip().startswith("SharpTitan-Alpha"))  # the higher conviction ranks first
         self.assertIn("none: no HyperLiquid whale resolves", format_cli_report([], []))
+
+
+class TestMacroSignals(unittest.TestCase):
+    """
+    Round 51 (Directive 51-1). The macro block used to be three hard-coded
+    narratives. Now every number is looked up - Polymarket probabilities in
+    whale_trades or drop files, HyperLiquid flow in the snapshot tables - and
+    a missing input is reported as missing, never as a percentage.
+    """
+
+    H = 3_600_000
+
+    def setUp(self):
+        from cross_market.titan_correlator import HOURS_PER_YEAR
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+        self.hl_db = self.root / "hl.db"
+        self.pm_db = self.root / "pm.db"
+        self.drops = self.root / "drops"
+        self.drops.mkdir()
+        self.now = 1_788_566_716_255
+        con = sqlite3.connect(str(self.hl_db))
+        con.execute("CREATE TABLE latest_snapshots (coin TEXT PRIMARY KEY, timestamp INTEGER, dex TEXT, mark_px REAL, "
+                    "mid_px REAL, oracle_px REAL, open_interest REAL, notional_oi REAL, funding_rate REAL, premium REAL, day_ntl_vlm REAL)")
+        con.execute("CREATE TABLE asset_snapshots (id INTEGER PRIMARY KEY, timestamp INTEGER, coin TEXT, dex TEXT, mark_px REAL, "
+                    "mid_px REAL, oracle_px REAL, open_interest REAL, notional_oi REAL, funding_rate REAL, premium REAL, day_ntl_vlm REAL)")
+        # now: BTC 1e-5/h on $3B, ETH 2e-5/h on $2B, SOL -1e-5/h on $1B; 24h ago the OI was 5% lower for each.
+        rows = [("BTC", 3e9, 1e-5), ("ETH", 2e9, 2e-5), ("SOL", 1e9, -1e-5)]
+        for coin, oi, rate in rows:
+            con.execute("INSERT INTO latest_snapshots VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                        (coin, self.now, "main", 100.0, 100.0, 100.0, 1.0, oi, rate, 0.0, 1e6))
+            con.execute("INSERT INTO asset_snapshots (timestamp, coin, dex, mark_px, notional_oi, funding_rate) VALUES (?,?,?,?,?,?)",
+                        (self.now - 25 * self.H, coin, "main", 95.0, oi / 1.05, rate))
+        con.commit()
+        con.close()
+        self.expected_apr = ((1e-5 * 3e9 + 2e-5 * 2e9 - 1e-5 * 1e9) / 6e9) * HOURS_PER_YEAR * 100.0
+
+    def tearDown(self):
+        try:
+            self.temp_dir.cleanup()
+        except (OSError, PermissionError):
+            pass
+
+    def _pm_db(self, rows):
+        con = sqlite3.connect(str(self.pm_db))
+        con.execute("CREATE TABLE whale_trades (id INTEGER PRIMARY KEY, tx_hash TEXT, timestamp INTEGER, wallet TEXT, "
+                    "pseudonym TEXT, market_title TEXT, market_slug TEXT, outcome TEXT, side TEXT, price REAL, size REAL, "
+                    "usd_notional REAL, condition_id TEXT, asset TEXT)")
+        for ts, title, outcome, price in rows:
+            con.execute("INSERT INTO whale_trades (timestamp, market_title, outcome, price) VALUES (?,?,?,?)",
+                        (ts, title, outcome, price))
+        con.commit()
+        con.close()
+
+    def test_perp_flow_is_measured_from_the_snapshot_tables(self):
+        from cross_market.titan_correlator import measure_perp_flow, describe_perp_flow
+        flow = measure_perp_flow(self.hl_db)
+        self.assertTrue(flow["measured"])
+        self.assertAlmostEqual(flow["weighted_funding_apr"], self.expected_apr, places=6)
+        self.assertAlmostEqual(flow["total_oi"], 6e9)
+        self.assertAlmostEqual(flow["oi_change_pct"], 5.0, places=6)
+        self.assertEqual(set(flow["coins"]), {"BTC", "ETH", "SOL"})
+        text = describe_perp_flow(flow)
+        self.assertIn("Longs paying", text)
+        self.assertIn("+5.0% / 24h", text)
+        # A cold database measures nothing and says why.
+        cold = measure_perp_flow(self.root / "missing.db")
+        self.assertFalse(cold["measured"])
+        self.assertIn("UNMEASURED", describe_perp_flow(cold))
+
+    def test_polymarket_probability_comes_from_trades_or_drops_newest_wins(self):
+        from cross_market.titan_correlator import (FED_CUT_KEYWORDS, BTC_MILESTONE_KEYWORDS,
+                                                   find_market_probability)
+        self._pm_db([(1_788_000_000_000, "Fed rate cut in September?", "Yes", 0.88),
+                     (1_787_000_000_000, "Fed rate cut in September?", "No", 0.30)])
+        fed = find_market_probability(FED_CUT_KEYWORDS, [self.drops], self.pm_db)
+        self.assertAlmostEqual(fed["probability"], 0.88)
+        self.assertIn("whale_trades", fed["source"])
+        # A NO fill is inverted; the newest trade wins regardless of source order.
+        self._newer_drop("Will Bitcoin hit $100k in 2026?", "0.64", "2026-09-04T22:00:00Z")
+        btc = find_market_probability(BTC_MILESTONE_KEYWORDS, [self.drops], self.pm_db)
+        self.assertAlmostEqual(btc["probability"], 0.64)
+        self.assertTrue(btc["source"].startswith("drop "))
+        self.assertIsNone(find_market_probability((("nothing", "matches"),), [self.drops], self.pm_db))
+        self.assertIsNone(find_market_probability(FED_CUT_KEYWORDS, [self.root / "absent"], self.root / "absent.db"))
+
+    def _newer_drop(self, question, yes_price, fetched_at, name="polymarket_macro.json"):
+        (self.drops / name).write_text(json.dumps([{"question": question, "yes_price": yes_price, "yes_bid": "0.6",
+                                                    "token_id": "t", "fetched_at": fetched_at}]), encoding="utf-8")
+
+    def test_signals_are_built_from_measured_inputs_and_degrade_honestly(self):
+        from cross_market.titan_correlator import (TitanCorrelator, NO_LIVE_MARKET, build_macro_signals,
+                                                   co_positioning_state, format_cli_report)
+        self._pm_db([(1_788_000_000_000, "Fed rate cut in September?", "Yes", 0.88)])
+        self._newer_drop("Will Bitcoin hit $100k in 2026?", "0.30", "2026-09-04T22:00:00Z")
+        c = TitanCorrelator(hl_db_path=self.hl_db, pm_db_path=self.pm_db, vault_path=self.root / "vault",
+                            cache_path=self.root / "cache.json", drop_dirs=[self.drops])
+        signals = c.detect_macro_signals()
+        self.assertEqual([sig.topic for sig in signals],
+                         ["Federal Reserve Interest Rate Cut", "Bitcoin Milestone ($100k)", "Crypto Majors Perp Flow (BTC/ETH/SOL)"])
+        fed, btc, flow = signals
+        self.assertTrue(fed.measured and btc.measured and flow.measured)
+        self.assertAlmostEqual(fed.polymarket_probability, 0.88)
+        self.assertIn("CONVERGENT", fed.co_positioning_state)             # PM yes, longs paying, OI +5%
+        self.assertEqual(fed.signal_strength, "HIGH")
+        self.assertAlmostEqual(btc.polymarket_probability, 0.30)
+        self.assertIn("DIVERGENT", btc.co_positioning_state)              # PM no, perps long
+        self.assertIn("EXPANSION", flow.co_positioning_state)
+        self.assertIn("Longs paying", flow.hyperliquid_perp_bias)
+        self.assertIn("whale_trades", fed.source)
+        # The note renders the measured rows, and the CLI report labels each source.
+        markdown = c.generate_markdown([], signals)
+        self.assertIn("YES 88% implied", markdown)
+        self.assertNotIn("SMT DIVERGENCE", markdown)                        # the old hard-coded narrative is gone
+        report = format_cli_report([], signals)
+        self.assertIn("3 measured, 0 unmeasured", report)
+        self.assertIn("[MEASURED]", report)
+        # No markets and a cold HL database: every signal degrades with an explicit tag.
+        cold = TitanCorrelator(hl_db_path=self.root / "none.db", pm_db_path=self.root / "none2.db",
+                               vault_path=self.root / "vault2", cache_path=self.root / "cache2.json", drop_dirs=[])
+        degraded = cold.detect_macro_signals()
+        self.assertTrue(all(not sig.measured for sig in degraded))
+        self.assertEqual(degraded[0].polymarket_sentiment, NO_LIVE_MARKET)
+        self.assertIn("UNMEASURED", degraded[0].co_positioning_state)
+        self.assertIn("[UNMEASURED", degraded[2].hyperliquid_perp_bias)
+        self.assertIn("0 measured, 3 unmeasured", format_cli_report([], degraded))
+        self.assertIn(NO_LIVE_MARKET, cold.generate_markdown([], degraded))
+        # The state rules themselves.
+        live = {"measured": True, "weighted_funding_apr": 10.0, "oi_change_pct": 3.0}
+        self.assertEqual(co_positioning_state(0.9, live)[1], "HIGH")
+        self.assertIn("DIVERGENT", co_positioning_state(0.7, {"measured": True, "weighted_funding_apr": -5.0, "oi_change_pct": 1.0})[0])
+        self.assertIn("CONVERGENT", co_positioning_state(0.2, {"measured": True, "weighted_funding_apr": -5.0, "oi_change_pct": 0.0})[0])
+        self.assertIn("NEUTRAL", co_positioning_state(0.5, live)[0])
+        self.assertIn("UNMEASURED", co_positioning_state(None, live)[0])
+        self.assertIn("UNMEASURED", co_positioning_state(0.9, {"measured": False})[0])
+        self.assertEqual(len(build_macro_signals(None, None, {"measured": False, "note": "cold"})), 3)
 
 
 if __name__ == "__main__":

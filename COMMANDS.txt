@@ -2360,6 +2360,20 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 51 - MEASURED MACRO SIGNALS, ITEM 18 LEAD-LAG (OFFLINE RESEARCH)
+     python -m cross_market.titan_correlator --report | --scan
+         macro block now MEASURED: Polymarket probability via whale_trades / drop files
+         (keyword groups FED_CUT_KEYWORDS, BTC_MILESTONE_KEYWORDS), HyperLiquid flow via
+         measure_perp_flow (BTC/ETH/SOL OI-weighted funding APR, OI, 24h change).
+         Missing market -> "[NO LIVE MARKET FOUND]"; cold DB -> "[UNMEASURED: reason]".
+     python -m cross_market.lead_lag --coin BTC [--drops DIR ...] [--events ts,key,prob.csv]
+         [--db PATH] [--max-lag 60] [--min-shift 0.02] [--min-events 5] [--min-points 60]
+         Lag at which probability shifts and minute log-returns correlate best;
+         tau > 0 = Polymarket leads. Refuses on thin evidence. Reads drops + read-only DB.
+         TODAY: 0 shifts (the fetcher overwrites one drop file; no time series yet).
+     tests: cross_market.tests.test_titan_correlator (TestMacroSignals), cross_market.tests.test_lead_lag
+     master suite is now 16 modules (809).
+
      ROUND 50 - MILESTONE: FIVE-DESK COMMAND INDEX (everything runnable, one place)
      All commands run from C:\Users\ixis1\Desktop\DEV unless a cd is shown.
 
@@ -2380,7 +2394,7 @@ esults_drops\.
        ingest:    python -m cross_market.ingestors.polymarket_fetcher --live | --watch | --sample
        vault:     python -m cross_market.interfaces.obsidian_exporter --once     (Cross_Market_Arb.md)
        titans:    python -m cross_market.titan_correlator --report | --scan | --once   (Cross_Market_Titans.md)
-       tests:     cross_market.tests.test_hybrid_arb test_obsidian_exporter test_polymarket_fetcher test_titan_correlator
+       tests:     cross_market.tests.test_hybrid_arb test_obsidian_exporter test_polymarket_fetcher test_titan_correlator test_lead_lag
      DESK 4 - quant_trading_lab (CME futures, own git repo)                  cd quant_trading_lab
        vault:     python -m telemetry.obsidian_exporter --once                    (Quant_Trading_Lab.md)
      DESK 5 - Tax_Reserve_Agent (escrow, safe bankroll, receipts) + Polymarket_Monarch
@@ -2389,7 +2403,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (15 modules, 798): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (16 modules, 809): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

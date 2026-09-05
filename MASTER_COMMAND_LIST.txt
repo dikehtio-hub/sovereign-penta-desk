@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 (Round 50 Milestone)
-Last Update: Round 50 Complete (Commit 0bb8f0b)
-Status:      2,427 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
+Last Update: Round 51 Complete (measured macro signals, Item 18 lead-lag)
+Status:      2,438 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -14,6 +14,10 @@ daemon, strategy, exporter, test suite, and interface across all 5 sovereign des
   Desk 3: Cross-Market Desk    (Polymarket Dutching Arb, Titan Correlator)
   Desk 4: Quant Trading Lab    (CME Futures Excursions, Backtesting, Risk Sentinel)
   Desk 5: Tax Reserve Agent    (IRC §1256, NJ 07083 Apportionment, Bankroll Escrow)
+
+NOTE ON TERMINAL COMMANDS:
+All python/cli commands assume your terminal is in the project root:
+  cd C:\Users\ixis1\Desktop\DEV
 
 RULE: Whenever new tools, flags, or items are added to the ecosystem, update this file!
 
@@ -39,8 +43,9 @@ TABLE OF CONTENTS
    cmd /c "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\start_collector.bat"
 
 2. OPEN READ-ONLY TERMINAL DASHBOARD:
-   cmd /c "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\open_dashboard.bat"
-   (or from root: python HyperLiquid/HL_Monarch/main.py dashboard)
+   Double-click root launcher: C:\Users\ixis1\Desktop\DEV\open_dashboard.bat
+   (or cmd /c "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch\scripts\launchers\open_dashboard.bat")
+   (or from root terminal: python HyperLiquid/HL_Monarch/main.py dashboard)
 
 3. CHECK CURRENT PAPER HARVESTER STATE & PnL:
    python HyperLiquid/HL_Monarch/main.py basis --harvest
@@ -48,8 +53,8 @@ TABLE OF CONTENTS
 4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,427 tests across all 5 desks):
-   python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+5. RUN FULL OFFLINE VERIFICATION (2,438 tests across all 5 desks):
+   python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
 2. TOP 20 ECOSYSTEM MODULES (What It Does & How To Activate)
@@ -311,7 +316,11 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
   - What It Does: Correlates top HyperLiquid whale wallets against Polymarket sharp
     traders. Analyzes cross-venue positioning, conviction scores, and lead-lag
     relationships between prediction markets and crypto perpetuals.
-  - Primary Code: cross_market/titan_correlator.py
+  - Primary Code: cross_market/titan_correlator.py   (macro block MEASURED since Round 51:
+                  Polymarket probability from whale_trades / drop files, HyperLiquid flow from
+                  the snapshot tables; a missing market prints [NO LIVE MARKET FOUND])
+                  cross_market/lead_lag.py           (Item 18 research half: lag between
+                  probability shifts and perp returns; offline, read-only, refuses thin data)
   - Output Note:  obsidian_vault/Cross_Market_Titans.md
   - How to Activate:
       # Run Titan correlation scan and update Obsidian note:
@@ -322,8 +331,13 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
 
       # Run against custom databases:
       python -m cross_market.titan_correlator --scan --hl-db <PATH> --pm-db <PATH>
+
+      # Item 18 lead-lag (offline research; needs timestamped Polymarket drops):
+      python -m cross_market.lead_lag --coin BTC
+      python -m cross_market.lead_lag --coin ETH --drops <DIR> --db <PATH> --max-lag 60 --min-shift 0.02
+      python -m cross_market.lead_lag --events my_events.csv     # ts,key,probability
   - Test Command:
-      python -m unittest cross_market.tests.test_titan_correlator
+      python -m unittest cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag
 
 --------------------------------------------------------------------------------
 [ ] ITEM 19: MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR
@@ -400,23 +414,23 @@ Obsidian Vault Locations:
   Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md
 
 ================================================================================
-5. MASTER OFFLINE TEST SUITES (2,427 Tests Total)
+5. MASTER OFFLINE TEST SUITES (2,438 Tests Total)
 ================================================================================
 
 Every modification MUST be verified offline against all 3 test suites. Never push
-a commit without all 2,427 tests passing!
+a commit without all 2,438 tests passing!
 
 1. HyperLiquid Monarch (pytest — 1,083 tests):
    cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q
 
 2. Master & Bridges Suite (unittest — 15 modules, 798 tests):
-   python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator
+   python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag
 
 3. Tax Reserve Agent Suite (unittest — 5 modules, 546 tests):
    python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 Single-Line Full Verification Command (PowerShell):
-   python -m pytest HyperLiquid/HL_Monarch/tests -q; python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator; python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+   python -m pytest HyperLiquid/HL_Monarch/tests -q; python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag; python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
 6. EMERGENCY BRAKES, FAIL-SAFE SENTINELS & RULES

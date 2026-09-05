@@ -46,6 +46,7 @@ DEFAULT_HL_DB = HL_DIR / "data" / "hyperliquid_data.db"
 DEFAULT_PM_DB = PM_DIR / "data" / "polymarket_whales.db"
 DEFAULT_VAULT_DIR = DEV_ROOT / "obsidian_vault"
 CACHE_PATH = DEV_ROOT / "cross_market" / "titan_identities_cache.json"
+DEFAULT_DROP_DIRS = [DEV_ROOT / "Sports_Desk" / "data" / "polymarket_drops", DEV_ROOT / "cross_market" / "data"]
 
 # Add paths for cross-suite imports if present
 if str(HL_DIR) not in sys.path and HL_DIR.is_dir():
@@ -99,6 +100,246 @@ class MacroSignal:
     hyperliquid_perp_bias: str
     co_positioning_state: str
     signal_strength: str
+    # Round 51 (Directive 51-1): where the numbers came from, or that they did not.
+    measured: bool = False
+    source: str = "unmeasured"
+
+
+# Polymarket market lookups: a question matches when EVERY keyword in one group
+# appears in it (case-insensitive). Groups are alternatives.
+FED_CUT_KEYWORDS = (("fed", "rate cut"), ("fed", "cut"), ("interest rate", "cut"), ("fomc", "cut"))
+BTC_MILESTONE_KEYWORDS = (("bitcoin", "100k"), ("btc", "100k"), ("bitcoin", "$100"), ("btc", "$100"),
+                          ("bitcoin", "100,000"))
+NO_LIVE_MARKET = "[NO LIVE MARKET FOUND]"
+FLOW_COINS = ("BTC", "ETH", "SOL")
+HOURS_PER_YEAR = 24.0 * 365.0
+
+
+def _as_epoch_s(value: Any) -> float:
+    """Seconds since epoch from an ISO string, seconds, or milliseconds; 0.0 when unreadable."""
+    if value is None:
+        return 0.0
+    try:
+        num = float(value)
+        return num / 1000.0 if num > 1e11 else num
+    except (TypeError, ValueError):
+        pass
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
+
+
+def _matches(text: str, group) -> bool:
+    lowered = str(text or "").lower()
+    return all(str(k).lower() in lowered for k in group)
+
+
+def find_market_probability(keyword_groups, drop_dirs=(), pm_db_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """
+    The implied YES probability of the newest local Polymarket market matching
+    any keyword group, with where it came from - or None when nothing local
+    matches (Round 51). Sources, in order: whale_trades in the Polymarket
+    database (newest trade on a matching market; a NO fill is inverted), then
+    every *.json drop in `drop_dirs` (yes_price, else yes_bid). No network.
+    """
+    best: Optional[Dict[str, Any]] = None
+
+    def consider(candidate: Dict[str, Any]) -> None:
+        nonlocal best
+        if best is None or _as_epoch_s(candidate.get("as_of")) > _as_epoch_s(best.get("as_of")):
+            best = candidate
+
+    if pm_db_path and Path(pm_db_path).exists():
+        try:
+            con = connect_ro(Path(pm_db_path))
+            rows = con.execute("SELECT market_title, outcome, price, timestamp FROM whale_trades "
+                               "ORDER BY timestamp DESC LIMIT 5000").fetchall()
+            con.close()
+            for title, outcome, price, ts in rows:
+                if not any(_matches(title, g) for g in keyword_groups):
+                    continue
+                try:
+                    prob = float(price)
+                except (TypeError, ValueError):
+                    continue
+                if str(outcome or "").strip().lower() == "no":
+                    prob = 1.0 - prob
+                consider({"probability": prob, "question": str(title), "as_of": ts,
+                          "source": "polymarket_whales.db whale_trades"})
+                break                                       # rows are newest first
+        except Exception:                                   # noqa: BLE001 - a missing table is "no market"
+            pass
+
+    for directory in drop_dirs or ():
+        try:
+            files = sorted(Path(directory).glob("*.json"))
+        except Exception:                                   # noqa: BLE001
+            continue
+        for path in files:
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:                               # noqa: BLE001 - a bad drop is not a market
+                continue
+            items = data if isinstance(data, list) else (data.get("questions") if isinstance(data, dict) else None) or []
+            for q in items:
+                if not isinstance(q, dict) or not any(_matches(q.get("question"), g) for g in keyword_groups):
+                    continue
+                try:
+                    prob = float(q.get("yes_price") if q.get("yes_price") not in (None, "") else q.get("yes_bid"))
+                except (TypeError, ValueError):
+                    continue
+                consider({"probability": prob, "question": str(q.get("question")), "as_of": q.get("fetched_at"),
+                          "source": f"drop {path.name}"})
+    if best is not None:
+        best["probability"] = max(0.0, min(1.0, float(best["probability"])))
+    return best
+
+
+def measure_perp_flow(hl_db_path: Path, coins=FLOW_COINS, now_ms: Optional[int] = None,
+                      lookback_ms: int = 24 * 3_600_000) -> Dict[str, Any]:
+    """
+    Aggregate HyperLiquid perp flow for `coins` from the live snapshot tables
+    (Round 51): OI-weighted funding APR now, total notional OI now, and its
+    change against the newest asset_snapshots row at or before `lookback_ms`
+    ago. `measured` is False when the tables or the coins are absent.
+    """
+    out: Dict[str, Any] = {"measured": False, "coins": {}, "weighted_funding_apr": None,
+                           "total_oi": None, "oi_change_pct": None, "as_of": None, "note": ""}
+    try:
+        con = connect_ro(Path(hl_db_path))
+    except Exception as e:                                  # noqa: BLE001
+        out["note"] = f"no database: {e}"
+        return out
+    try:
+        latest = {}
+        for coin in coins:
+            row = con.execute("SELECT timestamp, mark_px, funding_rate, notional_oi FROM latest_snapshots "
+                              "WHERE coin = ?", (coin,)).fetchone()
+            if row:
+                latest[coin] = row
+        if not latest:
+            out["note"] = "latest_snapshots has none of the flow coins"
+            return out
+        now_ms = int(now_ms if now_ms is not None else max(r[0] for r in latest.values()))
+        cutoff = now_ms - int(lookback_ms)
+        total_oi = 0.0
+        weighted = 0.0
+        oi_then_total = 0.0
+        coins_with_then = 0
+        for coin, (ts, mark, rate, oi) in latest.items():
+            oi = float(oi or 0.0)
+            rate = float(rate or 0.0)
+            then = con.execute("SELECT notional_oi FROM asset_snapshots WHERE coin = ? AND timestamp <= ? "
+                               "ORDER BY timestamp DESC LIMIT 1", (coin, cutoff)).fetchone()
+            oi_then = float(then[0]) if then and then[0] is not None else None
+            out["coins"][coin] = {"mark_px": float(mark or 0.0), "funding_apr": rate * HOURS_PER_YEAR * 100.0,
+                                  "notional_oi": oi, "notional_oi_24h_ago": oi_then}
+            total_oi += oi
+            weighted += rate * oi
+            if oi_then:
+                oi_then_total += oi_then
+                coins_with_then += 1
+        out["as_of"] = now_ms
+        out["total_oi"] = total_oi
+        out["weighted_funding_apr"] = (weighted / total_oi * HOURS_PER_YEAR * 100.0) if total_oi > 0 else 0.0
+        if coins_with_then == len(latest) and oi_then_total > 0:
+            out["oi_change_pct"] = (total_oi - oi_then_total) / oi_then_total * 100.0
+        out["measured"] = total_oi > 0
+        if out["oi_change_pct"] is None:
+            out["note"] = "no asset_snapshots row 24h back for every coin - OI change unmeasured"
+    except Exception as e:                                  # noqa: BLE001 - missing tables etc.
+        out["note"] = f"{type(e).__name__}: {e}"
+    finally:
+        try:
+            con.close()
+        except Exception:                                   # noqa: BLE001
+            pass
+    return out
+
+
+def describe_perp_flow(flow: Dict[str, Any]) -> str:
+    """One line of measured perp flow, or the reason it is unmeasured."""
+    if not flow.get("measured"):
+        return f"[UNMEASURED: {flow.get('note') or 'no snapshot data'}]"
+    apr = float(flow.get("weighted_funding_apr") or 0.0)
+    side = "Longs paying" if apr > 0 else ("Shorts paying" if apr < 0 else "Flat funding")
+    oi = float(flow.get("total_oi") or 0.0)
+    change = flow.get("oi_change_pct")
+    change_text = f"{change:+.1f}% / 24h" if change is not None else "24h change unmeasured"
+    return f"{side} (OI-weighted funding {apr:+.1f}% APR), OI ${oi / 1e9:.2f}B {change_text}"
+
+
+def co_positioning_state(probability: Optional[float], flow: Dict[str, Any]) -> Tuple[str, str]:
+    """
+    (state, strength) from a Polymarket probability and the measured perp flow.
+    Rules, not narrative: CONVERGENT when both venues lean the same way,
+    DIVERGENT when they disagree, NEUTRAL near 50%, UNMEASURED when either
+    side is missing.
+    """
+    if probability is None or not flow.get("measured"):
+        return "⚪ UNMEASURED (a venue is missing)", "n/a"
+    apr = float(flow.get("weighted_funding_apr") or 0.0)
+    change = flow.get("oi_change_pct")
+    building = change is not None and change >= 0.0
+    if probability >= 0.6:
+        if apr > 0 and building:
+            strength = "HIGH" if (probability >= 0.75 and change is not None and change >= 2.0) else "MEDIUM"
+            return "🟢 CONVERGENT (PM yes; perps long and building)", strength
+        return "⚡ DIVERGENT (PM yes; perps not confirming)", "MEDIUM"
+    if probability <= 0.4:
+        if apr > 0:
+            return "⚡ DIVERGENT (PM no; perps long)", "MEDIUM"
+        return "🟢 CONVERGENT (PM no; perps not paying longs)", "MEDIUM"
+    return "🟡 NEUTRAL (PM near 50%)", "LOW"
+
+
+def flow_only_state(flow: Dict[str, Any]) -> Tuple[str, str]:
+    """(state, strength) for the HyperLiquid-only flow signal."""
+    if not flow.get("measured"):
+        return "⚪ UNMEASURED", "n/a"
+    apr = float(flow.get("weighted_funding_apr") or 0.0)
+    change = flow.get("oi_change_pct")
+    magnitude = abs(change) if change is not None else 0.0
+    strength = "HIGH" if magnitude >= 5.0 else ("MEDIUM" if magnitude >= 1.0 else "LOW")
+    if apr > 0 and change is not None and change > 0:
+        return "🟢 EXPANSION (longs paying, OI building)", strength
+    if apr > 0:
+        return "🟡 LONGS PAYING, OI FLAT OR SHRINKING", strength
+    if apr < 0:
+        return "🔴 SHORTS PAYING", strength
+    return "🟡 FLAT", strength
+
+
+def build_macro_signals(fed: Optional[Dict[str, Any]], btc: Optional[Dict[str, Any]],
+                        flow: Dict[str, Any]) -> List[MacroSignal]:
+    """Three signals from measured inputs; each says whether it was measured and from what."""
+    perp_text = describe_perp_flow(flow)
+
+    def market_signal(topic: str, found: Optional[Dict[str, Any]]) -> MacroSignal:
+        if found is None:
+            state, strength = co_positioning_state(None, flow)
+            return MacroSignal(topic=topic, polymarket_sentiment=NO_LIVE_MARKET, polymarket_probability=0.0,
+                               hyperliquid_perp_bias=perp_text, co_positioning_state=state,
+                               signal_strength=strength, measured=False,
+                               source=f"polymarket: none; hyperliquid: {'measured' if flow.get('measured') else 'unmeasured'}")
+        prob = float(found["probability"])
+        state, strength = co_positioning_state(prob, flow)
+        return MacroSignal(topic=topic, polymarket_sentiment=f"YES {prob:.0%} implied ({found.get('question', '')[:60]})",
+                           polymarket_probability=prob, hyperliquid_perp_bias=perp_text,
+                           co_positioning_state=state, signal_strength=strength,
+                           measured=bool(flow.get("measured")),
+                           source=f"polymarket: {found.get('source')}; hyperliquid: {'measured' if flow.get('measured') else 'unmeasured'}")
+
+    state, strength = flow_only_state(flow)
+    flow_signal = MacroSignal(topic="Crypto Majors Perp Flow (BTC/ETH/SOL)",
+                              polymarket_sentiment="n/a (HyperLiquid-only telemetry)", polymarket_probability=0.0,
+                              hyperliquid_perp_bias=perp_text, co_positioning_state=state, signal_strength=strength,
+                              measured=bool(flow.get("measured")),
+                              source="hyperliquid: latest_snapshots + asset_snapshots" if flow.get("measured") else "hyperliquid: unmeasured")
+    return [market_signal("Federal Reserve Interest Rate Cut", fed),
+            market_signal("Bitcoin Milestone ($100k)", btc),
+            flow_signal]
 
 
 def compute_conviction_score(hl_equity: float, pm_volume: float, pm_pnl: float, win_rate: float) -> float:
@@ -147,6 +388,7 @@ class TitanCorrelator:
         vault_path: Optional[Path] = None,
         cache_path: Optional[Path] = None,
         enable_remote_resolve: bool = False,
+        drop_dirs: Optional[List[Path]] = None,
     ):
         self.hl_db_path = Path(hl_db_path or DEFAULT_HL_DB)
         self.pm_db_path = Path(pm_db_path or DEFAULT_PM_DB)
@@ -157,6 +399,8 @@ class TitanCorrelator:
         ))
         self.cache_path = Path(cache_path or CACHE_PATH)
         self.enable_remote_resolve = enable_remote_resolve
+        # Round 51: where local Polymarket market prices may live (drop files).
+        self.drop_dirs = [Path(d) for d in (drop_dirs if drop_dirs is not None else DEFAULT_DROP_DIRS)]
         self.vault_path.mkdir(parents=True, exist_ok=True)
         self._identity_cache: Dict[str, Dict[str, str]] = self._load_cache()
 
@@ -334,41 +578,17 @@ class TitanCorrelator:
         return titans
 
     def detect_macro_signals(self) -> List[MacroSignal]:
-        """Detect macro co-positioning and lead/lag convergence across markets."""
-        signals: List[MacroSignal] = []
-
-        signals.append(
-            MacroSignal(
-                topic="Federal Reserve Interest Rate Cut",
-                polymarket_sentiment="YES (88% Implied Prob)",
-                polymarket_probability=0.88,
-                hyperliquid_perp_bias="Accumulating Spot-Backed Longs ($42M Net OI)",
-                co_positioning_state="🟢 **CONVERGENT EXPANSION** (Risk-On Macro Alignment)",
-                signal_strength="HIGH (Strong Conviction)",
-            )
-        )
-        signals.append(
-            MacroSignal(
-                topic="Bitcoin Milestone ($100k Horizon)",
-                polymarket_sentiment="YES (64% Consensus)",
-                polymarket_probability=0.64,
-                hyperliquid_perp_bias="Basis Harvester Net Positive Yield (+28.4% APR)",
-                co_positioning_state="🟢 **BULLISH ACCELERATION** (Yield Arb Backing)",
-                signal_strength="MEDIUM (Persistent Momentum)",
-            )
-        )
-        signals.append(
-            MacroSignal(
-                topic="Tech Equities / CME Nasdaq-100 (/NQ)",
-                polymarket_sentiment="Pro-Growth Consensus (72%)",
-                polymarket_probability=0.72,
-                hyperliquid_perp_bias="Low Liquidation Risk (Danger Zone Level 0)",
-                co_positioning_state="⚡ **SMT DIVERGENCE ACTIVE** (/NQ Outperforming /ES)",
-                signal_strength="HIGH (Killzone Silver Bullet)",
-            )
-        )
-
-        return signals
+        """
+        Macro co-positioning from MEASURED inputs (Round 51, Directive 51-1):
+        Polymarket probabilities from local sources (whale_trades, drop files)
+        and HyperLiquid perp flow from the snapshot tables. A market that does
+        not exist locally is reported as NO LIVE MARKET FOUND, never as a
+        number. No network.
+        """
+        fed = find_market_probability(FED_CUT_KEYWORDS, self.drop_dirs, self.pm_db_path)
+        btc = find_market_probability(BTC_MILESTONE_KEYWORDS, self.drop_dirs, self.pm_db_path)
+        flow = measure_perp_flow(self.hl_db_path)
+        return build_macro_signals(fed, btc, flow)
 
     def generate_markdown(self, titans: List[TitanProfile], signals: List[MacroSignal]) -> str:
         """Render the complete Cross_Market_Titans.md dashboard."""
@@ -588,10 +808,15 @@ def format_cli_report(titans: List[TitanProfile], signals: List[MacroSignal], to
     else:
         lines.append("  none: no HyperLiquid whale resolves to a Polymarket sharp trader (cache or eoa_address)")
     lines.append("")
-    lines.append(f"  macro co-positioning signals: {len(signals)}  "
-                 "[STATIC PLACEHOLDERS - detect_macro_signals() returns fixed narratives, not measured data]")
+    measured = sum(1 for sig in signals if getattr(sig, "measured", False))
+    lines.append(f"  macro co-positioning signals: {len(signals)} ({measured} measured, {len(signals) - measured} unmeasured)")
     for sig in signals:
-        lines.append(f"    {sig.topic:<40} PM {sig.polymarket_probability:>5.0%}  {sig.co_positioning_state}")
+        pm = f"PM {sig.polymarket_probability:>4.0%}" if sig.polymarket_sentiment != NO_LIVE_MARKET and \
+            not sig.polymarket_sentiment.startswith("n/a") else (NO_LIVE_MARKET if sig.polymarket_sentiment == NO_LIVE_MARKET else "PM  n/a")
+        tag = "[MEASURED]" if getattr(sig, "measured", False) else "[UNMEASURED]"
+        lines.append(f"    {sig.topic:<40} {pm:<24} {sig.co_positioning_state}  {tag}")
+        lines.append(f"      HL: {sig.hyperliquid_perp_bias}")
+        lines.append(f"      source: {getattr(sig, 'source', 'unmeasured')}")
     lines.append("")
     return "\n".join(lines)
 

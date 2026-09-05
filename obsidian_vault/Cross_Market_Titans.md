@@ -8,13 +8,13 @@ tags:
   - polymarket
   - quant-trading-lab
   - dashboard
-last_synced: "2026-09-04 22:51:36 UTC"
+last_synced: "2026-09-05 00:11:21 UTC"
 ---
 
 # 👑 Cross-Market Titan & Macro Intelligence Desk
 
 > [!INFO] **Executive Overview**
-> - **Last Synchronized**: `2026-09-04 22:51:36 UTC`
+> - **Last Synchronized**: `2026-09-05 00:11:21 UTC`
 > - **Target Vault**: `C:\Users\ixis1\Desktop\DEV\obsidian_vault`
 > - **Confirmed Titan Entities**: `0` institutional actors
 > - **Active Macro Signals**: `3` convergent vectors
@@ -40,9 +40,9 @@ Tracks alignment between **Polymarket event market sentiment**, **HyperLiquid pe
 
 | Macro Theme | Polymarket Sentiment | HyperLiquid Perp Flow | Co-Positioning State | Signal Strength |
 | :--- | :--- | :--- | :--- | :---: |
-| **Federal Reserve Interest Rate Cut** | `YES (88% Implied Prob)` | `Accumulating Spot-Backed Longs ($42M Net OI)` | 🟢 **CONVERGENT EXPANSION** (Risk-On Macro Alignment) | `HIGH (Strong Conviction)` |
-| **Bitcoin Milestone ($100k Horizon)** | `YES (64% Consensus)` | `Basis Harvester Net Positive Yield (+28.4% APR)` | 🟢 **BULLISH ACCELERATION** (Yield Arb Backing) | `MEDIUM (Persistent Momentum)` |
-| **Tech Equities / CME Nasdaq-100 (/NQ)** | `Pro-Growth Consensus (72%)` | `Low Liquidation Risk (Danger Zone Level 0)` | ⚡ **SMT DIVERGENCE ACTIVE** (/NQ Outperforming /ES) | `HIGH (Killzone Silver Bullet)` |
+| **Federal Reserve Interest Rate Cut** | `[NO LIVE MARKET FOUND]` | `Longs paying (OI-weighted funding +9.7% APR), OI $5.74B -0.1% / 24h` | ⚪ UNMEASURED (a venue is missing) | `n/a` |
+| **Bitcoin Milestone ($100k)** | `[NO LIVE MARKET FOUND]` | `Longs paying (OI-weighted funding +9.7% APR), OI $5.74B -0.1% / 24h` | ⚪ UNMEASURED (a venue is missing) | `n/a` |
+| **Crypto Majors Perp Flow (BTC/ETH/SOL)** | `n/a (HyperLiquid-only telemetry)` | `Longs paying (OI-weighted funding +9.7% APR), OI $5.74B -0.1% / 24h` | 🟡 LONGS PAYING, OI FLAT OR SHRINKING | `LOW` |
 
 ---
 
