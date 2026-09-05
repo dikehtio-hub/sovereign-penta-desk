@@ -251,6 +251,7 @@ def render(snapshot: Dict[str, Any], synced_at: str, vault_path: Path) -> str:
                  if snapshot.get("avg_clv") is not None else "n/a",
                  int(snapshot.get("clv_measured", 0))),
               "> - **Open Exposure**: **`%s`**" % fmt_usd(float(snapshot.get("open_exposure", 0.0))),
+              feed_liveness_line(snapshot.get("stale")),
               "> - **Un-exported > %.0fd**: `%d`" % (SYNC_ALERT_DAYS, len(stale)),
               "> - **Bankroll Gate**: `%s`" % (snapshot.get("hook_status") or "n/a"),
               "> - **Last Synchronized**: `%s`" % synced_at, "",
@@ -312,6 +313,26 @@ def render(snapshot: Dict[str, Any], synced_at: str, vault_path: Path) -> str:
 # Entry points
 # ---------------------------------------------------------------------------
 
+STALE_SECTION_CAP = 8
+
+
+def feed_liveness_line(stale: Optional[Dict[str, Any]]) -> str:
+    """
+    Round 67 (Directive 67-2): the snapshot header's one-line answer to "is the
+    quote feed alive?": age of the newest quote in the table and a verdict -
+    ACTIVE within FEED_STALE_SECONDS, STALE beyond it, NO QUOTES on an empty
+    table, unavailable when the scan failed.
+    """
+    if not stale:
+        return "> - **Feed Liveness**: `unavailable`"
+    age = stale.get("newest_quote_age_seconds")
+    if age is None:
+        return "> - **Feed Liveness**: `none` [NO QUOTES]"
+    limit = float((stale.get("thresholds") or {}).get("feed_stale_seconds") or 900)
+    text = ("%.1fm ago" % (age / 60.0)) if age < 3600 else ("%.1fh ago" % (age / 3600.0))
+    return "> - **Feed Liveness**: `%s` [%s]" % (text, "ACTIVE" if age <= limit else "STALE")
+
+
 def render_stale_section(stale: Optional[Dict[str, Any]], error: str = "") -> List[str]:
     """
     Round 66 (Ruling 65-4): sharp-book moves and the retail quotes still priced
@@ -340,14 +361,18 @@ def render_stale_section(stale: Optional[Dict[str, Any]], error: str = "") -> Li
     kind = "TIP" if stale.get("hits") else "NOTE"          # a stale quote is an opportunity to check, not a warning
     lines.append("> [!%s] **Sharp moves (last %dm): %d** · stale retail quotes: **%d** · newest quote %s"
                  % (kind, lookback, counts.get("moves", 0), counts.get("hits", 0), newest))
-    for move in stale.get("moves", [])[:8]:
+    moves, hits = stale.get("moves", []), stale.get("hits", [])
+    for move in moves[:STALE_SECTION_CAP]:
         lines.append("> - `%s` %s %s **%s**: %s `%.3f -> %.3f` (%+.1f pts in %.1f min)"
                      % (move["book"], move["event_id"], move["market_type"], move["selection"], move["direction"],
                         move["from_odds"], move["to_odds"], move["delta_prob"] * 100, move["minutes"]))
-    for hit in stale.get("hits", [])[:8]:
+    for hit in hits[:STALE_SECTION_CAP]:
         lines.append("> - 🐌 `%s` still `%.3f` on **%s**: edge `%+.1f pts` vs sharp `%.3f` (quoted %ds before the move ended, %ds old)"
                      % (hit["retail_book"], hit["retail_odds"], hit["selection"], hit["edge_prob"] * 100,
                         hit["sharp_to_odds"], int(hit["lag_seconds"]), int(hit["age_seconds"])))
+    if len(moves) > STALE_SECTION_CAP or len(hits) > STALE_SECTION_CAP:      # Ruling 66-4: cap with an overflow notice
+        lines.append("> *(and %d more sharp move(s) / %d more stale hit(s)... run `monarch_shark --stale` for the full list)*"
+                     % (max(0, len(moves) - STALE_SECTION_CAP), max(0, len(hits) - STALE_SECTION_CAP)))
     lines.append("> Display only: a price to check at the book right now, not an order. Edges are before vig and tax "
                  "(overpriced %d, re-quoted %d, too old %d, thin edge %d)."
                  % (counts.get("overpriced", 0), counts.get("not_stale", 0), counts.get("too_old", 0),

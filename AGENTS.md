@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+Round 67 complete: FEED LIVENESS IN THE Sports_Desk.md HEADER, SECTION CAP
+WITH OVERFLOW, KNOBS DOCUMENTED. The Desk Snapshot callout carries
+"**Feed Liveness**: `X ago` [ACTIVE|STALE]" (or `none` [NO QUOTES] /
+`unavailable`), judged on the newest quote in the whole table against
+FEED_STALE_SECONDS. The stale section shows at most 8 moves and 8 hits and
+appends "*(and N more sharp move(s) / M more stale hit(s)... run
+`monarch_shark --stale` for the full list)*" when more exist.
+FEED_STALE_SECONDS (pipeline alive?) and MAX_QUOTE_AGE_SECONDS (quote
+actionable?) are documented as separate knobs that share a value today.
+2 new tests. Live note header: `15.7h ago` [STALE] - the sports feed is
+deliberately idle until real odds drops arrive (Ruling 66-1).
+
 Round 66 complete: STALE-PANEL FEED LIVENESS, --json, Sports_Desk.md SECTION.
 scan_market_db measures the newest quote in the WHOLE measurements table
 (newest_quote_at / newest_quote_age_seconds) and sets feed_warning when it
@@ -385,7 +397,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 882 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 884 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -409,6 +421,17 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 67 findings
+
+- **The header verdict and the section warning are the same measurement**
+  (newest quote in the whole table vs FEED_STALE_SECONDS), rendered twice
+  on purpose: the header answers at a glance, the section explains.
+- **The cap keeps the note readable on a busy Sunday and says what it hid**;
+  the Shark's --stale (and --json) remain the complete list.
+- **Two knobs, one value**: separating pipeline liveness from quote
+  actionability lets a slow drop cadence widen the feed window without
+  making a 20-minute-old retail price actionable.
 
 ## Round 66 findings
 

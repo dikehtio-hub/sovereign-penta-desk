@@ -38,10 +38,17 @@ SHARP_BOOKS = frozenset({"pinnacle", "circa", "bookmaker", "betcris"})
 MIN_SHARP_MOVE_PROB = 0.02             # 2 points: a moneyline going -110 -> -120 is ~1.9 pts; below is wobble
 MIN_VELOCITY_PROB_PER_MIN = 0.005      # 0.5 pt/min: 2 pts inside 4 min is information; 2 pts over an hour is drift
 MIN_RETAIL_LAG_SECONDS = 60            # retail must be at least a minute behind the move's end to be "stale"
-MAX_QUOTE_AGE_SECONDS = 900            # a quote older than 15 min may already be pulled; not actionable
+MAX_QUOTE_AGE_SECONDS = 900            # QUOTE ACTIONABILITY: a retail quote older than this may already be pulled
 MIN_EDGE_PROB = 0.02                   # 2 pts of edge vs the sharp post-move price, before vig and tax
 DEFAULT_LOOKBACK_MINUTES = 180
-FEED_STALE_SECONDS = 900               # Ruling 65-2: a newest quote older than this means the feed, not the market, is quiet
+# Two knobs that happen to share a value today (Ruling 66-3). They answer different questions:
+#   FEED_STALE_SECONDS    - is the INGESTION PIPELINE alive? Judged on the newest quote anywhere in
+#                           the table; drives the "[WARN] feed stale" line and the note's Feed status.
+#   MAX_QUOTE_AGE_SECONDS - is THIS retail quote still actionable against a consensus shift? Judged
+#                           per quote inside a live feed; drives the too_old count.
+# Tune them apart: a slow drop cadence may justify a longer feed window without making a
+# 20-minute-old retail price any more actionable.
+FEED_STALE_SECONDS = 900
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "sports_market.db"
 

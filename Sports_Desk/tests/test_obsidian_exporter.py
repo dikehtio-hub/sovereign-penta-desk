@@ -201,3 +201,40 @@ class TestStaleSection(ExporterBase):
         # A snapshot without the scan renders the section as unavailable rather than crashing.
         self.assertIn("_Stale-quote scan unavailable: boom._", "\n".join(
             render({**snapshot, "stale": None, "stale_error": "boom"}, "x", self.vault).splitlines()))
+
+    def test_the_section_caps_at_eight_with_an_overflow_notice(self):
+        for i in range(10):                                                      # ten sharp moves, ten stale books
+            self._measure("Pinnacle", 2.00, 9, selection="Sel%d" % i)
+            self._measure("Pinnacle", 1.80, 5, selection="Sel%d" % i)
+            self._measure("DraftKings", 2.05, 10, selection="Sel%d" % i)
+        text = self._export()[0].read_text(encoding="utf-8")
+        self.assertIn("**Sharp moves (last 180m): 10** · stale retail quotes: **10**", text)
+        self.assertEqual(text.count("> - `Pinnacle` G1 moneyline"), 8)
+        self.assertEqual(text.count("> - 🐌 `DraftKings` still"), 8)
+        self.assertIn("> *(and 2 more sharp move(s) / 2 more stale hit(s)... run `monarch_shark --stale` for the full list)*", text)
+        # Exactly eight: no overflow line.
+        import sqlite3
+        con = sqlite3.connect(str(self.db))
+        con.execute("DELETE FROM fair_odds_measurements WHERE selection IN ('Sel8', 'Sel9')")
+        con.commit()
+        con.close()
+        text = self._export()[0].read_text(encoding="utf-8")
+        self.assertNotIn("more sharp move", text)
+        self.assertEqual(text.count("> - 🐌 `DraftKings` still"), 8)
+
+    def test_the_header_says_whether_the_feed_is_alive(self):
+        from Sports_Desk.interfaces.obsidian_exporter import collect, feed_liveness_line, render
+        text = self._export()[0].read_text(encoding="utf-8")
+        self.assertIn("> - **Feed Liveness**: `none` [NO QUOTES]", text)
+        self._measure("Pinnacle", 2.00, 5)
+        text = self._export()[0].read_text(encoding="utf-8")
+        self.assertIn("> - **Feed Liveness**: `5.0m ago` [ACTIVE]", text)
+        snapshot = collect(self._hook(), db_path=self.db, now=NOW + timedelta(minutes=16))
+        self.assertIn("> - **Feed Liveness**: `21.0m ago` [STALE]", render(snapshot, "x", self.vault))
+        snapshot = collect(self._hook(), db_path=self.db, now=NOW + timedelta(hours=15, minutes=25))
+        self.assertIn("> - **Feed Liveness**: `15.5h ago` [STALE]", render(snapshot, "x", self.vault))
+        self.assertEqual(feed_liveness_line(None), "> - **Feed Liveness**: `unavailable`")
+        # The header line sits inside the Desk Snapshot callout, before the un-exported count.
+        text = render(snapshot, "x", self.vault)
+        self.assertLess(text.index("**Feed Liveness**"), text.index("**Un-exported > "))
+        self.assertGreater(text.index("**Feed Liveness**"), text.index("**Desk Snapshot**"))
