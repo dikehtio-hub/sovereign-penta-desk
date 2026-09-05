@@ -1,0 +1,12 @@
+{
+  "experiment": "latency_sniper_rules",
+  "registered_utc": "2026-09-05T16:40:00+00:00",
+  "status": "SAMPLE - placeholder token ids. A real rule set is pre-registered per scheduled release BEFORE the release, one rule per market, and never edited during the event window.",
+  "how_a_rule_reads": "market resolves to outcome_if_true when payload[field] <op> value, to the other side otherwise; an event of another kind, or without the field, says nothing about the market (None).",
+  "rules": [
+    {"label": "FOMC Sep 2026: cut 25 bps", "market": "TOKEN_YES_CUT25", "kind": "fed_rate", "field": "change_bps", "op": "==", "value": -25, "outcome_if_true": "YES"},
+    {"label": "FOMC Sep 2026: cut 50+ bps", "market": "TOKEN_YES_CUT50", "kind": "fed_rate", "field": "change_bps", "op": "<=", "value": -50, "outcome_if_true": "YES"},
+    {"label": "FOMC Sep 2026: no change", "market": "TOKEN_YES_HOLD", "kind": "fed_rate", "field": "change_bps", "op": "==", "value": 0, "outcome_if_true": "YES"},
+    {"label": "CPI Aug 2026 YoY above 3.0%", "market": "TOKEN_YES_CPI_ABOVE_3", "kind": "cpi_yoy", "field": "yoy_pct", "op": ">", "value": 3.0, "outcome_if_true": "YES"}
+  ]
+}

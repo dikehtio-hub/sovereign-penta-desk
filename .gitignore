@@ -126,3 +126,5 @@ hyperliquidusers.txt
 # Round 85: C2 bot runtime state and the emergency sentinel (operator state, never committed)
 cross_market/data/c2_bot_offset.json
 HALT.flag
+# Round 87: recorded CLOB book stamps (research data, never committed)
+cross_market/data/clob_books/

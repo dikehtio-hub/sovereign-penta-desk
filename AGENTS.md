@@ -5,6 +5,27 @@ the detail.
 
 ## Status
 
+Round 87 complete (2026-09-05): ITEM 12 PHASE 1 - OFFLINE ENGINE + MEASUREMENT
+INSTRUMENT (registry line 273, not 181 as the prompt said). NEW
+cross_market/latency_sniper.py: pre-registered RULES map an event payload to
+one market's YES/NO (kind + field + op + value; a numeric rule needs a
+numeric payload, anything else says nothing); a CLOB BOOK snapshot is walked
+best-first taking each level only while the event's confidence clears the
+Tax Reserve Agent's after-tax BREAKEVEN at that level's fee-adjusted odds
+(hook.after_tax_edge_hurdle), capped by quarter-Kelly of the safe bankroll
+and hook.max_position_size; a NO outcome hits YES bids at (1 - bid).
+Fail-closed: HALT.flag refuses everything (exit 3), confidence < 0.99
+refuses everything, a book older than 10 s or from the future is skipped,
+a market without a rule is never touched. The ONLY execution is PAPER
+receipts (strategy latency_sniper, paper:1) under
+cross_market/data/paper_receipts; there is no live path in the module.
+`--record --tokens` stamps CLOB depth (the one read-only GET) into
+cross_market/data/clob_books/ (ignored) so the roadmap's "10-50% per event"
+can be MEASURED by replaying rules against stamps (`--now`) before anything
+else is built. Sample rules with placeholder tokens:
+cross_market/experiments/sniper_rules.sample.json. Tests: master MODULE 21
+(9 tests, no network). Daemons and tonight's tasks untouched.
+
 Round 85 complete (2026-09-05): ITEM 10 PHASE 1 BUILT AS RATIFIED (5d39bf6).
 cross_market/interfaces/c2_bot.py - Telegram long polling (outbound only),
 fail-closed: no TELEGRAM_BOT_TOKEN or empty C2_ADMIN_IDS -> refuses to start
@@ -584,7 +605,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (20 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot) | 917 OK |
+| master + bridges + cross-market + exporters + ingestors (21 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper) | 926 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -608,6 +629,35 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Item 12 plan - latency sniper (designed and Phase 1 built 2026-09-05, Round 87)
+
+- **What the roadmap claims vs what exists.** "10-50% per event" is
+  unmeasured. Phase 1 therefore ships the instrument before the weapon:
+  `--record` stamps CLOB depth around a scheduled release; a replay of the
+  pre-registered rules against those stamps (`--now <ISO>`) says what was
+  actually resting, at what price, for how many seconds. No ROI is claimed
+  until that replay has been run on real releases.
+- **Rules are pre-registered, never interpreted.** One JSON rule per
+  market (kind, field, op, value, outcome_if_true), written BEFORE the
+  release and never edited in the event window. A market without a rule is
+  invisible to the engine; an event of another kind is ignored; a
+  wrong-typed payload resolves to nothing, never to NO.
+- **Economics are the Tax Reserve Agent's.** A level is taken only while
+  confidence >= after_tax_edge_hurdle(odds)["breakeven_win_probability"] at
+  the level's fee-adjusted odds (fee on profit); size = min(quarter-Kelly of
+  the safe bankroll at the best level's odds, hook.max_position_size()).
+  `--assume-defaults` (fair breakeven, nominal $1,000) exists for research
+  without a ledger and says so in its output.
+- **Fail-closed.** HALT.flag, confidence < 0.99, stale (> 10 s) or future
+  books, missing rules - each refuses or skips with a reason in the output.
+- **Paper only.** Receipts under cross_market/data/paper_receipts tagged
+  latency_sniper; never the tax imports; no order path exists.
+- **Phase 2 (not built, needs decisions):** an event source (scheduled
+  releases: FOMC/BLS pages, or a paid feed), a live book poller around
+  release times, and only after measured evidence, an execution path with
+  its own gate. Latency of the ingestion is the real product; Phase 1
+  cannot measure that.
 
 ## Item 10 plan - C2 bot (proposed 2026-09-05, ratified unamended, BUILT in Round 85)
 
@@ -645,6 +695,19 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 87 findings
+
+- **Rules must fail to nothing, not to NO.** "twenty-five" == -25 is False,
+  which would have resolved the market to NO and hit the bids. A numeric
+  rule now requires a numeric payload; anything else says nothing about the
+  market. Found by the test, fixed in the engine.
+- **A NO outcome is a BUY of the other side.** Hitting a YES bid at b is
+  buying NO at (1 - b), so the walk uses (1 - bid) as the price and the same
+  breakeven test; no second code path.
+- **The cap is fixed at the best level's odds** and spent down the book, so
+  a deep second level cannot grow the position past what the first level
+  justified.
 
 ## Round 85 findings
 
