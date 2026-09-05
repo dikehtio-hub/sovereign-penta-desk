@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+Round 69 complete: CLOCK FRAGMENTS VOLATILE IN THE HL COCKPIT NOTES.
+analytics/obsidian_links.normalize_for_hash (shared by HyperLiquid_Monarch,
+Trading_Terminal, Bot_Control, the whale notes and the hub) now substitutes
+clock-derived FRAGMENTS inside substantive lines before hashing: "Ns ago"
+(DB / Polymarket engine freshness), backticked "NN.Nh" (position Duration)
+and the Realised APR cell (accrued / notional / hours held, which ticks with
+the clock); PIDs, equity, accrued funding, entry APRs, prices and config
+stay hashed. 1 new test. Live: two HL syncs 16 s apart: HyperLiquid_Monarch REWRITTEN, Trading_Terminal unchanged, Bot_Control unchanged, Monarch_Hub unchanged.
+
 Round 68 complete: TICKING AGES ARE VOLATILE IN Sports_Desk.md. The sports
 exporter's change hash now replaces every elapsed-age fragment (Feed
 Liveness `X ago`, "newest quote X ago", "newest X min ago, lookback", a
@@ -429,6 +438,22 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 69 findings
+
+- **Most of the churn in those notes is real.** The diff between HEAD and the
+  working tree showed equity, accrued funding, the funding-pair census,
+  perp prices and the collector's PID all changed: that is state, not
+  clocks, and it stays hashed. The clock-only fragments were three: "Ns
+  ago" freshness badges, the Duration column, and the Realised APR cell.
+- **Realised APR is a clock in disguise**: accrued / notional / hours_held
+  moves every sync even when nothing accrued, because hours_held is
+  fractional. Its information is the Funding Accrued cell beside it, which
+  stays hashed, so hiding the APR cell loses nothing substantive. The
+  Entry APR is a parameter and stays hashed (the pattern targets the
+  seventh cell of a position row only).
+- **Fragments, not lines**: a Bot_Control line carries the PID and the "Ns
+  ago" together; dropping the line would hide a collector restart.
 
 ## Round 68 findings
 

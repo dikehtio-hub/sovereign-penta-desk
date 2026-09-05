@@ -6,7 +6,7 @@ tags:
   - hip3
   - perp-dex
   - dashboard
-last_synced: "2026-09-04 23:55:38 UTC"
+last_synced: "2026-09-05 08:03:46 UTC"
 ---
 
 # 👑 HyperLiquid Monarch • Market Intelligence
@@ -14,11 +14,11 @@ last_synced: "2026-09-04 23:55:38 UTC"
 > **Cockpit Navigation**: [[Monarch_Hub|👑 Monarch Intelligence Hub]] • [[Bot_Control|🎮 Bot Control]] • [[Bot_Config|⚙️ Bot Config]] • [[Trading_Terminal|📈 Trading Terminal]] • [[Polymarket_Monarch|👑 Polymarket Monarch]] • [[Quant_Trading_Lab|⚡ Quant Trading Lab]] • [[Sports_Desk|🏈 Sports Desk]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]]
 
 > [!INFO] **Perpetual DEX Terminal Status**
-> - **Last Synchronized**: `2026-09-04 23:55:38 UTC`
+> - **Last Synchronized**: `2026-09-05 08:03:46 UTC`
 > - **Active Risk Preset**: `CUSTOM` • Capital Allocation: `$10,000 / leg`
 > - **HIP-3 TradFi Universe (xyz DEX)**: `119` Active Markets
 > - **Discovered Whale Accounts**: `30` Tracked (`30` linked notes)
-> - **Funding Rate Arbitrage Opportunities**: `43` liquid pairs (> 25% APR), `12` filtered as illiquid
+> - **Funding Rate Arbitrage Opportunities**: `53` liquid pairs (> 25% APR), `17` filtered as illiquid
 
 ---
 
@@ -26,21 +26,21 @@ last_synced: "2026-09-04 23:55:38 UTC"
 
 | Asset | Mark Price | Open Interest | 24h Volume | Funding APR |
 | :--- | :---: | :---: | :---: | :---: |
-| **`xyz:CL`** | `$91.02` | $189.88M | $386.34M | `+6.33%` |
-| **`xyz:SKHX`** | `$1,276.70` | $303.21M | $294.87M | `+5.90%` |
-| **`xyz:SNDK`** | `$1,733.50` | $121.24M | $204.04M | `-3.37%` |
-| **`xyz:XYZ100`** | `$29,509.00` | $209.95M | $145.52M | `+5.48%` |
-| **`xyz:BRENTOIL`** | `$95.68` | $227.59M | $136.78M | `+5.48%` |
-| **`xyz:SP500`** | `$7,715.50` | $333.60M | $136.61M | `+5.48%` |
-| **`xyz:MU`** | `$1,014.40` | $120.85M | $127.41M | `+0.03%` |
-| **`xyz:SILVER`** | `$66.25` | $117.23M | $102.39M | `+5.48%` |
-| **`xyz:SPCX`** | `$147.83` | $212.69M | $91.85M | `+3.76%` |
-| **`xyz:DRAM`** | `$59.60` | $71.69M | $91.68M | `+20.63%` |
-| **`xyz:GOLD`** | `$4,431.40` | $308.51M | $90.45M | `+5.48%` |
-| **`xyz:SKHY`** | `$175.08` | $131.03M | $85.03M | `-5.13%` |
-| **`xyz:CRCL`** | `$101.70` | $57.96M | $61.19M | `+12.28%` |
-| **`xyz:HOOD`** | `$121.95` | $59.76M | $55.42M | `+5.48%` |
-| **`xyz:INTC`** | `$95.91` | $57.88M | $52.14M | `+5.48%` |
+| **`xyz:CL`** | `$91.09` | $190.28M | $286.96M | `-12.19%` |
+| **`xyz:SNDK`** | `$1,757.90` | $123.17M | $207.52M | `-23.88%` |
+| **`xyz:SKHX`** | `$1,278.30` | $303.49M | $193.75M | `-52.69%` |
+| **`xyz:SP500`** | `$7,715.10` | $334.93M | $126.13M | `+5.48%` |
+| **`xyz:XYZ100`** | `$29,540.00` | $212.34M | $120.54M | `+5.48%` |
+| **`xyz:MU`** | `$1,014.50` | $120.12M | $120.29M | `-42.35%` |
+| **`xyz:BRENTOIL`** | `$95.74` | $228.69M | $103.32M | `+5.48%` |
+| **`xyz:SILVER`** | `$66.21` | $116.77M | $82.97M | `+5.48%` |
+| **`xyz:SPCX`** | `$148.83` | $213.08M | $79.32M | `+24.71%` |
+| **`xyz:DRAM`** | `$59.71` | $73.04M | $76.81M | `-24.31%` |
+| **`xyz:GOLD`** | `$4,434.70` | $308.64M | $76.37M | `+5.48%` |
+| **`xyz:SKHY`** | `$175.84` | $131.33M | $60.62M | `-16.53%` |
+| **`xyz:INTC`** | `$95.79` | $57.42M | $49.96M | `+5.48%` |
+| **`xyz:NVDA`** | `$230.53` | $122.88M | $46.22M | `+5.48%` |
+| **`xyz:CRCL`** | `$101.78` | $58.02M | $45.74M | `+28.00%` |
 
 ---
 
@@ -49,16 +49,16 @@ last_synced: "2026-09-04 23:55:38 UTC"
 
 | Asset | Funding APR | Direction | Open Interest | Strategy Recommendation |
 | :--- | :---: | :---: | :---: | :--- |
-| **`PONS`** | `+359.60%` | 🔴 **Short Yield** | $69.47M | Short Perp (DIRECTIONAL - no spot hedge) |
-| **`ACE`** | `-665.26%` | 🟢 **Long Yield** | $748.5K | Long Perp (DIRECTIONAL - no spot hedge) |
-| **`para:ANSEM`** | `+293.66%` | 🔴 **Short Yield** | $1.18M | Short Perp + Long UANSEM spot |
-| **`MINA`** | `-296.35%` | 🟢 **Long Yield** | $2.43M | Long Perp (DIRECTIONAL - no spot hedge) |
-| **`para:UNITREE`** | `+238.64%` | 🔴 **Short Yield** | $2.03M | Short Perp (DIRECTIONAL - no spot hedge) |
-| **`SKR`** | `-134.66%` | 🟢 **Long Yield** | $2.60M | Long Perp (DIRECTIONAL - no spot hedge) |
-| **`xyz:MAGS`** | `+234.28%` | 🔴 **Short Yield** | $393.3K | Short Perp (DIRECTIONAL - no spot hedge) |
-| **`xyz:SOFTBANK`** | `-124.30%` | 🟢 **Long Yield** | $861.2K | Long Perp (DIRECTIONAL - no spot hedge) |
-| **`xyz:BOT`** | `+175.36%` | 🔴 **Short Yield** | $2.97M | Short Perp (DIRECTIONAL - no spot hedge) |
-| **`para:TOTAL2`** | `-120.81%` | 🟢 **Long Yield** | $738.7K | Long Perp (DIRECTIONAL - no spot hedge) |
+| **`para:UNITREE`** | `+330.12%` | 🔴 **Short Yield** | $2.03M | Short Perp (DIRECTIONAL - no spot hedge) |
+| **`ACE`** | `-416.89%` | 🟢 **Long Yield** | $774.8K | Long Perp (DIRECTIONAL - no spot hedge) |
+| **`PONS`** | `+273.46%` | 🔴 **Short Yield** | $76.69M | Short Perp (DIRECTIONAL - no spot hedge) |
+| **`SKR`** | `-287.97%` | 🟢 **Long Yield** | $2.61M | Long Perp (DIRECTIONAL - no spot hedge) |
+| **`xyz:SHEIN`** | `+175.02%` | 🔴 **Short Yield** | $1.05M | Short Perp (DIRECTIONAL - no spot hedge) |
+| **`xyz:BOT`** | `-272.96%` | 🟢 **Long Yield** | $2.95M | Long Perp (DIRECTIONAL - no spot hedge) |
+| **`BSV`** | `+170.13%` | 🔴 **Short Yield** | $578.5K | Short Perp (DIRECTIONAL - no spot hedge) |
+| **`xyz:MAGS`** | `-195.47%` | 🟢 **Long Yield** | $365.5K | Long Perp (DIRECTIONAL - no spot hedge) |
+| **`CC`** | `+111.30%` | 🔴 **Short Yield** | $4.42M | Short Perp (DIRECTIONAL - no spot hedge) |
+| **`xyz:KR200`** | `-112.88%` | 🟢 **Long Yield** | $741.4K | Long Perp (DIRECTIONAL - no spot hedge) |
 
 ---
 
@@ -81,20 +81,20 @@ last_synced: "2026-09-04 23:55:38 UTC"
 ---
 
 ## 🌀 Squeeze & Exhaustion Matrix
-*Positioning stress on perps with **no spot leg**. `3` squeeze / `7` cascade watches.*
+*Positioning stress on perps with **no spot leg**. `0` squeeze / `10` cascade watches.*
 
 | Asset | Squeeze Score | Classification | Funding %ile | OI Change | Funding APR |
 | :--- | :--- | :---: | :---: | :---: | :---: |
-| **`PONS`** | `90.7` █████████░ | 💧 LONG CASCADE WATCH | `100th` | +29.6% | `+359.60%` |
-| **`MINA`** | `88.5` ████████░░ | 🔥 SHORT SQUEEZE WATCH | `14th` | +51.5% | `-296.10%` |
-| **`xyz:MAGS`** | `84.1` ████████░░ | 💧 LONG CASCADE WATCH | `85th` | +43.1% | `+234.22%` |
-| **`xyz:EWZ`** | `81.0` ████████░░ | 💧 LONG CASCADE WATCH | `85th` | +475.9% | `+105.62%` |
-| **`NEAR`** | `78.7` ███████░░░ | 💧 LONG CASCADE WATCH | `95th` | +31.2% | `+73.07%` |
-| **`VVV`** | `76.2` ███████░░░ | 💧 LONG CASCADE WATCH | `98th` | +8.7% | `+123.20%` |
-| **`para:UNITREE`** | `70.7` ███████░░░ | 💧 LONG CASCADE WATCH | `91th` | -2.0% | `+238.95%` |
-| **`para:TOTAL2`** | `68.6` ██████░░░░ | 🔥 SHORT SQUEEZE WATCH | `18th` | +22.5% | `-120.77%` |
-| **`xyz:AMZN`** | `65.4` ██████░░░░ | 💧 LONG CASCADE WATCH | `98th` | -8.9% | `+25.08%` |
-| **`xyz:KR200`** | `63.6` ██████░░░░ | 🔥 SHORT SQUEEZE WATCH | `6th` | -17.6% | `-98.99%` |
+| **`para:CIEN`** | `90.0` ████████░░ | 💧 LONG CASCADE WATCH | `95th` | +214.1% | `+236.79%` |
+| **`BSV`** | `83.1` ████████░░ | 💧 LONG CASCADE WATCH | `98th` | +17.8% | `+167.06%` |
+| **`CAKE`** | `76.2` ███████░░░ | 💧 LONG CASCADE WATCH | `100th` | +22.5% | `+32.13%` |
+| **`CC`** | `75.6` ███████░░░ | 💧 LONG CASCADE WATCH | `100th` | +6.0% | `+111.21%` |
+| **`NEAR`** | `73.0` ███████░░░ | 💧 LONG CASCADE WATCH | `84th` | +40.3% | `+67.06%` |
+| **`PONS`** | `70.8` ███████░░░ | 💧 LONG CASCADE WATCH | `80th` | +16.1% | `+272.62%` |
+| **`MET`** | `70.3` ███████░░░ | 💧 LONG CASCADE WATCH | `100th` | +7.8% | `+31.61%` |
+| **`xyz:SHEIN`** | `68.7` ██████░░░░ | 💧 LONG CASCADE WATCH | `94th` | +0.7% | `+177.55%` |
+| **`BNB`** | `68.5` ██████░░░░ | 💧 LONG CASCADE WATCH | `100th` | +6.2% | `+16.54%` |
+| **`para:AVGO`** | `67.5` ██████░░░░ | 💧 LONG CASCADE WATCH | `96th` | +0.3% | `+72.31%` |
 
 ---
 
@@ -102,16 +102,16 @@ last_synced: "2026-09-04 23:55:38 UTC"
 
 | Time (UTC) | Coin | Position Side | Liquidated Notional | Execution Price |
 | :---: | :--- | :---: | :---: | :---: |
-| 23:55:17 | **`BTC`** | 🔴 **SHORT LIQ** | $72.9K | `$79,583.00` |
-| 23:54:02 | **`BTC`** | 🟢 **LONG LIQ** | $65.0K | `$79,591.00` |
-| 23:54:02 | **`BTC`** | 🟢 **LONG LIQ** | $65.0K | `$79,588.00` |
-| 23:54:02 | **`BTC`** | 🟢 **LONG LIQ** | $53.1K | `$79,587.00` |
-| 23:54:02 | **`BTC`** | 🟢 **LONG LIQ** | $158.2K | `$79,584.00` |
-| 23:54:02 | **`BTC`** | 🟢 **LONG LIQ** | $102.6K | `$79,584.00` |
-| 23:52:25 | **`xyz:SP500`** | 🔴 **SHORT LIQ** | $51.7K | `$7,715.60` |
-| 23:48:34 | **`BTC`** | 🟢 **LONG LIQ** | $106.2K | `$79,612.00` |
-| 23:48:05 | **`BTC`** | 🟢 **LONG LIQ** | $65.0K | `$79,618.00` |
-| 23:48:05 | **`BTC`** | 🟢 **LONG LIQ** | $65.0K | `$79,615.00` |
+| 08:03:16 | **`BTC`** | 🟢 **LONG LIQ** | $60.2K | `$79,641.00` |
+| 08:03:16 | **`BTC`** | 🟢 **LONG LIQ** | $104.6K | `$79,641.00` |
+| 08:03:16 | **`BTC`** | 🟢 **LONG LIQ** | $70.0K | `$79,641.00` |
+| 08:03:16 | **`BTC`** | 🟢 **LONG LIQ** | $65.0K | `$79,639.00` |
+| 08:03:16 | **`BTC`** | 🟢 **LONG LIQ** | $100.0K | `$79,639.00` |
+| 08:03:16 | **`BTC`** | 🟢 **LONG LIQ** | $60.0K | `$79,638.00` |
+| 08:03:16 | **`BTC`** | 🟢 **LONG LIQ** | $65.0K | `$79,637.00` |
+| 08:02:43 | **`ETH`** | 🔴 **SHORT LIQ** | $100.4K | `$2,456.40` |
+| 08:02:43 | **`ETH`** | 🔴 **SHORT LIQ** | $70.0K | `$2,456.40` |
+| 08:02:43 | **`ETH`** | 🔴 **SHORT LIQ** | $90.0K | `$2,456.40` |
 
 ---
 *Generated automatically by HL_Monarch Obsidian Exporter.*

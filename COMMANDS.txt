@@ -2360,6 +2360,12 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 69 - CLOCK FRAGMENTS VOLATILE IN THE HL COCKPIT NOTES
+     HyperLiquid\HL_Monarch\analytics\obsidian_links.py _VOLATILE_FRAGMENT_PATTERNS: "Ns ago",
+         backticked "NN.Nh" durations and the Realised APR cell of a position row are replaced before
+         hashing (PID, equity, accrued funding, entry APR, prices, config stay). A stationary market
+         syncs HyperLiquid_Monarch / Trading_Terminal / Bot_Control as "unchanged".
+
      ROUND 68 - TICKING AGES ARE VOLATILE IN Sports_Desk.md
      Sports_Desk\interfaces\obsidian_exporter.py _VOLATILE_AGES: elapsed ages (Feed Liveness, newest
          quote, feed line, hit age) are replaced by <VOLATILE_TIME> before hashing; verdicts and counts

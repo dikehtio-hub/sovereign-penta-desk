@@ -82,12 +82,31 @@ _VOLATILE_LINE_PATTERNS = (
     re.compile(r"^\s*>\s*-\s*\*\*Last (?:Updated|Synchronized|Refreshed)\*\*:.*$", re.MULTILINE),
 )
 
+# Round 69 (Ruling 68-1): elapsed-time FRAGMENTS inside otherwise substantive lines. Whole
+# lines cannot be dropped here - the same line carries the collector's PID, a position's
+# accrued funding, an engine's badge - so each pattern replaces only the clock-derived
+# number and leaves the state beside it in the hash:
+#   "`12s ago`" / "(243475s ago)"  - how long since the DB / Polymarket engine last wrote;
+#   "`89.2h`"                       - a position's Duration (hours held);
+#   the Realised APR cell           - accrued / notional / hours held: it ticks with the clock
+#                                     even when nothing accrued (the Funding Accrued cell beside
+#                                     it, which does change on an accrual, stays hashed; so does
+#                                     the Entry APR).
+_VOLATILE_FRAGMENT_PATTERNS = (
+    (re.compile(r"\b\d+s ago\b"), "<VOLATILE_TIME>"),
+    (re.compile(r"`\d+(?:\.\d+)?h`"), "`<VOLATILE_TIME>`"),
+    (re.compile(r"(\| `[+-]?\d+(?:\.\d+)?%` \| )`[+-]?\d+(?:\.\d+)?%`( \| \*\*`[+-]?\$)"),
+     r"\1`<VOLATILE_APR>`\2"),
+)
+
 
 def normalize_for_hash(content: str) -> str:
-    """Strip per-sync timestamps so only substantive changes register."""
+    """Strip per-sync timestamps and clock-derived fragments so only substantive changes register."""
     out = content
     for pattern in _VOLATILE_LINE_PATTERNS:
         out = pattern.sub("", out)
+    for pattern, replacement in _VOLATILE_FRAGMENT_PATTERNS:
+        out = pattern.sub(replacement, out)
     # Collapse trailing whitespace so cosmetic line-ending drift is not a change.
     return "\n".join(line.rstrip() for line in out.splitlines()).strip()
 
