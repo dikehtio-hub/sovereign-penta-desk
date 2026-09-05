@@ -229,7 +229,7 @@ class Betslip:
                        "NOT a tax record - import the book's own export through Tax_Reserve_Agent.")
         return record
 
-    def show_stale(self, lookback_minutes: Optional[float] = None, **thresholds: Any) -> Any:
+    def show_stale(self, lookback_minutes: Optional[float] = None, as_json: bool = False, **thresholds: Any) -> Any:
         """
         Round 65 (Directive 65-1): the stale-quote panel. Sharp moves in
         fair_odds_measurements within the lookback and the retail quotes still
@@ -237,10 +237,15 @@ class Betslip:
         ONLY - nothing here stakes, and the panel says so, because a latency edge
         that is a minute old is a different thing from one that is fifteen.
         """
-        from Sports_Desk.engine.stale_quotes import DEFAULT_LOOKBACK_MINUTES, render_stale_quotes, scan_market_db
+        import json
+        from Sports_Desk.engine.stale_quotes import (DEFAULT_LOOKBACK_MINUTES, render_stale_quotes, scan_market_db,
+                                                     scan_to_dict)
         scan = scan_market_db(self.db_path, now=self.now,
                               lookback_minutes=lookback_minutes if lookback_minutes is not None else DEFAULT_LOOKBACK_MINUTES,
                               **thresholds)
+        if as_json:                                         # Ruling 65-4: the raw scan for tools and the vault
+            self.write(json.dumps(scan_to_dict(scan), indent=2))
+            return scan
         self.write(render_stale_quotes(scan, now=self.now))
         self.write("  Display only: a stale quote is a price to check at the book right now, not an order. "
                    "Edges are before vig and tax.")
@@ -687,6 +692,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                              "consensus (display only) and exit")
     parser.add_argument("--lookback-minutes", type=float, default=None,
                         help="with --stale: how far back to read quotes (default 180)")
+    parser.add_argument("--json", action="store_true", help="with --stale: print the scan as JSON")
     parser.add_argument("--gambling-win-capacity", type=float, default=0.0,
                         help="YTD gambling winnings a sportsbook loss can net "
                              "against under NJ 54A:5-1(g). Default 0 - the "
@@ -717,7 +723,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         slip.show_performance()
         return 0
     if args.stale:
-        slip.show_stale(lookback_minutes=args.lookback_minutes)
+        slip.show_stale(lookback_minutes=args.lookback_minutes, as_json=args.json)
         return 0
     if args.cross_market:
         slip.show_cross_market(

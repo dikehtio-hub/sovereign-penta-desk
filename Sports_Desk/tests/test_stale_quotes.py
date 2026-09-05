@@ -102,6 +102,67 @@ class TestStaleQuotes(unittest.TestCase):
         self.assertEqual(len(sq.find_stale_quotes(quotes, now=T, min_lag_seconds=10).hits), 1)
 
 
+class TestFeedLiveness(unittest.TestCase):
+    """Round 66 (Ruling 65-2): the panel says how fresh the feed is, and warns when it is not."""
+
+    @staticmethod
+    def db_with(tmp, quotes):
+        db = Path(tmp) / "sports_market.db"
+        init_market_db(db)
+        con = sqlite3.connect(str(db))
+        for book, odds, minutes_ago in quotes:
+            stamp = (T - timedelta(minutes=minutes_ago)).isoformat().replace("+00:00", "Z")
+            con.execute("INSERT INTO fair_odds_measurements (timestamp, event_id, sport, market_type, line, "
+                        "sportsbook, raw_quotes_json, selection, offered_odds, implied_prob_raw, fair_prob, "
+                        "fair_odds, expected_value, quarter_kelly, overround, shin_z, power_k, divergent, "
+                        "max_oracle_delta, quoted_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (stamp, "G1", "NFL", "moneyline", "", book, "[]", "Ravens", odds, 1 / odds, 0.5, 2.0,
+                         0.0, 0.0, 0.04, 0.0, 1.0, 0, 0.0, stamp))
+        con.commit()
+        con.close()
+        return db
+
+    def test_empty_stale_and_fresh_databases_read_differently(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            empty = self.db_with(tmp, [])
+            scan = sq.scan_market_db(empty, now=T)
+            self.assertIsNone(scan.newest_quote_at)
+            self.assertEqual(scan.feed_warning, "feed stale / no quotes in the database")
+            text = sq.render_stale_quotes(scan, now=T)
+            self.assertTrue(text.startswith("[STALE] newest quote: none | lookback: 180 min | sharp moves: 0 | stale retail: 0"))
+            self.assertIn("[WARN] feed stale / no quotes in the database", text)
+        with tempfile.TemporaryDirectory() as tmp:
+            paused = self.db_with(tmp, [("Pinnacle", 2.0, 20)])                # newest 20 min ago: over the 15 min guard
+            scan = sq.scan_market_db(paused, now=T)
+            self.assertAlmostEqual(scan.newest_quote_age_seconds, 1200.0, places=6)
+            self.assertEqual(scan.quotes_in_window, 1)
+            self.assertEqual(scan.feed_warning, "feed stale / newest quote 20.0 min ago (> 15 min)")
+            self.assertIn("[WARN] feed stale / newest quote 20.0 min ago (> 15 min)", sq.render_stale_quotes(scan, now=T))
+        with tempfile.TemporaryDirectory() as tmp:
+            beyond = self.db_with(tmp, [("Pinnacle", 2.0, 200)])              # newest older than the window itself
+            scan = sq.scan_market_db(beyond, now=T)
+            self.assertEqual(scan.quotes_in_window, 0)
+            self.assertEqual(scan.feed_warning,
+                             "feed stale / no recent quotes in window (newest 200.0 min ago, lookback 180 min)")
+        with tempfile.TemporaryDirectory() as tmp:
+            fresh = self.db_with(tmp, [("Pinnacle", 2.0, 9), ("Pinnacle", 1.8, 5), ("DraftKings", 2.05, 2)])
+            scan = sq.scan_market_db(fresh, now=T)
+            self.assertIsNone(scan.feed_warning)
+            self.assertAlmostEqual(scan.newest_quote_age_seconds, 120.0, places=6)
+            text = sq.render_stale_quotes(scan, now=T)
+            self.assertTrue(text.startswith("[STALE] newest quote: 2.0 min ago | lookback: 180 min | sharp moves: 1 | stale retail: 0"))
+            self.assertNotIn("[WARN]", text)
+            # The JSON form carries the same telemetry and the scan's contents.
+            data = sq.scan_to_dict(scan)
+            self.assertEqual(data["newest_quote_at"], (T - timedelta(minutes=2)).isoformat())
+            self.assertEqual((data["newest_quote_age_seconds"], data["lookback_minutes"], data["feed_warning"]),
+                             (120.0, 180.0, None))
+            self.assertEqual(data["counts"]["moves"], 1)
+            self.assertEqual(data["moves"][0]["direction"], "shortened")
+            self.assertEqual(data["thresholds"]["feed_stale_seconds"], 900)
+            self.assertEqual(sq.newest_quote_moment(Path(tmp) / "missing.db"), None)
+
+
 class TestMarketDb(unittest.TestCase):
 
     def test_scan_reads_measurements_within_the_lookback(self):

@@ -5,6 +5,17 @@ the detail.
 
 ## Status
 
+Round 66 complete: STALE-PANEL FEED LIVENESS, --json, Sports_Desk.md SECTION.
+scan_market_db measures the newest quote in the WHOLE measurements table
+(newest_quote_at / newest_quote_age_seconds) and sets feed_warning when it
+is older than 15 min or older than the lookback ("feed stale / ..."); the
+panel header reads "[STALE] newest quote: X min ago | lookback: N min |
+sharp moves: M | stale retail: K" and prints "[WARN] ..." beneath (CLI and
+menu [t]). scan_to_dict + `monarch_shark --stale --json`. Sports_Desk.md
+carries "## 🕒 Stale Quotes & Market Consensus Latency" from collect()
+(display only; an empty feed says "No sharp moves detected in last 180m
+(newest quote none)" under a feed warning). 3 new tests.
+
 Round 65 complete: STALE-QUOTE PANEL IN THE MONARCH SHARK (display only).
 Betslip.show_stale(lookback_minutes, **thresholds) scans the desk's own
 fair_odds_measurements through Sports_Desk.engine.stale_quotes and renders
@@ -374,7 +385,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 879 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 882 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -398,6 +409,21 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 66 findings
+
+- **Feed liveness is measured over the whole table, not the window.** With
+  the window alone, "no quotes in the last 180 min" and "no quotes ever"
+  read the same; the newest-quote-anywhere figure separates a paused
+  collector (newest 200 min ago -> "no recent quotes in window") from an
+  empty database ("no quotes in the database") from a live but quiet
+  market (no warning, 0 moves).
+- **The directive's exporter path was wrong**: there is no
+  Sports_Desk/reports/; the note is written by
+  Sports_Desk/interfaces/obsidian_exporter.py, where the section now lives,
+  built from the same scan_to_dict the CLI prints.
+- **JSON mode prints no prose**: the display-only sentence is for humans;
+  tools get the dict (thresholds included) and nothing else on stdout.
 
 ## Round 65 findings
 

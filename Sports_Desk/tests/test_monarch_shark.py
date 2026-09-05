@@ -538,8 +538,32 @@ class TestStalePanel(SharkTestBase):
         self.assertIn("[STALE] sharp moves:", printed)
         self.assertIn("Display only", printed)
 
+    def test_the_stale_json_flag_prints_the_scan_as_json(self):
+        import json
+        from unittest import mock
+        from Sports_Desk.interfaces.monarch_shark import main
+        self._measure("Pinnacle", 2.00, 9)
+        self._measure("Pinnacle", 1.80, 5)
+        self._measure("DraftKings", 2.05, 10)
+        slip = self._slip()
+        scan = slip.show_stale(as_json=True)
+        data = json.loads(self.written[-1])
+        self.assertEqual((data["counts"]["moves"], data["counts"]["hits"]), (1, 1))
+        self.assertEqual(data["hits"][0]["retail_book"], "DraftKings")
+        self.assertIsNone(data["feed_warning"])
+        self.assertEqual(data["lookback_minutes"], 180.0)
+        self.assertEqual(len(scan.hits), 1)
+        self.assertFalse(self._said("Display only"))                            # JSON is for tools, no prose
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(main(["--stale", "--json", "--db", str(self.db)]), 0)
+        payload = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertIn("newest_quote_at", payload)
+        self.assertIn("feed_warning", payload)                                  # real clock: the planted quotes are old
+        self.assertTrue(payload["feed_warning"].startswith("feed stale"))
+
     def test_the_menu_offers_stale_quotes(self):
         slip = self._slip(answers=("t", "q"))
         self.assertEqual(slip.run(), 0)
         self.assertTrue(self._said("[t] stale quotes"))
-        self.assertTrue(self._said("[STALE] sharp moves: 0"))
+        self.assertTrue(self._said("[STALE] newest quote: none | lookback: 180 min | sharp moves: 0 | stale retail: 0"))
+        self.assertTrue(self._said("[WARN] feed stale / no quotes in the database"))

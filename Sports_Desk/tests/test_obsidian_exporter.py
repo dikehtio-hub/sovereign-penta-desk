@@ -159,3 +159,45 @@ class TestGatedState(ExporterBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestStaleSection(ExporterBase):
+    """Round 66 (Ruling 65-4): Sports_Desk.md carries the stale-quote scan with feed liveness."""
+
+    def _measure(self, book, odds, minutes_ago, selection="Ravens"):
+        import sqlite3
+        stamp = (NOW - timedelta(minutes=minutes_ago)).isoformat().replace("+00:00", "Z")
+        con = sqlite3.connect(str(self.db))
+        con.execute("INSERT INTO fair_odds_measurements (timestamp, event_id, sport, market_type, line, sportsbook, "
+                    "raw_quotes_json, selection, offered_odds, implied_prob_raw, fair_prob, fair_odds, expected_value, "
+                    "quarter_kelly, overround, shin_z, power_k, divergent, max_oracle_delta, quoted_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (stamp, "G1", "NFL", "moneyline", "", book, "[]", selection, odds, 1 / odds, 0.5, 2.0, 0.0, 0.0,
+                     0.04, 0.0, 1.0, 0, 0.0, stamp))
+        con.commit()
+        con.close()
+
+    def test_an_empty_feed_says_so_and_a_planted_move_is_rendered(self):
+        text = self._export()[0].read_text(encoding="utf-8")
+        self.assertIn("## 🕒 Stale Quotes & Market Consensus Latency", text)
+        self.assertIn("> [!INFO] **Feed:** feed stale / no quotes in the database", text)
+        self.assertIn("No sharp moves detected in last 180m (newest quote none).", text)
+        self.assertNotIn("[!WARNING]", text)                                     # WARNING stays for un-exported bets
+        self._measure("Pinnacle", 2.00, 9)
+        self._measure("Pinnacle", 1.80, 5)
+        self._measure("DraftKings", 2.05, 10)
+        text = self._export()[0].read_text(encoding="utf-8")
+        self.assertIn("**Sharp moves (last 180m): 1** · stale retail quotes: **1** · newest quote 5m ago", text)
+        self.assertIn("`Pinnacle` G1 moneyline **Ravens**: shortened `2.000 -> 1.800` (+5.6 pts in 4.0 min)", text)
+        self.assertIn("🐌 `DraftKings` still `2.050` on **Ravens**: edge `+6.8 pts` vs sharp `1.800`", text)
+        self.assertIn("Display only: a price to check at the book right now, not an order.", text)
+        self.assertIn("> [!TIP] **Sharp moves", text)
+        self.assertNotIn("**Feed:** feed stale", text)
+        # A feed that stopped 20 minutes ago is flagged even when the window still holds its quotes.
+        from Sports_Desk.interfaces.obsidian_exporter import collect, render
+        snapshot = collect(self._hook(), db_path=self.db, now=NOW + timedelta(minutes=16))
+        section = "\n".join(render(snapshot, "x", self.vault).splitlines())
+        self.assertIn("[!INFO] **Feed:** feed stale / newest quote 21.0 min ago (> 15 min)", section)
+        # A snapshot without the scan renders the section as unavailable rather than crashing.
+        self.assertIn("_Stale-quote scan unavailable: boom._", "\n".join(
+            render({**snapshot, "stale": None, "stale_error": "boom"}, "x", self.vault).splitlines()))
