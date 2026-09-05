@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+Round 65 complete: STALE-QUOTE PANEL IN THE MONARCH SHARK (display only).
+Betslip.show_stale(lookback_minutes, **thresholds) scans the desk's own
+fair_odds_measurements through Sports_Desk.engine.stale_quotes and renders
+the sharp moves and the retail quotes still priced off the old consensus;
+CLI `monarch_shark --stale [--lookback-minutes 180]`; menu [t]. Nothing
+stakes from the panel and it says so. 3 new tests.
+
 Round 64 complete: PAPER ARB CLOSED-LOOP DRILL, STALE-QUOTE ENGINE GROUNDWORK.
 cross_market/paper_drill.py drives Betslip.stake_cross_market(paper=True)
 over synthetic equal-payout pairs, writes two paper receipts per dutch
@@ -367,7 +374,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 876 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 879 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -391,6 +398,19 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 65 findings
+
+- **The panel is the engine's renderer, nothing more**: show_stale calls
+  scan_market_db on the slip's DB with the slip's clock (tests pin the
+  clock through `now`), so the HUD and the engine cannot disagree. The
+  live sports_market.db holds sample quotes and reports 0 sharp moves.
+- **Display-only is stated in the panel itself**, next to the edges,
+  because a latency edge is measured before vig and tax and decays by the
+  minute; the Shark's staking paths remain the only way to record anything.
+- **Registry synchronised**: Antigravity regenerated its Top 20 from the
+  master list (15 of 20; Items 7, 10, 11, 12, 13 on the roadmap; stale
+  quotes under the Sports Desk). The three-round disagreement is closed.
 
 ## Round 64 findings
 

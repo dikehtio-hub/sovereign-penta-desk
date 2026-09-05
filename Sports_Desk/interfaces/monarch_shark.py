@@ -229,6 +229,23 @@ class Betslip:
                        "NOT a tax record - import the book's own export through Tax_Reserve_Agent.")
         return record
 
+    def show_stale(self, lookback_minutes: Optional[float] = None, **thresholds: Any) -> Any:
+        """
+        Round 65 (Directive 65-1): the stale-quote panel. Sharp moves in
+        fair_odds_measurements within the lookback and the retail quotes still
+        priced off the old consensus (Sports_Desk.engine.stale_quotes). DISPLAY
+        ONLY - nothing here stakes, and the panel says so, because a latency edge
+        that is a minute old is a different thing from one that is fifteen.
+        """
+        from Sports_Desk.engine.stale_quotes import DEFAULT_LOOKBACK_MINUTES, render_stale_quotes, scan_market_db
+        scan = scan_market_db(self.db_path, now=self.now,
+                              lookback_minutes=lookback_minutes if lookback_minutes is not None else DEFAULT_LOOKBACK_MINUTES,
+                              **thresholds)
+        self.write(render_stale_quotes(scan, now=self.now))
+        self.write("  Display only: a stale quote is a price to check at the book right now, not an order. "
+                   "Edges are before vig and tax.")
+        return scan
+
     def _load_polymarket_questions(self) -> List[Dict[str, Any]]:
         """
         Live Polymarket questions, from the drop folder when one is present.
@@ -496,7 +513,7 @@ class Betslip:
         rows = self.show_hotlist()
         while True:
             self.write("")
-            self.write("  [n] stake by number   [a] arbitrage   [x] cross-market   [c] execution CLV")
+            self.write("  [n] stake by number   [a] arbitrage   [x] cross-market   [t] stale quotes   [c] execution CLV")
             self.write("  [p] desk performance  [s] tax-ledger sync   [r] refresh   [q] quit")
             choice = (self.read("  > ") or "").strip().lower()
             if choice in ("q", "quit", "exit", ""):
@@ -521,6 +538,8 @@ class Betslip:
                     if index is not None and index < len(pairs):
                         record = self.stake_cross_market(results[index], pairs[index])
                         recorded += 1 if record and record.get("complete") else 0
+            elif choice in ("t", "stale", "stale quotes"):
+                self.show_stale()
             elif choice in ("c", "clv"):
                 self.show_clv()
             elif choice in ("p", "perf", "performance"):
@@ -663,6 +682,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                              "list any the ledger has not seen")
     parser.add_argument("--cross-market", action="store_true",
                         help="Polymarket vs sportsbook, priced after asymmetric tax")
+    parser.add_argument("--stale", action="store_true",
+                        help="print sharp-book moves and the retail quotes still priced off the old "
+                             "consensus (display only) and exit")
+    parser.add_argument("--lookback-minutes", type=float, default=None,
+                        help="with --stale: how far back to read quotes (default 180)")
     parser.add_argument("--gambling-win-capacity", type=float, default=0.0,
                         help="YTD gambling winnings a sportsbook loss can net "
                              "against under NJ 54A:5-1(g). Default 0 - the "
@@ -691,6 +715,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
     if args.performance:
         slip.show_performance()
+        return 0
+    if args.stale:
+        slip.show_stale(lookback_minutes=args.lookback_minutes)
         return 0
     if args.cross_market:
         slip.show_cross_market(

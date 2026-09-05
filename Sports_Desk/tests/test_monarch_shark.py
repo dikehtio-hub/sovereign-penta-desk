@@ -486,3 +486,60 @@ class TestCrossMarketStaking(SharkTestBase):
         self.assertEqual(recorded, 0)
         self.assertTrue(self._said("[x] cross-market"))
         self.assertEqual(self._bets(), [])
+
+
+class TestStalePanel(SharkTestBase):
+    """Round 65 (Directive 65-1): the stale-quote panel is display-only and reads the desk's own measurements."""
+
+    def _measure(self, book, odds, minutes_ago, selection="Ravens"):
+        import sqlite3
+        from datetime import timedelta, timezone
+        stamp = (NOW - timedelta(minutes=minutes_ago)).replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+        con = sqlite3.connect(str(self.db))
+        con.execute("INSERT INTO fair_odds_measurements (timestamp, event_id, sport, market_type, line, sportsbook, "
+                    "raw_quotes_json, selection, offered_odds, implied_prob_raw, fair_prob, fair_odds, expected_value, "
+                    "quarter_kelly, overround, shin_z, power_k, divergent, max_oracle_delta, quoted_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (stamp, "G1", "NFL", "moneyline", "", book, "[]", selection, odds, 1 / odds, 0.5, 2.0, 0.0, 0.0,
+                     0.04, 0.0, 1.0, 0, 0.0, stamp))
+        con.commit()
+        con.close()
+
+    def test_the_panel_shows_the_sharp_move_and_the_stale_retail_quote_and_stakes_nothing(self):
+        self._measure("Pinnacle", 2.00, 9)
+        self._measure("Pinnacle", 1.80, 5)                                     # shortened Ravens 4 min ago
+        self._measure("DraftKings", 2.05, 10)                                  # still at the old price
+        slip = self._slip()
+        scan = slip.show_stale()
+        self.assertEqual((len(scan.moves), len(scan.hits)), (1, 1))
+        self.assertEqual(scan.hits[0].retail_book, "DraftKings")
+        self.assertTrue(self._said("[STALE] sharp moves: 1"))
+        self.assertTrue(self._said("Pinnacle G1 moneyline Ravens: shortened 2.000 -> 1.800"))
+        self.assertTrue(self._said("DraftKings still 2.050 on Ravens"))
+        self.assertTrue(self._said("Display only"))
+        self.assertEqual(query_placed_bets(db_path=self.db), [])                 # nothing was staked
+        # A tighter lookback that excludes the quotes finds nothing, and says so.
+        self.written.clear()
+        scan = slip.show_stale(lookback_minutes=3)
+        self.assertEqual((len(scan.moves), len(scan.hits)), (0, 0))
+        self.assertTrue(self._said("no sharp move in the window"))
+
+    def test_the_stale_flag_prints_the_panel_and_exits(self):
+        from unittest import mock
+        from Sports_Desk.interfaces.monarch_shark import main
+        self._measure("Pinnacle", 2.00, 9)
+        self._measure("Pinnacle", 1.80, 5)
+        self._measure("DraftKings", 2.05, 10)
+        with mock.patch("builtins.print") as fake_print, \
+                mock.patch("Sports_Desk.interfaces.monarch_shark.datetime") as fake_dt:
+            fake_dt.now.return_value = NOW
+            self.assertEqual(main(["--stale", "--db", str(self.db), "--lookback-minutes", "60"]), 0)
+        printed = "\n".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("[STALE] sharp moves:", printed)
+        self.assertIn("Display only", printed)
+
+    def test_the_menu_offers_stale_quotes(self):
+        slip = self._slip(answers=("t", "q"))
+        self.assertEqual(slip.run(), 0)
+        self.assertTrue(self._said("[t] stale quotes"))
+        self.assertTrue(self._said("[STALE] sharp moves: 0"))
