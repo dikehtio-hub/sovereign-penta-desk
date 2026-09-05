@@ -49,6 +49,15 @@ _VOLATILE = (
     re.compile(r"^\s*>\s*-\s*\*\*Last (?:Updated|Synchronized|Refreshed)\*\*:.*$",
                re.MULTILINE),
 )
+# Round 68 (Ruling 67-3): elapsed ages tick every minute; a note that changed nothing but its
+# clocks must not be rewritten. Each pattern replaces ONLY the age and keeps the verdict beside
+# it, so [ACTIVE] -> [STALE], a new move, or a hit ageing out still changes the hash.
+_VOLATILE_AGES = (
+    (re.compile(r"(\*\*Feed Liveness\*\*: `)[0-9.]+[mh] ago(`)"), r"\1<VOLATILE_TIME>\2"),
+    (re.compile(r"(newest quote )[0-9.]+ ?(?:m|h|min) ago"), r"\1<VOLATILE_TIME>"),
+    (re.compile(r"(newest )[0-9.]+ min ago(, lookback)"), r"\1<VOLATILE_TIME>\2"),
+    (re.compile(r"(, )[0-9]+s old\)"), r"\1<VOLATILE_TIME> old)"),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +80,8 @@ def _normalise(content: str) -> str:
     out = content
     for pattern in _VOLATILE:
         out = pattern.sub("", out)
+    for pattern, replacement in _VOLATILE_AGES:
+        out = pattern.sub(replacement, out)
     return "\n".join(line.rstrip() for line in out.splitlines()).strip()
 
 

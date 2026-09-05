@@ -2360,6 +2360,11 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 68 - TICKING AGES ARE VOLATILE IN Sports_Desk.md
+     Sports_Desk\interfaces\obsidian_exporter.py _VOLATILE_AGES: elapsed ages (Feed Liveness, newest
+         quote, feed line, hit age) are replaced by <VOLATILE_TIME> before hashing; verdicts and counts
+         stay, so the note rewrites on [ACTIVE]->[STALE] or a new move, not on the clock.
+
      ROUND 67 - FEED LIVENESS IN THE Sports_Desk.md HEADER, SECTION CAP, KNOBS DOCUMENTED
      Sports_Desk.md Desk Snapshot: "**Feed Liveness**: `X ago` [ACTIVE|STALE]" (`none` [NO QUOTES] on an
          empty table). Stale section capped at 8 moves / 8 hits with an overflow line pointing at
@@ -2583,7 +2588,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (19 modules, 884): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (19 modules, 885): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

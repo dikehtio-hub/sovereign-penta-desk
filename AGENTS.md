@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+Round 68 complete: TICKING AGES ARE VOLATILE IN Sports_Desk.md. The sports
+exporter's change hash now replaces every elapsed-age fragment (Feed
+Liveness `X ago`, "newest quote X ago", "newest X min ago, lookback", a
+hit's "Ns old") with <VOLATILE_TIME> while keeping the verdicts and counts,
+so a note whose only change is its clocks is not rewritten, and a flip
+[ACTIVE] -> [STALE], a new move or a hit ageing out still rewrites at once.
+1 new test.
+
 Round 67 complete: FEED LIVENESS IN THE Sports_Desk.md HEADER, SECTION CAP
 WITH OVERFLOW, KNOBS DOCUMENTED. The Desk Snapshot callout carries
 "**Feed Liveness**: `X ago` [ACTIVE|STALE]" (or `none` [NO QUOTES] /
@@ -397,7 +405,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 884 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 885 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -421,6 +429,17 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 68 findings
+
+- **The header line was not the only clock.** Normalising only "Feed
+  Liveness: X ago" would have left the section's "newest quote X ago" and
+  every hit's "Ns old" ticking, and the note would still have rewritten
+  each minute. Four substitution patterns cover every age fragment; each
+  keeps the verdict or count next to it so state changes still hash
+  differently (test: +1 min -> unchanged, +16 min -> STALE -> rewritten).
+- **Substitute, do not strip**: the existing _VOLATILE patterns delete whole
+  lines; these replace only the number so the verdict survives.
 
 ## Round 67 findings
 

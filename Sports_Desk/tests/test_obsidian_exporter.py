@@ -238,3 +238,37 @@ class TestStaleSection(ExporterBase):
         text = render(snapshot, "x", self.vault)
         self.assertLess(text.index("**Feed Liveness**"), text.index("**Un-exported > "))
         self.assertGreater(text.index("**Feed Liveness**"), text.index("**Desk Snapshot**"))
+
+    def test_ticking_ages_do_not_rewrite_the_note_but_a_status_flip_does(self):
+        """Round 68 (Ruling 67-3): the clocks are volatile, the verdicts are not."""
+        from Sports_Desk.interfaces.obsidian_exporter import collect, export_sports_desk, render
+        self._measure("Pinnacle", 2.00, 9)
+        self._measure("Pinnacle", 1.80, 5)
+        self._measure("DraftKings", 2.05, 10)                                 # a hit whose "Ns old" ticks too
+        path, first = self._export()                                          # NOW: feed ACTIVE, 1 move, 1 hit
+        self.assertTrue(first)
+        text_a = path.read_text(encoding="utf-8")
+        self.assertIn("`5.0m ago` [ACTIVE]", text_a)
+        # One minute later: every age moved, nothing else did. Same hash, no rewrite.
+        _, second = export_sports_desk(str(self.vault), hook=self._hook(), db_path=self.db,
+                                       now=NOW + timedelta(minutes=1))
+        self.assertFalse(second)
+        text_b = render(collect(self._hook(), db_path=self.db, now=NOW + timedelta(minutes=1)), "x", self.vault)
+        self.assertIn("`6.0m ago` [ACTIVE]", text_b)
+        self.assertIn("newest quote 6m ago", text_b)
+        self.assertEqual(content_hash(text_a), content_hash(text_b))
+        # Sixteen minutes later the feed verdict flips to STALE: the hash changes and the note rewrites.
+        _, third = export_sports_desk(str(self.vault), hook=self._hook(), db_path=self.db,
+                                      now=NOW + timedelta(minutes=16))
+        self.assertTrue(third)
+        text_c = path.read_text(encoding="utf-8")
+        self.assertIn("[STALE]", text_c)
+        self.assertNotEqual(content_hash(text_a), content_hash(text_c))
+        # The normaliser keeps the verdicts and counts, replacing only the ages.
+        from Sports_Desk.interfaces.obsidian_exporter import _normalise
+        norm = _normalise(text_a)
+        self.assertIn("**Feed Liveness**: `<VOLATILE_TIME>` [ACTIVE]", norm)
+        self.assertIn("newest quote <VOLATILE_TIME>", norm)
+        self.assertIn("<VOLATILE_TIME> old)", norm)
+        self.assertNotIn("5.0m ago", norm)
+        self.assertIn("stale retail quotes: **1**", norm)
