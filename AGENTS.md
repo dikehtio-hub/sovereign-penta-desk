@@ -5,6 +5,24 @@ the detail.
 
 ## Status
 
+Round 85 complete (2026-09-05): ITEM 10 PHASE 1 BUILT AS RATIFIED (5d39bf6).
+cross_market/interfaces/c2_bot.py - Telegram long polling (outbound only),
+fail-closed: no TELEGRAM_BOT_TOKEN or empty C2_ADMIN_IDS -> refuses to start
+(exit 2); group chats, unlisted senders and updates older than
+--stale-seconds (120) are logged and never answered; every update is
+acknowledged (offset persisted to cross_market/data/c2_bot_offset.json)
+BEFORE it is acted on, so a crash can never replay a /halt. Commands:
+/status, /bankroll, /positions (PAPER), /halt|/killall (two-step CONFIRM ->
+writes DEV/HALT.flag JSON {who, when, reason}; never kills a process),
+/help; /resume is console-only. Transport is one injectable http callable;
+the token is redacted from every log line and --status prints set/unset.
+pid lock cross_market/data/c2_bot.pid (mark c2_bot), --status/--json,
+--once, --dry-run, --interval, --log-file. start_c2_bot.bat guarded and
+detached (interval 25 s long poll). Tests: cross_market/tests/test_c2_bot.py
+= MASTER MODULE 20 (11 tests, no network). .gitignore: the offset file and
+HALT.flag. NOT STARTED LIVE: the launcher is ready; starting it is the
+operator's call once the two env vars exist. Daemons untouched. Live 16:2xZ: `c2_bot --status` on the real machine: STOPPED, token unset, admins 0, HALT.flag absent (exit 3) - correct fail-closed state; nothing started.
+
 ROUNDS 81-83 (2026-09-05, 15:14Z-15:32Z): HOLDS, LOOP SUSPENDED. Antigravity
 ratified suspending rounds until the Item 18 maiden protocol output exists.
 Gate opens 2026-09-06T01:39:49Z = 9:39 PM Eastern 2026-09-05; the exporter
@@ -566,7 +584,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 906 OK |
+| master + bridges + cross-market + exporters + ingestors (20 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot) | 917 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -591,7 +609,7 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
 
-## Item 10 plan - C2 bot (proposed 2026-09-05, NOT built; awaiting ratification)
+## Item 10 plan - C2 bot (proposed 2026-09-05, ratified unamended, BUILT in Round 85)
 
 Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Transport: Telegram long polling (getUpdates), outbound HTTPS only - no
@@ -627,6 +645,22 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 85 findings
+
+- **Acknowledge before acting.** The offset is saved for each update before
+  the command runs, so a crash mid-/halt cannot replay it on restart; the
+  stale window (120 s) is the second guard for the same failure.
+- **The token has three exits and all are closed**: it never enters argv
+  (env var only), every log line passes through redact(), and --status
+  reports set/unset. The transport's own error text is redacted too, since
+  the API URL embeds the token.
+- **Fail-closed means not starting.** An empty allowlist does not "reject
+  everything at runtime" - it refuses to claim the lock at all, so a
+  misconfigured bot cannot even consume the update queue.
+- **/halt writes the sentinel the HL config already reads**
+  (dynamic_config.is_halt_flag_present checks DEV/HALT.flag), so the bot
+  adds no new code path to the execution guard - only a new way to trip it.
 
 ## Round 79 findings
 

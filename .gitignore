@@ -123,3 +123,6 @@ hyperliquidusers.txt
 **/data/paper_receipts/
 # Round 73 review: detached loop logs (watcher, cross-market exporter)
 **/data/*.log
+# Round 85: C2 bot runtime state and the emergency sentinel (operator state, never committed)
+cross_market/data/c2_bot_offset.json
+HALT.flag

@@ -2360,6 +2360,18 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 85 - ITEM 10 PHASE 1: TELEGRAM C2 BOT (cross_market/interfaces/c2_bot.py)
+     Prerequisites (user-level env vars, never printed): TELEGRAM_BOT_TOKEN, C2_ADMIN_IDS (comma-separated
+         Telegram USER ids). Without both the bot refuses to start (exit 2).
+     start_c2_bot.bat                         guarded + DETACHED (pythonw), log cross_market\data\c2_bot.log
+     python -m cross_market.interfaces.c2_bot --status [--json]   exit 0 running / 3 stopped; token set/unset,
+         allowlist size, next update id, HALT.flag state
+     python -m cross_market.interfaces.c2_bot --once --dry-run --interval 5   one poll, replies into the log only
+     Telegram commands (private chat, allowlisted sender, < 120 s old): /status /bankroll /positions
+         /halt [CONFIRM reason] (alias /killall; writes DEV\HALT.flag; kills nothing) /help.
+         /resume is console-only: delete DEV\HALT.flag at the machine.
+     Tests: python -m unittest cross_market.tests.test_c2_bot        (master module 20)
+
      ROUND 80 - `sleep=time.sleep` IMPORT-TIME DEFAULTS RETIRED (Ruling 79-3)
      Both fetchers' poll() default sleep to `_sleep` (call-time), as log defaults to `_emit`. Tree audit outside
      tests: no `= time.sleep` / `= print` default remains. No command changes; the post-maiden order stands.
@@ -2686,7 +2698,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (19 modules, 906): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (20 modules, 917): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.
