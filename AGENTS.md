@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 79 PREPARED (2026-09-05): THE POST-MAIDEN RESTART IS ONE COMMAND.
+Directives 79-1/2/3 are all time-gated (protocol ~01:40Z 2026-09-06, the
+watcher restart inside the hour after it, Tier 2b ~24 h later) and were
+not run. Directive 79-2's three manual steps are now
+`restart_polymarket_watcher.bat`: fetcher `--stop` (terminates ONLY a live
+lock holder whose command line is a watcher - a stale lock is swept, a
+foreign process is never a target; exit 0 stopped / 1 still alive / 3
+nothing running) -> the guarded launcher -> `--status`, whose new
+"tags:" line says whether the newest macro stamp carries the Round 76
+`tags` (the Directive 79-2 verification, one command). No if-blocks in
+the new bat. 2 new tests. Watcher pid 49812 and exporter pid 56412
+untouched; the restart itself waits for the verdict.
+
 Round 78 PREPARED (2026-09-05): AUDIT ITEM CLOSED, NOTHING LIVE TOUCHED. The
 Round 78 prompt again reached this session truncated after Directive 78-1
 (the protocol at ~01:40Z 2026-09-06, time-gated, not run) - both times the
@@ -532,7 +545,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 902 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 904 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -556,6 +569,20 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 79 findings
+
+- **`--stop` reuses the lock's own liveness test**, so it can only ever
+  terminate a process that the lock names AND whose command line is a
+  watcher. A reused pid belonging to something else reads as a stale lock:
+  swept, not killed. `taskkill /F /PID <pid>` had no such guard.
+- **The verification is in the probe, not in the operator's eyes**: the
+  newest macro stamp either carries `tags` or it does not, and `--status`
+  now says which. The first stamp after the restart lands within one poll
+  (5 min).
+- **The restart bat has no if-blocks by design** - the two cmd traps of
+  Round 73 cannot recur in a straight-line script; the guard lives in the
+  launcher it calls.
 
 ## Round 77 findings
 

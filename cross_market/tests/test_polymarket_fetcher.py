@@ -824,3 +824,89 @@ class TestWatcherStatus(Base):
         custom.write_text("%d\n" % parent, encoding="utf-8")
         self.assertEqual(watcher_status(self.folder, pid_file=custom, probe=self.watcher_cmdline)["pid_file"],
                          str(custom))
+
+
+class TestStopAndTags(Base):
+    """Round 79 (Directive 79-2): --stop ends the live holder and sweeps; --status says whether the newest macro stamp carries tags."""
+
+    def setUp(self):
+        super().setUp()
+        self.folder = Path(self.temp.name)
+        self.lock = self.folder / "polymarket_watcher.pid"
+        self.now = datetime(2026, 9, 5, 3, 0, tzinfo=timezone.utc)
+
+    @staticmethod
+    def watcher_cmdline(pid):
+        return "pythonw -m cross_market.ingestors.polymarket_fetcher --live --watch"
+
+    def test_stop_refuses_without_a_live_holder_sweeps_stale_and_terminates_a_live_watcher(self):
+        from unittest import mock
+        from cross_market.ingestors import pid_lock
+        from cross_market.ingestors import polymarket_fetcher as pf
+        killed = []
+        info = pf.stop_watcher(self.folder, terminate=killed.append)                       # nothing to stop
+        self.assertEqual((info["holder_pid"], info["terminated"], info["swept"]), (None, False, False))
+        self.assertEqual(pf.stop_exit_code(info), pf.STATUS_EXIT_STOPPED)
+        self.assertIn("nothing to stop", pf.format_stop(info))
+        pid = os.getpid() + 40_000
+        self.lock.write_text("%d\n" % pid, encoding="utf-8")                                # stale: swept, nobody killed
+        info = pf.stop_watcher(self.folder, terminate=killed.append, alive=lambda p: False)
+        self.assertTrue(info["swept"]) ; self.assertFalse(self.lock.exists()) ; self.assertEqual(killed, [])
+        self.assertEqual(pf.stop_exit_code(info), pf.STATUS_EXIT_STOPPED)
+        self.lock.write_text("%d\n" % pid, encoding="utf-8")                                # live: terminated, swept
+        alive = {pid: True}
+
+        def terminate(p):
+            killed.append(p)
+            alive[p] = False
+        info = pf.stop_watcher(self.folder, terminate=terminate, alive=lambda p: alive.get(p, False),
+                               probe=self.watcher_cmdline, sleep=lambda s: None)
+        self.assertEqual((info["holder_pid"], info["terminated"], info["still_alive"], info["swept"]), (pid, True, False, True))
+        self.assertEqual(killed, [pid]) ; self.assertFalse(self.lock.exists())
+        self.assertEqual(pf.stop_exit_code(info), 0) ; self.assertIn("terminated", pf.format_stop(info))
+        self.lock.write_text("%d\n" % pid, encoding="utf-8")                                # ignores termination
+        info = pf.stop_watcher(self.folder, terminate=killed.append, alive=lambda p: True, probe=self.watcher_cmdline,
+                               sleep=lambda s: None, wait_s=0.5)
+        self.assertTrue(info["still_alive"]) ; self.assertTrue(self.lock.exists()) ; self.assertEqual(pf.stop_exit_code(info), 1)
+        self.assertIn("STILL ALIVE", pf.format_stop(info))
+        # a live process that is NOT a watcher is a stale lock, never a target
+        self.lock.write_text("%d\n" % os.getpid(), encoding="utf-8")
+        before = len(killed)
+        info = pf.stop_watcher(self.folder, terminate=killed.append, probe=lambda p: "python -m unittest")
+        self.assertEqual((info["holder_pid"], len(killed)), (None, before)) ; self.assertTrue(info["swept"])
+        # the CLI: --stop with a live holder (mocked liveness + terminate), then nothing to stop, then JSON
+        self.lock.write_text("%d\n" % pid, encoding="utf-8")
+        alive[pid] = True
+        with mock.patch.object(pid_lock, "pid_is_alive", side_effect=lambda p: alive.get(p, False)), \
+                mock.patch.object(pid_lock, "process_cmdline", self.watcher_cmdline), \
+                mock.patch.object(pf, "_terminate_pid", terminate), mock.patch("builtins.print") as fake_print:
+            self.assertEqual(pf.main(["--stop", "--folder", str(self.folder)]), 0)
+            self.assertEqual(pf.main(["--stop", "--folder", str(self.folder)]), pf.STATUS_EXIT_STOPPED)
+            self.assertEqual(pf.main(["--stop", "--json", "--folder", str(self.folder)]), pf.STATUS_EXIT_STOPPED)
+        printed = [str(c.args[0]) for c in fake_print.call_args_list]
+        self.assertIn("terminated", printed[0]) ; self.assertIn("nothing to stop", printed[1])
+        self.assertFalse(json.loads(printed[2])["terminated"])
+        # the restart launcher: --stop, then the guarded launcher, then --status; no if-block traps
+        dev = Path(__file__).resolve().parents[2]
+        bat = (dev / "restart_polymarket_watcher.bat").read_text(encoding="utf-8", errors="replace")
+        self.assertIn("polymarket_fetcher --stop", bat) ; self.assertIn('call "%~dp0start_polymarket_watcher.bat"', bat)
+        self.assertLess(bat.index("--stop"), bat.index('call "%~dp0start_polymarket_watcher.bat"'))
+        self.assertLess(bat.index('call "%~dp0start_polymarket_watcher.bat"'), bat.index("polymarket_fetcher --status"))
+        self.assertNotIn("if errorlevel", bat)
+
+    def test_status_reports_whether_the_newest_macro_stamp_carries_tags(self):
+        from cross_market.ingestors.polymarket_fetcher import (format_status, newest_stamp_has_tags, stamped_drop_name,
+                                                               watcher_status)
+        self.assertIsNone(newest_stamp_has_tags(self.folder, "macro"))
+        self.assertIsNone(watcher_status(self.folder, now=self.now)["newest_macro_tags"])
+        self.assertNotIn("tags:", format_status(watcher_status(self.folder, now=self.now)))
+        (self.folder / stamped_drop_name(self.now - timedelta(minutes=10), family="macro")).write_text(json.dumps([
+            {"question": "Q?", "token_id": "t", "yes_price": 0.5, "sport": "CRYPTO"}]), encoding="utf-8")
+        self.assertFalse(newest_stamp_has_tags(self.folder, "macro"))
+        info = watcher_status(self.folder, now=self.now)
+        self.assertFalse(info["newest_macro_tags"]) ; self.assertIn("has NO tags", format_status(info))
+        (self.folder / stamped_drop_name(self.now - timedelta(minutes=5), family="macro")).write_text(json.dumps([
+            {"question": "Q?", "token_id": "t", "yes_price": 0.5, "sport": "CRYPTO", "tags": ["crypto"]}]), encoding="utf-8")
+        self.assertTrue(newest_stamp_has_tags(self.folder, "macro"))
+        info = watcher_status(self.folder, now=self.now)
+        self.assertTrue(info["newest_macro_tags"]) ; self.assertIn("carries tags", format_status(info))

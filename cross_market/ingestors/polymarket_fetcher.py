@@ -577,6 +577,23 @@ def newest_stamped_drop(drop_dir: Path, family: str):
     return best
 
 
+def newest_stamp_has_tags(drop_dir: Path, family: str = "macro") -> Optional[bool]:
+    """
+    Round 79 (Directive 79-2 verification): whether the newest stamped drop of `family`
+    carries the Round 76 `tags` list on its questions - i.e. whether the watcher that
+    wrote it runs the Round 76 code. None when there is no stamp or it cannot be read.
+    """
+    newest = newest_stamped_drop(drop_dir, family)
+    if not newest:
+        return None
+    try:
+        data = json.loads(newest[0].read_text(encoding="utf-8"))
+    except Exception:                                       # noqa: BLE001
+        return None
+    items = data if isinstance(data, list) else (data.get("questions") if isinstance(data, dict) else None) or []
+    return any(isinstance(q, dict) and isinstance(q.get("tags"), list) for q in items)
+
+
 def watcher_status(drop_dir: Path = DEFAULT_DROP_DIR, pid_file: Optional[Path] = None,
                    now: Optional[datetime] = None, probe=None, alive=None) -> Dict[str, Any]:
     """
@@ -611,7 +628,68 @@ def watcher_status(drop_dir: Path = DEFAULT_DROP_DIR, pid_file: Optional[Path] =
         newest = newest_stamped_drop(drop_dir, family)
         info["newest_%s_stamp" % family] = newest[0].name if newest else None
         info["newest_%s_age_s" % family] = round((now - newest[1]).total_seconds(), 1) if newest else None
+    info["newest_macro_tags"] = newest_stamp_has_tags(drop_dir, "macro")
     return info
+
+
+def _terminate_pid(pid: int) -> None:
+    """TerminateProcess through psutil (pythonw has no console to signal); SIGTERM elsewhere."""
+    try:
+        import psutil
+        psutil.Process(int(pid)).terminate()
+    except ImportError:
+        import signal
+        os.kill(int(pid), signal.SIGTERM)
+
+
+def stop_watcher(drop_dir: Path = DEFAULT_DROP_DIR, pid_file: Optional[Path] = None, terminate=None,
+                 alive=None, probe=None, wait_s: float = 10.0, sleep=None) -> Dict[str, Any]:
+    """
+    Round 79 (Directive 79-2): stop the LIVE watcher holding the folder's lock so the
+    guarded launcher can start a fresh one (new code), then sweep the lock. A stale
+    lock is swept and nobody is killed; no lock means nothing to stop. The liveness
+    check is the lock's own (dead pid / corrupt / not a watcher = stale), so this can
+    never terminate a process that is not a watcher.
+    """
+    lock = Path(pid_file) if pid_file else Path(drop_dir) / pid_lock.WATCHER_PID_NAME
+    is_alive = alive or pid_lock.pid_is_alive
+    holder = pid_lock.read_pid_file(lock)
+    running = holder is not None and not pid_lock.is_stale(lock, probe=probe, alive=alive)
+    info: Dict[str, Any] = {"pid_file": str(lock), "holder_pid": holder if running else None,
+                            "terminated": False, "still_alive": False, "swept": False, "waited_s": 0.0}
+    if not running:
+        info["swept"] = pid_lock.remove_stale_pid_file(lock, probe, alive=alive)
+        return info
+    (terminate or _terminate_pid)(holder)
+    info["terminated"] = True
+    pause = sleep or time.sleep
+    waited = 0.0
+    while is_alive(holder) and waited < wait_s:
+        pause(0.25)
+        waited += 0.25
+    info["waited_s"] = round(waited, 2)
+    info["still_alive"] = bool(is_alive(holder))
+    if not info["still_alive"]:
+        info["swept"] = pid_lock.remove_stale_pid_file(lock, probe, alive=alive) or not lock.exists()
+    return info
+
+
+def stop_exit_code(info: Dict[str, Any]) -> int:
+    """0 = a watcher was terminated and its lock swept; 1 = it is still alive; 3 = nothing was running."""
+    if info.get("holder_pid") is None:
+        return STATUS_EXIT_STOPPED
+    return 1 if info.get("still_alive") else 0
+
+
+def format_stop(info: Dict[str, Any]) -> str:
+    if info.get("holder_pid") is None:
+        return "[STOP] nothing to stop - no live watcher holds %s%s" % (
+            info["pid_file"], " (stale lock swept)" if info.get("swept") else "")
+    if info.get("still_alive"):
+        return "[STOP] watcher pid %s is STILL ALIVE %.0fs after termination - lock left alone; kill it by hand" % (
+            info["holder_pid"], info.get("waited_s", 0.0))
+    return "[STOP] watcher pid %s terminated (%.2fs); lock %s - start_polymarket_watcher.bat may start a fresh one" % (
+        info["holder_pid"], info.get("waited_s", 0.0), "swept" if info.get("swept") else "already gone")
 
 
 def format_status(info: Dict[str, Any]) -> str:
@@ -629,6 +707,11 @@ def format_status(info: Dict[str, Any]) -> str:
         name, age = info.get("newest_%s_stamp" % family), info.get("newest_%s_age_s" % family)
         detail = ("%s  age %.1f min" % (name, age / 60.0)) if name else "none"
         lines.append("[STATUS] %-7s newest stamp %s" % (family + ":", detail))
+    tags = info.get("newest_macro_tags")
+    if tags is not None:
+        lines.append("[STATUS] tags:   newest macro stamp %s"
+                     % ("carries tags (Round 76 code is live)" if tags
+                        else "has NO tags (pre-Round-76 watcher: restart it after the maiden verdict)"))
     return "\n".join(lines)
 
 
@@ -724,7 +807,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="report whether a watcher holds the folder's lock (pid, start, command), whether a "
                              "stale lock exists, and the newest stamped drop per family; exit 0 = running, "
                              "%d = stopped" % STATUS_EXIT_STOPPED)
-    parser.add_argument("--json", action="store_true", help="with --status: print JSON instead of lines")
+    parser.add_argument("--stop", action="store_true",
+                        help="Round 79 (Directive 79-2): terminate the LIVE watcher holding the folder's lock and "
+                             "sweep it, so the guarded launcher can start a fresh one; exit 0 = stopped, 1 = still "
+                             "alive, %d = nothing was running" % STATUS_EXIT_STOPPED)
+    parser.add_argument("--json", action="store_true", help="with --status / --stop: print JSON instead of lines")
     parser.add_argument("--log-file", type=Path, default=None,
                         help="append every line to this file as well (the only output under pythonw)")
     parser.add_argument("--pid-file", type=Path, default=None,
@@ -740,6 +827,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         info = watcher_status(folder, args.pid_file)
         print(json.dumps(info, indent=2) if args.json else format_status(info))
         return 0 if info["running"] else STATUS_EXIT_STOPPED
+    if args.stop:                                           # Round 79 (Directive 79-2)
+        info = stop_watcher(folder, args.pid_file)
+        print(json.dumps(info, indent=2) if args.json else format_stop(info))
+        return stop_exit_code(info)
     sports = tuple(s.strip().upper() for s in args.sports.split(",") if s.strip())
 
     tags = [t.strip() for t in (args.tags or "").split(",") if t.strip()]
