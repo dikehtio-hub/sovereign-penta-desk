@@ -493,7 +493,7 @@ Obsidian Vault Locations:
 Every modification MUST be verified offline against all 3 test suites. Never push
 a commit without all 2,524 tests passing!
 
-1. HyperLiquid Monarch (pytest — 1,092 tests):
+1. HyperLiquid Monarch (pytest — 1,093 tests):
    cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q
 
 2. Master & Bridges Suite (unittest — 19 modules, 885 tests):
