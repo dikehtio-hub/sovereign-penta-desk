@@ -843,6 +843,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--hl-db", type=str, default=None, help="HyperLiquid SQLite path (default: HL_Monarch data)")
     parser.add_argument("--pm-db", type=str, default=None, help="Polymarket SQLite path (default: Polymarket_Monarch data)")
     parser.add_argument("--cache", type=str, default=None, help="Identity cache JSON path")
+    parser.add_argument("--drops", nargs="*", default=None, help="Directories to scan for polymarket drop JSONs")
     args = parser.parse_args(argv)
 
     if args.once or args.scan or args.report:
@@ -851,6 +852,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             pm_db_path=Path(args.pm_db) if args.pm_db else None,
             vault_path=Path(args.vault) if args.vault else None,
             cache_path=Path(args.cache) if args.cache else None,
+            drop_dirs=[Path(p) for p in args.drops] if args.drops is not None else None,
             enable_remote_resolve=args.resolve,
         )
         if args.scan or args.report:

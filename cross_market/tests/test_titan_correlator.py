@@ -109,11 +109,15 @@ class TestTitanCorrelator(unittest.TestCase):
         }
         self.cache_path.write_text(json.dumps(cache_data), encoding="utf-8")
 
+        self.empty_drops = self.root / "empty_drops"
+        self.empty_drops.mkdir(exist_ok=True)
+
         self.correlator = TitanCorrelator(
             hl_db_path=self.hl_db,
             pm_db_path=self.pm_db,
             vault_path=self.vault,
             cache_path=self.cache_path,
+            drop_dirs=[self.empty_drops],
         )
 
     def tearDown(self):
@@ -189,7 +193,8 @@ class TestTitanCorrelator(unittest.TestCase):
         from cross_market.titan_correlator import format_cli_report, main
 
         common = ["--hl-db", str(self.hl_db), "--pm-db", str(self.pm_db),
-                  "--vault", str(self.vault), "--cache", str(self.cache_path)]
+                  "--vault", str(self.vault), "--cache", str(self.cache_path),
+                  "--drops", str(self.empty_drops)]
         note = self.vault / "Cross_Market_Titans.md"
 
         out = io.StringIO()
