@@ -2360,6 +2360,17 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 56 - WATCHER --status, SYNC-BAT GUARD, LEAD-LAG READINESS SENTINEL
+     python -m cross_market.ingestors.polymarket_fetcher --status [--json] [--folder DIR] [--pid-file P]
+         lock holder (pid, started, command) or stale/no lock; newest stamped drop + age per
+         family (macro, sports; unprefixed stamps count as sports). Exit 0 running, 3 stopped.
+         start_all_ecosystem_sync.bat runs it first: a running watcher is KEPT, else launched.
+     python -m cross_market.lead_lag --check-data [--family macro|sports|any] [--json]
+         [--min-span-hours 24] [--min-ready-points 200] [--max-gap-minutes 60] [--drops DIR ...]
+         latest continuous segment of stamped drops vs the bar; READY / NOT READY + reasons + ETA
+         (later of span clock and points clock; none while the watcher is not adding).
+         Exit 0 ready, 3 not. --status is an alias. No database needed.
+
      ROUND 55 - WATCHER PID LOCK, WATCHDOG GAVE UP BADGE
      polymarket_fetcher --watch holds <folder>\polymarket_watcher.pid (or --pid-file PATH).
          A second watcher on the same folder prints "[LOCK] already_running: watcher pid N ..."
@@ -2455,7 +2466,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (16 modules, 823): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (16 modules, 832): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

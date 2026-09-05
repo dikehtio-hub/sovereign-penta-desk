@@ -38,7 +38,15 @@ echo ✓ [4/5] Tax & Bankroll sync watcher launched.
 ::     desk (polymarket_sports.json), crypto + fed-rates for the Titan macro block
 ::     (polymarket_macro.json), stamped copies for Item 18. Writes only on price change.
 cd /d "C:\Users\ixis1\Desktop\DEV"
-start "Polymarket Watcher" python -m cross_market.ingestors.polymarket_fetcher --live --watch --interval 300 --tags sports,crypto,fed-rates --keywords "fed,rate cut,bitcoin,btc"
+:: Round 56 (Directive 56-1): a watcher already holding the folder lock is kept; --status prints
+:: its pid, start time and command (exit 0 = running, 3 = stopped) before we decide.
+python -m cross_market.ingestors.polymarket_fetcher --status
+if errorlevel 3 (
+    start "Polymarket Watcher" python -m cross_market.ingestors.polymarket_fetcher --live --watch --interval 300 --tags sports,crypto,fed-rates --keywords "fed,rate cut,bitcoin,btc"
+    echo ✓ [4b] Polymarket watcher launched.
+) else (
+    echo ✓ [4b] Polymarket watcher already running - kept. Holder shown above.
+)
 :: 5. Launch Sports Desk + Cross-Market Arb Exporters (one slot, two windows)
 cd /d "C:\Users\ixis1\Desktop\DEV"
 start "Sports Desk Obsidian Sync" python -m Sports_Desk.interfaces.obsidian_exporter --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"

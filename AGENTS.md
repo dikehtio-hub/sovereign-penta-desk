@@ -5,6 +5,17 @@ the detail.
 
 ## Status
 
+Round 56 complete: WATCHER --status, SYNC-BAT GUARD, LEAD-LAG READINESS
+SENTINEL. polymarket_fetcher --status [--json] reports the lock holder (pid,
+start, command), a stale lock, and the newest stamped drop per family; exit 0
+running / 3 stopped. start_all_ecosystem_sync.bat runs it first and keeps a
+running watcher instead of spawning a refused twin. lead_lag --check-data
+(alias --status) [--family macro|sports|any] [--json] measures the LATEST
+CONTINUOUS SEGMENT of stamped drops (no gap > 60 min) against the bar (span
+>= 24h and >= 200 points, watcher still adding) and prints the ETA as the
+later of the span clock and the points clock; exit 0 ready / 3 not. 9 new
+tests. Item 18's first live run stays queued until the sentinel says READY.
+
 Round 55 complete: WATCHER PID LOCK, WATCHDOG GAVE UP BADGE. The Polymarket
 watcher (--watch) takes a single-instance lock keyed to its drop folder
 (<folder>/polymarket_watcher.pid, or --pid-file); dead / corrupt / not-a-
@@ -245,7 +256,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 823 OK |
+| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 832 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -269,6 +280,29 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 56 findings
+
+- **--status is read-only and speaks in exit codes.** It never sweeps,
+  starts or stops anything (the stale lock it reports is left for the next
+  start to sweep). 0 = a live watcher holds the folder lock, 3 = none does,
+  so start_all_ecosystem_sync.bat decides with `if errorlevel 3` and no text
+  parsing. Unprefixed stamps (single-tag runs, Round 52) are reported as
+  sports because that is what they were. Holder start time and command line
+  come from psutil, best effort; the holder pid does not depend on it.
+- **"Continuous" got a number.** Stamps are written only on price change and
+  a dead watcher leaves a hole, so the sentinel counts only the latest
+  segment whose consecutive stamps are <= 60 min apart (--max-gap-minutes).
+  A newest stamp older than that gap means nothing is accumulating: NOT
+  READY with no ETA and "restart the watcher". Otherwise the ETA is the LATER
+  of segment_start + 24h and now + (200 - points) / observed rate.
+  --min-ready-points is deliberately not --min-points, which lead_lag already
+  uses for the correlation overlap.
+- **Live reading at close**: fetcher --status: RUNNING pid 29420 (exit 0); lead_lag --check-data: NOT READY, 12 points over 0.8h since 2026-09-05T01:39:49.923098+00:00, newest age 2 min, ETA 2026-09-06T01:39:49.923098+00:00 (exit 3). Antigravity's "after 2026-09-06T02:00Z" and
+  the sentinel's ETA agree within the restart drift of Round 55.
+- **The guard was exercised in isolation** (a scratch bat with the same
+  `if errorlevel 3` block took the "kept" branch against the live watcher);
+  the full sync bat was not run because it opens eight consoles.
 
 ## Round 55 findings
 

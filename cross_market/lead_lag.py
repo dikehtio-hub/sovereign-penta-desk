@@ -33,7 +33,7 @@ import json
 import math
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -41,6 +41,12 @@ DEV_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_HL_DB = DEV_ROOT / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db"
 DEFAULT_DROP_DIRS = [DEV_ROOT / "Sports_Desk" / "data" / "polymarket_drops", DEV_ROOT / "cross_market" / "data"]
 MINUTE_MS = 60_000
+
+# Round 56 (Directive 56-2): the empirical bar before the first live run.
+READY_MIN_SPAN_HOURS = 24.0
+READY_MIN_POINTS = 200
+READY_MAX_GAP_MINUTES = 60.0            # a larger hole between stamps ends the continuous segment
+EXIT_NOT_READY = 3
 
 
 # ------------------------------------------------------------------ inputs
@@ -293,6 +299,108 @@ def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_s
     return lead_lag_report(shifts, marks, max_lag=max_lag, min_events=min_events, min_points=min_points), len(series)
 
 
+# ------------------------------------------------------------------ data readiness (Round 56)
+
+def stamped_moments(drop_dirs: Iterable[Path], family: str = "macro") -> List[datetime]:
+    """
+    Sorted UTC stamps of the stamped drops of `family` under `drop_dirs`, read
+    from the file NAMES (Round 52: a copied file's mtime lies, its name does
+    not). Unprefixed stamps are sports (single-tag runs); "any" takes all.
+    """
+    from cross_market.ingestors.polymarket_fetcher import STAMPED_PATTERN, stamp_of
+    out: List[datetime] = []
+    for directory in drop_dirs:
+        try:
+            files = list(Path(directory).glob("polymarket_*.json"))
+        except Exception:                                   # noqa: BLE001
+            continue
+        for path in files:
+            match = STAMPED_PATTERN.match(path.name)
+            if not match:
+                continue
+            if family != "any" and (match.group(1) or "sports") != family:
+                continue
+            stamp = stamp_of(path)
+            if stamp is not None:
+                out.append(stamp)
+    return sorted(out)
+
+
+def data_readiness(stamps: Sequence[datetime], now: Optional[datetime] = None,
+                   min_span_hours: float = READY_MIN_SPAN_HOURS, min_points: int = READY_MIN_POINTS,
+                   max_gap_minutes: float = READY_MAX_GAP_MINUTES) -> Dict[str, Any]:
+    """
+    Whether the stamped series clears the bar for a first live run. Only the
+    LATEST CONTINUOUS SEGMENT counts - stamps separated by more than
+    max_gap_minutes belong to different runs (a dead watcher leaves a hole and
+    a hole is not data). Ready = segment span >= min_span_hours AND segment
+    points >= min_points AND the newest stamp is not itself older than the
+    gap (a stalled watcher is not accumulating). The ETA is the later of the
+    span clock and the points clock at the observed stamp rate; None when
+    nothing is accumulating.
+    """
+    now = now or datetime.now(timezone.utc)
+    info: Dict[str, Any] = {
+        "points_total": len(stamps), "points": 0, "span_hours": 0.0, "segment_start": None, "newest": None,
+        "newest_age_min": None, "largest_gap_min": None, "breaks": 0, "rate_per_hour": None,
+        "min_span_hours": min_span_hours, "min_points": min_points, "max_gap_minutes": max_gap_minutes,
+        "ready": False, "reasons": [], "eta": None, "checked_at": now.isoformat(),
+    }
+    if not stamps:
+        info["reasons"].append("no stamped drops")
+        return info
+    stamps = sorted(stamps)
+    max_gap = timedelta(minutes=max_gap_minutes)
+    gaps = [b - a for a, b in zip(stamps, stamps[1:])]
+    info["largest_gap_min"] = round(max(gaps).total_seconds() / 60.0, 1) if gaps else 0.0
+    info["breaks"] = sum(1 for g in gaps if g > max_gap)
+    start = len(stamps) - 1
+    while start > 0 and (stamps[start] - stamps[start - 1]) <= max_gap:
+        start -= 1
+    segment = stamps[start:]
+    points = len(segment)
+    span_h = (segment[-1] - segment[0]).total_seconds() / 3600.0
+    rate = (points - 1) / span_h if span_h > 0 else None
+    info.update(points=points, span_hours=round(span_h, 2), segment_start=segment[0].isoformat(),
+                newest=segment[-1].isoformat(), newest_age_min=round((now - segment[-1]).total_seconds() / 60.0, 1),
+                rate_per_hour=round(rate, 2) if rate else None)
+    stalled = (now - segment[-1]) > max_gap
+    if stalled:
+        info["reasons"].append("newest stamp is %.0f min old (> %.0f min): the watcher is not adding"
+                               % (info["newest_age_min"], max_gap_minutes))
+    eta_candidates = []
+    if span_h < min_span_hours:
+        info["reasons"].append("span %.1fh < %.0fh" % (span_h, min_span_hours))
+        eta_candidates.append(segment[0] + timedelta(hours=min_span_hours))
+    if points < min_points:
+        info["reasons"].append("points %d < %d" % (points, min_points))
+        if rate:
+            eta_candidates.append(now + timedelta(hours=(min_points - points) / rate))
+    info["ready"] = not info["reasons"]
+    if eta_candidates and not stalled:
+        info["eta"] = max(eta_candidates).isoformat()
+    return info
+
+
+def format_readiness(info: Dict[str, Any], family: str) -> str:
+    lines = ["[DATA] %s series: %d stamped point(s) in the latest continuous segment (%d on disk)"
+             % (family, info["points"], info["points_total"])]
+    if info["segment_start"]:
+        lines.append("[DATA]   segment %s -> %s  span %.1fh  newest age %.0f min  rate %s/h"
+                     % (info["segment_start"], info["newest"], info["span_hours"], info["newest_age_min"],
+                        info["rate_per_hour"] if info["rate_per_hour"] is not None else "n/a"))
+        lines.append("[DATA]   largest gap %s min, %d break(s) > %.0f min"
+                     % (info["largest_gap_min"], info["breaks"], info["max_gap_minutes"]))
+    lines.append("[DATA] bar: span >= %.0fh and points >= %d, no gap > %.0f min"
+                 % (info["min_span_hours"], info["min_points"], info["max_gap_minutes"]))
+    if info["ready"]:
+        lines.append("[DATA] READY - the first live lead-lag run is honest now")
+    else:
+        lines.append("[DATA] NOT READY - " + "; ".join(info["reasons"]))
+        lines.append("[DATA] ETA %s" % (info["eta"] or "none while nothing is accumulating (restart the watcher)"))
+    return "\n".join(lines)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Item 18 - Polymarket vs HyperLiquid lead-lag (offline research)")
     parser.add_argument("--coin", default="BTC", help="HyperLiquid perp whose returns to correlate (default BTC)")
@@ -303,8 +411,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--min-shift", type=float, default=0.02, help="Probability move that counts as an event (default 0.02)")
     parser.add_argument("--min-events", type=int, default=5, help="Shifts required before a lag is reported (default 5)")
     parser.add_argument("--min-points", type=int, default=60, help="Overlapping minutes required at a lag (default 60)")
+    parser.add_argument("--check-data", "--status", dest="check_data", action="store_true",
+                        help="Round 56: report whether the stamped series clears the bar for a first live run "
+                             "(exit 0 = ready, %d = not ready); no database needed" % EXIT_NOT_READY)
+    parser.add_argument("--family", default="macro", choices=("macro", "sports", "any"),
+                        help="with --check-data: which stamped family to inspect (default macro)")
+    parser.add_argument("--min-span-hours", type=float, default=READY_MIN_SPAN_HOURS)
+    parser.add_argument("--min-ready-points", type=int, default=READY_MIN_POINTS)
+    parser.add_argument("--max-gap-minutes", type=float, default=READY_MAX_GAP_MINUTES)
+    parser.add_argument("--json", action="store_true", help="with --check-data: print JSON instead of lines")
     args = parser.parse_args(argv)
     drop_dirs = [Path(d) for d in args.drops] if args.drops else DEFAULT_DROP_DIRS
+    if args.check_data:
+        info = data_readiness(stamped_moments(drop_dirs, args.family), min_span_hours=args.min_span_hours,
+                              min_points=args.min_ready_points, max_gap_minutes=args.max_gap_minutes)
+        print(json.dumps(info, indent=2) if args.json else format_readiness(info, args.family))
+        return 0 if info["ready"] else EXIT_NOT_READY
     result, keys = run(args.coin.upper(), drop_dirs, Path(args.db) if args.db else DEFAULT_HL_DB, args.max_lag,
                        args.min_shift, args.min_events, args.min_points,
                        events_csv=Path(args.events) if args.events else None)

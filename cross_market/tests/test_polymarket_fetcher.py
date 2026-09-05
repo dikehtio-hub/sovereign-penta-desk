@@ -14,7 +14,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from cross_market.hud import scan_cross_market
@@ -702,3 +702,91 @@ class TestWatcherLock(Base):
                                                              lambda *a, **k: self.assertEqual(pid_lock.read_pid_file(custom), os.getpid())):
             polymarket_fetcher.main(["--watch", "--max-polls", "1", "--folder", str(self.folder), "--pid-file", str(custom)])
         self.assertFalse(custom.exists())
+
+
+class TestWatcherStatus(Base):
+    """
+    Round 56 (Directive 56-1). --status is the operator's read-only view: who
+    holds the folder lock, whether a stale lock is lying around, and how fresh
+    the newest stamped drop of each family is. Exit 0 = running, 3 = stopped,
+    so a batch file can decide without parsing text.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.folder = Path(self.temp.name)
+        self.lock = self.folder / "polymarket_watcher.pid"
+        self.now = datetime(2026, 9, 5, 3, 0, tzinfo=timezone.utc)
+
+    @staticmethod
+    def watcher_cmdline(pid):
+        return "python -m cross_market.ingestors.polymarket_fetcher --live --watch"
+
+    def test_empty_folder_is_stopped_with_no_stamps_and_exit_3(self):
+        from unittest import mock
+        from cross_market.ingestors.polymarket_fetcher import (STATUS_EXIT_STOPPED, format_status, main,
+                                                               watcher_status)
+        info = watcher_status(self.folder, now=self.now)
+        self.assertFalse(info["running"])
+        self.assertIsNone(info["holder_pid"])
+        self.assertFalse(info["stale_pid_file"])
+        self.assertEqual(info["pid_file"], str(self.lock))
+        for key in ("newest_macro_stamp", "newest_macro_age_s", "newest_sports_stamp", "newest_sports_age_s"):
+            self.assertIsNone(info[key])
+        text = format_status(info)
+        self.assertIn("STOPPED - no lock", text)
+        self.assertIn("macro:  newest stamp none", text)
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(main(["--status", "--folder", str(self.folder)]), STATUS_EXIT_STOPPED)
+        self.assertIn("STOPPED", fake_print.call_args_list[0].args[0])
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(main(["--status", "--json", "--folder", str(self.folder)]), STATUS_EXIT_STOPPED)
+        parsed = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertEqual(set(parsed) >= {"running", "holder_pid", "pid_file", "newest_macro_stamp",
+                                         "newest_macro_age_s", "newest_sports_stamp", "newest_sports_age_s"}, True)
+        self.assertFalse((self.folder / DEFAULT_DROP_NAME).exists())        # --status never writes
+
+    def test_newest_stamp_per_family_and_a_stale_lock(self):
+        from cross_market.ingestors.polymarket_fetcher import (format_status, newest_stamped_drop,
+                                                               watcher_status, write_stamped_copy)
+        qs = sample_questions(now=NOW)
+        write_stamped_copy(qs, self.folder, now=self.now - timedelta(minutes=10), family="macro")
+        newest_macro = write_stamped_copy(qs, self.folder, now=self.now - timedelta(minutes=2), family="macro")
+        write_stamped_copy(qs, self.folder, now=self.now - timedelta(minutes=30), family="sports")
+        unprefixed = write_stamped_copy(qs, self.folder, now=self.now - timedelta(minutes=1))   # single-tag run
+        (self.folder / "polymarket_macro.json").write_text("[]", encoding="utf-8")            # canonical: ignored
+        self.assertEqual(newest_stamped_drop(self.folder, "macro")[0], newest_macro)
+        self.assertEqual(newest_stamped_drop(self.folder, "sports")[0], unprefixed)            # unprefixed = sports
+        self.assertIsNone(newest_stamped_drop(self.folder / "nowhere", "macro"))
+        self.lock.write_text("999999\n", encoding="utf-8")                                     # a dead holder
+        info = watcher_status(self.folder, now=self.now, alive=lambda pid: False)
+        self.assertFalse(info["running"])
+        self.assertTrue(info["stale_pid_file"])
+        self.assertEqual((info["newest_macro_stamp"], info["newest_macro_age_s"]), (newest_macro.name, 120.0))
+        self.assertEqual((info["newest_sports_stamp"], info["newest_sports_age_s"]), (unprefixed.name, 60.0))
+        text = format_status(info)
+        self.assertIn("stale lock", text)
+        self.assertIn("age 2.0 min", text)
+        self.assertTrue(self.lock.exists())                                                     # never swept here
+
+    def test_a_live_holder_is_reported_with_exit_0(self):
+        from unittest import mock
+        from cross_market.ingestors import pid_lock
+        from cross_market.ingestors.polymarket_fetcher import format_status, main, watcher_status
+        parent = os.getppid()
+        self.lock.write_text("%d\n" % parent, encoding="utf-8")
+        info = watcher_status(self.folder, now=self.now, probe=self.watcher_cmdline)
+        self.assertTrue(info["running"])
+        self.assertEqual(info["holder_pid"], parent)
+        self.assertFalse(info["stale_pid_file"])
+        self.assertIsNotNone(info["holder_started"])                                            # psutil on this box
+        text = format_status(info)
+        self.assertIn("RUNNING - pid %d" % parent, text)
+        with mock.patch.object(pid_lock, "process_cmdline", self.watcher_cmdline), \
+                mock.patch("builtins.print") as fake_print:
+            self.assertEqual(main(["--status", "--folder", str(self.folder)]), 0)
+        self.assertIn("RUNNING", fake_print.call_args_list[0].args[0])
+        custom = self.folder / "elsewhere.pid"
+        custom.write_text("%d\n" % parent, encoding="utf-8")
+        self.assertEqual(watcher_status(self.folder, pid_file=custom, probe=self.watcher_cmdline)["pid_file"],
+                         str(custom))

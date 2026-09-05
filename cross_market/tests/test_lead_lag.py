@@ -5,6 +5,7 @@ that the module finds a lag that was PLANTED, in either direction, and refuses
 to name one when the evidence is thin.
 """
 import json
+from datetime import datetime, timedelta, timezone
 import random
 import sqlite3
 import tempfile
@@ -157,3 +158,95 @@ class TestLeadLag(LeadLagCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestReadiness(LeadLagCase):
+    """
+    Round 56 (Directive 56-2). The sentinel answers "is the stamped series
+    enough for an honest first run?" from file names alone: only the latest
+    continuous segment counts, a stalled watcher is not accumulating, and the
+    ETA is the later of the span clock and the points clock.
+    """
+    NOW = datetime(2026, 9, 6, 3, 0, tzinfo=timezone.utc)
+
+    def every_5_min(self, points, ending_minutes_ago=3):
+        end = self.NOW - timedelta(minutes=ending_minutes_ago)
+        return [end - timedelta(minutes=5 * i) for i in range(points)][::-1]
+
+    def test_no_stamps_is_not_ready_with_no_eta(self):
+        info = ll.data_readiness([], now=self.NOW)
+        self.assertFalse(info["ready"])
+        self.assertEqual(info["reasons"], ["no stamped drops"])
+        self.assertIsNone(info["eta"])
+        self.assertIn("NOT READY", ll.format_readiness(info, "macro"))
+
+    def test_a_full_continuous_day_is_ready(self):
+        stamps = self.every_5_min(300)                                      # 24.9h, 300 points, 5-min spacing
+        info = ll.data_readiness(stamps, now=self.NOW)
+        self.assertTrue(info["ready"])
+        self.assertEqual((info["points"], info["points_total"], info["breaks"]), (300, 300, 0))
+        self.assertAlmostEqual(info["span_hours"], 24.92, places=2)
+        self.assertEqual(info["largest_gap_min"], 5.0)
+        self.assertEqual(info["rate_per_hour"], 12.0)
+        self.assertIsNone(info["eta"])
+        self.assertIn("READY - the first live", ll.format_readiness(info, "macro"))
+
+    def test_a_hole_restarts_the_segment_and_the_eta_is_the_later_clock(self):
+        recent = self.every_5_min(49)                                       # 4h after the hole
+        older = [recent[0] - timedelta(hours=3) - timedelta(minutes=5 * i) for i in range(200)]
+        info = ll.data_readiness(sorted(older + recent), now=self.NOW)
+        self.assertFalse(info["ready"])
+        self.assertEqual((info["points"], info["points_total"], info["breaks"]), (49, 249, 1))
+        self.assertEqual(info["largest_gap_min"], 180.0)
+        self.assertEqual(info["segment_start"], recent[0].isoformat())
+        self.assertEqual(info["reasons"], ["span 4.0h < 24h", "points 49 < 200"])
+        # points clock: (200-49)/12 = 12.6h from now; span clock: segment start + 24h = 24h - 4h - 3min
+        # from now -> later. The ETA is the span clock.
+        self.assertEqual(info["eta"], (recent[0] + timedelta(hours=24)).isoformat())
+        text = ll.format_readiness(info, "macro")
+        self.assertIn("1 break(s) > 60 min", text)
+        self.assertIn("ETA " + info["eta"], text)
+
+    def test_the_points_clock_wins_when_stamps_are_sparse(self):
+        stamps = [self.NOW - timedelta(hours=30) + timedelta(hours=i) for i in range(30)]   # hourly, 29h span
+        info = ll.data_readiness(stamps, now=self.NOW, max_gap_minutes=90)
+        self.assertEqual(info["reasons"], ["points 30 < 200"])
+        self.assertEqual(info["rate_per_hour"], 1.0)
+        self.assertEqual(info["eta"], (self.NOW + timedelta(hours=170)).isoformat())
+
+    def test_a_stalled_watcher_is_not_ready_and_has_no_eta(self):
+        stamps = self.every_5_min(300, ending_minutes_ago=150)              # enough data, but 2.5h silent
+        info = ll.data_readiness(stamps, now=self.NOW)
+        self.assertFalse(info["ready"])
+        self.assertEqual(len(info["reasons"]), 1)
+        self.assertIn("not adding", info["reasons"][0])
+        self.assertIsNone(info["eta"])
+        self.assertIn("restart the watcher", ll.format_readiness(info, "macro"))
+
+    def test_stamped_moments_reads_names_per_family_and_the_cli_exit_codes(self):
+        from unittest import mock
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        base = datetime.now(timezone.utc) - timedelta(minutes=30)
+        for i in range(3):
+            (self.drops / stamped_drop_name(base + timedelta(minutes=10 * i), family="macro")).write_text("[]")
+        (self.drops / stamped_drop_name(base, family="sports")).write_text("[]")
+        (self.drops / stamped_drop_name(base + timedelta(minutes=5))).write_text("[]")     # unprefixed = sports
+        (self.drops / "polymarket_macro.json").write_text("[]")                              # canonical: not a stamp
+        (self.drops / "polymarket_0001.json").write_text("[]")                               # Round 51 fixture name
+        self.assertEqual(len(ll.stamped_moments([self.drops], "macro")), 3)
+        self.assertEqual(len(ll.stamped_moments([self.drops], "sports")), 2)
+        moments = ll.stamped_moments([self.drops, self.root / "missing"], "any")
+        self.assertEqual(moments, sorted(moments))
+        self.assertEqual(len(moments), 5)
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--check-data", "--drops", str(self.drops)]), ll.EXIT_NOT_READY)
+        self.assertIn("NOT READY", fake_print.call_args_list[0].args[0])
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--status", "--drops", str(self.drops), "--min-span-hours", "0.1",
+                                      "--min-ready-points", "3"]), 0)
+        self.assertIn("READY - the first live", fake_print.call_args_list[0].args[0])
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--check-data", "--json", "--family", "sports", "--drops", str(self.drops)]),
+                             ll.EXIT_NOT_READY)
+        parsed = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertEqual((parsed["points"], parsed["ready"]), (2, False))

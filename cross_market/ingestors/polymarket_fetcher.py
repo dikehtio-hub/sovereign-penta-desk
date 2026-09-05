@@ -535,6 +535,86 @@ def prune_stamped_drops(drop_dir: Path = DEFAULT_DROP_DIR, retention_hours: floa
 
 
 # ---------------------------------------------------------------------------
+# Operator status (Round 56, Directive 56-1)
+# ---------------------------------------------------------------------------
+
+STATUS_EXIT_STOPPED = 3                                 # --status: 0 = a watcher holds the lock, 3 = none does
+
+
+def newest_stamped_drop(drop_dir: Path, family: str):
+    """(path, stamp) of the newest stamped drop of `family`, or None. Unprefixed
+    stamps (single-tag runs, Round 52) count as sports - that is what they were."""
+    best = None
+    try:
+        candidates = list(Path(drop_dir).glob("polymarket_*.json"))
+    except Exception:                                       # noqa: BLE001
+        return None
+    for path in candidates:
+        match = STAMPED_PATTERN.match(path.name)
+        if not match or (match.group(1) or "sports") != family:
+            continue
+        stamp = stamp_of(path)
+        if stamp is not None and (best is None or stamp > best[1]):
+            best = (path, stamp)
+    return best
+
+
+def watcher_status(drop_dir: Path = DEFAULT_DROP_DIR, pid_file: Optional[Path] = None,
+                   now: Optional[datetime] = None, probe=None, alive=None) -> Dict[str, Any]:
+    """
+    What an operator needs before touching the watcher: whether one holds the
+    folder's lock (and which pid, started when, running what), whether a stale
+    lock is lying around, and how fresh the newest stamped drop of each family
+    is. Pure read; never starts, stops or sweeps anything.
+    """
+    drop_dir = Path(drop_dir)
+    lock = Path(pid_file) if pid_file else drop_dir / pid_lock.WATCHER_PID_NAME
+    now = now or datetime.now(timezone.utc)
+    holder = pid_lock.read_pid_file(lock)
+    running = holder is not None and not pid_lock.is_stale(lock, probe=probe, alive=alive)
+    info: Dict[str, Any] = {
+        "running": running,
+        "holder_pid": holder if running else None,
+        "pid_file": str(lock),
+        "stale_pid_file": bool(lock.exists() and not running),
+        "holder_started": None,
+        "holder_cmdline": None,
+        "checked_at": _iso(now),
+    }
+    if running:
+        try:
+            import psutil
+            proc = psutil.Process(holder)
+            info["holder_started"] = _iso(datetime.fromtimestamp(proc.create_time(), timezone.utc))
+            info["holder_cmdline"] = " ".join(proc.cmdline())
+        except Exception:                                   # noqa: BLE001 - psutil absent, access denied, gone
+            pass
+    for family in ("macro", "sports"):
+        newest = newest_stamped_drop(drop_dir, family)
+        info["newest_%s_stamp" % family] = newest[0].name if newest else None
+        info["newest_%s_age_s" % family] = round((now - newest[1]).total_seconds(), 1) if newest else None
+    return info
+
+
+def format_status(info: Dict[str, Any]) -> str:
+    lines = []
+    if info["running"]:
+        started = (" started %s" % info["holder_started"]) if info.get("holder_started") else ""
+        lines.append("[STATUS] watcher RUNNING - pid %s%s holds %s" % (info["holder_pid"], started, info["pid_file"]))
+        if info.get("holder_cmdline"):
+            lines.append("[STATUS]   command: %s" % info["holder_cmdline"])
+    elif info.get("stale_pid_file"):
+        lines.append("[STATUS] watcher STOPPED - stale lock %s (swept at the next start)" % info["pid_file"])
+    else:
+        lines.append("[STATUS] watcher STOPPED - no lock at %s" % info["pid_file"])
+    for family in ("macro", "sports"):
+        name, age = info.get("newest_%s_stamp" % family), info.get("newest_%s_age_s" % family)
+        detail = ("%s  age %.1f min" % (name, age / 60.0)) if name else "none"
+        lines.append("[STATUS] %-7s newest stamp %s" % (family + ":", detail))
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Polling
 # ---------------------------------------------------------------------------
 
@@ -622,12 +702,21 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="prune stamped copies older than this (default %.0f, the ecosystem standard)" % DROP_RETENTION_HOURS)
     parser.add_argument("--interval", type=float, default=300.0)
     parser.add_argument("--max-polls", type=int, default=None)
+    parser.add_argument("--status", action="store_true",
+                        help="report whether a watcher holds the folder's lock (pid, start, command), whether a "
+                             "stale lock exists, and the newest stamped drop per family; exit 0 = running, "
+                             "%d = stopped" % STATUS_EXIT_STOPPED)
+    parser.add_argument("--json", action="store_true", help="with --status: print JSON instead of lines")
     parser.add_argument("--pid-file", type=Path, default=None,
                         help="single-instance lock for --watch (default: <folder>/%s); a live watcher on the "
                              "same folder makes this one print already_running and exit 0" % pid_lock.WATCHER_PID_NAME)
     args = parser.parse_args(argv)
 
     folder = Path(args.folder or DEFAULT_DROP_DIR)
+    if args.status:                                         # Round 56 (Directive 56-1): read-only
+        info = watcher_status(folder, args.pid_file)
+        print(json.dumps(info, indent=2) if args.json else format_status(info))
+        return 0 if info["running"] else STATUS_EXIT_STOPPED
     sports = tuple(s.strip().upper() for s in args.sports.split(",") if s.strip())
 
     tags = [t.strip() for t in (args.tags or "").split(",") if t.strip()]
