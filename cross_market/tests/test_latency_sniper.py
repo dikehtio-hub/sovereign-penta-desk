@@ -74,7 +74,7 @@ class TestRulesAndBooks(SniperBase):
         book = ls.Book.from_clob("M", {"asks": [{"price": "0.95", "size": "10"}, {"price": "0.90", "size": "5"}, {"price": "1.2", "size": "9"},
                                               {"price": "x", "size": "1"}, {"price": "0.5", "size": "0"}],
                                        "bids": [{"price": "0.80", "size": "1"}, {"price": "0.85", "size": "2"}]},
-                                 "2026-09-17T18:00:00Z", fee_rate=0.02)
+                                 "2026-09-16T18:00:00Z", fee_rate=0.02)
         self.assertEqual([(l.price, l.size) for l in book.asks], [(0.90, 5.0), (0.95, 10.0)])
         self.assertEqual([l.price for l in book.bids], [0.85, 0.80])
         self.assertAlmostEqual(book.age_s(NOW), 5.0)
@@ -168,7 +168,7 @@ class TestReceiptsRecorderAndCli(SniperBase):
         def writer(**kwargs):
             seen.update(kwargs)
             return Path("receipt.csv")
-        self.assertEqual(ls.record_paper(opp, self.event, receipts_dir=self.root / "paper", writer=writer, stamp="2026-09-17T18:00:05Z"), Path("receipt.csv"))
+        self.assertEqual(ls.record_paper(opp, self.event, receipts_dir=self.root / "paper", writer=writer, stamp="2026-09-16T18:00:05Z"), Path("receipt.csv"))
         self.assertEqual((seen["symbol"], seen["side"], seen["strategy"], seen["venue"]), ("CUT25", "BUY", "latency_sniper", "polymarket"))
         self.assertAlmostEqual(seen["quantity"], opp.shares, places=5) ; self.assertAlmostEqual(seen["price"], opp.vwap, places=5)
         self.assertEqual(seen["imports_dir"], self.root / "paper")
@@ -197,7 +197,7 @@ class TestReceiptsRecorderAndCli(SniperBase):
             second = ls.stamp_books(["A"], out, fetch, now=NOW - timedelta(seconds=2))
         self.assertEqual([p.name[:6] for p in first], ["clob_A", "clob_B"]) ; self.assertEqual(len(second), 1)
         (out / "clob_A_20260917T180010_000000Z.json").write_text("{not json", encoding="utf-8")   # corrupt: skipped
-        (out / "clob_B_20260917T190000_000000Z.json").write_text(json.dumps({"observed_at": "2026-09-17T19:00:00Z", "asks": []}), encoding="utf-8")
+        (out / "clob_B_20260917T190000_000000Z.json").write_text(json.dumps({"observed_at": "2026-09-16T19:00:00Z", "asks": []}), encoding="utf-8")
         books = ls.load_books(out, now=NOW)
         self.assertEqual(sorted(books), ["A", "B"])
         self.assertAlmostEqual(books["A"].age_s(NOW), 2.0)                             # the newer stamp wins
@@ -419,12 +419,12 @@ class TestRecordLoop(SniperBase):
                                       "--halt-flag", str(self.halt)]), ls.EXIT_HALTED)
         self.assertGreaterEqual(len(list((self.root / "loop").glob("clob_T1_*.json"))), 1)
         # the pre-registered FOMC rules load, resolve a hold and a hike, and carry real token ids
-        rules = ls.load_rules(Path(__file__).resolve().parents[1] / "experiments" / "fomc_2026-09-17.rules.json")
+        rules = ls.load_rules(Path(__file__).resolve().parents[1] / "experiments" / "fomc_2026-09-16.rules.json")
         self.assertGreaterEqual(len(rules), 3)
         hold = ls.Event("fed_rate", {"change_bps": 0}, "fed", 0.995, NOW)
         hike = ls.Event("fed_rate", {"change_bps": 25}, "fed", 0.995, NOW)
         by_label = {r.label: r for r in rules}
-        self.assertEqual(by_label["FOMC 2026-09-17: no change"].resolve(hold), "YES")
-        self.assertEqual(by_label["FOMC 2026-09-17: no change"].resolve(hike), "NO")
-        self.assertEqual(by_label["FOMC 2026-09-17: hike 25 bps"].resolve(hike), "YES")
+        self.assertEqual(by_label["FOMC 2026-09-16: no change"].resolve(hold), "YES")
+        self.assertEqual(by_label["FOMC 2026-09-16: no change"].resolve(hike), "NO")
+        self.assertEqual(by_label["FOMC 2026-09-16: hike 25 bps"].resolve(hike), "YES")
         self.assertTrue(all(r.market.isdigit() and len(r.market) > 20 for r in rules))

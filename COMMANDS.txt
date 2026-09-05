@@ -2386,9 +2386,9 @@ esults_drops\.
          Option 2 (Round 92): per recorded book, what a sniper knowing the outcome could take level by level
          (odds, after-tax breakeven, edge/share, cumulative VWAP) - an upper bound before anyone pulls.
      python -m cross_market.latency_sniper --record-loop --tokens T1,T2,T3 --interval 1 --duration 420 [--books DIR]
-         Ruling R2 (Round 93): the FOMC drill recorder - start at T-2 min (2026-09-17 17:58Z), stamps every second for
+         Ruling R2 (Round 93): the FOMC drill recorder - start at T-2 min (2026-09-16 17:58Z), stamps every second for
          7 minutes; stops at the duration, on HALT.flag (exit 3) or Ctrl-C; HTTP 429 backs off. Rules pre-registered in
-         cross_market\experiments\fomc_2026-09-17.rules.json (real token ids; never edited inside the window).
+         cross_market\experiments\fomc_2026-09-16.rules.json (real token ids; never edited inside the window).
      Tests: python -m unittest cross_market.tests.test_latency_sniper   (master module 21)
 
      ROUND 85 - ITEM 10 PHASE 1: TELEGRAM C2 BOT (cross_market/interfaces/c2_bot.py)

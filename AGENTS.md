@@ -10,7 +10,7 @@ latency_sniper.record_loop() / CLI --record-loop --tokens T[,..] --interval 1
 --duration 420 [--books DIR]: one read-only GET per token per interval,
 sleeping interval minus fetch time; stops at the duration, on HALT.flag
 (exit 3) or Ctrl-C; an HTTP 429 is counted and answered with a growing
-pause (5 s x n, max 30 s). cross_market/experiments/fomc_2026-09-17.rules.json
+pause (5 s x n, max 30 s). cross_market/experiments/fomc_2026-09-16.rules.json
 PRE-REGISTERED with the REAL YES token ids from the 2026-09-05 macro drop:
 no change (== 0), hike 25 (== 25), hike 50+ (>= 50); the two cut markets do
 not exist in the drop today and are listed under not_found_in_drop (may be
@@ -18,7 +18,7 @@ APPENDED before the window in a dated re-registration, never edited inside
 T-2..T+5). Event schema: kind fed_rate, payload.change_bps int, confidence
 >= 0.99 only from the statement itself. All three markets are neg_risk:
 YES side only (R4). Tests: module 21 now 13. Daemons and tonight's tasks
-untouched. THE DRILL COMMAND for 2026-09-17 17:58Z:
+untouched. THE DRILL COMMAND for 2026-09-16 17:58Z:
   python -m cross_market.latency_sniper --record-loop --tokens <the three token ids from the rules file> --interval 1 --duration 420
 
 Round 92 complete (2026-09-05): OPTION 2 - DEPTH REPORT OVER REAL BOOKS.
@@ -37,7 +37,7 @@ upper bound is simply the resting depth: thin books offer $400-$3,300 of
 YES depth (15-29 levels) and $1.3k-$41k of NO depth; thick books offer
 $50k-$3M. The number that matters is therefore not depth at rest but how
 many seconds it survives after the print - which only Ruling R2's T-2/T+5
-recording at the 2026-09-17 FOMC can measure. Registry extent corrected:
+recording at the 2026-09-16 FOMC can measure. Registry extent corrected:
 the Top 20 spans lines 80-484 (Items 19 and 20 at ~447 and ~465), not
 80-415; the docs scripts' byte-identical check now covers 80-484. Tests:
 module 21 now 12. Daemons and tonight's tasks untouched.
@@ -787,6 +787,13 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
   window; console-only /resume.
 
 ## Round 93 findings
+
+- **The date was wrong by a day, everywhere.** Every reference this week said
+  "September 17"; the Fed calendar says the meeting is September 15-16 and the
+  statement lands on the 16th at 18:00Z. Corrected before any window as a dated
+  re-registration (the file records the correction); tokens and thresholds
+  unchanged. Lesson: a scheduled-release drill is anchored to the issuer's
+  calendar, not to a date repeated in prompts.
 
 - **The cut markets do not exist yet.** The drop holds "no change", "hike
   25" and "hike 50+" for September 2026 - and the hold/hike pair is priced

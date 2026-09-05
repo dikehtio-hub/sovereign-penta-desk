@@ -1,7 +1,7 @@
 {
-  "experiment": "latency_sniper_fomc_2026-09-17",
+  "experiment": "latency_sniper_fomc_2026-09-16",
   "registered_utc": "2026-09-05T18:10:19.503594+00:00",
-  "release_utc": "2026-09-17T18:00:00+00:00",
+  "release_utc": "2026-09-16T18:00:00+00:00",
   "status": "PRE-REGISTERED (Ruling R2c). Token ids are the live Polymarket YES tokens from the macro drop of 2026-09-05. NEVER edit inside the event window (T-2 min to T+5 min). A market absent here on registration day may be APPENDED before the window in a dated re-registration, never replaced.",
   "event_schema": {
     "kind": "fed_rate",
@@ -18,7 +18,7 @@
   ],
   "rules": [
     {
-      "label": "FOMC 2026-09-17: no change",
+      "label": "FOMC 2026-09-16: no change",
       "market": "5615282760875985231868508008056959876238536896643315063916840237042205273721",
       "question": "Will there be no change in Fed interest rates after the September 2026 meeting?",
       "market_slug": "will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615",
@@ -31,7 +31,7 @@
       "neg_risk": true
     },
     {
-      "label": "FOMC 2026-09-17: hike 25 bps",
+      "label": "FOMC 2026-09-16: hike 25 bps",
       "market": "63842529068710005716169325380315470359047749786610778647370693404952498013178",
       "question": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
       "market_slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649",
@@ -44,7 +44,7 @@
       "neg_risk": true
     },
     {
-      "label": "FOMC 2026-09-17: hike 50+ bps",
+      "label": "FOMC 2026-09-16: hike 50+ bps",
       "market": "88912926533493988427719291698947688154042720958310632316541141466409683822293",
       "question": "Will the Fed increase interest rates by 50+ bps after the September 2026 meeting?",
       "market_slug": "will-the-fed-increase-interest-rates-by-50-bps-after-the-september-2026-meeting-664",
@@ -55,6 +55,13 @@
       "outcome_if_true": "YES",
       "yes_price_at_registration": 0.007,
       "neg_risk": true
+    }
+  ],
+  "corrections": [
+    {
+      "at_utc": "2026-09-05T18:15:46.362247+00:00",
+      "what": "date corrected from 2026-09-17 to 2026-09-16 (FOMC meeting September 15-16 per federalreserve.gov/monetarypolicy/fomccalendars.htm; statement 2:00 p.m. ET on the final day); rules, tokens and thresholds unchanged",
+      "before_window": true
     }
   ]
 }
