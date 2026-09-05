@@ -6,16 +6,16 @@ tags:
   - risk-of-ruin
   - cross-market
   - dashboard
-last_synced: "2026-09-05 03:19:45 UTC"
+last_synced: "2026-09-05 03:39:36 UTC"
 ---
 
 # 🛡 Risk Sentinel - Multi-Desk Monte Carlo (Item 19)
 
 > [!SUCCESS] **Practical ruin (-50%) over 365d: `0.00%`** · hard ruin `0.000%`
-> - **Last Synchronized**: `2026-09-05 03:19:45 UTC`
-> - **Paths**: `100,000` × `365` days, seed `7`, start equity `$100,318.74`
-> - **Buffer**: keep `$3,524` unallocated (VaR99 365d drawdown `3.5%`); size every desk at `x2.00`
-> - Shell twin: `python -m cross_market.risk_simulator --iterations 100000 --json`
+> - **Last Synchronized**: `2026-09-05 03:39:36 UTC`
+> - **Paths**: `20,000` × `365` days, seed `7`, start equity `$100,320.45`
+> - **Buffer**: keep `$3,560` unallocated (VaR99 365d drawdown `3.5%`); size every desk at `x2.00`
+> - Shell twin: `python -m cross_market.risk_simulator --iterations 20000 --json`
 
 > **Cockpit Navigation**: [[Monarch_Hub|👑 Master Hub]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]] • [[Sports_Desk|🏈 Sports Desk]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]] • [[Cross_Market_Titans|🌐 Titans]] • [[Bot_Config|⚙️ Bot Config]]
 
@@ -27,13 +27,13 @@ last_synced: "2026-09-05 03:19:45 UTC"
 | :--- | :---: | :---: |
 | Hard ruin P(equity ≤ 0) | `0.000%` | `0.000%` |
 | Practical ruin P(drawdown ≥ 50%) | `0.00%` | `0.00%` |
-| Max drawdown VaR 95 | `0.71%` | `2.94%` |
-| Max drawdown VaR 99 | `1.13%` | `3.51%` |
+| Max drawdown VaR 95 | `0.71%` | `2.95%` |
+| Max drawdown VaR 99 | `1.13%` | `3.55%` |
 | Median max drawdown | — | `2.03%` |
 
-**Terminal equity** (365d): p05 `$105,928` · p50 `$109,238` · p95 `$112,544` · median log growth `+0.0852` · escrow median `$4,261`
+**Terminal equity** (365d): p05 `$105,993` · p50 `$109,264` · p95 `$112,570` · median log growth `+0.0854` · escrow median `$4,275`
 
-**Desk mean P&L** (365d): basis `$6,437` · sports `$2,285` · arb `$4,470` · tax `-$4,273` · liquidations per path `0.156`
+**Desk mean P&L** (365d): basis `$6,447` · sports `$2,306` · arb `$4,471` · tax `-$4,283` · liquidations per path `0.158`
 
 ---
 
@@ -43,15 +43,21 @@ Multiplier on every desk's sizing (basis capital per position, sports Kelly frac
 
 | Multiplier | Median log growth | Practical ruin | Hard ruin | VaR95 365d | Allocation | |
 | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `x0.25` | `+0.0219` | `0.00%` | `0.00%` | `0.8%` | `20%` |  |
-| `x0.50` | `+0.0435` | `0.00%` | `0.00%` | `1.5%` | `30%` |  |
-| `x0.75` | `+0.0646` | `0.00%` | `0.00%` | `2.2%` | `41%` |  |
-| `x1.00` | `+0.0854` | `0.00%` | `0.00%` | `2.9%` | `51%` |  |
-| `x1.25` | `+0.1058` | `0.00%` | `0.00%` | `3.6%` | `61%` |  |
-| `x1.50` | `+0.1260` | `0.00%` | `0.00%` | `4.3%` | `71%` |  |
-| `x2.00` | `+0.1652` | `0.00%` | `0.00%` | `5.7%` | `92%` | **recommended** |
+| `x0.25` | `+0.0218` | `0.00%` | `0.00%` | `0.8%` | `20%` |  |
+| `x0.50` | `+0.0432` | `0.00%` | `0.00%` | `1.5%` | `30%` |  |
+| `x0.75` | `+0.0643` | `0.00%` | `0.00%` | `2.2%` | `41%` |  |
+| `x1.00` | `+0.0850` | `0.00%` | `0.00%` | `2.9%` | `51%` |  |
+| `x1.25` | `+0.1053` | `0.00%` | `0.00%` | `3.6%` | `61%` |  |
+| `x1.50` | `+0.1253` | `0.00%` | `0.00%` | `4.3%` | `71%` |  |
+| `x2.00` | `+0.1644` | `0.00%` | `0.00%` | `5.7%` | `92%` | **recommended** |
 
 **Binding constraint**: capital allocation - ruin never bound at any size that fits the equity, so the pick means 'risk is not the limit', not 'add leverage'.
+
+---
+
+## ⚡ Systemic Stress
+
+_Systemic stress is off_ (`--stress-correlation 0`). Turn it on to see joint shock days: perp vol spikes, funding compresses and flips, arb leg failures double, all on the same day.
 
 ---
 
@@ -78,7 +84,7 @@ Desk 4 (Quant Trading Lab) is outside this simulation. `assumed` inputs have no 
 | `basis_positions` | `2` | measured (basis_paper_state.json) |
 | `basis_rebalance_days` | `1` | assumed |
 | `basis_tail_df` | `3` | assumed |
-| `equity` | `100319` | measured (basis_paper_state.json) |
+| `equity` | `100320` | measured (basis_paper_state.json) |
 | `sports_bankroll_fraction` | `0.1` | assumed |
 | `sports_bets_per_day` | `3` | assumed |
 | `sports_decimal_odds` | `2.4` | measured (sports_market.db edge_opportunities, 3 positive-Kelly rows) |
@@ -86,6 +92,9 @@ Desk 4 (Quant Trading Lab) is outside this simulation. `assumed` inputs have no 
 | `sports_max_stake_fraction` | `0.02` | assumed |
 | `sports_win_prob_mean` | `0.430556` | measured (sports_market.db edge_opportunities, 3 positive-Kelly rows) |
 | `sports_win_prob_std` | `0` | measured (sports_market.db edge_opportunities, 3 positive-Kelly rows) |
+| `stress_correlation` | `0` | assumed |
+| `stress_day_prob` | `0.02` | assumed |
+| `stress_vol_multiplier` | `3` | assumed |
 | `tax_rate` | `0.3237` | measured (Tax_Reserve_Agent.config) |
 
 ---

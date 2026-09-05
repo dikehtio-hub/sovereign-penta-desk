@@ -133,6 +133,60 @@ class TestEngine(unittest.TestCase):
         self.assertGreaterEqual(res["terminal_equity"]["p05"], 0.0)                 # never negative: absorbing
 
 
+class TestSystemicStress(unittest.TestCase):
+
+    def test_shock_days_hit_the_basis_and_arb_desks_together_and_zero_is_the_baseline(self):
+        # Tax escrow off so drawdowns come from the desks, not from quarter ends; 800 paths so the
+        # percentiles are stable enough to compare (VaR99 on a few hundred paths is one path).
+        base = rs.RiskInputs(horizon_days=120, basis_funding_half_life_days=0.0, sports_bets_per_day=0,
+                             basis_daily_vol=0.10, arb_per_day=3.0, arb_capital=5_000.0, tax_rate=0.0)
+        calm = rs.simulate(base, iterations=800, seed=21)
+        again = rs.simulate(rs.RiskInputs(**{**base.to_dict(), "stress_correlation": 0.0, "provenance": {}}),
+                            iterations=800, seed=21)
+        self.assertEqual(calm, again)                                          # zero correlation = the baseline
+        self.assertEqual(calm["stress"]["correlation"], 0.0)
+        self.assertGreater(calm["stress"]["shock_days_per_path"], 0.0)         # the mask is drawn regardless
+        hot = rs.RiskInputs(**{**base.to_dict(), "stress_correlation": 1.0, "stress_day_prob": 0.25,
+                               "stress_vol_multiplier": 4.0, "provenance": {}})
+        stressed = rs.simulate(hot, iterations=800, seed=21)
+        self.assertAlmostEqual(stressed["stress"]["shock_days_per_path"], 30.0, delta=3.0)
+        self.assertLess(stressed["desk_mean_pnl"]["basis"], calm["desk_mean_pnl"]["basis"])   # funding compressed/flipped
+        self.assertLess(stressed["desk_mean_pnl"]["arb"], calm["desk_mean_pnl"]["arb"])       # leg failures doubled
+        self.assertGreater(stressed["liquidations_per_path"], calm["liquidations_per_path"])  # vol x4 on shock days
+        self.assertGreater(stressed["max_drawdown"]["var95_horizon"], calm["max_drawdown"]["var95_horizon"])
+        self.assertGreater(stressed["max_drawdown"]["median_horizon"], calm["max_drawdown"]["median_horizon"])
+        self.assertLess(stressed["terminal_equity"]["p50"], calm["terminal_equity"]["p50"])
+        self.assertEqual(stressed["desk_mean_pnl"]["sports"], 0.0)                            # untouched by design
+        impact = rs.stress_impact(hot, iterations=800, seed=21, stressed=stressed)
+        self.assertEqual(impact["stressed"]["var99_horizon"], stressed["max_drawdown"]["var99_horizon"])
+        self.assertEqual(impact["baseline"]["var99_horizon"], calm["max_drawdown"]["var99_horizon"])
+        self.assertGreater(impact["delta"]["var95_horizon"], 0.0)
+        self.assertGreater(impact["delta"]["liquidations_per_path"], 0.0)
+        self.assertLess(impact["delta"]["basis_pnl"], 0.0)
+        self.assertLess(impact["delta"]["arb_pnl"], 0.0)
+        self.assertIsNone(rs.stress_impact(base, iterations=10, seed=1))
+        text = rs.format_report(stressed, hot, None, impact)
+        self.assertIn("systemic stress: correlation 1.00", text)
+        self.assertIn("VaR99 120d baseline", text)
+        self.assertIn("systemic stress: off", rs.format_report(calm, base, None, None))
+        note = rs.render_note(stressed, hot, None, now=NOW, stress=impact)
+        self.assertIn("## ⚡ Systemic Stress", note)
+        self.assertIn("| Recommended cash buffer |", note)
+        self.assertIn("_Systemic stress is off_", rs.render_note(calm, base, None, now=NOW))
+
+    def test_cli_stress_flags_override_and_report(self):
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(rs.main(["--iterations", "200", "--horizon-days", "30", "--assume-defaults", "--no-grid",
+                                      "--no-vault", "--json", "--stress-correlation", "0.8", "--stress-day-prob", "0.3",
+                                      "--stress-vol-multiplier", "5"]), 0)
+        payload = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertEqual(payload["inputs"]["stress_correlation"], 0.8)
+        self.assertEqual(payload["inputs"]["provenance"]["stress_day_prob"], "override (cli)")
+        self.assertEqual(set(payload["stress"]), {"correlation", "day_prob", "vol_multiplier", "shock_days_per_path",
+                                                  "baseline", "stressed", "delta"})
+        self.assertEqual(payload["stress"]["vol_multiplier"], 5.0)
+
+
 class TestShrinkageAndInputs(unittest.TestCase):
 
     def test_shrinkage_picks_the_best_feasible_multiplier_and_reports_the_grid(self):
@@ -277,10 +331,11 @@ class TestCli(unittest.TestCase):
             with mock.patch("builtins.print") as fake_print:
                 self.assertEqual(rs.main(argv + ["--json", "--no-vault"]), 0)
             payload = json.loads(fake_print.call_args_list[0].args[0])
-            self.assertEqual(set(payload), {"result", "shrinkage", "buffer", "inputs", "note"})
+            self.assertEqual(set(payload), {"result", "shrinkage", "buffer", "stress", "inputs", "note"})
             self.assertIsNone(payload["shrinkage"])
             self.assertEqual(payload["note"], "not written (--no-vault)")
             self.assertEqual(payload["inputs"]["provenance"]["equity"], "assumed")
+            self.assertIsNone(payload["stress"])
             # --inputs overrides fields and is labelled; the grid runs with --grid-iterations.
             overrides = Path(tmp) / "inputs.json"
             overrides.write_text(json.dumps({"equity": 50_000.0, "basis_positions": 0}), encoding="utf-8")

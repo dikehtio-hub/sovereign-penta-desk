@@ -15,6 +15,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
+from cross_market.interfaces.obsidian_exporter import main as ex_main
 from cross_market.interfaces.obsidian_exporter import (CROSS_MARKET_ARB_NOTE,
                                                         HURDLE_CAPITAL_NO_CAPACITY,
                                                         HURDLE_WAGERING, NOMINAL_CAPITAL,
@@ -193,11 +194,61 @@ class TestTitansSentinelRefresh(ExporterBase):
             (self.questions / stamped_drop_name(real_now - timedelta(minutes=5 * i), family="macro")).write_text("[]")
         with mock.patch("builtins.print") as fake_print:
             self.assertEqual(ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db),
-                                      "--questions", str(self.questions)]), 0)
+                                      "--questions", str(self.questions), "--risk-every", "0"]), 0)
         printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
         self.assertIn("sentinel: %s refreshed" % note.name, printed)
+        self.assertIn("risk: off", printed)
         with mock.patch("builtins.print") as fake_print:
             self.assertEqual(ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db),
-                                      "--questions", str(self.questions)]), 0)
+                                      "--questions", str(self.questions), "--risk-every", "0"]), 0)
         printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
         self.assertIn("sentinel: %s unchanged" % note.name, printed)          # only the clock line moved
+
+
+class TestRiskRefresher(ExporterBase):
+    """Round 59 (Directive 59-1): the exporter loop keeps Risk_Sentinel.md current without churn."""
+
+    def test_refresh_is_due_on_start_every_n_cycles_and_when_the_book_moves(self):
+        from unittest import mock
+
+        from cross_market import risk_simulator as rs
+        from cross_market.interfaces.obsidian_exporter import RiskRefresher
+
+        book = self.root / "basis_paper_state.json"
+        book.write_text(json.dumps({"cash": 60_000.0, "positions": {"XPL": {"capital": 20_000.0}}}), encoding="utf-8")
+        r = RiskRefresher(every_cycles=3, iterations=60, grid_iterations=10, seed=5, paper_state=book,
+                          loader=lambda: rs.RiskInputs(horizon_days=20))
+        self.assertEqual(r.signature(), (80_000, 1, ("XPL",)))
+        self.assertTrue(r.due(0))                                              # first cycle
+        self.assertEqual(r.status(0), "risk: pending")
+        status = r.run(str(self.vault), 0)
+        self.assertEqual(status, "risk: Risk_Sentinel.md refreshed (60 paths)")
+        self.assertTrue((self.vault / "Risk_Sentinel.md").exists())
+        self.assertFalse(r.due(1))
+        self.assertFalse(r.due(2))
+        self.assertEqual(r.status(2), "risk: next in 1 cycle(s)")
+        self.assertTrue(r.due(3))                                              # every 3 cycles
+        self.assertEqual(r.run(str(self.vault), 3), "risk: Risk_Sentinel.md unchanged (60 paths)")
+        book.write_text(json.dumps({"cash": 61_500.0, "positions": {"XPL": {"capital": 20_000.0}}}), encoding="utf-8")
+        self.assertTrue(r.due(4))                                              # the book moved: due at once
+        self.assertEqual(r.runs, 2)
+        # Off: never due; a broken loader is reported, never raised; a missing book is a None signature.
+        self.assertFalse(RiskRefresher(every_cycles=0).due(0))
+        self.assertEqual(RiskRefresher(every_cycles=0).status(0), "risk: off")
+
+        def broken():
+            raise RuntimeError("no book")
+
+        self.assertTrue(RiskRefresher(every_cycles=1, iterations=5, grid_iterations=5, loader=broken)
+                        .run(str(self.vault), 0).startswith("risk: skipped (RuntimeError: no book)"))
+        self.assertIsNone(RiskRefresher(paper_state=self.root / "none.json").signature())
+        # The --once path runs the refresh hermetically with --risk-assume-defaults.
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex_main(["--once", "--vault", str(self.vault), "--db", str(self.db),
+                                      "--questions", str(self.questions), "--risk-every", "1",
+                                      "--risk-iterations", "40", "--risk-grid-iterations", "10",
+                                      "--risk-assume-defaults", "--risk-stress", "0.5"]), 0)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("risk: Risk_Sentinel.md refreshed (40 paths)", printed)
+        self.assertIn("## ⚡ Systemic Stress", (self.vault / "Risk_Sentinel.md").read_text(encoding="utf-8"))
+        self.assertIn("| Recommended cash buffer |", (self.vault / "Risk_Sentinel.md").read_text(encoding="utf-8"))

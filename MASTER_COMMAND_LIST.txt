@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 (Round 50 Milestone)
-Last Update: Round 58 Complete (Item 19 multi-desk Monte Carlo risk-of-ruin simulator)
-Status:      2,483 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
+Last Update: Round 59 Complete (Risk Sentinel auto-refresh, systemic stress factor)
+Status:      2,486 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -66,7 +66,7 @@ TABLE OF CONTENTS
 4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,483 tests across all 5 desks):
+5. RUN FULL OFFLINE VERIFICATION (2,486 tests across all 5 desks):
    python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
@@ -358,6 +358,10 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       python -m cross_market.lead_lag [--coin BTC]      # live dirs are GATED: exit 3 until READY, --force to override
       # Round 58 (Item 19): multi-desk Monte Carlo risk-of-ruin; writes obsidian_vault/Risk_Sentinel.md
       python -m cross_market.risk_simulator --iterations 100000 [--json] [--no-vault] [--assume-defaults]
+      # Round 59: --stress-correlation 0..1 [--stress-day-prob 0.02] [--stress-vol-multiplier 3] -> baseline vs
+      # stressed VaR99 / ruin / buffer in the report and the card. The Arb exporter loop refreshes the card
+      # every --risk-every cycles (60 = 15 min) or when the paper book moves: --risk-iterations 20000,
+      # --risk-grid-iterations 5000, --risk-stress 0.0, --risk-every 0 = off.
 
       # Item 18 lead-lag (offline research; needs timestamped Polymarket drops):
       python -m cross_market.lead_lag --coin BTC

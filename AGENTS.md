@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 59 complete: RISK SENTINEL AUTO-REFRESH, SYSTEMIC STRESS FACTOR. The
+Cross-Market Arb Obsidian exporter carries a RiskRefresher: Risk_Sentinel.md
+is re-simulated on the first cycle, every --risk-every cycles (60 = 15 min at
+15 s) or as soon as the paper book's signature (equity, positions, coins)
+moves; 20,000 paths + a 5,000-path grid (~5 s) so the loop is not stalled for
+the CLI's 25 s; write_note_if_changed keeps unchanged cards off disk.
+risk_simulator gained --stress-correlation (0..1) with --stress-day-prob
+(0.02) and --stress-vol-multiplier (3): on a shock day perp vol is
+multiplied, funding compresses and flips negative, arb leg failures double,
+all together; the report and card show baseline vs stressed VaR99, practical
+ruin, cash buffer and desk P&Ls. Zero correlation is bit-identical to an
+unstressed run. 3 new tests.
+
 Round 58 complete: ITEM 19 MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR.
 cross_market/risk_simulator.py runs one joint numpy simulation of the trading
 bankroll across the basis book (funding level decaying from the measured mean
@@ -285,7 +298,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 847 OK |
+| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 850 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -309,6 +322,26 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 59 findings
+
+- **Refresh cadence and cost were traded explicitly.** The CLI's 100,000
+  paths plus the 7 x 20,000 grid take ~25 s; inside a 15 s loop that would
+  freeze the arb export and the Titans sentinel for the whole refresh. The
+  loop refresh uses 20,000 paths and a 5,000-path grid (~5 s) and the card
+  prints its path count, so the CLI run stays the reference figure.
+- **"Significant shift" is the paper book's signature**, read from the small
+  JSON every cycle: equity to the dollar, position count, coin set. A new
+  position or a $1 change re-simulates at once; the databases are read only
+  when a refresh runs. The signature is taken AFTER the run so a book that
+  moves during the simulation triggers again next cycle.
+- **Stress is a correlation applied to three levers on the same day**: perp
+  vol x(1 + c(mult - 1)), funding x(1 - c) minus c x |daily mean| (flips at
+  c = 1), arb leg-fail x(1 + c). The shock mask is drawn every day whatever c
+  is, so c = 0 reproduces the unstressed run bit for bit under the same seed.
+  Sports wagers are untouched: nothing links a moneyline to a crypto squeeze.
+- **Live at close**: systemic stress: correlation 0.50, shock-day prob 0.020 (7.3 days/path), vol x3.0 on shock days;VaR99 365d baseline 3.49% -> stressed 3.51% (+0.01 pp); practical ruin 0.0000 -> 0.0000;buffer $3,505 -> $3,519 (+15); basis P&L -156; arb P&L -10; liquidations/path 0.153 -> 0.172
+ | exporter --once: risk: Risk_Sentinel.md unchanged (20,000 paths).
 
 ## Round 58 findings
 

@@ -107,6 +107,10 @@ class RiskInputs:
     # Desk 5 - Tax reserve
     tax_rate: float = 0.3237
     tax_quarter_days: int = 91
+    # Systemic stress (Round 59, Directive 59-2): joint shock days. 0 = off.
+    stress_correlation: float = 0.0                  # 0..1 - how hard the desks co-move on a shock day
+    stress_day_prob: float = 0.02                    # probability a day is a systemic shock day (~7/yr)
+    stress_vol_multiplier: float = 3.0               # perp vol on a shock day at correlation 1
     # Ruin
     ruin_fraction: float = 0.5
     provenance: Dict[str, str] = field(default_factory=dict)
@@ -185,18 +189,30 @@ def simulate(inputs: RiskInputs, iterations: int = DEFAULT_ITERATIONS, seed: int
     bets = max(0, int(inputs.sports_bets_per_day))
     # Desk 3 constants
     arb_rate = max(float(inputs.arb_per_day), 0.0)
+    # Systemic stress: the shock mask is drawn every day whatever the correlation, so a
+    # zero-correlation run is bit-identical to an unstressed one under the same seed.
+    corr = min(max(float(inputs.stress_correlation), 0.0), 1.0)
+    shock_prob = min(max(float(inputs.stress_day_prob), 0.0), 1.0)
+    vol_boost = 1.0 + corr * (max(float(inputs.stress_vol_multiplier), 1.0) - 1.0)
+    shock_days = np.zeros(n)
     ruin_level = start * (1.0 - float(inputs.ruin_fraction))
     quarter_days = int(inputs.tax_quarter_days)
 
     for day in range(horizon):
         alive = equity > 0.0
+        shock = rng.random(n) < shock_prob
+        shock_days += shock
+        hit = shock * corr                                               # 0 on calm days, corr on shock days
         # ---- Desk 1: funding income and fat-tailed perp moves against the short leg
         if positions > 0 and capital_basis > 0:
             # The level decays from the measured mean toward the long-run APR (a para coin can
             # print a four-digit APR for a day; it does not keep it), the AR(1) noise rides on top.
-            funding = short_notional * rng.normal(24.0 * level_h, sd24, n)
+            # On a shock day funding compresses toward zero and flips negative at full correlation,
+            # while the perp leg's vol is multiplied - the two things a squeeze does to a short.
+            base_funding = rng.normal(24.0 * level_h, sd24, n)
+            funding = short_notional * (base_funding * (1.0 - hit) - hit * 24.0 * abs(level_h))
             level_h = long_run_h + (level_h - long_run_h) * decay
-            move = move + rng.standard_t(df, n) * tscale
+            move = move + rng.standard_t(df, n) * tscale * np.where(shock, vol_boost, 1.0)
             liq = move >= liq_move
             cost = np.where(liq, capital_basis * float(inputs.basis_liquidation_cost), 0.0)
             liquidations += liq
@@ -223,7 +239,7 @@ def simulate(inputs: RiskInputs, iterations: int = DEFAULT_ITERATIONS, seed: int
             counts = rng.poisson(arb_rate, n)
             for m in range(int(counts.max())):
                 active = counts > m
-                fail = rng.random(n) < float(inputs.arb_leg_fail_prob)
+                fail = rng.random(n) < float(inputs.arb_leg_fail_prob) * (1.0 + hit)   # doubles at corr 1
                 gross = rng.normal(inputs.arb_gross_return, inputs.arb_return_std, n) * float(inputs.arb_capital)
                 loss = -rng.uniform(0.0, float(inputs.arb_desync_loss_max), n) * float(inputs.arb_capital)
                 pnl_arb += np.where(active, np.where(fail, loss, gross), 0.0)
@@ -272,7 +288,39 @@ def simulate(inputs: RiskInputs, iterations: int = DEFAULT_ITERATIONS, seed: int
         "escrow": {"median": _percentile(escrow, 50), "mean": float(escrow.mean())},
         "desk_mean_pnl": {k: float(v.mean()) for k, v in desk.items()},
         "liquidations_per_path": float(liquidations.mean()),
+        "stress": {"correlation": corr, "day_prob": shock_prob, "vol_multiplier": float(inputs.stress_vol_multiplier),
+                   "shock_days_per_path": float(shock_days.mean())},
     }
+
+
+def stress_impact(inputs: RiskInputs, iterations: int = DEFAULT_ITERATIONS, seed: int = 7,
+                  stressed: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """
+    Baseline (correlation 0) vs the stressed book, same paths and seed: what the joint
+    shock days do to VaR99, practical ruin, the cash buffer and the desk P&Ls. None when
+    stress is off.
+    """
+    if float(inputs.stress_correlation) <= 0.0:
+        return None
+    stressed = stressed or simulate(inputs, iterations=iterations, seed=seed)
+    baseline = simulate(replace(inputs, stress_correlation=0.0, provenance=dict(inputs.provenance)),
+                        iterations=iterations, seed=seed)
+
+    def pick(res: Dict[str, Any]) -> Dict[str, float]:
+        return {
+            "var99_short": res["max_drawdown"]["var99_short"], "var99_horizon": res["max_drawdown"]["var99_horizon"],
+            "var95_horizon": res["max_drawdown"]["var95_horizon"],
+            "practical_ruin": res["ruin"]["practical_horizon"], "hard_ruin": res["ruin"]["hard_horizon"],
+            "buffer_usd": res["start_equity"] * res["max_drawdown"]["var99_horizon"],
+            "terminal_p50": res["terminal_equity"]["p50"], "basis_pnl": res["desk_mean_pnl"]["basis"],
+            "arb_pnl": res["desk_mean_pnl"]["arb"], "liquidations_per_path": res["liquidations_per_path"],
+        }
+
+    b, st = pick(baseline), pick(stressed)
+    return {"correlation": stressed["stress"]["correlation"], "day_prob": stressed["stress"]["day_prob"],
+            "vol_multiplier": stressed["stress"]["vol_multiplier"],
+            "shock_days_per_path": stressed["stress"]["shock_days_per_path"],
+            "baseline": b, "stressed": st, "delta": {k: st[k] - b[k] for k in b}}
 
 
 def allocation_fraction(inputs: RiskInputs) -> float:
@@ -475,6 +523,7 @@ def load_live_inputs(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFA
     else:
         prov["tax_rate"] = "assumed"
     for name in ("basis_funding_long_run_apr", "basis_funding_half_life_days",
+                 "stress_correlation", "stress_day_prob", "stress_vol_multiplier",
                  "sports_bankroll_fraction", "sports_bets_per_day", "sports_kelly_fraction",
                  "sports_max_stake_fraction", "arb_per_day", "arb_capital", "arb_gross_return",
                  "arb_leg_fail_prob", "arb_desync_loss_max", "basis_leverage", "basis_liquidation_cost",
@@ -495,7 +544,24 @@ def buffer_recommendation(result: Dict[str, Any], shrinkage: Optional[Dict[str, 
             "hold_back_fraction": max(0.0, 1.0 - multiplier)}
 
 
-def format_report(result: Dict[str, Any], inputs: RiskInputs, shrinkage: Optional[Dict[str, Any]] = None) -> str:
+def format_stress(stress: Optional[Dict[str, Any]], horizon: int) -> List[str]:
+    if not stress:
+        return ["[RISK] systemic stress: off (--stress-correlation 0)"]
+    b, st, d = stress["baseline"], stress["stressed"], stress["delta"]
+    return [
+        "[RISK] systemic stress: correlation %.2f, shock-day prob %.3f (%.1f days/path), vol x%.1f on shock days"
+        % (stress["correlation"], stress["day_prob"], stress["shock_days_per_path"], stress["vol_multiplier"]),
+        "[RISK]   VaR99 %dd baseline %.2f%% -> stressed %.2f%% (%+.2f pp); practical ruin %.4f -> %.4f"
+        % (horizon, b["var99_horizon"] * 100, st["var99_horizon"] * 100, d["var99_horizon"] * 100,
+           b["practical_ruin"], st["practical_ruin"]),
+        "[RISK]   buffer $%s -> $%s (%+.0f); basis P&L %+.0f; arb P&L %+.0f; liquidations/path %.3f -> %.3f"
+        % ("{:,.0f}".format(b["buffer_usd"]), "{:,.0f}".format(st["buffer_usd"]), d["buffer_usd"], d["basis_pnl"],
+           d["arb_pnl"], b["liquidations_per_path"], st["liquidations_per_path"]),
+    ]
+
+
+def format_report(result: Dict[str, Any], inputs: RiskInputs, shrinkage: Optional[Dict[str, Any]] = None,
+                  stress: Optional[Dict[str, Any]] = None) -> str:
     r, m, t = result["ruin"], result["max_drawdown"], result["terminal_equity"]
     short = result["short_horizon_days"]
     horizon = result["horizon_days"]
@@ -531,6 +597,7 @@ def format_report(result: Dict[str, Any], inputs: RiskInputs, shrinkage: Optiona
         lines.append("[RISK]   binding constraint: %s" % BINDING_TEXT.get(shrinkage.get("binding"), "unknown"))
     lines.append("[RISK] buffer: keep $%s unallocated (VaR99 %dd drawdown = %.1f%% of equity); size every desk at x%.2f"
                  % ("{:,.0f}".format(buf["buffer_usd"]), horizon, buf["buffer_fraction"] * 100, buf["sizing_multiplier"]))
+    lines.extend(format_stress(stress, horizon))
     measured = sorted(k for k, v in inputs.provenance.items() if v.startswith("measured"))
     assumed = sorted(k for k, v in inputs.provenance.items() if v == "assumed")
     lines.append("[RISK] inputs measured: %s" % (", ".join(measured) or "none"))
@@ -538,8 +605,34 @@ def format_report(result: Dict[str, Any], inputs: RiskInputs, shrinkage: Optiona
     return "\n".join(lines)
 
 
+def render_stress_section(stress: Optional[Dict[str, Any]], horizon: int) -> str:
+    if not stress:
+        return ("_Systemic stress is off_ (`--stress-correlation 0`). Turn it on to see joint shock days: perp vol "
+                "spikes, funding compresses and flips, arb leg failures double, all on the same day.")
+    b, st, d = stress["baseline"], stress["stressed"], stress["delta"]
+    return (
+        "Correlation `%.2f`, shock-day probability `%.3f` (`%.1f` days per path), perp vol `x%.1f` on shock days; "
+        "sports wagers are unaffected (nothing links them to a crypto squeeze).\n\n"
+        "| Metric | Baseline | Stressed | Δ |\n| :--- | :---: | :---: | :---: |\n"
+        "| VaR99 max drawdown %dd | `%.2f%%` | `%.2f%%` | `%+.2f pp` |\n"
+        "| VaR95 max drawdown %dd | `%.2f%%` | `%.2f%%` | `%+.2f pp` |\n"
+        "| Practical ruin %dd | `%.2f%%` | `%.2f%%` | `%+.2f pp` |\n"
+        "| Recommended cash buffer | `$%s` | `$%s` | `%+.0f` |\n"
+        "| Basis desk P&L | `$%s` | `$%s` | `%+.0f` |\n"
+        "| Arb desk P&L | `$%s` | `$%s` | `%+.0f` |\n"
+        "| Liquidations per path | `%.3f` | `%.3f` | `%+.3f` |"
+        % (stress["correlation"], stress["day_prob"], stress["shock_days_per_path"], stress["vol_multiplier"],
+           horizon, b["var99_horizon"] * 100, st["var99_horizon"] * 100, d["var99_horizon"] * 100,
+           horizon, b["var95_horizon"] * 100, st["var95_horizon"] * 100, d["var95_horizon"] * 100,
+           horizon, b["practical_ruin"] * 100, st["practical_ruin"] * 100, d["practical_ruin"] * 100,
+           "{:,.0f}".format(b["buffer_usd"]), "{:,.0f}".format(st["buffer_usd"]), d["buffer_usd"],
+           "{:,.0f}".format(b["basis_pnl"]), "{:,.0f}".format(st["basis_pnl"]), d["basis_pnl"],
+           "{:,.0f}".format(b["arb_pnl"]), "{:,.0f}".format(st["arb_pnl"]), d["arb_pnl"],
+           b["liquidations_per_path"], st["liquidations_per_path"], d["liquidations_per_path"]))
+
+
 def render_note(result: Dict[str, Any], inputs: RiskInputs, shrinkage: Optional[Dict[str, Any]],
-                now: Optional[datetime] = None) -> str:
+                now: Optional[datetime] = None, stress: Optional[Dict[str, Any]] = None) -> str:
     """The Risk_Sentinel.md card."""
     now = now or datetime.now(timezone.utc)
     synced = now.strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -608,6 +701,12 @@ Multiplier on every desk's sizing (basis capital per position, sports Kelly frac
 
 ---
 
+## ⚡ Systemic Stress
+
+{render_stress_section(stress, horizon)}
+
+---
+
 ## 🧾 Inputs & Provenance
 
 Desk 4 (Quant Trading Lab) is outside this simulation. `assumed` inputs have no live history yet.
@@ -653,6 +752,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--sports-db", type=Path, default=DEFAULT_SPORTS_DB)
     parser.add_argument("--grid-iterations", type=int, default=DEFAULT_GRID_ITERATIONS)
     parser.add_argument("--no-grid", action="store_true", help="skip the Kelly shrinkage grid")
+    parser.add_argument("--stress-correlation", type=float, default=None,
+                        help="Round 59: 0..1 joint shock days (perp vol spike, funding compresses/flips, arb leg "
+                             "failures double); the report shows baseline vs stressed (default 0 = off)")
+    parser.add_argument("--stress-day-prob", type=float, default=None, help="shock-day probability (default 0.02)")
+    parser.add_argument("--stress-vol-multiplier", type=float, default=None, help="perp vol on a shock day (default 3)")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
     parser.add_argument("--no-vault", action="store_true", help="do not write Risk_Sentinel.md")
@@ -675,19 +779,25 @@ def main(argv: Optional[List[str]] = None) -> int:
         inputs.horizon_days = int(args.horizon_days)
     if args.ruin_fraction is not None:
         inputs.ruin_fraction = float(args.ruin_fraction)
+    for name, value in (("stress_correlation", args.stress_correlation), ("stress_day_prob", args.stress_day_prob),
+                        ("stress_vol_multiplier", args.stress_vol_multiplier)):
+        if value is not None:
+            setattr(inputs, name, float(value))
+            inputs.provenance[name] = "override (cli)"
 
     result = simulate(inputs, iterations=args.iterations, seed=args.seed)
+    stress = stress_impact(inputs, iterations=args.iterations, seed=args.seed, stressed=result)
     shrinkage = None if args.no_grid else kelly_shrinkage(inputs, iterations=min(args.grid_iterations, args.iterations),
                                                           seed=args.seed)
     note_status = "not written (--no-vault)"
     if not args.no_vault:
-        path, changed = write_note(render_note(result, inputs, shrinkage), args.vault)
+        path, changed = write_note(render_note(result, inputs, shrinkage, stress=stress), args.vault)
         note_status = "%s %s" % (path, "written" if changed else "unchanged")
     if args.json:
         print(json.dumps({"result": result, "shrinkage": shrinkage, "buffer": buffer_recommendation(result, shrinkage),
-                          "inputs": inputs.to_dict(), "note": note_status}, indent=2))
+                          "stress": stress, "inputs": inputs.to_dict(), "note": note_status}, indent=2))
     else:
-        print(format_report(result, inputs, shrinkage))
+        print(format_report(result, inputs, shrinkage, stress))
         print("[RISK] note: %s" % note_status)
     return 0
 

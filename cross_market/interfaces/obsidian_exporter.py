@@ -223,6 +223,84 @@ def _refresh_sentinel_quietly(vault: Optional[str], drop_dirs) -> str:
     return "sentinel: %s %s" % (path.name, "refreshed" if changed else "unchanged")
 
 
+class RiskRefresher:
+    """
+    Round 59 (Directive 59-1): keeps obsidian_vault/Risk_Sentinel.md current from the
+    exporter loop. A refresh is due on the first cycle, every `every_cycles` after
+    the last one (60 x 15 s = 15 min), or as soon as the paper book's signature
+    (equity to the dollar, position count, coins) moves. The signature read is a
+    small JSON file every cycle; the databases are touched only when a refresh
+    actually runs. Fewer paths than the CLI default so the loop stalls ~5 s, not 25.
+    """
+
+    def __init__(self, every_cycles: int = 60, iterations: int = 20_000, grid_iterations: int = 5_000,
+                 seed: int = 7, stress_correlation: float = 0.0, paper_state: Optional[Path] = None,
+                 loader=None):
+        self.every_cycles = max(0, int(every_cycles))
+        self.iterations = max(1, int(iterations))
+        self.grid_iterations = max(1, int(grid_iterations))
+        self.seed = int(seed)
+        self.stress_correlation = float(stress_correlation)
+        self.paper_state = paper_state
+        self.loader = loader
+        self.last_cycle: Optional[int] = None
+        self.last_signature = None
+        self.runs = 0
+
+    def signature(self):
+        """(equity to the dollar, positions, coins) from the paper book; None when unreadable."""
+        from cross_market.risk_simulator import DEFAULT_PAPER_STATE
+        path = Path(self.paper_state or DEFAULT_PAPER_STATE)
+        try:
+            state = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:                                   # noqa: BLE001
+            return None
+        positions = state.get("positions") or {}
+        caps = [float(p.get("capital") or 0.0) for p in positions.values() if isinstance(p, dict)]
+        equity = float(state.get("cash") or 0.0) + sum(caps)
+        return (round(equity), len(caps), tuple(sorted(str(k) for k in positions)))
+
+    def due(self, cycle: int) -> bool:
+        if self.every_cycles <= 0:
+            return False
+        if self.last_cycle is None:
+            return True
+        if cycle - self.last_cycle >= self.every_cycles:
+            return True
+        return self.signature() != self.last_signature
+
+    def run(self, vault: Optional[str], cycle: int = 0) -> str:
+        """Simulate and write the card; never raises. Returns a one-line status."""
+        from cross_market import risk_simulator as rs
+        try:
+            if self.loader is not None:
+                inputs = self.loader()
+            else:
+                inputs = rs.load_live_inputs(Path(self.paper_state or rs.DEFAULT_PAPER_STATE))
+            if self.stress_correlation > 0:
+                inputs.stress_correlation = self.stress_correlation
+                inputs.provenance["stress_correlation"] = "override (exporter)"
+            result = rs.simulate(inputs, iterations=self.iterations, seed=self.seed)
+            stress = rs.stress_impact(inputs, iterations=self.iterations, seed=self.seed, stressed=result)
+            shrinkage = rs.kelly_shrinkage(inputs, iterations=min(self.grid_iterations, self.iterations), seed=self.seed)
+            path, changed = rs.write_note(rs.render_note(result, inputs, shrinkage, stress=stress),
+                                          resolve_vault(vault))
+        except Exception as exc:                            # noqa: BLE001 - the arb export must go on
+            return "risk: skipped (%s: %s)" % (type(exc).__name__, exc)
+        self.last_cycle = int(cycle)
+        self.last_signature = self.signature()
+        self.runs += 1
+        return "risk: %s %s (%s paths)" % (path.name, "refreshed" if changed else "unchanged",
+                                           "{:,}".format(self.iterations))
+
+    def status(self, cycle: int) -> str:
+        if self.every_cycles <= 0:
+            return "risk: off"
+        if self.last_cycle is None:
+            return "risk: pending"
+        return "risk: next in %d cycle(s)" % max(0, self.every_cycles - (cycle - self.last_cycle))
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Cross-Market Arb -> Obsidian exporter")
     parser.add_argument("--vault", type=str, default=None)
@@ -231,24 +309,43 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--watch", action="store_true")
     parser.add_argument("--interval", type=float, default=15.0)
+    parser.add_argument("--risk-every", type=int, default=60,
+                        help="Round 59: refresh Risk_Sentinel.md every N cycles (default 60 = 15 min at 15 s) "
+                             "or when the paper book moves; 0 = off")
+    parser.add_argument("--risk-iterations", type=int, default=20_000)
+    parser.add_argument("--risk-grid-iterations", type=int, default=5_000)
+    parser.add_argument("--risk-seed", type=int, default=7)
+    parser.add_argument("--risk-stress", type=float, default=0.0, help="stress correlation for the card (default 0)")
+    parser.add_argument("--risk-assume-defaults", action="store_true", help="hermetic: no live files for the risk card")
     args = parser.parse_args(argv)
     db_path = Path(args.db or DEFAULT_DB_PATH)
     qdir = Path(args.questions or DEFAULT_QUESTIONS_DIR)
 
     sentinel_dirs = [qdir] if args.questions else None    # explicit drops -> the sentinel reads the same
+    loader = None
+    if args.risk_assume_defaults:
+        from cross_market.risk_simulator import RiskInputs
+        loader = RiskInputs
+    risk = RiskRefresher(every_cycles=args.risk_every, iterations=args.risk_iterations,
+                         grid_iterations=args.risk_grid_iterations, seed=args.risk_seed,
+                         stress_correlation=args.risk_stress, loader=loader)
     if not args.watch:
         path, changed = export_cross_market_arb(args.vault, db_path=db_path, questions_dir=qdir)
         print("[OK] %s %s" % (path, "written" if changed else "unchanged"))
         print("[OK] %s" % _refresh_sentinel_quietly(args.vault, sentinel_dirs))
+        print("[OK] %s" % (risk.run(args.vault, 0) if risk.due(0) else risk.status(0)))
         return 0
     print("[SYNC] Cross-Market Arb -> %s every %gs. Ctrl-C to stop."
           % (resolve_vault(args.vault), args.interval))
+    cycle = 0
     try:
         while True:
             path, changed = export_cross_market_arb(args.vault, db_path=db_path, questions_dir=qdir)
-            print("[%s] %s %s · %s" % (datetime.now().strftime("%H:%M:%S"), path.name,
-                                       "written" if changed else "unchanged",
-                                       _refresh_sentinel_quietly(args.vault, sentinel_dirs)))
+            risk_line = risk.run(args.vault, cycle) if risk.due(cycle) else risk.status(cycle)
+            print("[%s] %s %s · %s · %s" % (datetime.now().strftime("%H:%M:%S"), path.name,
+                                            "written" if changed else "unchanged",
+                                            _refresh_sentinel_quietly(args.vault, sentinel_dirs), risk_line))
+            cycle += 1
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print("\n[STOP] Cross-Market Arb exporter stopped.")

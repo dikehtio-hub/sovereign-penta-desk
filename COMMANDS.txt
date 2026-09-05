@@ -2360,6 +2360,19 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 59 - RISK SENTINEL AUTO-REFRESH, SYSTEMIC STRESS FACTOR
+     python -m cross_market.interfaces.obsidian_exporter --watch --interval 15
+         [--risk-every 60] [--risk-iterations 20000] [--risk-grid-iterations 5000] [--risk-seed 7]
+         [--risk-stress 0.0] [--risk-assume-defaults]
+         Risk_Sentinel.md is re-simulated on the first cycle, every --risk-every cycles (60 = 15 min)
+         or when basis_paper_state.json's equity / positions / coins change; 0 = off. The loop line
+         shows "risk: Risk_Sentinel.md refreshed|unchanged (N paths)" or "risk: next in N cycle(s)".
+         start_all_ecosystem_sync.bat needs no change: the defaults apply to its Arb exporter.
+     python -m cross_market.risk_simulator --stress-correlation 0.5 [--stress-day-prob 0.02]
+         [--stress-vol-multiplier 3] ...   joint shock days (perp vol x3, funding compresses/flips, arb
+         leg failures x2, together); the report and the card show baseline vs stressed VaR99,
+         practical ruin, cash buffer, desk P&Ls. 0 = off and bit-identical to an unstressed run.
+
      ROUND 58 - ITEM 19 MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR
      python -m cross_market.risk_simulator --iterations 100000 [--json] [--seed 7] [--horizon-days 365]
          [--inputs FILE.json] [--assume-defaults] [--no-grid] [--grid-iterations 20000] [--no-vault]
@@ -2487,7 +2500,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (17 modules, 847): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (17 modules, 850): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.
