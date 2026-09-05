@@ -5,7 +5,7 @@ File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 19:43 EDT (Round 50 Milestone — commit a9c547d)
 Last Update: 2026-09-05 04:39 EDT (Round 72 Complete — commit e91417c)
-Status:      2,567 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
+Status:      2,571 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -70,9 +70,9 @@ TABLE OF CONTENTS
    [Added: 2026-09-04 18:51 EDT (Round 50 Milestone)]
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,567 tests across all 5 desks):
+5. RUN FULL OFFLINE VERIFICATION (2,571 tests across all 5 desks):
    [Added: 2026-09-04 19:43 EDT (Round 50 Milestone) | Last Synchronized: 2026-09-05 04:39 EDT (Round 72)]
-   python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+   python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
 2. TOP 20 ECOSYSTEM MODULES (What It Does & How To Activate)
@@ -441,7 +441,7 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       python -m cross_market.lead_lag --coin ETH --drops <DIR> --db <PATH> --max-lag 60 --min-shift 0.02
       python -m cross_market.lead_lag --events my_events.csv     # ts,key,probability
   - Test Command:
-      python -m unittest cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper
+      python -m unittest cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards
 
 --------------------------------------------------------------------------------
 [x] ITEM 19: MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR
@@ -459,7 +459,7 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
     Tax_Reserve_Agent.config; everything else is labelled "assumed" in the report.
   - Status: [DEPLOYED Round 58 — 2026-09-04 23:21 EDT] cross_market/risk_simulator.py; card obsidian_vault/Risk_Sentinel.md
   - Run:  python -m cross_market.risk_simulator --iterations 100000 [--json] [--no-vault] [--assume-defaults]
-  - Test: python -m unittest cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper
+  - Test: python -m unittest cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards
 
 --------------------------------------------------------------------------------
 [x] ITEM 20: SOVEREIGN MASTER COCKPIT UI (WAR ROOM DASHBOARD & CANVAS)
@@ -539,19 +539,19 @@ Obsidian Vault Locations:
   Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md [Added: 2026-09-03 21:53 EDT (Round 26L)]
 
 ================================================================================
-5. MASTER OFFLINE TEST SUITES (2,567 Tests Total)
+5. MASTER OFFLINE TEST SUITES (2,571 Tests Total)
 ================================================================================
 
 Every modification MUST be verified offline against all 3 test suites. Never push
-a commit without all 2,567 tests passing!
+a commit without all 2,571 tests passing!
 
 1. HyperLiquid Monarch (pytest — 1,093 tests):
    [Updated: 2026-09-05 04:39 EDT (Round 72)]
    cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q
 
-2. Master & Bridges Suite (unittest — 21 modules, 928 tests):
+2. Master & Bridges Suite (unittest — 22 modules, 932 tests):
    [Updated: 2026-09-05 03:54 EDT (Round 69)]
-   python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper
+   python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards
 
 3. Tax Reserve Agent Suite (unittest — 5 modules, 546 tests):
    [Updated: 2026-09-04 23:21 EDT (Round 58)]
@@ -559,7 +559,7 @@ a commit without all 2,567 tests passing!
 
 Single-Line Full Verification Command (PowerShell):
    [Updated: 2026-09-05 04:39 EDT (Round 72)]
-   python -m pytest HyperLiquid/HL_Monarch/tests -q; python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper; python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+   python -m pytest HyperLiquid/HL_Monarch/tests -q; python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards; python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
 6. EMERGENCY BRAKES, FAIL-SAFE SENTINELS & RULES

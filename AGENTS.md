@@ -5,6 +5,23 @@ the detail.
 
 ## Status
 
+Round 90 complete (2026-09-05): ITEM 13 PHASE 1 - AMM QUOTING ENGINE + REWARDS
+SIMULATOR (registry line 279). NEW cross_market/amm_rewards.py: Avellaneda-
+Stoikov quotes (reservation = fair - q*gamma*sigma^2*tau; half-spread = risk
+term + (1/gamma) ln(1 + gamma/k); tick grid; never cross fair; an inventory
+limit removes the growing side; a volatility spike widens, a larger one
+pulls; event windows pull; optional pull inside the rewards window), the
+programme's order score ((v - s)/v)^2 * size inside the max spread and above
+the min size, Q_min two-sided in the 0.10-0.90 band and one-sided outside,
+pool share against a competitor Q INPUT; a per-minute simulator over a
+synthetic or supplied fair path with Poisson retail fills
+(A*exp(-k*cents)); PAPER maker receipts (strategy polymarket_amm, fee 0)
+under cross_market/data/paper_receipts; HALT.flag refuses (exit 3). The
+roadmap's "20-40% APY" is unmeasured and the module says so in its output:
+pool size and competitor liquidity are inputs, not measurements. Tests:
+master MODULE 22 (4 tests, no network). Daemons and tonight's tasks
+untouched.
+
 Round 87 complete (2026-09-05): ITEM 12 PHASE 1 - OFFLINE ENGINE + MEASUREMENT
 INSTRUMENT (registry line 273, not 181 as the prompt said). NEW
 cross_market/latency_sniper.py: pre-registered RULES map an event payload to
@@ -605,7 +622,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (21 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper) | 928 OK |
+| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 932 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -629,6 +646,28 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Item 13 plan - AMM and rewards bot (designed and Phase 1 built 2026-09-05, Round 90)
+
+- **What is measurable and what is not.** Spread capture and inventory
+  risk are simulated from a fair path and a fill model; the rewards share
+  depends on the market's pool and on competing liquidity, neither of which
+  this module can observe. Both are INPUTS and the output labels them
+  "ASSUMED". No APY is claimed until pools and competitor Q are recorded
+  from live markets.
+- **Quoting is Avellaneda-Stoikov, clamped for a bounded price.** Long
+  inventory shades both quotes down; the growing side is withdrawn at the
+  inventory limit; quotes never cross fair and sit on the tick grid.
+- **Rewards follow the programme's published shape**: distance-squared score
+  inside the max spread, min size, both sides required in the 0.10-0.90
+  band. The parameters (rewardsMaxSpread, rewardsMinSize, daily rate) exist
+  on Gamma market objects but are NOT recorded by the fetcher yet.
+- **Fail-closed**: HALT.flag, event windows, volatility pull, inventory
+  limit - each counted with a reason. Paper only; no order path.
+- **Phase 2 (not built, needs rulings):** record rewards fields additively
+  in the fetcher (post-maiden, it is frozen), record live mids and fills to
+  calibrate A and k, then a paper quoting loop against live books before any
+  execution decision.
 
 ## Item 12 plan - latency sniper (designed and Phase 1 built 2026-09-05, Round 87)
 
@@ -695,6 +734,18 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 90 findings
+
+- **The APY claim reduces to two inputs the module cannot observe.** Making
+  pool size and competitor Q explicit parameters, printed as "ASSUMED" in
+  every result, is what keeps the simulator from becoming a forecast.
+- **A bounded price needs clamps the textbook model does not have.** The
+  reservation price and spread come from Avellaneda-Stoikov; the tick grid,
+  the (0, 1) bounds, never crossing fair, and the one-sided inventory limit
+  are the prediction-market additions.
+- **Accounting is asserted, not trusted**: cash and inventory are recomputed
+  from the fills in the test and must equal the simulator's own totals.
 
 ## Round 88 findings
 
