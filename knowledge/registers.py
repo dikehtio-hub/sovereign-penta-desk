@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from . import GENERATED_BY
-from .pages import Page, load_pages, make_meta, page_path
+from .pages import Page, load_pages, make_meta, page_path, safe_title
 
 # type -> (stem, title, description, columns shown after the page link)
 SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -31,7 +31,17 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "Market": ("markets_register", "Markets register",
                "Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it.",
                ("family",)),
+    # "Entity" is a prefix: every Entity/* type (titans, whales, sharp traders, sportsbooks, ...) lands in one CRM register.
+    "Entity": ("crm_register", "CRM register",
+               "Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended.",
+               ("type", "desk")),
 }
+
+
+def matches(page_type: str | None, type_: str) -> bool:
+    if page_type is None:
+        return False
+    return page_type.startswith("Entity/") if type_ == "Entity" else page_type == type_
 
 REGISTER_STEMS = tuple(spec[0] for spec in SPECS.values())
 
@@ -48,14 +58,14 @@ def _cell(page: Page, col: str) -> str:
 
 def update_register(vault, type_: str, *, at: datetime, by: str = GENERATED_BY) -> Page:
     stem, title, description, cols = SPECS[type_]
-    pages = sorted((p for p in load_pages(vault) if p.type == type_), key=lambda p: p.path.name)
+    pages = sorted((p for p in load_pages(vault) if matches(p.type, type_)), key=lambda p: p.path.name)
     head = "| Page | " + " | ".join(c.replace("_", " ") for c in cols) + " | Status | Generated |"
     sep = "|---|" + "---|" * len(cols) + "---|---|"
     lines = [f"# {title}", "", f"> {description}", "> Maintained by the knowledge layer; hand edits are overwritten.", "", head, sep]
     for p in pages:
         gen = (p.meta.get("generated") or {}).get("at", "")
         cells = " | ".join(_cell(p, c) for c in cols)
-        lines.append(f"| [[{p.path.stem}\\|{p.title}]] | {cells} | {p.meta.get('status', 'stable')} | {gen} |")
+        lines.append(f"| [[{p.path.stem}\\|{safe_title(p.title)}]] | {cells} | {p.meta.get('status', 'stable')} | {gen} |")
     lines += ["", f"{len(pages)} page(s).", "", "## Related", "", "- [[WIKI_SCHEMA|Constitution]] s.4 (registers)", ""]
     meta = make_meta("Concept", title, f"{description} {len(pages)} page(s) today.",
                      tags=["concept", "register", type_.lower().replace(" ", "-").replace("/", "-")],

@@ -88,6 +88,13 @@ COMPUTATIONS: tuple[Computation, ...] = (
     Computation("knowledge_ingest_markets", "knowledge.ingest.markets", "python -m knowledge.ingest.markets [--drops DIR] [--family F ...] [--force]",
                 "knowledge/ingest/markets.py", KTEST, ("written", "skipped"),
                 "Tokens from rules, Experiment pages and the newest macro drop -> Market pages for lint C2.", "knowledge_cli", K_EXIT),
+    Computation("knowledge_ingest_entities", "knowledge.ingest.entities", "python -m knowledge.ingest.entities [--limit-whales 100] [--limit-titans 100]",
+                "knowledge/ingest/entities.py", KTEST, ("counts", "created", "updated"),
+                "CRM seeds from the titan cache and three databases (mode=ro): titans, whales, sharps, sportsbooks; judgement kept, evidence appended.",
+                "knowledge_cli", K_EXIT),
+    Computation("knowledge_ratify", "knowledge.ratify", "python -m knowledge.ratify --type T [--tag TAG] --ruling N-N [--by ACTOR] [--dry-run]",
+                "knowledge/ratify.py", KTEST, ("selected", "ratified", "already"),
+                "Records an Antigravity ratification: appends `verified` and sets status on the selected pages; idempotent.", "knowledge_cli", K_EXIT),
 )
 
 

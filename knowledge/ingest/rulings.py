@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
-from ..pages import Page, append_log, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from ..pages import Page, append_log, carry_human_fields, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
 from ..registers import update_register
 from . import add_common_args, at_from, guard, rel_to
 
@@ -109,13 +109,35 @@ def extract_citations(text: str) -> dict[str, Citation]:
     return found
 
 
-def _first_clause(cit: Citation, limit: int = 100) -> str:
-    occ = cit.occurrences[0].excerpt
+_TITLE_STRIP = " .:;,-–—*)('\"…`"
+
+
+def _first_clause(cit: Citation, limit: int = 110) -> str:
+    """The sentence the citation sits in, minus the citation itself and any parenthesis around it.
+
+    Round 99 (Ruling 98-1): the earlier "text after the citation" rule produced titles like
+    `Ratification 74-2: ).…` when the citation closed a parenthetical. A whole sentence,
+    cleaned, never does.
+    """
+    occ = cit.occurrences[0].excerpt.strip("…").strip()
     idx = occ.find(cit.id)
-    tail = occ[idx + len(cit.id):] if idx != -1 else occ
-    tail = tail.lstrip(" :-–—(").strip()
-    clause = re.split(r"[.;]\s|\)\s", tail, maxsplit=1)[0].strip().rstrip(")")
-    return (clause[: limit - 1] + "…") if len(clause) > limit else clause
+    if idx == -1:
+        return ""
+    start = occ.rfind(". ", 0, idx)
+    start = start + 2 if start != -1 else 0
+    end = occ.find(". ", idx)
+    end = end + 1 if end != -1 else len(occ)
+    sentence = occ[start:end]
+    sentence = re.sub(r"\(\s*" + re.escape(cit.id) + r"[^)]*\)", " ", sentence)   # (Ruling 74-2) or (Ruling 74-2, ...)
+    sentence = sentence.replace(cit.id, " ")
+    sentence = re.sub(r"(^|\s)'s(\s|$)", " ", sentence)                             # the possessive left behind: "Directive 79-2's steps"
+    sentence = re.sub(r"\*\*|`", "", sentence)
+    sentence = re.sub(r"^\s*(?:-|\d+\.)\s+", "", sentence)                         # a leading bullet or number
+    sentence = re.sub(r"[\[\]|]", " ", sentence)                                    # brackets and pipes break index lines and table links
+    sentence = re.sub(r"\s+", " ", sentence).strip(_TITLE_STRIP)
+    if len(sentence) < 8:
+        return ""
+    return (sentence[: limit - 1].rstrip(_TITLE_STRIP) + "…") if len(sentence) > limit else sentence
 
 
 def compile_ruling(cit: Citation, agents_rel: str, vault: Path, at, by: str = GENERATED_BY) -> Page:
@@ -140,7 +162,9 @@ def compile_ruling(cit: Citation, agents_rel: str, vault: Path, at, by: str = GE
                      sources=[{"id": "agents-md", "resource": agents_rel,
                                "title": f"AGENTS.md · {cit.occurrences[0].section}", "author": "human:operator"}],
                      dev=dev)
-    return Page(page_path(vault, "Ruling", cit.stem), meta, "\n".join(body))
+    path = page_path(vault, "Ruling", cit.stem)
+    carry_human_fields(load_page(path), meta)  # a --force re-extraction never drops a ratification
+    return Page(path, meta, "\n".join(body))
 
 
 @dataclass

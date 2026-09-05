@@ -9,7 +9,7 @@ tags:
 - desk-3
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:19Z'
+  at: '2026-09-05T21:52:42Z'
 status: draft
 sources:
 - id: top20-registry
@@ -101,6 +101,7 @@ Cross-venue desk: Polymarket vs sportsbook dutching arb, Titan correlator and le
 - [[computations_register|Computations register]]
 - [[events_register|Events register]]
 - [[markets_register|Markets register]]
+- [[crm_register|CRM register]]
 
 ## Compiled pages (Phase 2 adapters)
 

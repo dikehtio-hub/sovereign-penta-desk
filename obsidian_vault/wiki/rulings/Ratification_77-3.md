@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Ratification 77-3: applied: Sports_Desk/ingestors/odds_fetcher.poll('
+title: 'Ratification 77-3: applied: Sports_Desk/ingestors/odds_fetcher.poll() no longer
+  binds log=print at import (_emit resolves print…'
 description: 'Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll()
   no longer binds `log=print` at import (`_emit` resolves print at call time); a tree-wide
   grep confirms no `= print` default remains outside tests.…'
@@ -11,8 +12,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -24,7 +25,7 @@ dev:
   kind: ratification
   citations:
   - section: Status
-    line: 261
+    line: 286
     excerpt: '…Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll()
       no longer binds `log=print` at import (`_emit` resolves print at call time);
       a tree-wide grep confirms no `= print` default remains outside tests.…'
@@ -32,6 +33,10 @@ dev:
   - file: AGENTS.md
     pattern: Ratification\s+77-3\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ratification 77-3
 
@@ -39,7 +44,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 261): …Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll() no longer binds `log=print` at import (`_emit` resolves print at call time); a tree-wide grep confirms no `= print` default remains outside tests.…
+- **Status** (line 286): …Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll() no longer binds `log=print` at import (`_emit` resolves print at call time); a tree-wide grep confirms no `= print` default remains outside tests.…
 
 ## Related
 

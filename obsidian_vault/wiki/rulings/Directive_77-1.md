@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Directive 77-1: the protocol at ~01:40Z 2026-09-06, time-gated, not run'
+title: 'Directive 77-1: The Round 77 prompt reached this session truncated after (the
+  protocol at ~01:40Z 2026-09-06, time-gated, not…'
 description: 'The Round 77 prompt reached this session truncated after Directive 77-1
   (the protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of that prompt
   was executed: cross_market/experiments/lead_lag_tier2b.meta.json registers membership
@@ -12,8 +13,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -25,7 +26,7 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 270
+    line: 295
     excerpt: '…The Round 77 prompt reached this session truncated after Directive
       77-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of
       that prompt was executed: cross_market/experiments/lead_lag_tier2b.meta.json
@@ -36,6 +37,10 @@ dev:
   - file: AGENTS.md
     pattern: Directive\s+77-1\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Directive 77-1
 
@@ -43,7 +48,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 270): …The Round 77 prompt reached this session truncated after Directive 77-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of that prompt was executed: cross_market/experiments/lead_lag_tier2b.meta.json registers membership analysis (a market in BOTH subfamilies when its Round 76 `tags` list names both) with the Tier 2 bars copied verbatim, its own series (tagged macro…
+- **Status** (line 295): …The Round 77 prompt reached this session truncated after Directive 77-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of that prompt was executed: cross_market/experiments/lead_lag_tier2b.meta.json registers membership analysis (a market in BOTH subfamilies when its Round 76 `tags` list names both) with the Tier 2 bars copied verbatim, its own series (tagged macro…
 
 ## Related
 

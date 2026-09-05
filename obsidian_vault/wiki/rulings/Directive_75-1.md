@@ -1,7 +1,7 @@
 ---
 type: Ruling
-title: 'Directive 75-1: lock, READY, last run, the `lead-lag: RAN` log line, the run-at
-  marker under the Item 18 header, th…'
+title: 'Directive 75-1: python -m cross_market.maiden_protocol (exit 0 all checks
+  / 3 not yet / 1 a check failed) runs (lock, READY…'
 description: '`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not
   yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag:
   RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down)
@@ -13,8 +13,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -26,14 +26,14 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 300
+    line: 325
     excerpt: '…`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not
       yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag:
       RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down)
       and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies
       under the registered bars, the meta file read, never written).…'
   - section: Round 75 findings
-    line: 1161
+    line: 1201
     excerpt: …- **Directive 75-1's four steps are one command with exit codes**, so
       the 01:40Z check can be pasted by whoever is at the keyboard; Tier 2 cannot
       be run early by mistake - the protocol refuses until the run-at marker exists.
@@ -41,6 +41,10 @@ dev:
   - file: AGENTS.md
     pattern: Directive\s+75-1\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Directive 75-1
 
@@ -48,8 +52,8 @@ dev:
 
 ## Citations
 
-- **Status** (line 300): …`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag: RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down) and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies under the registered bars, the meta file read, never written).…
-- **Round 75 findings** (line 1161): …- **Directive 75-1's four steps are one command with exit codes**, so the 01:40Z check can be pasted by whoever is at the keyboard; Tier 2 cannot be run early by mistake - the protocol refuses until the run-at marker exists.
+- **Status** (line 325): …`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag: RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down) and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies under the registered bars, the meta file read, never written).…
+- **Round 75 findings** (line 1201): …- **Directive 75-1's four steps are one command with exit codes**, so the 01:40Z check can be pasted by whoever is at the keyboard; Tier 2 cannot be run early by mistake - the protocol refuses until the run-at marker exists.
 
 ## Related
 

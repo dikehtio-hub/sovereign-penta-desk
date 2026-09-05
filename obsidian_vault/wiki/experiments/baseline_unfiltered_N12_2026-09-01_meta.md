@@ -8,7 +8,7 @@ tags:
 - archived-control
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:20Z'
+  at: '2026-09-05T21:52:44Z'
 status: draft
 sources:
 - id: registration
@@ -19,6 +19,9 @@ dev:
   desk: 1
   registration: HyperLiquid/HL_Monarch/data/experiments/baseline_unfiltered_N12_2026-09-01.meta.json
   kind: archived_control
+  item: 14
+  related_items:
+  - 8
   registered_utc: '2026-09-01T04:39:40.619907+00:00'
   parameters:
   - name: baseline_unfiltered_closed_trades
@@ -127,5 +130,6 @@ gross_profit/gross_loss in the state file are net-of-fee per-trade buckets; prof
 ## Related
 
 - [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]
-- paper fade / wick-benchmark family (Items 8 and 14; attribution to be ratified)
+- [[Item_14_Hyperliquid_Whale_Cascade_Sweeper|Item 14: Hyperliquid Whale Cascade Sweeper]] (primary)
+- [[Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester|Item 8: Hyperliquid Delta-Neutral Funding Rate Harvester]] (cross-reference)
 - [[experiments_register|Experiments register]]

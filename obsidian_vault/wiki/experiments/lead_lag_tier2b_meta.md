@@ -12,7 +12,7 @@ tags:
 - pre-registered
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:48:25Z'
+  at: '2026-09-05T21:52:44Z'
 status: draft
 sources:
 - id: registration
@@ -59,6 +59,10 @@ PRE-REGISTERED - runs only after (1) the Tier 1 maiden verdict is in Cross_Marke
 
 Ratification 76-3 (Round 77 prompt): Tier 2 stays an exclusive partition by `sport`; membership analysis is registered here as Tier 2b in a NEW file, never by amending lead_lag_tier2.meta.json.
 
+## Differs from tier2 only in
+
+MEMBERSHIP: a question belongs to every subfamily named in its Round 76 `tags` list, so a market fetched under both crypto and fed-rates counts in BOTH. Under Tier 2 (first tag wins) it counts once, as crypto.
+
 ## Bars
 
 | Bar | Value |
@@ -100,3 +104,4 @@ lead_lag.load_drop_records(subfamily_from='tags'), lead_lag.tagged_stamped_momen
 
 - [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]
 - [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]
+- [[experiments_register|Experiments register]]

@@ -11,7 +11,7 @@ tags:
 - pre-registered
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:48:25Z'
+  at: '2026-09-05T21:52:44Z'
 status: draft
 sources:
 - id: registration
@@ -58,6 +58,10 @@ PRE-REGISTERED - runs only AFTER the Tier 1 maiden run has written its verdict t
 
 The macro family mixes exogenous policy questions (Fed decisions) with crypto milestone questions ('Will the price of Bitcoin be above $80,000 on September 5?') whose probability moves BECAUSE BTC moved. Pooled, the mechanical group dominates the correlation, and any lead it shows can be the watcher's 5-minute poll latency rather than prediction.
 
+## Tier1 unchanged
+
+{'family': 'macro', 'min_abs_corr': 0.2, 'min_events': 5, 'min_points': 60, 'readiness': {'min_span_hours': 24, 'min_points': 200, 'max_gap_minutes': 60}, 'due_utc': '2026-09-06T01:39:49Z', 'rule': 'Ruling 74-2: the Tier 1 bar and gate are not moved, relaxed or amended by anything below.'}
+
 ## Bars
 
 | Bar | Value |
@@ -95,3 +99,4 @@ lead_lag.load_drop_records(subfamily=...), lead_lag_report(latency_minutes=...)
 
 - [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]
 - [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]
+- [[experiments_register|Experiments register]]

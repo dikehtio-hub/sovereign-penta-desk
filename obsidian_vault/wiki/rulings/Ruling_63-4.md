@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Ruling 63-4: ).…'
+title: 'Ruling 63-4: The recorder CLI refuses explicit --sports-db / --imports-dir
+  paths that do not exist (exit 2'
 description: The recorder CLI refuses explicit --sports-db / --imports-dir paths that
   do not exist (exit 2, Ruling 63-4).…
 tags:
@@ -10,8 +11,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -23,13 +24,17 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 439
+    line: 464
     excerpt: …The recorder CLI refuses explicit --sports-db / --imports-dir paths
       that do not exist (exit 2, Ruling 63-4).…
   asserts:
   - file: AGENTS.md
     pattern: Ruling\s+63-4\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ruling 63-4
 
@@ -37,7 +42,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 439): …The recorder CLI refuses explicit --sports-db / --imports-dir paths that do not exist (exit 2, Ruling 63-4).…
+- **Status** (line 464): …The recorder CLI refuses explicit --sports-db / --imports-dir paths that do not exist (exit 2, Ruling 63-4).…
 
 ## Related
 

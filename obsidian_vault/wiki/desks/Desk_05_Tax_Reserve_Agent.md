@@ -8,7 +8,7 @@ tags:
 - desk-5
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:19Z'
+  at: '2026-09-05T21:52:42Z'
 status: draft
 sources:
 - id: top20-registry
@@ -76,6 +76,7 @@ The accountant every desk asks before sizing: lot engine, IRC 1256 60/40, IRC 16
 - [[computations_register|Computations register]]
 - [[events_register|Events register]]
 - [[markets_register|Markets register]]
+- [[crm_register|CRM register]]
 
 ## Other desks
 

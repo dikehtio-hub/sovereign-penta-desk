@@ -432,8 +432,10 @@ def apply_fix_safe(findings: list[Finding], vault: Path, now: datetime | None = 
         write_page(page, vault, now=now)
         changed.append(f.path)
     if changed:
+        from .pages import load_pages, write_index
+        write_index(vault, load_pages(vault))  # Ruling 98-5: fix-safe may also regenerate the root index
         append_log(vault, "Lint", f"--fix-safe deprecated {len(changed)} Market page(s) whose token left the newest drops: "
-                   + ", ".join(f"[[{Path(p).stem}]]" for p in changed), when=now)
+                   + ", ".join(f"[[{Path(p).stem}]]" for p in changed) + "; [index](index.md) rebuilt.", when=now)
     return changed
 
 

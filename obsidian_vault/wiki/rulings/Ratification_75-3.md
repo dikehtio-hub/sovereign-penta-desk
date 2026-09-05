@@ -1,7 +1,7 @@
 ---
 type: Ruling
-title: 'Ratification 75-3: ): `taskkill /F /PID <pid>` then start_polymarket_watcher.bat,
-  inside 60 min so the series stays co…'
+title: 'Ratification 75-3: The running watcher (pid 49812) still executes the Round
+  75 code and its drops carry no tags field until it i…'
 description: 'The running watcher (pid 49812) still executes the Round 75 code and
   its drops carry no `tags` field until it is restarted - deliberately left for AFTER
   the maiden verdict (Ratification 75-3): `taskkill /F /PID <pid>` then start_polymarket_watcher.bat,
@@ -13,8 +13,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -26,7 +26,7 @@ dev:
   kind: ratification
   citations:
   - section: Status
-    line: 286
+    line: 311
     excerpt: '…The running watcher (pid 49812) still executes the Round 75 code and
       its drops carry no `tags` field until it is restarted - deliberately left for
       AFTER the maiden verdict (Ratification 75-3): `taskkill /F /PID <pid>` then
@@ -35,6 +35,10 @@ dev:
   - file: AGENTS.md
     pattern: Ratification\s+75-3\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ratification 75-3
 
@@ -42,7 +46,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 286): …The running watcher (pid 49812) still executes the Round 75 code and its drops carry no `tags` field until it is restarted - deliberately left for AFTER the maiden verdict (Ratification 75-3): `taskkill /F /PID <pid>` then start_polymarket_watcher.bat, inside 60 min so the series stays continuous.…
+- **Status** (line 311): …The running watcher (pid 49812) still executes the Round 75 code and its drops carry no `tags` field until it is restarted - deliberately left for AFTER the maiden verdict (Ratification 75-3): `taskkill /F /PID <pid>` then start_polymarket_watcher.bat, inside 60 min so the series stays continuous.…
 
 ## Related
 

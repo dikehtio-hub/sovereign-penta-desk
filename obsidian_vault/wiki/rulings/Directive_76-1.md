@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Directive 76-1: the protocol at ~01:40Z 2026-09-06'
+title: 'Directive 76-1: the protocol at ~01:40Z 2026-09-06) is time-gated and was
+  not run - python -m cross_market.maiden_protocol is…'
 description: Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and
   was not run - `python -m cross_market.maiden_protocol` is the command.…
 tags:
@@ -10,8 +11,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -23,13 +24,17 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 286
+    line: 311
     excerpt: …Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and
       was not run - `python -m cross_market.maiden_protocol` is the command.…
   asserts:
   - file: AGENTS.md
     pattern: Directive\s+76-1\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Directive 76-1
 
@@ -37,7 +42,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 286): …Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and was not run - `python -m cross_market.maiden_protocol` is the command.…
+- **Status** (line 311): …Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and was not run - `python -m cross_market.maiden_protocol` is the command.…
 
 ## Related
 

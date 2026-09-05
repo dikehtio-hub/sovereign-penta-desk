@@ -292,8 +292,8 @@ def build_index(pages: Iterable[Page], vault: Path) -> str:
     for t in order:
         out.append(f"# {t}")
         for p in sorted(groups[t], key=lambda x: x.rel(vault)):
-            desc = p.description.strip().replace("\n", " ") or "(no description)"
-            out.append(f"* [{p.title}]({p.rel(vault)}) - {desc}")
+            desc = safe_title(p.description) or "(no description)"
+            out.append(f"* [{safe_title(p.title)}]({p.rel(vault)}) - {desc}")
         out.append("")
     return "\n".join(out).rstrip("\n") + "\n"
 
@@ -397,6 +397,26 @@ def append_log(vault: Path, action: str, text: str, when: datetime | None = None
 
 
 # ---------------------------------------------------------------- constructors
+
+def safe_title(text: str) -> str:
+    """A title that survives `* [Title](path) - desc` and `[[stem\\|Title]]`: no brackets, pipes or newlines."""
+    return re.sub(r"\s+", " ", str(text).replace("[", "(").replace("]", ")").replace("|", "/")).strip()
+
+
+def carry_human_fields(existing: Page | None, meta: dict[str, Any]) -> None:
+    """Re-ingest never drops what a human or a ratification wrote: verified, stale_after, a status past
+    draft, and dev.ratified_by (Round 99)."""
+    if existing is None:
+        return
+    for key in ("verified", "stale_after"):
+        if key in existing.meta:
+            meta[key] = existing.meta[key]
+    if existing.meta.get("status") not in (None, "draft"):
+        meta["status"] = existing.meta["status"]
+    old_dev = existing.meta.get("dev") or {}
+    if isinstance(old_dev, dict) and "ratified_by" in old_dev:
+        meta.setdefault("dev", {})["ratified_by"] = old_dev["ratified_by"]
+
 
 def make_meta(
     type_: str,

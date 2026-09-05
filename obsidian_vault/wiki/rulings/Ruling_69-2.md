@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Ruling 69-2: no coarsening).…'
+title: 'Ruling 69-2: onds N (and the module CLI) skips rewriting the market dashboard
+  while its last write is younger than N secon…'
 description: 'onds N` (and the module CLI) skips rewriting the market dashboard while
   its last write is younger than N seconds, judged on the file''s mtime so it holds
   across processes; every other note and every number are untouched (Ruling 69-2:
@@ -12,8 +13,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -25,7 +26,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 371
+    line: 396
     excerpt: '…onds N` (and the module CLI) skips rewriting the market dashboard while
       its last write is younger than N seconds, judged on the file''s mtime so it
       holds across processes; every other note and every number are untouched (Ruling
@@ -34,6 +35,10 @@ dev:
   - file: AGENTS.md
     pattern: Ruling\s+69-2\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ruling 69-2
 
@@ -41,7 +46,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 371): …onds N` (and the module CLI) skips rewriting the market dashboard while its last write is younger than N seconds, judged on the file's mtime so it holds across processes; every other note and every number are untouched (Ruling 69-2: no coarsening).…
+- **Status** (line 396): …onds N` (and the module CLI) skips rewriting the market dashboard while its last write is younger than N seconds, judged on the file's mtime so it holds across processes; every other note and every number are untouched (Ruling 69-2: no coarsening).…
 
 ## Related
 

@@ -1,6 +1,6 @@
 ---
 type: Ruling
-title: 'Ruling 49-1: it is an optional viewer).…'
+title: 'Ruling 49-1: The supervisor still does not manage the dashboard'
 description: 'The supervisor still does not manage the dashboard (Ruling 49-1: it
   is an optional viewer).…'
 tags:
@@ -10,8 +10,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -23,13 +23,17 @@ dev:
   kind: ruling
   citations:
   - section: Round 49 findings
-    line: 1836
+    line: 1876
     excerpt: '…The supervisor still does not manage the dashboard (Ruling 49-1: it
       is an optional viewer).…'
   asserts:
   - file: AGENTS.md
     pattern: Ruling\s+49-1\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ruling 49-1
 
@@ -37,7 +41,7 @@ dev:
 
 ## Citations
 
-- **Round 49 findings** (line 1836): …The supervisor still does not manage the dashboard (Ruling 49-1: it is an optional viewer).…
+- **Round 49 findings** (line 1876): …The supervisor still does not manage the dashboard (Ruling 49-1: it is an optional viewer).…
 
 ## Related
 

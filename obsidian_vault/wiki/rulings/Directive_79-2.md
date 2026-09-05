@@ -1,7 +1,7 @@
 ---
 type: Ruling
-title: 'Directive 79-2: ''s three manual steps are now `restart_polymarket_watcher.bat`:
-  fetcher `--stop` (terminates ONLY a…'
+title: 'Directive 79-2: three manual steps are now restart_polymarket_watcher.bat:
+  fetcher --stop (terminates ONLY a live lock holder…'
 description: 'Directive 79-2''s three manual steps are now `restart_polymarket_watcher.bat`:
   fetcher `--stop` (terminates ONLY a live lock holder whose command line is a watcher
   - a stale lock is swept, a foreign process is never a target; exit 0 stopped / 1
@@ -13,8 +13,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -26,14 +26,14 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 248
+    line: 273
     excerpt: '…Directive 79-2''s three manual steps are now `restart_polymarket_watcher.bat`:
       fetcher `--stop` (terminates ONLY a live lock holder whose command line is a
       watcher - a stale lock is swept, a foreign process is never a target; exit 0
       stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`,
       whose new "tags:"…'
   - section: Status
-    line: 248
+    line: 273
     excerpt: …a foreign process is never a target; exit 0 stopped / 1 still alive
       / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:"
       line says whether the newest macro stamp carries the Round 76 `tags` (the Directive
@@ -42,6 +42,10 @@ dev:
   - file: AGENTS.md
     pattern: Directive\s+79-2\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Directive 79-2
 
@@ -49,8 +53,8 @@ dev:
 
 ## Citations
 
-- **Status** (line 248): …Directive 79-2's three manual steps are now `restart_polymarket_watcher.bat`: fetcher `--stop` (terminates ONLY a live lock holder whose command line is a watcher - a stale lock is swept, a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:"…
-- **Status** (line 248): …a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:" line says whether the newest macro stamp carries the Round 76 `tags` (the Directive 79-2 verification, one command).…
+- **Status** (line 273): …Directive 79-2's three manual steps are now `restart_polymarket_watcher.bat`: fetcher `--stop` (terminates ONLY a live lock holder whose command line is a watcher - a stale lock is swept, a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:"…
+- **Status** (line 273): …a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:" line says whether the newest macro stamp carries the Round 76 `tags` (the Directive 79-2 verification, one command).…
 
 ## Related
 

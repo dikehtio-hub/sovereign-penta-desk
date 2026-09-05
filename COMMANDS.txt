@@ -2360,6 +2360,21 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 99 - KNOWLEDGE: CRM SEEDS + DIRECTIVES RATIFIED (knowledge/ingest/entities.py, knowledge/ratify.py)
+     python -m knowledge.ingest.entities [--limit-whales 100] [--limit-titans 100] [--at ISO]
+         crm/titans/ (identities present on BOTH venues: cache EOA->proxy whose proxy/EOA appears in sharp_traders or tracked_wallets, or a
+         sharp's resolved EOA in whale_wallets - the 1,685-entry cache alone is not a titan), crm/whales/ (top N by account_value from
+         hyperliquid_data.db), crm/sharps/ (sharp_traders + tracked_wallets first_seen), crm/books/ (pinnacle as sharp reference; every
+         retail_book with per sport/market-type evidence from edge_opportunities). All SQLite opened file:...?mode=ro. INVARIANT: the
+         `## Judgement` section, `verified`, `stale_after` and a status promoted past draft are never overwritten; evidence rows append
+         (deduplicated by scan time, newest 50). Maintains wiki/concepts/crm_register.md; every Desk page links it.
+     python -m knowledge.ratify --type Ruling --tag extracted --ruling 98-1 [--by antigravity/architect] [--status stable] [--dry-run]
+         Records a ratification: appends {by, at} to verified, sets status, dev:ratified_by; rebuilds the register; one **Ratify** log
+         bullet; idempotent. Used for Ruling 98-1 (the 27 extracted Directive/Ratification/Ruling pages). ingest.rulings titles are now the
+         whole cleaned sentence (no more `: ).…` artifacts).
+     python -m knowledge.lint --fix-safe   also rebuilds index.md (Ruling 98-5). HL experiment pages: dev:item 14 primary, related_items [8].
+     Tests: python -m unittest knowledge.tests.test_knowledge   (master module 23, 82 tests)
+
      ROUND 98 - KNOWLEDGE: COMPILE WHAT EXISTS (HL registrations, directives catalogue, attested computations, calendars, markets)
      python -m knowledge.ingest.experiments [--dir DIR ...] [--force]
          Now also reads HyperLiquid/HL_Monarch/data/experiments/*.meta.json: registrations (acceptance_bar etc. as
@@ -2802,7 +2817,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (23 modules, 1,011): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
+     MASTER SUITE (23 modules, 1,018): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

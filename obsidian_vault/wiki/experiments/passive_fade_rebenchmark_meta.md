@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:20Z'
+  at: '2026-09-05T21:52:44Z'
 status: draft
 sources:
 - id: registration
@@ -19,6 +19,9 @@ dev:
   desk: 1
   registration: HyperLiquid/HL_Monarch/data/experiments/passive_fade_rebenchmark.meta.json
   kind: registration
+  item: 14
+  related_items:
+  - 8
   registered_utc: '2026-09-01T05:42:16.383702+00:00'
   parameters:
   - name: passive_fade_rebenchmark_sample_requirements_window_days
@@ -138,5 +141,6 @@ Every excursion run now reports asset-concentration HHI, coins measured, top-coi
 ## Related
 
 - [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]
-- paper fade / wick-benchmark family (Items 8 and 14; attribution to be ratified)
+- [[Item_14_Hyperliquid_Whale_Cascade_Sweeper|Item 14: Hyperliquid Whale Cascade Sweeper]] (primary)
+- [[Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester|Item 8: Hyperliquid Delta-Neutral Funding Rate Harvester]] (cross-reference)
 - [[experiments_register|Experiments register]]

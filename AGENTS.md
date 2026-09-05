@@ -5,6 +5,28 @@ the detail.
 
 ## Status
 
+Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4,
+Ruling 98-1). NEW knowledge/ingest/entities.py: crm/titans, crm/whales (top N by
+account_value), crm/sharps (sharp_traders + tracked_wallets), crm/books (pinnacle as
+the sharp reference, one page per retail_book with per sport/market-type evidence from
+edge_opportunities); all SQLite opened file:...?mode=ro. THE INVARIANT: the `## Judgement`
+section, `verified`, `stale_after` and a status promoted past draft are never
+overwritten on re-ingest; evidence rows append (dedup by scan time, newest 50). TITAN
+DEFINITION CORRECTED: the identity cache has 1,685 entries (the Round 95 audit printed
+the first eight keys and called them eight pairs), every one a whale EOA by
+construction, and none of their proxies appears in the Polymarket trader tables. A
+titan therefore requires presence on BOTH venues (proxy or EOA in sharp_traders /
+tracked_wallets, or a sharp's resolved EOA in whale_wallets): 0 today, which
+agrees with the dashboard's 0 institutional actors and the empty cross_market_titans
+table. NEW knowledge/ratify.py records a ratification (verified + status + dev:
+ratified_by, register rebuilt, one Ratify log bullet, idempotent); ingest.rulings titles
+are now the whole cleaned sentence; all 27 extracted pages re-titled and ratified under
+98-1. Also: lint --fix-safe rebuilds index.md (98-5); HL experiments dev:item 14 with
+related_items [8]; sixth register crm_register linked from every Desk. REAL VAULT:
+370 pages + constitution (100 whales, 79 sharps, 4 books, 0 titans), lint
+CLEAN. Tests: module 23 = 82; master 23 modules 1,018; total 2,657, all green offline.
+Daemons and tonight's tasks untouched.
+
 Round 98 complete (2026-09-05): KNOWLEDGE - COMPILE WHAT EXISTS (backlog B3, B4, B6, B7,
 B9; Antigravity's Round 97/97b rulings applied). B3: ingest.experiments now reads
 HyperLiquid/HL_Monarch/data/experiments/*.meta.json too - registrations (acceptance_bar
@@ -922,6 +944,27 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 99 findings
+
+- The "8 resolved EOA-to-proxy pairs" of Rounds 95-98 was an audit artifact: a
+  `list(d.keys())[:8]` print. The cache holds 1,685 pairs. Corrected in the CRM
+  docstring, the constitution (s.7 CRM) and this log; Antigravity's Round 99 prompt
+  inherited the number and should be re-read with 1,685 in mind.
+- A cache entry is not a titan. All 1,685 EOAs are whale addresses (the correlator
+  resolved them from the whale table), and zero of their proxies are in
+  sharp_traders / tracked_wallets. Presence on both venues is the test; today it
+  yields 0 page(s).
+- Judgement preservation is a body-section contract, not a frontmatter flag: the
+  adapter re-reads `## Judgement` from the existing page and re-emits it verbatim.
+  The test edits a page by hand, changes the database, re-ingests, and checks the
+  hand text, `verified` and `status: stable` survived while evidence grew by one row.
+- Epoch-millisecond timestamps (HL) and `YYYY-MM-DD HH:MM:SS` strings (PM) both
+  render as ISO Z on the page; the first test expectation for the conversion was
+  wrong and the code was right.
+- The old title rule ("text after the citation") produced `Ratification 74-2: ).…`
+  whenever a citation closed a parenthetical; titles are now the cleaned sentence
+  that contains the citation, with the citation and its parentheses removed.
 
 ## Round 98 findings
 

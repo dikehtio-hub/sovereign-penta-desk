@@ -248,10 +248,15 @@ def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, 
             v = data.get(k)
             if isinstance(v, (int, float)) and not isinstance(v, bool):
                 params.append({"name": f"{_safe(name)}_{k}", "value": v, "file": rel, "json_path": k})
-    body += ["## Related", "", f"- {DESK_LINKS.get(desk, DESK_LINKS[3])}",
-             "- paper fade / wick-benchmark family (Items 8 and 14; attribution to be ratified)" if desk == 1 else "",
-             f"- [[{REGISTER_FILE}|Experiments register]]", ""]
+    body += ["## Related", "", f"- {DESK_LINKS.get(desk, DESK_LINKS[3])}"]
+    if desk == 1:  # Round 99 ruling: primary Item 14 (whale cascade sweeper), Item 8 (basis harvester) cross-referenced
+        body += ["- [[Item_14_Hyperliquid_Whale_Cascade_Sweeper|Item 14: Hyperliquid Whale Cascade Sweeper]] (primary)",
+                 "- [[Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester|Item 8: Hyperliquid Delta-Neutral Funding Rate Harvester]] (cross-reference)"]
+    body += [f"- [[{REGISTER_FILE}|Experiments register]]", ""]
     dev: dict[str, Any] = {"desk": desk, "registration": rel, "kind": kind}
+    if desk == 1:
+        dev["item"] = 14
+        dev["related_items"] = [8]
     stamp = data.get("registered_utc") or data.get("archived_utc")
     if stamp:
         dev["registered_utc"] = str(stamp)

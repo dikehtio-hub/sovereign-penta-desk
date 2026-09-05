@@ -222,6 +222,28 @@ execution against the Tax Reserve Agent after-tax hurdle and the Risk Sentinel
 drawdown limits; `generated.by` the agent, never `verified` by it), **Open**.
 The debrief places no orders and changes no threshold.
 
+### CRM (Round 99, B8)
+
+A `crm/` page is a compiled judgement about a counterparty, never a metrics
+mirror: the exporter-owned `Whales/` and `Wallets/` notes keep the live
+numbers and the CRM page links to them. Every CRM page has three parts:
+**Identity** (addresses, pseudonym, how the identity was resolved),
+**Judgement** (human-written; the adapter never touches it) and **Evidence**
+(dated rows the adapter appends, one per distinct scan time, newest 50 kept).
+Re-ingest also preserves `verified`, `stale_after` and any status a human
+promoted past `draft`. A Titan is a cached EOA-to-proxy identity that ALSO
+appears in the whale table or as a sharp trader's resolved EOA; the cache
+alone (1,685 pairs) is not a titan. Whales are the top N by account equity.
+Databases are opened `file:...?mode=ro`, always.
+
+### Ratification
+
+`python -m knowledge.ratify --type T [--tag TAG] --ruling N-N` records an
+Antigravity ratification: it appends `{by: antigravity/architect, at}` to
+`verified`, sets `status: stable`, writes `dev.ratified_by`, rebuilds the
+type's register and logs one `**Ratify**` bullet. It is the only way an
+agent writes a `verified` entry, and the entry names a ruling.
+
 ### Lint
 
 `python -m knowledge.lint [--json]` (exit 0 clean, 1 findings, 3 refused).
@@ -240,8 +262,9 @@ The debrief places no orders and changes no threshold.
 | C4 C6 | Phase 3: unhedged tax liability; the weekly LLM contradiction pass |
 
 Lint writes nothing without `--fix-safe`, and with it may only set
-`status: deprecated` on a Market page whose token is gone and append one
-`**Lint**` bullet to `log.md`. Anything else stays a report.
+`status: deprecated` on a Market page whose token is gone, regenerate
+`index.md` (Ruling 98-5) and append one `**Lint**` bullet to `log.md`.
+Anything else stays a report.
 
 ## 8. Refusals (fail closed, exit 3)
 
@@ -268,12 +291,16 @@ python -m knowledge.ingest.rulings [--agents AGENTS.md] [--force]  -> wiki/rulin
 python -m knowledge.computations [--force]                         -> wiki/computations/ (shell twins + knowledge CLIs, declarative)
 python -m knowledge.ingest.calendar [--dir knowledge/calendars]    -> wiki/events/ (FOMC statements with windows; tax deadlines)
 python -m knowledge.ingest.markets [--family FED-RATES ...]        -> wiki/markets/ (tokens from rules, Experiments, the newest drop)
-python -m knowledge.lint --fix-safe                                deprecates Market pages whose token left the drops
+python -m knowledge.lint --fix-safe                                deprecates Market pages whose token left the drops, rebuilds index.md
+python -m knowledge.ingest.entities [--limit-whales 100] [--limit-titans 100]
+                                                                   -> crm/{titans,whales,sharps,books}/ (judgement kept, evidence appended)
+python -m knowledge.ratify --type Ruling --tag extracted --ruling 98-1
+                                                                   records a ratification: verified + status stable on the selected pages
 python -m unittest knowledge.tests.test_knowledge                  (Master Module 23)
 ```
 
-Registers: `wiki/concepts/{experiments,rulings,computations,events,markets}_register.md`
-are rebuilt by the adapter that owns the type; every Desk page links all five.
+Registers: `wiki/concepts/{experiments,rulings,computations,events,markets,crm}_register.md`
+are rebuilt by the adapter that owns the type; every Desk page links all six.
 Calendars are committed YAML under `knowledge/calendars/` (FOMC from
 federalreserve.gov by hand; the December statement is 19:00Z, not 18:00Z).
 

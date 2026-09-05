@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Ruling 62-1: both sides**: the writer passes one timestamp to both legs'
+title: 'Ruling 62-1: both sides: the writer passes one timestamp to both legs; the
+  reader clusters loose receipts within 60 s of a…'
 description: '- **Ruling 62-1 both sides**: the writer passes one timestamp to both
   legs; the reader clusters loose receipts within 60 s of a group''s first fill (59
   s apart = one dutch, 61 s = two) and groups by arb_group first.…'
@@ -11,8 +12,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -24,7 +25,7 @@ dev:
   kind: ruling
   citations:
   - section: Round 62 findings
-    line: 1378
+    line: 1418
     excerpt: '…- **Ruling 62-1 both sides**: the writer passes one timestamp to both
       legs; the reader clusters loose receipts within 60 s of a group''s first fill
       (59 s apart = one dutch, 61 s = two) and groups by arb_group first.…'
@@ -32,6 +33,10 @@ dev:
   - file: AGENTS.md
     pattern: Ruling\s+62-1\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ruling 62-1
 
@@ -39,7 +44,7 @@ dev:
 
 ## Citations
 
-- **Round 62 findings** (line 1378): …- **Ruling 62-1 both sides**: the writer passes one timestamp to both legs; the reader clusters loose receipts within 60 s of a group's first fill (59 s apart = one dutch, 61 s = two) and groups by arb_group first.…
+- **Round 62 findings** (line 1418): …- **Ruling 62-1 both sides**: the writer passes one timestamp to both legs; the reader clusters loose receipts within 60 s of a group's first fill (59 s apart = one dutch, 61 s = two) and groups by arb_group first.…
 
 ## Related
 

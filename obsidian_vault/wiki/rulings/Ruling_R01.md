@@ -10,7 +10,7 @@ tags:
 - r1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:19Z'
+  at: '2026-09-05T21:52:42Z'
 status: deprecated
 sources:
 - id: agents-md

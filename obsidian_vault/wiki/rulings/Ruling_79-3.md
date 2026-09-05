@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Ruling 79-3: applied: poll('
+title: 'Ruling 79-3: applied: poll() in both fetchers defaults sleep to a call-time
+  _sleep helper (as log defaults to _emit); a tr…'
 description: 'Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a call-time
   `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside tests finds
   no `= time.sleep` or `= print` default left.…'
@@ -11,8 +12,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -24,7 +25,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 239
+    line: 264
     excerpt: '…Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a
       call-time `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside
       tests finds no `= time.sleep` or `= print` default left.…'
@@ -32,6 +33,10 @@ dev:
   - file: AGENTS.md
     pattern: Ruling\s+79-3\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ruling 79-3
 
@@ -39,7 +44,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 239): …Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a call-time `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside tests finds no `= time.sleep` or `= print` default left.…
+- **Status** (line 264): …Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a call-time `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside tests finds no `= time.sleep` or `= print` default left.…
 
 ## Related
 

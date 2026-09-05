@@ -9,7 +9,7 @@ tags:
 - desk-4
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:19Z'
+  at: '2026-09-05T21:52:42Z'
 status: draft
 sources:
 - id: top20-registry
@@ -66,6 +66,7 @@ CME futures desk: nine strategy stacks, ICT session clocks, Risk Sentinel invari
 - [[computations_register|Computations register]]
 - [[events_register|Events register]]
 - [[markets_register|Markets register]]
+- [[crm_register|CRM register]]
 
 ## Other desks
 

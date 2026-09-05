@@ -1,6 +1,7 @@
 ---
 type: Ruling
-title: 'Ruling 61-1: ).…'
+title: 'Ruling 61-1: stress_calibration() judges each held perp against its OWN median
+  daily vol (shock = > 3x it), qualifies a co…'
 description: stress_calibration() judges each held perp against its OWN median daily
   vol (shock = > 3x it), qualifies a coin at >= 14 distinct days, and averages shock
   probability / multiplier over qualifying coins (Ruling 61-1).…
@@ -11,8 +12,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -24,7 +25,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 467
+    line: 492
     excerpt: …stress_calibration() judges each held perp against its OWN median daily
       vol (shock = > 3x it), qualifies a coin at >= 14 distinct days, and averages
       shock probability / multiplier over qualifying coins (Ruling 61-1).…
@@ -32,6 +33,10 @@ dev:
   - file: AGENTS.md
     pattern: Ruling\s+61-1\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ruling 61-1
 
@@ -39,7 +44,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 467): …stress_calibration() judges each held perp against its OWN median daily vol (shock = > 3x it), qualifies a coin at >= 14 distinct days, and averages shock probability / multiplier over qualifying coins (Ruling 61-1).…
+- **Status** (line 492): …stress_calibration() judges each held perp against its OWN median daily vol (shock = > 3x it), qualifies a coin at >= 14 distinct days, and averages shock probability / multiplier over qualifying coins (Ruling 61-1).…
 
 ## Related
 

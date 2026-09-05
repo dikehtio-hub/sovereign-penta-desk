@@ -956,6 +956,10 @@ applied to the spread convention.
 - Ruling 39-1: spread lines are stored as the selection's OWN handicap. Ratification 77-3 applied: odds_fetcher
   no longer binds print at import.
 - Ruling R4 is enforced in code (the R-series is seeded elsewhere and must not be extracted here).
+
+## Round 66 findings
+
+- Ruling 66-1: the [x] checkbox | column and the `pid` lock stay as they are.
 """
 
 
@@ -975,6 +979,8 @@ class HLExperimentsTests(IngestFixture):
         self.assertIn("baseline_unfiltered_N12_2026-09-01.json", report.ignored)  # the data file is not a registration
         reg, body = fm.parse((self.vault / "wiki/experiments/regime_filtered_v1_meta.md").read_text(encoding="utf-8"))
         self.assertEqual((reg["dev"]["desk"], reg["dev"]["kind"]), (1, "registration"))
+        self.assertEqual((reg["dev"]["item"], reg["dev"]["related_items"]), (14, [8]))  # Round 99 attribution ruling
+        self.assertIn("[[Item_14_Hyperliquid_Whale_Cascade_Sweeper|", body)
         self.assertEqual(reg["dev"]["requires_files"], ["HyperLiquid/HL_Monarch/data/experiments/baseline_unfiltered_N12_2026-09-01.json"])
         self.assertEqual(reg["dev"]["parameters"], [{"name": "regime_filtered_v1_acceptance_bar_min_closed_trades", "value": 50,
                                                      "file": "HyperLiquid/HL_Monarch/data/experiments/regime_filtered_v1.meta.json",
@@ -1015,19 +1021,30 @@ class RulingsIngestTests(IngestFixture):
 
     def test_extraction_pages_register_and_lint(self):
         cits = ingest_rl.extract_citations(AGENTS_FIXTURE)
-        self.assertEqual(sorted(cits), ["Directive 75-1", "Directive 75-2", "Ratification 77-3", "Ruling 39-1"])
+        self.assertEqual(sorted(cits), ["Directive 75-1", "Directive 75-2", "Ratification 77-3", "Ruling 39-1", "Ruling 66-1"])
         self.assertEqual(len(cits["Ruling 39-1"].occurrences), 2)
         self.assertEqual(cits["Ruling 39-1"].occurrences[1].section, "Round 39 findings")
         report = ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
-        self.assertEqual(report.found, 4)
+        self.assertEqual(report.found, 5)
         self.assertEqual(sorted(report.written), ["wiki/rulings/Directive_75-1.md", "wiki/rulings/Directive_75-2.md",
-                                                  "wiki/rulings/Ratification_77-3.md", "wiki/rulings/Ruling_39-1.md"])
+                                                  "wiki/rulings/Ratification_77-3.md", "wiki/rulings/Ruling_39-1.md", "wiki/rulings/Ruling_66-1.md"])
+        r66, _ = fm.parse((self.vault / "wiki/rulings/Ruling_66-1.md").read_text(encoding="utf-8"))
+        self.assertEqual(r66["title"], "Ruling 66-1: the x checkbox column and the pid lock stay as they are")  # no [ ] | in a title
+        entries, errors = pages.parse_index((self.vault / "index.md").read_text(encoding="utf-8"))
+        self.assertEqual(errors, [])
+        self.assertIn("wiki/rulings/Ruling_66-1.md", {e.path for e in entries})
         d, body = fm.parse((self.vault / "wiki/rulings/Directive_75-1.md").read_text(encoding="utf-8"))
         self.assertEqual(d["type"], "Ruling")
         self.assertEqual(d["status"], "draft")
         self.assertNotIn("verified", d)
         self.assertEqual((d["dev"]["round"], d["dev"]["ruling_id"], d["dev"]["kind"]), (75, "D75-1", "directive"))
-        self.assertTrue(d["title"].startswith("Directive 75-1: lock, READY, last run"))
+        self.assertTrue(d["title"].startswith("Directive 75-1: Round 75 complete"), d["title"])  # the whole sentence, cleaned
+        self.assertNotIn(").", d["title"])
+        # Round 99: a citation that closes a parenthetical must not yield `: ).…`
+        cit = ingest_rl.Citation("Ruling", 74, 2, [ingest_rl.Occurrence("Status", 3, "…the maiden run reads tagged stamps only (Ruling 74-2). Tier 1 is untouched…")])
+        self.assertEqual(ingest_rl._first_clause(cit), "the maiden run reads tagged stamps only")
+        cit2 = ingest_rl.Citation("Directive", 79, 2, [ingest_rl.Occurrence("Status", 3, "Directive 79-2's three manual steps are now one batch file.")])
+        self.assertEqual(ingest_rl._first_clause(cit2), "three manual steps are now one batch file")
         self.assertEqual(d["dev"]["asserts"][0]["pattern"], r"Directive\s+75-1\b")
         # a citation wrapped across a line break must still be found by extraction AND by the pinned assert
         wrapped = AGENTS_FIXTURE + "\n## Round 76 findings\n\nThe watcher restart followed Directive\n76-2 exactly.\n"
@@ -1035,7 +1052,7 @@ class RulingsIngestTests(IngestFixture):
         self.assertIsNotNone(__import__("re").search(r"Directive\s+76-2\b", wrapped, __import__("re").M))
         self.assertIn("**Status** (line 5)", body)
         reg, _ = fm.parse((self.vault / "wiki/concepts/rulings_register.md").read_text(encoding="utf-8"))
-        self.assertEqual(reg["dev"]["count"], 7 + 4)  # R-series seeds + extracted
+        self.assertEqual(reg["dev"]["count"], 7 + 5)  # R-series seeds + extracted
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
         # rewriting the log so a citation disappears is a C1 finding
         (self.dev_root / "AGENTS.md").write_text(AGENTS_FIXTURE.replace("Ratification 77-3", "Ratification 77-4"), encoding="utf-8")
@@ -1046,10 +1063,10 @@ class RulingsIngestTests(IngestFixture):
         second = ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
         self.assertEqual((second.written, sorted(second.skipped)), ([], sorted(first.written)))
         third = ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW, force=True)
-        self.assertEqual(len(third.written), 4)
+        self.assertEqual(len(third.written), 5)
         out = io.StringIO()
         self.assertEqual(ingest_rl.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out), EXIT_OK)
-        self.assertIn("4 distinct citation(s)", out.getvalue())
+        self.assertIn("5 distinct citation(s)", out.getvalue())
         self.assertEqual(ingest_rl.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--agents", str(self.root / "nope.md")],
                                         out=io.StringIO()), EXIT_HALT)
 
@@ -1158,6 +1175,7 @@ class MarketsTests(IngestFixture):
         self.assertEqual(m["status"], "deprecated")
         self.assertIn("not in the newest drops", m["dev"]["deprecated"]["reason"])
         self.assertIn("* **Lint**: --fix-safe deprecated 1 Market page(s)", (self.vault / "log.md").read_text(encoding="utf-8"))
+        self.assertIn("[index](index.md) rebuilt", (self.vault / "log.md").read_text(encoding="utf-8"))  # Ruling 98-5
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
 
     def test_cli_guards(self):
@@ -1174,12 +1192,194 @@ class RegistersAndSeedLinksTests(IngestFixture):
         body = (self.vault / "wiki/desks/Desk_04_Quant_Trading_Lab.md").read_text(encoding="utf-8")
         for stem in registers.REGISTER_STEMS:
             self.assertIn(f"[[{stem}|", body)
-        self.assertEqual(len(registers.REGISTER_STEMS), 5)
+        self.assertEqual(len(registers.REGISTER_STEMS), 6)
 
     def test_register_columns_and_cells(self):
         ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
         reg = registers.update_register(self.vault, "Experiment", at=NOW)
         self.assertIn("| [[fomc_2026-09-16_rules\\|Experiment: latency_sniper_fomc_2026-09-16]] | sniper_rules | draft |", reg.body)
+
+
+# ---------------------------------------------------------------- Round 99: CRM seeds + ratification
+
+import sqlite3  # noqa: E402
+
+from knowledge import ratify as ratify_mod  # noqa: E402
+from knowledge.ingest import entities as ingest_ent  # noqa: E402
+
+EOA_WHALE = "0xaaaa000000000000000000000000000000000001"
+EOA_SHARP = "0xbbbb000000000000000000000000000000000002"
+EOA_NOWHERE = "0xcccc000000000000000000000000000000000003"
+W2, W3 = "0xdddd000000000000000000000000000000000004", "0xeeee000000000000000000000000000000000005"
+SHARP1, SHARP2 = "0x1111000000000000000000000000000000000011", "0x2222000000000000000000000000000000000022"
+
+
+class CRMFixture(IngestFixture):
+    def setUp(self):
+        super().setUp()
+        (self.dev_root / "cross_market" / "titan_identities_cache.json").write_text(json.dumps({
+            EOA_WHALE: {"proxy_wallet": "0xp1", "pseudonym": "VBVIT"},          # whale with a proxy nobody has seen trade: NOT a titan
+            EOA_SHARP: {"proxy_wallet": SHARP1, "pseudonym": "Blue-Smith"},     # proxy is a sharp wallet and the sharp's EOA matches: titan
+            W2: {"proxy_wallet": SHARP2, "pseudonym": "Applewood-HL"},          # whale whose proxy is a sharp wallet: titan
+            EOA_NOWHERE: {"proxy_wallet": "0xp3", "pseudonym": "Ghost"},        # on neither venue's tables: NOT a titan
+        }), encoding="utf-8")
+        hl = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data"
+        hl.mkdir(parents=True, exist_ok=True)
+        c = sqlite3.connect(hl / "hyperliquid_data.db")
+        c.execute("CREATE TABLE whale_wallets (address TEXT PRIMARY KEY, discovered_at INTEGER, first_coin TEXT, first_notional REAL, "
+                  "total_position_value REAL, account_value REAL, is_liquidator INTEGER, last_scanned_at INTEGER)")
+        c.executemany("INSERT INTO whale_wallets VALUES (?,?,?,?,?,?,?,?)", [
+            (EOA_WHALE, 1788111351386, "BTC", 65003.8, 158093023.15, 73059495.55, 1, 1788111353767),
+            (W2, 1788111351386, "ETH", 199200.0, 17903035.1, 475093.45, 0, 1788111353767),
+            (W3, 1788111351386, "SOL", 1000.0, 1000.0, 100.0, 0, 1788111353767),
+        ])
+        c.commit(); c.close()
+        pm = self.dev_root / "Polymarket" / "Polymarket_Monarch" / "data"
+        pm.mkdir(parents=True, exist_ok=True)
+        c = sqlite3.connect(pm / "polymarket_whales.db")
+        c.execute("CREATE TABLE sharp_traders (wallet TEXT PRIMARY KEY, pseudonym TEXT, pnl_7d REAL, volume_7d REAL, trades_7d INTEGER, win_rate REAL, "
+                  "is_sharp INTEGER, polymarket_link TEXT, last_scanned TEXT, realized_pnl_7d REAL, unrealized_pnl REAL, open_positions INTEGER, "
+                  "closed_positions_7d INTEGER, volume_is_partial INTEGER, proxy_wallet TEXT, eoa_address TEXT, identity_resolved_at TEXT)")
+        c.executemany("INSERT INTO sharp_traders VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            (SHARP1, "Blue-Smith", 19366.75, 8403.79, 477, 100.0, 1, "https://polymarket.com/profile/" + SHARP1, "2026-09-02 04:17:41",
+             27634.51, -8267.76, 3, 40, 0, SHARP1, EOA_SHARP, "2026-08-31 04:08:02"),
+            (SHARP2, "Assured-Applewood", 0.0, 0.0, 0, 0.0, 0, "https://polymarket.com/profile/" + SHARP2, "2026-08-30 01:35:22",
+             0.0, 0.0, 0, None, 0, SHARP2, None, None),
+        ])
+        c.execute("CREATE TABLE tracked_wallets (wallet TEXT PRIMARY KEY, pseudonym TEXT, first_seen TEXT, last_seen TEXT, trade_count INTEGER, "
+                  "total_volume_usd REAL, last_scanned TEXT)")
+        c.execute("INSERT INTO tracked_wallets VALUES (?,?,?,?,?,?,?)", (SHARP1, "Blue-Smith", "2026-08-30 01:00:00", "2026-09-02 04:00:00", 477, 8403.79, "2026-09-02 04:17:41"))
+        c.commit(); c.close()
+        sp = self.dev_root / "Sports_Desk" / "data"
+        sp.mkdir(parents=True, exist_ok=True)
+        c = sqlite3.connect(sp / "sports_market.db")
+        c.execute("CREATE TABLE fair_odds_measurements (id INTEGER PRIMARY KEY, timestamp TEXT, sportsbook TEXT)")
+        c.executemany("INSERT INTO fair_odds_measurements VALUES (?,?,?)", [(1, "2026-09-04T04:01:42+00:00", "pinnacle"), (2, "2026-09-04T05:01:42+00:00", "pinnacle")])
+        c.execute("CREATE TABLE edge_opportunities (id INTEGER PRIMARY KEY, timestamp TEXT, sport TEXT, market_type TEXT, sharp_book TEXT, retail_book TEXT, "
+                  "gross_edge REAL, clears_hurdle INTEGER)")
+        c.executemany("INSERT INTO edge_opportunities VALUES (?,?,?,?,?,?,?,?)", [
+            (1, "2026-09-04T04:01:42+00:00", "NFL", "moneyline", "pinnacle", "draftkings", -0.0087, 0),
+            (2, "2026-09-04T05:01:42+00:00", "NFL", "moneyline", "pinnacle", "draftkings", 0.0210, 1),
+            (3, "2026-09-04T05:01:42+00:00", "NFL", "totals", "pinnacle", "fanduel", 0.0150, 0),
+        ])
+        c.commit(); c.close()
+
+
+class EntitiesIngestTests(CRMFixture):
+    def test_titans_are_the_intersection_and_pages_link_both_ways(self):
+        report = ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW)
+        self.assertEqual(report.counts, {"titans": 2, "whales": 3, "sharps": 2, "books": 3})
+        self.assertEqual(report.missing_sources, [])
+        self.assertEqual(len(report.created), 2 + 3 + 2 + 3)
+        self.assertFalse((self.vault / f"crm/titans/titan_{EOA_NOWHERE}.md").exists())  # cached but on neither venue's tables
+        self.assertFalse((self.vault / f"crm/titans/titan_{EOA_WHALE}.md").exists())    # a whale with an unseen proxy is not a titan
+        t, body = fm.parse((self.vault / f"crm/titans/titan_{EOA_SHARP}.md").read_text(encoding="utf-8"))
+        self.assertEqual(t["type"], "Entity/Titan")
+        self.assertEqual((t["dev"]["in_whales"], t["dev"]["in_polymarket"], t["dev"]["pseudonym"]), (False, True, "Blue-Smith"))
+        self.assertIn(f"[[sharp_{SHARP1}|sharp page]]", body)
+        t2, body2 = fm.parse((self.vault / f"crm/titans/titan_{W2}.md").read_text(encoding="utf-8"))
+        self.assertEqual((t2["dev"]["in_whales"], t2["dev"]["proxy_wallet"]), (True, SHARP2))
+        self.assertIn(f"[[whale_{W2}|whale page]]", body2)
+        w, wbody = fm.parse((self.vault / f"crm/whales/whale_{EOA_WHALE}.md").read_text(encoding="utf-8"))
+        self.assertEqual(w["dev"]["rank_at_seed"], 1)
+        self.assertNotIn("titan", w["dev"])
+        self.assertEqual(w["dev"]["evidence"][0]["account_value"], 73059495.55)
+        self.assertEqual(w["dev"]["evidence"][0]["at"], "2026-08-30T17:35:53Z")  # epoch ms 1788111353767 -> ISO
+        self.assertIn(f"[[Whales/{EOA_WHALE}|whale note]]", wbody)  # exporter-owned note linked, never written
+        w2, _ = fm.parse((self.vault / f"crm/whales/whale_{W2}.md").read_text(encoding="utf-8"))
+        self.assertEqual((w2["dev"]["rank_at_seed"], w2["dev"]["titan"]), (2, f"titan_{W2}"))
+        s, sbody = fm.parse((self.vault / f"crm/sharps/sharp_{SHARP1}.md").read_text(encoding="utf-8"))
+        self.assertEqual((s["dev"]["eoa_address"], s["dev"]["titan"], s["dev"]["first_seen"]), (EOA_SHARP, f"titan_{EOA_SHARP}", "2026-08-30T01:00:00Z"))
+        self.assertEqual(s["dev"]["evidence"][0]["is_sharp"], True)
+        s2, _ = fm.parse((self.vault / f"crm/sharps/sharp_{SHARP2}.md").read_text(encoding="utf-8"))
+        self.assertEqual(s2["dev"]["titan"], f"titan_{W2}")  # linked through the proxy, not the EOA
+        b, bbody = fm.parse((self.vault / "crm/books/book_draftkings.md").read_text(encoding="utf-8"))
+        self.assertEqual((b["type"], b["dev"]["role"]), ("Entity/Sportsbook", "soft"))
+        self.assertEqual(b["dev"]["evidence"][0]["edges"], 2)
+        self.assertEqual(b["dev"]["evidence"][0]["cleared"], 1)
+        pin, _ = fm.parse((self.vault / "crm/books/book_pinnacle.md").read_text(encoding="utf-8"))
+        self.assertEqual((pin["dev"]["role"], pin["dev"]["measurements"]), ("sharp", 2))
+        reg, _ = fm.parse((self.vault / "wiki/concepts/crm_register.md").read_text(encoding="utf-8"))
+        self.assertEqual(reg["dev"]["count"], 10)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_judgement_and_human_fields_survive_reingest_and_evidence_appends(self):
+        ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW)
+        p = self.vault / f"crm/whales/whale_{EOA_WHALE}.md"
+        text = p.read_text(encoding="utf-8")
+        text = text.replace(ingest_ent.JUDGEMENT_PLACEHOLDER, "Adds to BTC longs into funding spikes; never seen on the short side.")
+        text = text.replace("status: draft", "status: stable\nverified:\n- by: human:operator\n  at: '2026-09-05T21:00:00Z'")
+        p.write_text(text, encoding="utf-8")
+        # a new scan in the database -> one more evidence row, judgement and human fields intact
+        c = sqlite3.connect(self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db")
+        c.execute("UPDATE whale_wallets SET account_value = 80000000.0, last_scanned_at = 1788200000000 WHERE address = ?", (EOA_WHALE,))
+        c.commit(); c.close()
+        report = ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW + timedelta(days=1))
+        self.assertIn(f"crm/whales/whale_{EOA_WHALE}.md", report.updated)
+        w, body = fm.parse(p.read_text(encoding="utf-8"))
+        self.assertIn("Adds to BTC longs into funding spikes", body)
+        self.assertEqual(w["status"], "stable")
+        self.assertEqual(w["verified"], [{"by": "human:operator", "at": "2026-09-05T21:00:00Z"}])
+        self.assertEqual([r["account_value"] for r in w["dev"]["evidence"]], [73059495.55, 80000000.0])
+        # same scan again -> no duplicate row
+        ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW + timedelta(days=2))
+        w, _ = fm.parse(p.read_text(encoding="utf-8"))
+        self.assertEqual(len(w["dev"]["evidence"]), 2)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(days=2)), [])
+
+    def test_limits_missing_sources_and_cli(self):
+        report = ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW, limit_whales=1, limit_titans=1)
+        self.assertEqual((report.counts["whales"], report.counts["titans"]), (1, 1))
+        self.assertTrue((self.vault / f"crm/titans/titan_{W2}.md").exists())  # the titan with whale equity ranks first
+        (self.dev_root / "Sports_Desk" / "data" / "sports_market.db").unlink()
+        report = ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW)
+        self.assertEqual(report.missing_sources, ["Sports_Desk/data/sports_market.db"])
+        self.assertEqual(report.counts["books"], 0)
+        out = io.StringIO()
+        self.assertEqual(ingest_ent.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--at", "2026-09-05T20:00:00Z"], out=out), EXIT_OK)
+        self.assertIn("[SKIP]  source not found: Sports_Desk/data/sports_market.db", out.getvalue())
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(ingest_ent.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=io.StringIO()), EXIT_HALT)
+
+
+class RatifyTests(RulingsIngestTests):
+    def test_ratify_extracted_rulings_only_and_idempotent(self):
+        ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
+        report = ratify_mod.ratify(self.vault, type_="Ruling", tag="extracted", ruling="98-1", at=NOW + timedelta(hours=1))
+        self.assertEqual((report.selected, len(report.ratified), report.already), (5, 5, []))
+        d, _ = fm.parse((self.vault / "wiki/rulings/Directive_75-1.md").read_text(encoding="utf-8"))
+        self.assertEqual(d["status"], "stable")
+        self.assertEqual(d["verified"], [{"by": "antigravity/architect", "at": "2026-09-05T21:00:00Z"}])
+        self.assertEqual(d["dev"]["ratified_by"], "98-1")
+        r1, _ = fm.parse((self.vault / "wiki/rulings/Ruling_R01.md").read_text(encoding="utf-8"))
+        self.assertNotIn("verified", r1)  # the R-series is not tagged `extracted`: untouched
+        again = ratify_mod.ratify(self.vault, type_="Ruling", tag="extracted", ruling="98-1", at=NOW + timedelta(hours=2))
+        self.assertEqual((again.ratified, len(again.already)), ([], 5))
+        # a forced re-extraction keeps the ratification (Round 99 invariant, shared carry_human_fields)
+        ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW + timedelta(hours=3), force=True)
+        d, _ = fm.parse((self.vault / "wiki/rulings/Directive_75-1.md").read_text(encoding="utf-8"))
+        self.assertEqual((d["status"], d["verified"][0]["by"], d["dev"]["ratified_by"]), ("stable", "antigravity/architect", "98-1"))
+        log = (self.vault / "log.md").read_text(encoding="utf-8")
+        self.assertEqual(log.count("**Ratify**"), 1)
+        self.assertIn("Ruling 98-1: 5 Ruling page(s) tagged `extracted` verified by `antigravity/architect`", log)
+        reg, _ = fm.parse((self.vault / "wiki/concepts/rulings_register.md").read_text(encoding="utf-8"))
+        self.assertIn("| directive | 75 | stable |", registers.update_register(self.vault, "Ruling", at=NOW).body)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(hours=3)), [])
+
+    def test_ratify_cli_and_actor_check(self):
+        ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
+        out = io.StringIO()
+        self.assertEqual(ratify_mod.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--type", "Ruling", "--tag", "extracted",
+                                          "--ruling", "98-1", "--dry-run"], out=out), EXIT_OK)
+        self.assertIn("[DRY]", out.getvalue())
+        self.assertIn("5 selected", out.getvalue())
+        d, _ = fm.parse((self.vault / "wiki/rulings/Directive_75-1.md").read_text(encoding="utf-8"))
+        self.assertNotIn("verified", d)  # dry run wrote nothing
+        self.assertEqual(ratify_mod.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--type", "Ruling", "--ruling", "98-1",
+                                          "--by", "antigravity"], out=io.StringIO()), EXIT_HALT)  # not an OKF actor
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(ratify_mod.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--type", "Ruling", "--ruling", "98-1"],
+                                         out=io.StringIO()), EXIT_HALT)
 
 
 if __name__ == "__main__":  # pragma: no cover

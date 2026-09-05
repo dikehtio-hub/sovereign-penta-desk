@@ -1,6 +1,6 @@
 ---
 type: Ruling
-title: 'Ratification 74-2: ).…'
+title: 'Ratification 74-2: Nothing in polymarket_fetcher.py was touched'
 description: Nothing in polymarket_fetcher.py was touched (Ratification 74-2).…
 tags:
 - ruling
@@ -9,8 +9,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -22,12 +22,16 @@ dev:
   kind: ratification
   citations:
   - section: Status
-    line: 300
+    line: 325
     excerpt: …Nothing in polymarket_fetcher.py was touched (Ratification 74-2).…
   asserts:
   - file: AGENTS.md
     pattern: Ratification\s+74-2\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ratification 74-2
 
@@ -35,7 +39,7 @@ dev:
 
 ## Citations
 
-- **Status** (line 300): …Nothing in polymarket_fetcher.py was touched (Ratification 74-2).…
+- **Status** (line 325): …Nothing in polymarket_fetcher.py was touched (Ratification 74-2).…
 
 ## Related
 

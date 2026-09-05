@@ -10,7 +10,7 @@ tags:
 - pre-registered
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:48:25Z'
+  at: '2026-09-05T21:52:44Z'
 status: draft
 sources:
 - id: registration
@@ -82,3 +82,4 @@ All markets are neg_risk: Ruling R4 - only the winning outcome's YES asks are li
 - [[Item_12_Polymarket_Breaking_News_Oracle_Latency_Sniper|Item 12: Polymarket Breaking News & Oracle Latency Sniper]]
 - [[Ruling_R02|R2 - record the CLOB around a scheduled print]]
 - [[Ruling_R04|R4 - neg_risk books skip the NO side]]
+- [[experiments_register|Experiments register]]

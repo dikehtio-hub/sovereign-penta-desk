@@ -1,7 +1,7 @@
 ---
 type: Ruling
-title: 'Ruling 40-4: ).** `spot_sz_decimals` looked up the PERP base name in the spot
-  table, so UBTC/UFART/UANSEM hedges…'
+title: 'Ruling 40-4: Decimals bug . spot_sz_decimals looked up the PERP base name
+  in the spot table, so UBTC/UFART/UANSEM hedges a…'
 description: '- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP
   base name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and `matched_leg_size`
   sized off the perp leg alone.…'
@@ -12,8 +12,8 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:32:39Z'
-status: draft
+  at: '2026-09-05T21:59:52Z'
+status: stable
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -25,7 +25,7 @@ dev:
   kind: ruling
   citations:
   - section: Round 40 findings
-    line: 2018
+    line: 2058
     excerpt: …- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP
       base name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and
       `matched_leg_size` sized off the perp leg alone.…
@@ -33,6 +33,10 @@ dev:
   - file: AGENTS.md
     pattern: Ruling\s+40-4\b
     claim: the citation still exists in the handoff log
+  ratified_by: 98-1
+verified:
+- by: antigravity/architect
+  at: '2026-09-05T21:52:47Z'
 ---
 # Ruling 40-4
 
@@ -40,7 +44,7 @@ dev:
 
 ## Citations
 
-- **Round 40 findings** (line 2018): …- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP base name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and `matched_leg_size` sized off the perp leg alone.…
+- **Round 40 findings** (line 2058): …- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP base name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and `matched_leg_size` sized off the perp leg alone.…
 
 ## Related
 

@@ -1,0 +1,59 @@
+---
+type: Entity/Sharp Trader
+title: Sharp trader Anchored-Pike
+description: Polymarket sharp trader Anchored-Pike (0xca26…ad8f); identity unresolved.
+tags:
+- crm
+- sharp-trader
+- desk-3
+generated:
+  by: claude-code/fable-5.1
+  at: '2026-09-05T21:52:50Z'
+status: draft
+sources:
+- id: sharp_traders
+  resource: Polymarket/Polymarket_Monarch/data/polymarket_whales.db
+  title: polymarket_whales.db sharp_traders (mode=ro)
+  author: process:Polymarket_Monarch.pnl_scanner
+dev:
+  desk: 3
+  wallet: '0xca2645f1e382f9dd1ee18faf66fbf2ad5f1cad8f'
+  pseudonym: Anchored-Pike
+  proxy_wallet: '0xca2645f1e382f9dd1ee18faf66fbf2ad5f1cad8f'
+  eoa_address: null
+  identity_resolved_at: '2026-08-31T04:07:52Z'
+  first_seen: '1970-01-21T16:40:53Z'
+  evidence:
+  - at: '2026-08-31T02:57:01Z'
+    pnl_7d: -945.09
+    realized_pnl_7d: 2788.78
+    volume_7d: 4730.96
+    trades_7d: 391
+    win_rate: 100.0
+    is_sharp: true
+---
+# Sharp trader Anchored-Pike
+
+## Identity
+
+- wallet: `0xca2645f1e382f9dd1ee18faf66fbf2ad5f1cad8f`
+- pseudonym: **Anchored-Pike**
+- profile: https://polymarket.com/profile/0xca2645f1e382f9dd1ee18faf66fbf2ad5f1cad8f
+- proxy wallet: `0xca2645f1e382f9dd1ee18faf66fbf2ad5f1cad8f` · EOA: `unresolved` (resolved `2026-08-31T04:07:52Z`)
+- first seen: `1970-01-21T16:40:53Z`
+- live note (exporter-owned): [[Wallets/0xca2645f1e382f9dd1ee18faf66fbf2ad5f1cad8f|trader note]]
+
+## Judgement
+
+_(none yet: write the compiled judgement here; re-ingest keeps this section and only appends evidence)_
+
+## Evidence (dated rows the adapter appends; never live state)
+
+| at | pnl_7d | realized_pnl_7d | volume_7d | trades_7d | win_rate | is_sharp |
+|---|---|---|---|---|---|---|
+| 2026-08-31T02:57:01Z | -945.09 | 2788.78 | 4730.96 | 391 | 100.0 | True |
+
+## Related
+
+- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]
+- [[crm_register|CRM register]]

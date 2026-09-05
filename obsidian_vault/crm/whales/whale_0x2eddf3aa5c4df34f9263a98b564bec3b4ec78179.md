@@ -1,0 +1,55 @@
+---
+type: Entity/Whale
+title: Whale 0x2edd…8179
+description: 'Hyperliquid whale 0x2edd…8179: rank 15 by account equity at seed; first
+  seen on BTC.'
+tags:
+- crm
+- whale
+- desk-1
+generated:
+  by: claude-code/fable-5.1
+  at: '2026-09-05T21:52:50Z'
+status: draft
+sources:
+- id: whale_wallets
+  resource: HyperLiquid/HL_Monarch/data/hyperliquid_data.db
+  title: hyperliquid_data.db whale_wallets (mode=ro)
+  author: process:HL_Monarch.collector
+dev:
+  desk: 1
+  address: '0x2eddf3aa5c4df34f9263a98b564bec3b4ec78179'
+  first_coin: BTC
+  discovered_at: '2026-08-31T17:44:14Z'
+  is_liquidator: true
+  rank_at_seed: 15
+  evidence:
+  - at: '2026-08-31T17:44:15Z'
+    account_value: 8286790.8
+    position_value: 25132837.19
+    leverage: 3.03
+---
+# Whale 0x2edd…8179
+
+## Identity
+
+- address: `0x2eddf3aa5c4df34f9263a98b564bec3b4ec78179`
+- discovered: `2026-08-31T17:44:14Z` via `BTC` ($38,262)
+- system liquidator: True
+- rank by equity at seed: 15
+- live note (exporter-owned): [[Whales/0x2eddf3aa5c4df34f9263a98b564bec3b4ec78179|whale note]]
+
+## Judgement
+
+_(none yet: write the compiled judgement here; re-ingest keeps this section and only appends evidence)_
+
+## Evidence (dated rows the adapter appends; never live state)
+
+| at | account_value | position_value | leverage |
+|---|---|---|---|
+| 2026-08-31T17:44:15Z | 8286790.8 | 25132837.19 | 3.03 |
+
+## Related
+
+- [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]
+- [[crm_register|CRM register]]
