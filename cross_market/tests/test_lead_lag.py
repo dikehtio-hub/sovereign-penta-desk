@@ -134,12 +134,19 @@ class TestLeadLag(LeadLagCase):
         self.assertFalse(result["sufficient"])
         self.assertIn("2 probability shifts < 5", result["reason"])
         self.assertIsNone(result["best_lag_minutes"])
-        # Enough shifts but no prices at all: refused on overlap, and a missing database is "no prices".
+        # Enough shifts but no prices at all: refused on overlap. Round 75: a database that cannot be
+        # opened is a price READ FAILURE (its own reason), not "no prices" - the loop must not record it.
         self.plant(lag_minutes=10)
         result, _ = ll.run("BTC", [self.drops], self.root / "absent.db", max_lag=30, min_shift=0.02,
                            min_events=5, min_points=60)
         self.assertFalse(result["sufficient"])
-        self.assertIn("overlapping minutes", result["reason"])
+        self.assertIn("price series unreadable", result["reason"])
+        self.assertTrue(result["price_error"])
+        con = sqlite3.connect(str(self.db)) ; con.execute("DELETE FROM asset_snapshots") ; con.commit() ; con.close()
+        result, _ = ll.run("BTC", [self.drops], self.db, max_lag=30, min_shift=0.02, min_events=5, min_points=60)
+        self.assertFalse(result["sufficient"])
+        self.assertIn("overlapping minutes", result["reason"])                  # readable but empty: no prices
+        self.assertEqual(result["price_error"], "")
 
     def test_cli_prints_a_report_and_places_nothing(self):
         import contextlib
@@ -361,3 +368,22 @@ class TestTier2Subfamily(LeadLagCase):
         self.assertEqual(meta["bars"]["latency_minutes_crypto"], ll.POLL_INTERVAL_MINUTES)
         self.assertEqual(sorted(meta["subfamilies"]), ["crypto", "fed-rates"])
         self.assertIn("counts only", meta["state_at_registration"]["note"])
+
+
+class TestPriceReadFailure(LeadLagCase):
+    """Round 75: a database that cannot be read is a failed run, not an "insufficient data" verdict."""
+
+    def test_an_unreadable_database_is_reported_as_a_price_error_not_as_insufficient_data(self):
+        self.plant(lag_minutes=10)
+        good, _ = ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60)
+        self.assertTrue(good["sufficient"]) ; self.assertEqual(good["price_error"], "")
+        bad, keys = ll.run("BTC", [self.drops], self.root / "missing" / "hl.db", 60, 0.02, 5, 60)
+        self.assertFalse(bad["sufficient"]) ; self.assertEqual(keys, 1)
+        self.assertTrue(bad["price_error"].startswith("OperationalError"), bad["price_error"])
+        self.assertTrue(bad["reason"].startswith("price series unreadable (OperationalError"), bad["reason"])
+        self.assertIn("price series unreadable", ll.format_report(bad, "BTC", keys))
+        # no shifts at all: nothing to read, so no price error either
+        for f in self.drops.glob("*.json"):
+            f.unlink()
+        empty, _ = ll.run("BTC", [self.drops], self.root / "missing" / "hl.db", 60, 0.02, 5, 60)
+        self.assertEqual(empty["price_error"], "") ; self.assertIn("0 probability shifts", empty["reason"])

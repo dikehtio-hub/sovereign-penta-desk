@@ -831,6 +831,30 @@ def lead_lag_last_run(note_path: Path) -> Optional[datetime]:
     return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
+def lead_lag_next_run_hours(note_path: Path) -> Optional[float]:
+    """
+    Round 75: the cooldown the block itself states ("next run after `N h`"), so the
+    refresher honours the length that was written - 24 h after a verdict, the short
+    retry after an "insufficient" result. None when the block or the phrase is absent.
+    """
+    try:
+        content = Path(note_path).read_text(encoding="utf-8")
+    except Exception:                                       # noqa: BLE001
+        return None
+    if LEADLAG_START not in content:
+        return None
+    block = content.split(LEADLAG_START, 1)[1].split(LEADLAG_END, 1)[0]
+    phrase = "next run after `"
+    if phrase not in block:
+        return None
+    raw = block.split(phrase, 1)[1].split(" h`", 1)[0].strip()
+    try:
+        hours = float(raw)
+    except ValueError:
+        return None
+    return hours if hours >= 0 else None
+
+
 def render_lead_lag_block(result: Dict[str, Any], coin: str, keys: int, ran_at: datetime,
                           cooldown_hours: float = 24.0) -> str:
     """
@@ -855,7 +879,7 @@ def render_lead_lag_block(result: Dict[str, Any], coin: str, keys: int, ran_at: 
     lines.append("> - **Evidence**: `%d` markets · `%d` probability shifts · `%d` %s price points · max lag `±%d min`"
                  % (int(keys), int(result.get("events") or 0), int(result.get("price_points") or 0), coin,
                     int(result.get("max_lag") or 0)))
-    lines.append("> - **Ran**: `%s` on the stamped drops + a read-only snapshot DB; next run after `%.0f h` "
+    lines.append("> - **Ran**: `%s` on the stamped drops + a read-only snapshot DB; next run after `%g h` "
                  "(the sentinel card above must still read READY)" % (ran_at.strftime("%Y-%m-%d %H:%M UTC"), cooldown_hours))
     lines.append("> - Offline research only: reads drops and a read-only database; places nothing. "
                  "Shell twin: `python -m cross_market.lead_lag --coin %s`" % coin)

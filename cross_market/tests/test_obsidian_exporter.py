@@ -9,6 +9,7 @@ $0, which after Round 33's fail-closed rule is the state a fresh install is in.
 """
 
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -545,3 +546,195 @@ class TestExporterLock(ExporterBase):
         self.assertIn('call "%~dp0start_cross_market_exporter.bat"', sync)
         self.assertNotIn('start "Cross-Market Arb Obsidian Sync"', sync)
         self.assertLess(sync.index("obsidian_exporter --status"), sync.index('call "%~dp0start_cross_market_exporter.bat"'))
+
+
+class TestMaidenRunSafety(ExporterBase):
+    """Round 75: the maiden run must not be buried by a transient failure or a data hole."""
+
+    NOW = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+
+    def _stamps(self, count, spacing_min=5, ending_min_ago=3):
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        for i in range(count):
+            when = self.NOW - timedelta(minutes=ending_min_ago + spacing_min * i)
+            (self.questions / stamped_drop_name(when, family="macro")).write_text("[]", encoding="utf-8")
+
+    def _note(self):
+        from cross_market import titan_correlator as tc
+        self.vault.mkdir(parents=True, exist_ok=True)
+        note = self.vault / ("%s.md" % tc.TITANS_NOTE)
+        note.write_text("# Titans\n\n%s\nsentinel body\n%s\n\n---\n\n## 🧭 Intelligence Architecture & "
+                        "Correlation Vectors\n\ntext\n" % (tc.SENTINEL_START, tc.SENTINEL_END), encoding="utf-8")
+        return note
+
+    @staticmethod
+    def _result(sufficient, price_error=""):
+        if sufficient:
+            return {"events": 14, "price_points": 5000, "max_lag": 60, "sufficient": True, "reason": "",
+                    "best_lag_minutes": 12, "correlation": 0.41, "n": 900, "price_error": "",
+                    "interpretation": "Polymarket leads HyperLiquid by 12 min (corr +0.41, n=900)", "curve": []}
+        return {"events": 9, "price_points": 0, "max_lag": 60, "sufficient": False, "price_error": price_error,
+                "reason": ("price series unreadable (%s)" % price_error) if price_error
+                else "fewer than 60 overlapping minutes at every lag",
+                "best_lag_minutes": None, "correlation": None, "n": 0, "interpretation": "", "curve": []}
+
+    def test_a_price_read_failure_is_not_recorded_and_the_next_cycle_retries(self):
+        from cross_market import titan_correlator as tc
+        from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
+        self._stamps(300)
+        note = self._note()
+        before = note.read_text(encoding="utf-8")
+        outcomes = [self._result(False, "OperationalError: database is locked"), self._result(True)]
+        calls = []
+
+        def runner(coin):
+            calls.append(coin)
+            return outcomes[len(calls) - 1], 7
+        r = LeadLagRefresher(drop_dirs=[self.questions], runner=runner)
+        status = r.run(str(self.vault), now=self.NOW)
+        self.assertTrue(status.startswith("lead-lag: run failed (prices unreadable: OperationalError"), status)
+        self.assertIn("retrying next cycle", status)
+        self.assertEqual(note.read_text(encoding="utf-8"), before)                # nothing recorded
+        self.assertIsNone(tc.lead_lag_last_run(note)) ; self.assertEqual(r.runs, 0)
+        status = r.run(str(self.vault), now=self.NOW + timedelta(seconds=15))     # the next cycle succeeds
+        self.assertTrue(status.startswith("lead-lag: RAN BTC -> Cross_Market_Titans.md written (Polymarket leads"), status)
+        self.assertEqual(calls, ["BTC", "BTC"]) ; self.assertEqual(r.runs, 1)
+        self.assertIn("next run after `24 h`", note.read_text(encoding="utf-8"))
+        self.assertEqual(tc.lead_lag_next_run_hours(note), 24.0)
+
+    def test_an_insufficient_result_is_recorded_but_retried_after_an_hour_not_a_day(self):
+        from cross_market import titan_correlator as tc
+        from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
+        self._stamps(300)
+        note = self._note()
+        outcomes = [self._result(False), self._result(True)]
+        calls = []
+
+        def runner(coin):
+            calls.append(coin)
+            return outcomes[min(len(calls), len(outcomes)) - 1], 7
+        r = LeadLagRefresher(drop_dirs=[self.questions], runner=runner)
+        status = r.run(str(self.vault), now=self.NOW)
+        self.assertIn("(insufficient: fewer than 60 overlapping minutes at every lag) · retry in 1 h", status)
+        text = note.read_text(encoding="utf-8")
+        self.assertIn("[!NOTE] **Insufficient data**: fewer than 60 overlapping minutes", text)
+        self.assertIn("next run after `1 h`", text)
+        self.assertEqual(tc.lead_lag_next_run_hours(note), 1.0)
+        self.assertAlmostEqual(r.cooldown_remaining_hours(note, self.NOW + timedelta(minutes=30)), 0.5, places=3)
+        # inside the hour: waits; after it: runs again and, with a verdict now, states the full cooldown
+        self._stamps(300, ending_min_ago=3 - 30)
+        self.assertTrue(r.run(str(self.vault), now=self.NOW + timedelta(minutes=30)).startswith("lead-lag: READY, next run in 0.5 h"))
+        self._stamps(300, ending_min_ago=3 - 61)
+        status = r.run(str(self.vault), now=self.NOW + timedelta(minutes=61))
+        self.assertTrue(status.startswith("lead-lag: RAN BTC"), status) ; self.assertEqual(len(calls), 2)
+        self.assertIn("next run after `24 h`", note.read_text(encoding="utf-8"))
+        self._stamps(300, ending_min_ago=3 - 120)
+        self.assertTrue(r.run(str(self.vault), now=self.NOW + timedelta(minutes=120)).startswith("lead-lag: READY, next run in 23.0 h"))
+        # a note written before Round 75 states no hours: the refresher's own cooldown applies
+        stripped = note.read_text(encoding="utf-8").replace("next run after `24 h`", "next run after a day")
+        note.write_text(stripped, encoding="utf-8")
+        self.assertIsNone(tc.lead_lag_next_run_hours(note))
+        self.assertAlmostEqual(r.cooldown_remaining_hours(note, self.NOW + timedelta(minutes=61 + 60)), 23.0, places=3)
+        # the retry length is a flag on the loop
+        from cross_market.interfaces import obsidian_exporter as ex
+        from unittest import mock
+        with mock.patch.object(ex, "LeadLagRefresher", wraps=ex.LeadLagRefresher) as ctor, mock.patch("builtins.print"):
+            ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db), "--questions", str(self.questions),
+                     "--risk-every", "0", "--lead-lag-retry-hours", "2.5"])
+        self.assertEqual(ctor.call_args.kwargs.get("retry_hours"), 2.5)
+
+
+class TestMaidenProtocol(ExporterBase):
+    """Round 75 (Directives 75-1/75-2): the verification protocol as one command, Tier 2 only after Tier 1."""
+
+    NOW = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+
+    def _stamps(self, count=300, spacing_min=5, ending_min_ago=3):
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        for i in range(count):
+            when = self.NOW - timedelta(minutes=ending_min_ago + spacing_min * i)
+            (self.questions / stamped_drop_name(when, family="macro")).write_text("[]", encoding="utf-8")
+
+    def _hl_db(self):
+        db = self.root / "hl.db"
+        con = sqlite3.connect(str(db))
+        con.execute("CREATE TABLE asset_snapshots (id INTEGER PRIMARY KEY, timestamp INTEGER, coin TEXT, mark_px REAL)")
+        con.commit() ; con.close()
+        return db
+
+    def test_before_the_run_it_waits_and_after_it_verifies_and_runs_tier_2(self):
+        from unittest import mock
+        from cross_market import maiden_protocol as mp
+        from cross_market import titan_correlator as tc
+        from cross_market.ingestors import pid_lock
+        log = self.root / "exporter.log"
+        lock = self.root / "exporter.pid"
+        db = self._hl_db()
+        self.vault.mkdir(parents=True, exist_ok=True)
+        note = self.vault / ("%s.md" % tc.TITANS_NOTE)
+        common = dict(vault=str(self.vault), log_path=log, drop_dirs=[self.questions], db_path=db, pid_file=lock, now=self.NOW)
+        # 1. before: no log, no note, series short -> WAIT, exit 3, Tier 2 refused
+        self._stamps(6)
+        info = mp.check(**common)
+        self.assertFalse(info["maiden_run_done"]) ; self.assertFalse(info["ok"])
+        self.assertTrue(info["tier2_skipped"].startswith("Tier 1 has not run yet"))
+        self.assertIsNone(info["tier2"])
+        text = mp.format_check(info)
+        self.assertIn("[WAIT] log_ran_line", text) ; self.assertIn("NOT YET", text)
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(mp.main(["--vault", str(self.vault), "--log", str(log), "--drops", str(self.questions),
+                                      "--db", str(db), "--pid-file", str(lock)]), mp.EXIT_NOT_YET)
+        self.assertIn("RESULT: NOT YET", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+        # 2. after: the loop ran once, wrote the block, and has been counting down
+        self._stamps(300)
+        note.write_text("# T\n%s\nx\n%s\n\n%s\n" % (tc.SENTINEL_START, tc.SENTINEL_END, tc.render_lead_lag_block(
+            {"events": 400, "price_points": 3000, "max_lag": 60, "sufficient": True, "best_lag_minutes": -33,
+             "correlation": -0.195, "n": 1400, "interpretation": "no measurable lead-lag (peak |corr| 0.19 < 0.2)",
+             "curve": []}, "BTC", 413, ran_at=self.NOW - timedelta(minutes=20))), encoding="utf-8")
+        log.write_text("\n".join([
+            "[01:39:35] Cross_Market_Arb.md unchanged · risk: next in 3 cycle(s) · lead-lag: gated (NOT READY: span 23.9h < 24h)",
+            "[01:40:05] Cross_Market_Arb.md unchanged · risk: next in 2 cycle(s) · lead-lag: RAN BTC -> Cross_Market_Titans.md written (no measurable lead-lag (peak |corr| 0.19 < 0.2))",
+            "[01:40:20] Cross_Market_Arb.md unchanged · risk: next in 1 cycle(s) · lead-lag: READY, next run in 24.0 h",
+            "[01:40:35] Cross_Market_Arb.md unchanged · risk: next in 0 cycle(s) · lead-lag: READY, next run in 24.0 h",
+        ]), encoding="utf-8")
+        # labelled questions for Tier 2 (too few shifts: insufficient). Dated days BEFORE the 24 h segment so
+        # these stamps do not join it (a stamp after `now` would end the segment and read NOT READY).
+        for i in range(3):
+            (self.questions / ("polymarket_macro_2026090%dT000000_000000Z.json" % (1 + i))).write_text(json.dumps([
+                {"question": "Fed?", "token_id": "tok-fed", "yes_price": "0.5%d" % i, "fetched_at": "2026-09-0%dT00:00:00Z" % (1 + i), "sport": "FED-RATES"},
+                {"question": "BTC?", "token_id": "tok-btc", "yes_price": "0.6%d" % i, "fetched_at": "2026-09-0%dT00:00:00Z" % (1 + i), "sport": "CRYPTO"}]),
+                encoding="utf-8")
+        lock.write_text("%d\n" % (os.getpid() + 40_000), encoding="utf-8")
+        with mock.patch.object(pid_lock, "pid_is_alive", return_value=True), \
+                mock.patch.object(pid_lock, "process_cmdline", return_value="pythonw -m cross_market.interfaces.obsidian_exporter --watch"):
+            info = mp.check(**common)
+        self.assertTrue(info["maiden_run_done"]) ; self.assertTrue(info["ok"], info["checks"])
+        self.assertEqual(info["log"]["verdict"], "no measurable lead-lag (peak |corr| 0.19 < 0.2)")
+        self.assertEqual(info["log"]["cooldown_lines_after_run"], 2) ; self.assertEqual(info["log"]["gated_lines"], 1)
+        self.assertTrue(info["note"]["tag_inside"] and info["note"]["header_inside"])
+        self.assertEqual(sorted(info["tier2"]), ["crypto", "fed-rates"])
+        self.assertEqual(info["tier2"]["crypto"]["latency_minutes"], 5.0)
+        self.assertEqual(info["tier2"]["fed-rates"]["latency_minutes"], 0.0)
+        self.assertEqual(info["tier2"]["crypto"]["markets"], 1)
+        self.assertFalse(info["tier2"]["crypto"]["result"]["sufficient"])
+        text = mp.format_check(info)
+        for expect in ("[PASS] loop_running", "[PASS] cooldown_observed", "verdict: no measurable lead-lag",
+                       "TIER 2 DIAGNOSTIC SUBFAMILIES", "[macro / crypto]", "[macro / fed-rates]", "latency rule 5 min",
+                       "RESULT: ALL CHECKS PASSED"):
+            self.assertIn(expect, text)
+        # the registration file is read, never written
+        meta = Path(mp.DEFAULT_META)
+        before = meta.read_bytes()
+        with mock.patch.object(pid_lock, "pid_is_alive", return_value=True), \
+                mock.patch.object(pid_lock, "process_cmdline", return_value="pythonw -m cross_market.interfaces.obsidian_exporter --watch"), \
+                mock.patch("builtins.print") as fake_print:
+            self.assertEqual(mp.main(["--vault", str(self.vault), "--log", str(log), "--drops", str(self.questions),
+                                      "--db", str(db), "--pid-file", str(lock), "--json"]), 0)
+        self.assertEqual(meta.read_bytes(), before)
+        payload = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertTrue(payload["ok"])
+        # 3. the loop died after the run: the run is done but a check fails -> exit 1
+        lock.unlink()
+        with mock.patch("builtins.print"):
+            self.assertEqual(mp.main(["--vault", str(self.vault), "--log", str(log), "--drops", str(self.questions),
+                                      "--db", str(db), "--pid-file", str(lock), "--no-tier2"]), 1)

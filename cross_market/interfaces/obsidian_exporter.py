@@ -240,9 +240,12 @@ class LeadLagRefresher:
 
     def __init__(self, coin: str = "BTC", cooldown_hours: float = 24.0, drop_dirs=None, db_path=None,
                  family: str = "macro", runner=None, max_lag: int = 60, min_shift: float = 0.02,
-                 min_events: int = 5, min_points: int = 60):
+                 min_events: int = 5, min_points: int = 60, retry_hours: float = 1.0):
         self.coin = str(coin).upper()
         self.cooldown_hours = float(cooldown_hours)
+        # Round 75: an "insufficient" result is recorded but retried after `retry_hours`, not the
+        # full cooldown - a data hole at the maiden minute must not cost a day. A verdict waits 24 h.
+        self.retry_hours = float(retry_hours)
         self.drop_dirs = drop_dirs
         self.db_path = db_path
         self.family = family
@@ -257,11 +260,14 @@ class LeadLagRefresher:
         return data_readiness(stamped_moments(dirs, self.family), now=now)
 
     def cooldown_remaining_hours(self, note: Path, now: datetime) -> Optional[float]:
-        from cross_market.titan_correlator import lead_lag_last_run
+        """Hours until the next run per the note: its run-at marker plus the cooldown the block states."""
+        from cross_market.titan_correlator import lead_lag_last_run, lead_lag_next_run_hours
         last = lead_lag_last_run(note)
         if last is None:
             return None
-        remaining = self.cooldown_hours - (now - last).total_seconds() / 3600.0
+        stated = lead_lag_next_run_hours(note)
+        hours = stated if stated is not None else self.cooldown_hours
+        remaining = hours - (now - last).total_seconds() / 3600.0
         return remaining if remaining > 0 else None
 
     def run(self, vault: Optional[str], now: Optional[datetime] = None) -> str:
@@ -291,7 +297,13 @@ class LeadLagRefresher:
                 dirs = [Path(d) for d in (self.drop_dirs if self.drop_dirs is not None else DEFAULT_DROP_DIRS)]
                 result, keys = lead_lag_run(self.coin, dirs, Path(self.db_path or DEFAULT_HL_DB), self.max_lag,
                                             self.min_shift, self.min_events, self.min_points, family=self.family)
-            block = render_lead_lag_block(result, self.coin, keys, ran_at=now, cooldown_hours=self.cooldown_hours)
+            if result.get("price_error"):
+                # Round 75: the snapshot DB could not be read (locked, missing). Not a verdict, not
+                # recorded, no cooldown - the next 15 s cycle tries again.
+                return ("lead-lag: run failed (prices unreadable: %s) - not recorded, retrying next cycle"
+                        % result["price_error"])
+            cooldown = self.cooldown_hours if result.get("sufficient") else self.retry_hours
+            block = render_lead_lag_block(result, self.coin, keys, ran_at=now, cooldown_hours=cooldown)
             path, changed = refresh_marked_block(note, block, LEADLAG_START, LEADLAG_END)
         except Exception as exc:                            # noqa: BLE001 - never break the arb export
             return "lead-lag: run failed (%s: %s)" % (type(exc).__name__, exc)
@@ -299,7 +311,9 @@ class LeadLagRefresher:
         self.last_result = result
         verdict = (result.get("interpretation") if result.get("sufficient")
                    else "insufficient: %s" % (result.get("reason") or "no answer"))
-        return "lead-lag: RAN %s -> %s %s (%s)" % (self.coin, path.name, "written" if changed else "unchanged", verdict)
+        retry = "" if result.get("sufficient") else " · retry in %g h" % cooldown
+        return "lead-lag: RAN %s -> %s %s (%s)%s" % (self.coin, path.name, "written" if changed else "unchanged",
+                                                    verdict, retry)
 
 
 def _refresh_sentinel_quietly(vault: Optional[str], drop_dirs) -> str:
@@ -485,6 +499,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="Round 73: run Item 18 for this perp once the sentinel says READY (default BTC)")
     parser.add_argument("--lead-lag-cooldown-hours", type=float, default=24.0,
                         help="hours between lead-lag runs once READY (default 24)")
+    parser.add_argument("--lead-lag-retry-hours", type=float, default=1.0,
+                        help="Round 75: hours before retrying after an 'insufficient' lead-lag result (default 1; "
+                             "a verdict waits the full cooldown)")
     parser.add_argument("--no-lead-lag", action="store_true", help="never run the lead-lag regression from this loop")
     parser.add_argument("--log-file", type=Path, default=None,
                         help="append every line to this file as well (the only output under pythonw)")
@@ -517,7 +534,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                          stress_correlation=args.risk_stress, loader=loader)
     lead_lag = None if args.no_lead_lag else LeadLagRefresher(coin=args.lead_lag_coin,
                                                                cooldown_hours=args.lead_lag_cooldown_hours,
-                                                               drop_dirs=sentinel_dirs)
+                                                               drop_dirs=sentinel_dirs,
+                                                               retry_hours=args.lead_lag_retry_hours)
     if not args.watch:
         path, changed = export_cross_market_arb(args.vault, db_path=db_path, questions_dir=qdir)
         print("[OK] %s %s" % (path, "written" if changed else "unchanged"))

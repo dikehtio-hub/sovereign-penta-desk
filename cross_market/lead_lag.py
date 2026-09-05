@@ -346,16 +346,23 @@ def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_s
     series = probability_series(records)
     shifts = probability_shifts(series, min_shift=min_shift)
     marks: List[Tuple[int, float]] = []
+    price_error = ""
     if shifts:
         start = min(s["ts_ms"] for s in shifts) - (max_lag + 1) * MINUTE_MS
         end = max(s["ts_ms"] for s in shifts) + (max_lag + 1) * MINUTE_MS
         try:
             marks = load_mark_series(db_path, coin, start, end)
-        except Exception:                                   # noqa: BLE001 - a missing database is "no prices"
+        except Exception as exc:                            # noqa: BLE001 - a missing or locked database is NOT "no prices"
             marks = []
+            price_error = "%s: %s" % (type(exc).__name__, exc)
     report = lead_lag_report(shifts, marks, max_lag=max_lag, min_events=min_events, min_points=min_points,
                              latency_minutes=latency_minutes)
     report["family"], report["subfamily"] = family, subfamily
+    # Round 75: a database that could not be read is a failed run, not an "insufficient data" verdict.
+    # The refresher must not record it (a 24 h cooldown on a transient lock would bury the maiden run).
+    report["price_error"] = price_error
+    if price_error and not report["sufficient"]:
+        report["reason"] = "price series unreadable (%s)" % price_error
     return report, len(series)
 
 

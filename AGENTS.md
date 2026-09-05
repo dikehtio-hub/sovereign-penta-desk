@@ -5,6 +5,25 @@ the detail.
 
 ## Status
 
+Round 75 PREPARED (2026-09-05): the two execution directives are time-gated
+to the maiden run (~2026-09-06T01:39:49Z) and were NOT executed - they are now
+ONE command, and two flaws that could have buried the maiden run are fixed.
+`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not yet /
+1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag:
+RAN` log line, the run-at marker under the Item 18 header, the cooldown
+count-down) and, ONLY once Tier 1 has written its verdict, Directive 75-2
+(both subfamilies under the registered bars, the meta file read, never
+written). Safety: lead_lag.run reports a database it could not read as
+`price_error` ("price series unreadable") and the refresher does NOT record
+it - no note, no cooldown, the next 15 s cycle retries (before: a locked DB
+became an "insufficient" verdict with a 24 h cooldown). An "insufficient"
+result is still recorded but retried after `--lead-lag-retry-hours` (default
+1) rather than 24 h; the block states its own cooldown ("next run after
+`N h`", titan_correlator.lead_lag_next_run_hours) and the refresher honours
+what was written. NEEDS RATIFICATION: the 1 h retry (set 24 to restore).
+4 new tests. Nothing in polymarket_fetcher.py was touched (Ratification 74-2).
+Live 10:28Z: `python -m cross_market.maiden_protocol` against the real loop printed [PASS] loop_running, five [WAIT] checks, series NOT READY (span 8.7h, points 104), ETA 2026-09-06T01:39:49Z, log 293 gated / 0 failed / 0 runs, "tier 2: skipped - Tier 1 has not run yet", exit 3. The exporter was then restarted through the guarded launcher so the Round 75 safety code is the code that runs the maiden run: pythonw pid 56412 holds the lock (35080 terminated first); watcher pid 49812 untouched.
+
 Round 74 complete (2026-09-05): ONE EXPORTER LOOP, TIER 2 PRE-REGISTERED.
 Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds
 cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word
@@ -474,7 +493,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 895 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 899 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -498,6 +517,28 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 75 findings
+
+- **A transient read failure would have become the maiden verdict.**
+  lead_lag.run swallowed any exception from load_mark_series as "no prices";
+  the report then read "fewer than 60 overlapping minutes", the refresher
+  wrote that as an honest-looking "insufficient" block and started a 24 h
+  cooldown. The HL database is in WAL mode, so a lock is unlikely - but a
+  missing file, a permissions blip or a collector migration at 01:40Z would
+  have cost the day. Now `price_error` is its own outcome and is never
+  recorded.
+- **An "insufficient" verdict at the maiden minute is a data hole, not a
+  finding.** The pre-registered bar is about the stamp series and the
+  correlation threshold; how soon the loop retries a non-verdict is
+  operations. Default 1 h, flagged for ratification.
+- **The note is the single clock.** The block already carried the run-at;
+  it now also states the cooldown it was written with, so a restarted
+  exporter (or one started with a different flag) honours the length that
+  was actually promised.
+- **Directive 75-1's four steps are one command with exit codes**, so the
+  01:40Z check can be pasted by whoever is at the keyboard; Tier 2 cannot be
+  run early by mistake - the protocol refuses until the run-at marker exists.
 
 ## Round 74 findings
 
