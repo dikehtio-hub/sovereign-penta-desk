@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 60 complete: STRESS CALIBRATION FROM REALIZED VOL, SPORTS SETTLEMENT
+HISTORY, FRACTIONAL CADENCE. load_live_inputs now measures stress_day_prob
+and stress_vol_multiplier from hyperliquid_data.db when >= 14 distinct days
+of hourly marks exist for the held perps (shock coin-day = daily realized
+vol > 3x the pooled median; multiplier = mean shock vol / median), else
+"assumed (< 14 days of marks)"; and reads placed_bets for >= 20 settled
+wagers (cadence = settled / active days, win rate = wins / (wins + losses),
+pushes excluded, mean odds), else "assumed (< 20 settled wagers)". Fractional
+bets per day place the remainder as one extra wager with that probability.
+start_all_ecosystem_sync.bat passes --risk-stress 0.5 to the Arb exporter so
+the card always carries the stress table. 3 new tests. Live: both
+calibrations fall back today (3.9 days of marks, 0 settled wagers) and say so.
+
 Round 59 complete: RISK SENTINEL AUTO-REFRESH, SYSTEMIC STRESS FACTOR. The
 Cross-Market Arb Obsidian exporter carries a RiskRefresher: Risk_Sentinel.md
 is re-simulated on the first cycle, every --risk-every cycles (60 = 15 min at
@@ -298,7 +311,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 850 OK |
+| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 853 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -322,6 +335,25 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 60 findings
+
+- **"95th percentile" would have measured nothing.** Defining shock days as
+  the top 5% of days sets the probability to 5% by construction. The
+  directive's alternative, 3x the pooled median daily vol, is the criterion
+  used; the multiplier is mean shock vol / median. Days need >= 12 hourly
+  returns to count, the pool is coin-days across the held perps, and the
+  gate is 14 DISTINCT days. The live DB has 3.9 days, so today both stress
+  inputs are "assumed (< 14 days of marks)" - the measured path is proven on
+  synthetic 20-day histories (2 shock days -> prob 0.10, multiplier ~6).
+- **Pushes are neither wins nor losses.** Win rate = wins / (wins + losses);
+  cadence counts pushes (a wager was placed); the provenance names the
+  pushes excluded. The live placed_bets table is empty, so sports stays on
+  the edge-table probabilities and the assumed 3/day, labelled.
+- **Cadence is now fractional without touching integer behaviour**: 2.4/day
+  is 2 wagers plus a 40% chance of a third; an integer rate consumes the
+  same random stream as before, so every earlier result reproduces.
+- **Live at close**: systemic stress: correlation 0.50, shock-day prob 0.020 (7.3 days/path), vol x3.0 on shock days; inputs measured: basis_capital_per_position, basis_daily_vol, basis_funding_apr, basis_funding_autocorr, basis_funding_hourly_std, basis_positions, equity, sports_decimal_odds, sports_win_prob_mean, sports_win_prob_std, tax_rate; inputs assumed:  arb_capital, arb_desync_loss_max, arb_gross_return, arb_leg_fail_prob, arb_per_day, basis_funding_half_life_days, basis_funding_long_run_apr, basis_leverage, basis_liquidation_cost, basis_rebalance_days, basis_tail_df, sports_bankroll_fraction, sports_bets_per_day, sports_kelly_fraction, sports_max_stake_fraction, stress_day_prob, stress_vol_multiplier.
 
 ## Round 59 findings
 

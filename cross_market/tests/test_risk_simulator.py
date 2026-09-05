@@ -187,6 +187,110 @@ class TestSystemicStress(unittest.TestCase):
         self.assertEqual(payload["stress"]["vol_multiplier"], 5.0)
 
 
+class TestCalibrationFromHistory(unittest.TestCase):
+    """Round 60: measured stress parameters and sports cadence replace assumptions when history exists."""
+
+    @staticmethod
+    def marks_db(path, days, shock_days=(), coin="XPL"):
+        """Hourly marks: +/-0.5% alternating on calm days, +/-3% on shock days (6x the vol)."""
+        con = sqlite3.connect(str(path))
+        con.execute("CREATE TABLE asset_snapshots (timestamp INTEGER, coin TEXT, dex TEXT, funding_rate REAL, mark_px REAL)")
+        px = 100.0
+        for hour in range(days * 24):
+            step = 0.03 if (hour // 24) in shock_days else 0.005
+            px *= (1.0 + step) if hour % 2 else (1.0 - step)
+            con.execute("INSERT INTO asset_snapshots VALUES (?,?,?,?,?)", (hour * 3_600_000, coin, "main", 1e-5, px))
+        con.commit()
+        con.close()
+
+    def test_shock_days_are_counted_against_three_times_the_median_vol(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "hl.db"
+            self.marks_db(db, days=20, shock_days=(3, 11))
+            prob, multiplier, days, shocks, coin_days = rs._measure_stress_from_vol(db, ["XPL"])
+            self.assertEqual((days, shocks, coin_days), (20, 2, 20))
+            self.assertAlmostEqual(prob, 0.10, places=6)
+            self.assertAlmostEqual(multiplier, 6.0, delta=0.3)                # 3% / 0.5% moves
+            # Through the loader: measured provenance, values applied.
+            state = Path(tmp) / "book.json"
+            state.write_text(json.dumps({"cash": 50_000.0, "positions": {"XPL": {"coin": "XPL", "capital": 20_000.0}}}))
+            inputs = rs.load_live_inputs(state, db, Path(tmp) / "none.db", use_tax_config=False)
+            self.assertAlmostEqual(inputs.stress_day_prob, 0.10, places=6)
+            self.assertTrue(inputs.provenance["stress_day_prob"].startswith("measured (hl.db vol quantiles, 20 days"))
+            self.assertIn("2 shock coin-day(s) of 20", inputs.provenance["stress_vol_multiplier"])
+            # No shock day at all: the probability is measured as 0, the multiplier stays assumed.
+            calm = Path(tmp) / "calm.db"
+            self.marks_db(calm, days=15)
+            prob, multiplier, days, shocks, _ = rs._measure_stress_from_vol(calm, ["XPL"])
+            self.assertEqual((prob, multiplier, days, shocks), (0.0, None, 15, 0))
+            inputs = rs.load_live_inputs(state, calm, Path(tmp) / "none.db", use_tax_config=False)
+            self.assertEqual(inputs.stress_vol_multiplier, 3.0)
+            self.assertEqual(inputs.provenance["stress_vol_multiplier"], "assumed (no shock day in 15 days)")
+            # Fewer than 14 days: nothing measured, defaults kept and labelled.
+            thin = Path(tmp) / "thin.db"
+            self.marks_db(thin, days=13, shock_days=(2,))
+            self.assertIsNone(rs._measure_stress_from_vol(thin, ["XPL"]))
+            inputs = rs.load_live_inputs(state, thin, Path(tmp) / "none.db", use_tax_config=False)
+            self.assertEqual((inputs.stress_day_prob, inputs.stress_vol_multiplier), (0.02, 3.0))
+            self.assertEqual(inputs.provenance["stress_day_prob"], "assumed (< 14 days of marks)")
+
+    @staticmethod
+    def bets_db(path, outcomes, days=8, odds=1.91):
+        con = sqlite3.connect(str(path))
+        con.execute("""CREATE TABLE placed_bets (id INTEGER PRIMARY KEY AUTOINCREMENT, placed_at TEXT NOT NULL,
+                       event_id TEXT NOT NULL, sport TEXT NOT NULL, market_type TEXT NOT NULL, line TEXT NOT NULL DEFAULT '',
+                       selection TEXT NOT NULL, book TEXT NOT NULL, decimal_odds REAL NOT NULL, stake REAL NOT NULL,
+                       outcome TEXT, settled_at TEXT)""")
+        for i, outcome in enumerate(outcomes):
+            con.execute("INSERT INTO placed_bets (placed_at, event_id, sport, market_type, selection, book, decimal_odds, "
+                        "stake, outcome, settled_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        ("2026-09-%02dT18:00:00Z" % (1 + i % days), "E%d" % i, "NFL", "moneyline", "Home", "book",
+                         odds + 0.1 * (i % 3), 50.0, outcome, "2026-09-%02dT23:00:00Z" % (1 + i % days) if outcome else None))
+        con.commit()
+        con.close()
+
+    def test_settled_wagers_replace_the_assumed_cadence_and_win_rate_at_twenty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "sports.db"
+            self.bets_db(db, ["WIN"] * 13 + ["LOSS"] * 9 + ["PUSH"] * 2 + [None] * 3, days=8)   # 24 settled, 3 open
+            cadence, win_prob, odds, wagers, days, pushes = rs._measure_sports_history(db)
+            self.assertEqual((wagers, days, pushes), (24, 8, 2))
+            self.assertAlmostEqual(cadence, 3.0, places=6)
+            self.assertAlmostEqual(win_prob, 13 / 22, places=6)                # pushes are neither
+            self.assertAlmostEqual(odds, 2.01, delta=0.02)
+            state = Path(tmp) / "book.json"
+            state.write_text(json.dumps({"cash": 50_000.0, "positions": {}}))
+            inputs = rs.load_live_inputs(state, Path(tmp) / "none.db", db, use_tax_config=False)
+            self.assertAlmostEqual(inputs.sports_bets_per_day, 3.0, places=6)
+            self.assertAlmostEqual(inputs.sports_win_prob_mean, 13 / 22, places=6)
+            self.assertEqual(inputs.provenance["sports_bets_per_day"],
+                             "measured (sports.db placed_bets, 24 wagers, 8 active days, 2 push(es) excluded)")
+            self.assertEqual(inputs.provenance["sports_win_prob_mean"], inputs.provenance["sports_bets_per_day"])
+            # Nineteen settled: still assumed, and it says why.
+            few = Path(tmp) / "few.db"
+            self.bets_db(few, ["WIN"] * 10 + ["LOSS"] * 9)
+            self.assertIsNone(rs._measure_sports_history(few))
+            inputs = rs.load_live_inputs(state, Path(tmp) / "none.db", few, use_tax_config=False)
+            self.assertEqual(inputs.sports_bets_per_day, 3.0)
+            self.assertEqual(inputs.provenance["sports_bets_per_day"], "assumed (< 20 settled wagers)")
+            # A settled table with only pushes cannot give a win rate.
+            pushes = Path(tmp) / "pushes.db"
+            self.bets_db(pushes, ["PUSH"] * 25)
+            self.assertIsNone(rs._measure_sports_history(pushes))
+
+    def test_fractional_cadence_places_the_remainder_as_one_probable_wager(self):
+        base = dict(horizon_days=120, basis_positions=0, arb_per_day=0.0, tax_rate=0.0, sports_win_prob_mean=0.60,
+                    sports_win_prob_std=0.0, sports_bankroll_fraction=0.5)
+        two = rs.simulate(rs.RiskInputs(sports_bets_per_day=2.0, **base), iterations=600, seed=13)
+        half = rs.simulate(rs.RiskInputs(sports_bets_per_day=2.5, **base), iterations=600, seed=13)
+        three = rs.simulate(rs.RiskInputs(sports_bets_per_day=3.0, **base), iterations=600, seed=13)
+        self.assertLess(two["desk_mean_pnl"]["sports"], half["desk_mean_pnl"]["sports"])
+        self.assertLess(half["desk_mean_pnl"]["sports"], three["desk_mean_pnl"]["sports"])
+        self.assertAlmostEqual(half["desk_mean_pnl"]["sports"] / three["desk_mean_pnl"]["sports"], 2.5 / 3.0, delta=0.08)
+        self.assertEqual(rs.simulate(rs.RiskInputs(sports_bets_per_day=2, **base), iterations=100, seed=1),
+                         rs.simulate(rs.RiskInputs(sports_bets_per_day=2.0, **base), iterations=100, seed=1))
+
+
 class TestShrinkageAndInputs(unittest.TestCase):
 
     def test_shrinkage_picks_the_best_feasible_multiplier_and_reports_the_grid(self):
@@ -286,6 +390,8 @@ class TestShrinkageAndInputs(unittest.TestCase):
             self.assertAlmostEqual(inputs.basis_funding_hourly_std, 1e-5, places=7)
             self.assertGreater(inputs.basis_daily_vol, 0.0)
             self.assertEqual(inputs.provenance["sports_win_prob_mean"], "assumed")
+            self.assertEqual(inputs.provenance["sports_bets_per_day"], "assumed (< 20 settled wagers)")
+            self.assertEqual(inputs.provenance["stress_day_prob"], "assumed (< 14 days of marks)")
             self.assertEqual(inputs.provenance["tax_rate"], "assumed")
             self.assertEqual(inputs.provenance["arb_capital"], "assumed")
             self.assertEqual(inputs.provenance["basis_funding_half_life_days"], "assumed")

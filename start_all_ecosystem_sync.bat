@@ -50,7 +50,7 @@ if errorlevel 3 (
 :: 5. Launch Sports Desk + Cross-Market Arb Exporters (one slot, two windows)
 cd /d "C:\Users\ixis1\Desktop\DEV"
 start "Sports Desk Obsidian Sync" python -m Sports_Desk.interfaces.obsidian_exporter --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
-start "Cross-Market Arb Obsidian Sync" python -m cross_market.interfaces.obsidian_exporter --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
+start "Cross-Market Arb Obsidian Sync" python -m cross_market.interfaces.obsidian_exporter --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault" --risk-stress 0.5
 echo ✓ [5/5] Sports Desk + Cross-Market Arb sync watchers launched.
 
 echo ======================================================================

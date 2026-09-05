@@ -91,7 +91,7 @@ class RiskInputs:
     basis_liquidation_cost: float = 0.03             # of the position's capital, per liquidation
     # Desk 2 - Sports desk
     sports_bankroll_fraction: float = 0.10           # of equity, the sports bankroll
-    sports_bets_per_day: int = 3
+    sports_bets_per_day: float = 3.0                 # fractional: the remainder is one extra wager with that probability
     sports_win_prob_mean: float = 0.535
     sports_win_prob_std: float = 0.03
     sports_decimal_odds: float = 1.95
@@ -186,7 +186,10 @@ def simulate(inputs: RiskInputs, iterations: int = DEFAULT_ITERATIONS, seed: int
     move = np.zeros(n)
     # Desk 2 constants
     b = max(float(inputs.sports_decimal_odds) - 1.0, 1e-9)
-    bets = max(0, int(inputs.sports_bets_per_day))
+    bet_rate = max(0.0, float(inputs.sports_bets_per_day))
+    bets = int(math.floor(bet_rate))
+    extra_bet = bet_rate - bets                                      # 2.4/day = 2 wagers + a 40% chance of a third
+    bet_slots = bets + (1 if extra_bet > 1e-12 else 0)
     # Desk 3 constants
     arb_rate = max(float(inputs.arb_per_day), 0.0)
     # Systemic stress: the shock mask is drawn every day whatever the correlation, so a
@@ -224,13 +227,15 @@ def simulate(inputs: RiskInputs, iterations: int = DEFAULT_ITERATIONS, seed: int
             pnl_basis = np.zeros(n)
         # ---- Desk 2: quarter-Kelly wagers on the desk's edge distribution
         pnl_sports = np.zeros(n)
-        if bets > 0 and inputs.sports_bankroll_fraction > 0:
+        if bet_slots > 0 and inputs.sports_bankroll_fraction > 0:
             bank = np.maximum(equity, 0.0) * float(inputs.sports_bankroll_fraction)
-            for _ in range(bets):
+            for slot in range(bet_slots):
                 p = np.clip(rng.normal(inputs.sports_win_prob_mean, inputs.sports_win_prob_std, n), 0.05, 0.95)
                 frac = np.clip(float(inputs.sports_kelly_fraction) * (p * b - (1.0 - p)) / b,
                                0.0, float(inputs.sports_max_stake_fraction))
                 stake = frac * bank
+                if slot == bets:                                     # the fractional slot
+                    stake = stake * (rng.random(n) < extra_bet)
                 win = rng.random(n) < p
                 pnl_sports += np.where(win, stake * b, -stake)
         # ---- Desk 3: Poisson arb arrivals, leg failures leave a naked leg
@@ -417,6 +422,84 @@ def _measure_funding_and_vol(hl_db: Path, coins: Sequence[str]):
         con.close()
 
 
+STRESS_MIN_DAYS = 14
+STRESS_SHOCK_MULTIPLE = 3.0
+STRESS_MIN_RETURNS_PER_DAY = 12
+
+
+def _measure_stress_from_vol(hl_db: Path, coins: Sequence[str], min_days: int = STRESS_MIN_DAYS,
+                             shock_multiple: float = STRESS_SHOCK_MULTIPLE):
+    """
+    Round 60 (Directive 60-1). Daily realized vol per held perp from hourly marks
+    (std of a day's hourly log returns x sqrt(24), days with >= 12 returns), pooled
+    across coins. A shock day is a coin-day above `shock_multiple` x the median
+    daily vol - NOT the 95th percentile, which would make the probability 5% by
+    construction. Returns (shock_day_prob, vol_multiplier or None, distinct days,
+    shock coin-days, coin-days) or None when fewer than `min_days` distinct UTC
+    days exist.
+    """
+    con = sqlite3.connect("file:%s?mode=ro" % Path(hl_db).as_posix(), uri=True)
+    try:
+        daily_vols: List[float] = []
+        dates = set()
+        for coin in coins:
+            rows = con.execute("SELECT timestamp, mark_px FROM asset_snapshots WHERE coin=? AND mark_px > 0 "
+                               "ORDER BY timestamp", (coin,)).fetchall()
+            hourly: Dict[int, float] = {}
+            for ts, px in rows:
+                hourly.setdefault(int(ts) // 3_600_000, float(px))
+            hours = sorted(hourly)
+            by_day: Dict[int, List[float]] = {}
+            for prev, cur in zip(hours, hours[1:]):
+                if cur - prev != 1 or hourly[prev] <= 0 or hourly[cur] <= 0:
+                    continue
+                by_day.setdefault(cur // 24, []).append(math.log(hourly[cur] / hourly[prev]))
+            for day, rets in by_day.items():
+                if len(rets) >= STRESS_MIN_RETURNS_PER_DAY:
+                    daily_vols.append(float(np.std(rets) * math.sqrt(24.0)))
+                    dates.add(day)
+    finally:
+        con.close()
+    if len(dates) < min_days or not daily_vols:
+        return None
+    vols = np.array(daily_vols, dtype=float)
+    median = float(np.median(vols))
+    if median <= 0:
+        return None
+    shock = vols > shock_multiple * median
+    prob = float(shock.mean())
+    multiplier = float(vols[shock].mean() / median) if shock.any() else None
+    return prob, multiplier, len(dates), int(shock.sum()), int(vols.size)
+
+
+def _measure_sports_history(sports_db: Path, min_wagers: int = 20):
+    """
+    Round 60 (Directive 60-2). Settled wagers in placed_bets (outcome WIN / LOSS /
+    PUSH): cadence = settled / distinct placement days, win rate = wins / (wins +
+    losses) - a push is neither - and the mean decimal odds. None below
+    `min_wagers` settled or when the table is absent.
+    """
+    con = sqlite3.connect("file:%s?mode=ro" % Path(sports_db).as_posix(), uri=True)
+    try:
+        rows = con.execute("SELECT placed_at, decimal_odds, outcome FROM placed_bets "
+                           "WHERE outcome IN ('WIN', 'LOSS', 'PUSH')").fetchall()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    if len(rows) < min_wagers:
+        return None
+    wins = sum(1 for r in rows if r[2] == "WIN")
+    losses = sum(1 for r in rows if r[2] == "LOSS")
+    pushes = len(rows) - wins - losses
+    days = {str(r[0])[:10] for r in rows if r[0]}
+    if not days or wins + losses == 0:
+        return None
+    odds = [float(r[1]) for r in rows if r[1] is not None and float(r[1]) > 1.0]
+    return (len(rows) / len(days), wins / (wins + losses), float(np.mean(odds)) if odds else None,
+            len(rows), len(days), pushes)
+
+
 def _measure_sports_edges(sports_db: Path):
     """(win-prob mean, std, mean decimal odds, rows) from edge_opportunities' positive-Kelly rows; None when empty."""
     con = sqlite3.connect("file:%s?mode=ro" % Path(sports_db).as_posix(), uri=True)
@@ -505,6 +588,23 @@ def load_live_inputs(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFA
             inputs.basis_daily_vol, prov["basis_daily_vol"] = vol, source
     for name in ("basis_funding_hourly_std", "basis_funding_autocorr", "basis_daily_vol"):
         prov.setdefault(name, "assumed")
+    calibration = None
+    try:
+        calibration = _measure_stress_from_vol(hl_db, coins or ["BTC"])
+    except Exception:                                       # noqa: BLE001
+        calibration = None
+    if calibration:
+        prob, multiplier, days, shocks, coin_days = calibration
+        source = "measured (%s vol quantiles, %d days, %d shock coin-day(s) of %d)" % (Path(hl_db).name, days,
+                                                                                       shocks, coin_days)
+        inputs.stress_day_prob, prov["stress_day_prob"] = prob, source
+        if multiplier is not None:
+            inputs.stress_vol_multiplier, prov["stress_vol_multiplier"] = multiplier, source
+        else:
+            prov["stress_vol_multiplier"] = "assumed (no shock day in %d days)" % days
+    else:
+        prov["stress_day_prob"] = "assumed (< %d days of marks)" % STRESS_MIN_DAYS
+        prov["stress_vol_multiplier"] = "assumed (< %d days of marks)" % STRESS_MIN_DAYS
     edges = None
     try:
         edges = _measure_sports_edges(sports_db)
@@ -517,6 +617,21 @@ def load_live_inputs(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFA
         prov.update(sports_win_prob_mean=source, sports_win_prob_std=source, sports_decimal_odds=source)
     else:
         prov.update(sports_win_prob_mean="assumed", sports_win_prob_std="assumed", sports_decimal_odds="assumed")
+    history = None
+    try:
+        history = _measure_sports_history(sports_db)
+    except Exception:                                       # noqa: BLE001
+        history = None
+    if history:
+        cadence, win_prob, odds, wagers, days, pushes = history
+        source = "measured (%s placed_bets, %d wagers, %d active days%s)" % (
+            Path(sports_db).name, wagers, days, (", %d push(es) excluded" % pushes) if pushes else "")
+        inputs.sports_bets_per_day, prov["sports_bets_per_day"] = cadence, source
+        inputs.sports_win_prob_mean, prov["sports_win_prob_mean"] = win_prob, source
+        if odds is not None:
+            inputs.sports_decimal_odds, prov["sports_decimal_odds"] = odds, source
+    else:
+        prov.setdefault("sports_bets_per_day", "assumed (< 20 settled wagers)")
     rate = _tax_rate_from_config() if use_tax_config else None
     if rate is not None:
         inputs.tax_rate, prov["tax_rate"] = rate, "measured (Tax_Reserve_Agent.config)"
@@ -599,7 +714,7 @@ def format_report(result: Dict[str, Any], inputs: RiskInputs, shrinkage: Optiona
                  % ("{:,.0f}".format(buf["buffer_usd"]), horizon, buf["buffer_fraction"] * 100, buf["sizing_multiplier"]))
     lines.extend(format_stress(stress, horizon))
     measured = sorted(k for k, v in inputs.provenance.items() if v.startswith("measured"))
-    assumed = sorted(k for k, v in inputs.provenance.items() if v == "assumed")
+    assumed = sorted(k for k, v in inputs.provenance.items() if v.startswith("assumed"))
     lines.append("[RISK] inputs measured: %s" % (", ".join(measured) or "none"))
     lines.append("[RISK] inputs assumed:  %s" % (", ".join(assumed) or "none"))
     return "\n".join(lines)
