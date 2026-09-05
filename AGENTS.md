@@ -5,6 +5,20 @@ the detail.
 
 ## Status
 
+Round 76 PREPARED (2026-09-05): TAGS RECORDED ON DISK, WATCHER NOT RESTARTED.
+Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and was
+not run - `python -m cross_market.maiden_protocol` is the command. Directive
+76-2 is implemented but INERT: collect_live_questions records every tag a
+market was fetched under in `tags` (list, --tags order) while `sport` keeps
+the first tag's label, so the matcher, Tier 1 and the registered Tier 2
+filter read what they read before. The running watcher (pid 49812) still
+executes the Round 75 code and its drops carry no `tags` field until it is
+restarted - deliberately left for AFTER the maiden verdict (Ratification
+75-3): `taskkill /F /PID <pid>` then start_polymarket_watcher.bat, inside
+60 min so the series stays continuous. Using `tags` in the Tier 2 filter
+would let a dual-tagged market count in both subfamilies - a change to the
+registered analysis, left for Round 77. 1 new test.
+
 Round 75 PREPARED (2026-09-05): the two execution directives are time-gated
 to the maiden run (~2026-09-06T01:39:49Z) and were NOT executed - they are now
 ONE command, and two flaws that could have buried the maiden run are fixed.
@@ -493,7 +507,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 899 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 900 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -517,6 +531,22 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 76 findings
+
+- **An on-disk edit and a live process are different things.** The
+  ratification gates the fetcher change to protect the continuous series
+  from a watcher restart; the edit itself touches nothing that runs. The
+  code is committed and tested now, and the only post-maiden step is the
+  restart that activates it. A failed restart before READY could have reset
+  the 24 h clock; after the verdict it costs nothing.
+- **Provenance and precedence are separate fields.** `sport` stays the
+  first-tag label (what every consumer reads today); `tags` is the union.
+  Nothing downstream changes until someone chooses to read `tags`.
+- **The registered Tier 2 filter deliberately ignores `tags`**: under
+  first-tag-wins a dual-tagged market sits in exactly one subfamily, which
+  is what lead_lag_tier2.meta.json registered. Counting it twice would be a
+  new analysis, to be registered as such.
 
 ## Round 75 findings
 

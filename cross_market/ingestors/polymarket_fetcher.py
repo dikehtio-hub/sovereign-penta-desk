@@ -391,10 +391,13 @@ def collect_live_questions(url: str, tags: Sequence[str], keywords: Sequence[str
     One watcher, several tags (Round 52, Ruling 51-2). "sports" fetches by the
     verified tag_id and keeps the fixture normalisation; any other slug fetches
     by tag_slug, is labelled by that slug, and is narrowed by `keywords` when
-    given. Questions are deduplicated by token, first tag wins.
+    given. Questions are deduplicated by token: the FIRST tag wins the label
+    (`sport` - the matcher, Tier 1 and the registered Tier 2 filter read it) and,
+    since Round 76 (Directive 76-2, Ratification 75-3), every tag the market was
+    fetched under is recorded in `tags`, so provenance is not lost to precedence.
     """
     out: List[Dict[str, Any]] = []
-    seen: set = set()
+    kept: Dict[str, Dict[str, Any]] = {}                    # token -> the record that won (first tag)
     for tag in tags:
         slug = str(tag).strip().lower()
         if not slug:
@@ -412,9 +415,14 @@ def collect_live_questions(url: str, tags: Sequence[str], keywords: Sequence[str
                 % (slug, result["events"], len(questions), result["skipped"]))
         for q in questions:
             token = str(q.get("token_id") or "")
-            if token and token in seen:
+            if token and token in kept:
+                held = kept[token].setdefault("tags", [])
+                if slug not in held:
+                    held.append(slug)
                 continue
-            seen.add(token)
+            q["tags"] = [slug]
+            if token:
+                kept[token] = q
             out.append(q)
     return out
 

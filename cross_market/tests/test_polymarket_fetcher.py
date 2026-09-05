@@ -483,6 +483,40 @@ class TestTagsAndKeywords(unittest.TestCase):
             self.assertAlmostEqual(find_market_probability(FED_CUT_KEYWORDS, [Path(tmp)])["probability"], 0.88)
 
 
+    def test_a_market_under_several_tags_keeps_its_first_label_and_records_every_tag(self):
+        # Round 76 (Directive 76-2): additive `tags`; `sport` unchanged so Tier 1, the registered Tier 2
+        # filter and the sportsbook matcher read exactly what they read before.
+        from cross_market.ingestors.polymarket_fetcher import collect_live_questions, validate_questions, write_drop
+        from cross_market.lead_lag import record_subfamily
+        from cross_market.tests.test_polymarket_fetcher import gamma_event
+        both = self.crypto_event("Will the Fed cut send Bitcoin to $100k?", 0.42, "tok-both")
+        payload = {"sports": [gamma_event(slug="a")],
+                   "crypto": [both, self.crypto_event("Will Bitcoin hit $100k in 2026?", 0.64, "tok-btc")],
+                   "fed-rates": [both, self.crypto_event("Fed rate cut in September?", 0.88, "tok-fed")]}
+
+        def getter(url, params, timeout):
+            if params.get("offset"):
+                return []
+            return payload["sports"] if "tag_id" in params else payload[params["tag_slug"]]
+
+        questions = collect_live_questions("http://example.invalid/events", ["sports", "crypto", "fed-rates"],
+                                           keywords=["bitcoin", "fed"], getter=getter, log=lambda m: None)
+        by_token = {q["token_id"]: q for q in questions}
+        self.assertEqual(len(questions), len(by_token))                       # still one record per token
+        self.assertEqual((by_token["tok-both"]["sport"], by_token["tok-both"]["tags"]), ("CRYPTO", ["crypto", "fed-rates"]))
+        self.assertEqual(by_token["tok-btc"]["tags"], ["crypto"])
+        self.assertEqual(by_token["tok-fed"]["tags"], ["fed-rates"])
+        sports = [q for q in questions if q["sport"] not in ("CRYPTO", "FED-RATES")]
+        self.assertTrue(sports and all(q["tags"] == ["sports"] for q in sports))
+        self.assertEqual(record_subfamily(by_token["tok-both"]), "crypto")     # the registered filter is untouched
+        # the field survives validation and lands in the drop
+        clean = validate_questions(questions)
+        with tempfile.TemporaryDirectory() as tmp:
+            target = write_drop(clean, Path(tmp), name="polymarket_macro.json")
+            stored = json.loads(Path(target).read_text(encoding="utf-8"))
+            self.assertEqual(next(q for q in stored if q["token_id"] == "tok-both")["tags"], ["crypto", "fed-rates"])
+
+
 class TestTagFamilies(Base):
     """Round 53 (Ruling 53-3): sports and macro questions land in separate canonical files, stamped per family."""
 

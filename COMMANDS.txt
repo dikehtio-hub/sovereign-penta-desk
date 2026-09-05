@@ -2360,6 +2360,15 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 76 - TAGS RECORDED PER QUESTION (INERT UNTIL THE WATCHER RESTARTS)
+     Drop questions fetched with --tags now carry `tags` (every tag the market matched, --tags order);
+     `sport` is unchanged (first tag's label). The RUNNING watcher predates this: restart it AFTER the
+     maiden verdict (Ratification 75-3), inside 60 min so the series stays continuous:
+         python -m cross_market.ingestors.polymarket_fetcher --status      (note the pid)
+         taskkill /F /PID <pid>
+         start_polymarket_watcher.bat                                        (sweeps the stale lock)
+     Verify: the next polymarket_macro_*Z.json stamp has "tags" on its questions.
+
      ROUND 75 - MAIDEN RUN PROTOCOL AS ONE COMMAND, MAIDEN RUN SAFETY
      python -m cross_market.maiden_protocol [--no-tier2] [--json]
          Directive 75-1 in one command: loop lock, READY, last run, the `lead-lag: RAN` log line, the run-at
@@ -2649,7 +2658,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (19 modules, 899): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (19 modules, 900): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.
