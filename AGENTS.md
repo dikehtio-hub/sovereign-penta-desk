@@ -5,6 +5,21 @@ the detail.
 
 ## Status
 
+Round 62 complete: CROSS-MARKET DUTCH RECORDER, RECEIPT READER TOLERANCE,
+COMPACT CALIBRATION REPORT. New cross_market/execution_log.py: record_dutch()
+writes the Polymarket leg as an execution receipt (strategy dutched_arb, venue
+polymarket, ONE shared timestamp, notes carry arb_group / gross / cost / legs /
+book_leg) and the sportsbook leg into Sports_Desk placed_bets (bet_kind
+arbitrage, same arb_group); never raises; CLI `python -m
+cross_market.execution_log --pm-market ... --book ... --odds ... --stake ...`
+for today's manual executions, exit 0 complete / 1 incomplete / 2 refused.
+risk_simulator._measure_arb_history reads fills_*_dutched_arb*.csv (any
+venue), groups by arb_group note first and a 60 s timestamp window second,
+prices from a gross: note (cost: for capital) before falling back to
+1/sum(BUY prices) - 1. --calibration-report shows the last 7 daily rows per
+coin (--last-days N, --all). 7 new tests; master suite is 18 modules. Live:
+still no receipts, no settled wagers, 3 usable days per coin.
+
 Round 61 complete: PER-COIN SHOCK MEDIANS, CALENDAR-DAY CADENCE, ARB RECEIPT
 HISTORY, --calibration-report. stress_calibration() judges each held perp
 against its OWN median daily vol (shock = > 3x it), qualifies a coin at >= 14
@@ -326,7 +341,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 855 OK |
+| master + bridges + cross-market + exporters + ingestors (18 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log) | 862 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -350,6 +365,27 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 62 findings
+
+- **There is no executor to wire, so the seam is the deliverable.** The
+  cross-market desk is scanner-only; record_dutch() is what an executor (or
+  the operator, via the CLI) calls at fill time. It is proven end to end: ten
+  recorded dutches make _measure_arb_history report 10 fills / 10 arbs and
+  load_live_inputs switch the arb desk to "measured".
+- **A cross-market dutch has one receipt and one wager.** The book leg is a
+  placed_bets row (its own arb_group column, bet_kind "arbitrage" as
+  monarch_shark already uses), not a Polymarket receipt, so a receipt alone
+  cannot price the dutch. The recorder writes gross / cost into the receipt's
+  notes and the reader prefers them; the worse branch prices the dutch
+  (payout = min(shares x $1, stake x odds)).
+- **Ruling 62-1 both sides**: the writer passes one timestamp to both legs;
+  the reader clusters loose receipts within 60 s of a group's first fill
+  (59 s apart = one dutch, 61 s = two) and groups by arb_group first.
+- **The book legs also land in placed_bets as wagers**; below 20 settled the
+  sports desk stays assumed, and a settled arb leg will count toward the
+  sports cadence later - by design, since it IS a wager the desk placed.
+- **Live at close**: stress calibration - shock = daily realized vol > 3.0x the COIN's median; a coin qualifies with >= 14 days;XPL           3 day(s) with >= 12 hourly returns - not enough (< 14);para:ANSEM    3 day(s) with >= 12 hourly returns - not enough (< 14);portfolio: nothing qualifies yet - stress inputs stay assumed (0.02 / 3.0x);sports settlement: < 20 settled wagers - cadence and win rate stay assumed;arb receipts: < 10 fills matching fills_*_dutched_arb*.csv - arb inputs stay assumed;held coins: para:AN.
 
 ## Round 61 findings
 

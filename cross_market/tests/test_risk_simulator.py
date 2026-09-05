@@ -262,7 +262,8 @@ class TestCalibrationFromHistory(unittest.TestCase):
             self.assertEqual(thin["qualifying"], ["XPL"])
             self.assertFalse(thin["coins"]["NOPE"]["qualifies"])
             self.assertAlmostEqual(thin["prob"], 0.10, places=6)
-            text = rs.format_calibration_report({"coins": ["XPL", "NOPE"], "stress": thin, "sports": None, "arbs": None})
+            text = rs.format_calibration_report({"coins": ["XPL", "NOPE"], "stress": thin, "sports": None, "arbs": None},
+                                                last_days=None)
             self.assertIn("XPL          20 days", text)
             self.assertIn("<- SHOCK", text)
             self.assertIn("NOPE          0 day(s)", text)
@@ -341,6 +342,76 @@ class TestCalibrationFromHistory(unittest.TestCase):
                                           str(Path(tmp) / "none.db"), "--sports-db", str(Path(tmp) / "none2.db"),
                                           "--imports-dir", str(imports)]), 0)
             self.assertEqual(json.loads(fake_print.call_args_list[0].args[0])["arbs"]["fills"], 12)
+
+    def test_legs_within_a_minute_are_one_dutch_and_notes_win_over_prices(self):
+        import csv
+        from datetime import datetime, timedelta
+
+        def receipt(folder, stamp, price, notes="strategy:dutched_arb;", side="BUY", qty=100.0, venue="polymarket"):
+            folder.mkdir(parents=True, exist_ok=True)
+            path = folder / ("fills_%s_dutched_arb_%s.csv" % (venue, stamp.replace(" ", "_").replace(":", "") + "_%d" % len(list(folder.glob("*.csv")))))
+            with open(path, "w", newline="", encoding="utf-8") as handle:
+                w = csv.writer(handle)
+                w.writerow(["timestamp", "symbol", "side", "quantity", "price", "fee", "tx_hash", "source", "notes"])
+                w.writerow([stamp, "M", side, "%.6f" % qty, "%.6f" % price, "0", "k", venue, notes])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "imports"
+            base = datetime(2026, 9, 1, 14, 0, 0)
+            # Five dutches whose legs straddle a second boundary (59 s apart): one execution each.
+            for i in range(5):
+                t0 = base + timedelta(days=i)
+                receipt(folder, t0.strftime("%Y-%m-%d %H:%M:%S"), 0.48)
+                receipt(folder, (t0 + timedelta(seconds=59)).strftime("%Y-%m-%d %H:%M:%S"), 0.49)
+            arbs = rs._measure_arb_history(folder)
+            self.assertEqual((arbs["fills"], arbs["executions"], arbs["priced_executions"]), (10, 5, 5))
+            self.assertAlmostEqual(arbs["gross_return_mean"], 1 / 0.97 - 1, places=6)
+            # 61 s apart: two executions, neither priced (one leg each).
+            t0 = base + timedelta(days=10)
+            receipt(folder, t0.strftime("%Y-%m-%d %H:%M:%S"), 0.48)
+            receipt(folder, (t0 + timedelta(seconds=61)).strftime("%Y-%m-%d %H:%M:%S"), 0.49)
+            arbs = rs._measure_arb_history(folder)
+            self.assertEqual((arbs["fills"], arbs["executions"], arbs["priced_executions"]), (12, 7, 5))
+            # A shared arb_group note groups legs however far apart, and a gross: note prices the dutch
+            # even with one Polymarket leg (the other leg is a wager); cost: sets the capital.
+            receipt(folder, (t0 + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"), 0.48,
+                    notes="strategy:dutched_arb; arb_group:xm-1; gross:0.045800; cost:95.62; legs:2;")
+            receipt(folder, (t0 + timedelta(days=1, hours=2)).strftime("%Y-%m-%d %H:%M:%S"), 0.99,
+                    notes="strategy:dutched_arb; arb_group:xm-1;", venue="sportsbook", side="BUY", qty=1.0)
+            arbs = rs._measure_arb_history(folder)
+            self.assertEqual((arbs["fills"], arbs["executions"], arbs["priced_executions"]), (14, 8, 6))
+            self.assertAlmostEqual(max(r for r in [arbs["gross_return_mean"]]) * 0 + arbs["gross_return_mean"],
+                                   (5 * (1 / 0.97 - 1) + 0.0458) / 6, places=6)
+            self.assertEqual(arbs["window_seconds"], 60.0)
+            self.assertEqual(rs._note_tag("strategy:dutched_arb; arb_group:xm-1; gross:0.04;", "gross"), "0.04")
+            self.assertIsNone(rs._note_tag("strategy:dutched_arb;", "gross"))
+
+    def test_the_report_shows_the_last_days_by_default_and_all_on_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "hl.db"
+            self.marks_db(db, days=20, shock_days=(3,))
+            report = {"coins": ["XPL"], "stress": rs.stress_calibration(db, ["XPL"]), "sports": None, "arbs": None}
+            def daily_rows(text):                                                # synthetic marks start at the epoch
+                return sum(1 for l in text.splitlines() if l.startswith("[CAL]     ") and "showing" not in l)
+
+            short = rs.format_calibration_report(report)
+            self.assertIn("(showing the last 7 of 20 days; --all for the full table; 1 shock day(s) in total)", short)
+            self.assertEqual(daily_rows(short), 7)
+            self.assertNotIn("<- SHOCK", short)                                   # day 3 is outside the last 7
+            full = rs.format_calibration_report(report, last_days=None)
+            self.assertEqual(daily_rows(full), 20)
+            self.assertIn("<- SHOCK", full)
+            self.assertNotIn("showing the last", full)
+            state = Path(tmp) / "book.json"
+            state.write_text(json.dumps({"cash": 1.0, "positions": {"XPL": {"coin": "XPL", "capital": 1.0}}}))
+            common = ["--calibration-report", "--paper-state", str(state), "--hl-db", str(db),
+                      "--sports-db", str(Path(tmp) / "n.db"), "--imports-dir", str(Path(tmp) / "none")]
+            with mock.patch("builtins.print") as fake_print:
+                rs.main(common + ["--last-days", "3"])
+            self.assertEqual(daily_rows(fake_print.call_args_list[0].args[0]), 3)
+            with mock.patch("builtins.print") as fake_print:
+                rs.main(common + ["--all"])
+            self.assertEqual(daily_rows(fake_print.call_args_list[0].args[0]), 20)
 
     @staticmethod
     def bets_db(path, outcomes, days=8, odds=1.91):

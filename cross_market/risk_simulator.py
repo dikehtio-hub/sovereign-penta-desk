@@ -62,7 +62,9 @@ DEFAULT_HL_DB = DEV_ROOT / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_
 DEFAULT_SPORTS_DB = DEV_ROOT / "Sports_Desk" / "data" / "sports_market.db"
 DEFAULT_VAULT = DEV_ROOT / "obsidian_vault"
 DEFAULT_IMPORTS_DIR = DEV_ROOT / "Tax_Reserve_Agent" / "data" / "imports"      # execution receipts land here
-ARB_RECEIPT_GLOB = "fills_polymarket_dutched_arb*.csv"
+ARB_RECEIPT_GLOB = "fills_*_dutched_arb*.csv"           # any venue: the book leg may be recorded elsewhere
+ARB_GROUP_WINDOW_SECONDS = 60.0                          # Ruling 62-1: legs within a minute are one dutch
+REPORT_LAST_DAYS = 7
 ARB_MIN_FILLS = 10
 RISK_NOTE = "Risk_Sentinel"
 HOURS_PER_YEAR = 24 * 365
@@ -536,14 +538,29 @@ def _measure_sports_history(sports_db: Path, min_wagers: int = 20):
             len(rows), span_days, pushes)
 
 
-def _measure_arb_history(imports_dir: Path = DEFAULT_IMPORTS_DIR, min_fills: int = ARB_MIN_FILLS):
+def _note_tag(notes: str, key: str) -> Optional[str]:
+    """The value of `key:<value>;` in a receipt's notes, or None."""
+    for token in str(notes or "").split(";"):
+        token = token.strip()
+        if token.startswith(key + ":"):
+            return token[len(key) + 1:].strip() or None
+    return None
+
+
+def _measure_arb_history(imports_dir: Path = DEFAULT_IMPORTS_DIR, min_fills: int = ARB_MIN_FILLS,
+                         window_seconds: float = ARB_GROUP_WINDOW_SECONDS):
     """
-    Round 61 (Directive 61-2). Execution receipts of the cross-market arb desk:
-    one-row CSVs named fills_polymarket_dutched_arb_*.csv in the Tax agent's
-    imports folder (and imports/processed once ingested). Fills sharing a
-    timestamp are one execution (the legs of one dutch); an execution with >= 2
-    BUY legs has gross return 1 / sum(leg prices) - 1 and capital
-    sum(price x quantity). Returns None below `min_fills` fills.
+    Round 61/62 (Directives 61-2, 62-2, Ruling 62-1). Execution receipts of the
+    arb desk: fills_<venue>_dutched_arb_*.csv in the Tax agent's imports folder
+    and imports/processed. Grouping into executions: receipts sharing an
+    `arb_group:` note first; otherwise receipts whose timestamps fall within
+    `window_seconds` of the group's first fill (a dutch's legs are written in
+    the same second by contract, but a second boundary must not orphan a leg).
+    Pricing: a `gross:` note (cross_market.execution_log writes it, because a
+    cross-market dutch's other leg is a wager, not a receipt) wins; else >= 2
+    BUY legs price a pure Polymarket dutch as 1 / sum(prices) - 1. Capital: a
+    `cost:` note, else sum(price x quantity) of the BUY legs. Returns None below
+    `min_fills`.
     """
     import csv
     root = Path(imports_dir)
@@ -563,20 +580,43 @@ def _measure_arb_history(imports_dir: Path = DEFAULT_IMPORTS_DIR, min_fills: int
             continue
     if len(fills) < min_fills:
         return None
-    executions: Dict[str, List[Dict[str, Any]]] = {}
-    dates = []
-    for row in fills:
+
+    def moment(row: Dict[str, Any]) -> Optional[datetime]:
         stamp = str(row.get("timestamp") or "").strip()
-        executions.setdefault(stamp, []).append(row)
-        try:
-            dates.append(datetime.strptime(stamp[:10], "%Y-%m-%d").date())
-        except ValueError:
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(stamp[:len(fmt) + 2 if "%S" in fmt else len(fmt)], fmt)
+            except ValueError:
+                continue
+        return None
+
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    loose: List[tuple] = []
+    for row in fills:
+        group = _note_tag(row.get("notes"), "arb_group")
+        if group:
+            grouped.setdefault("g:" + group, []).append(row)
+        else:
+            loose.append((moment(row), row))
+    loose.sort(key=lambda item: (item[0] is None, item[0] or datetime.min))
+    current_key, current_start = None, None
+    for when, row in loose:
+        if when is None:
+            grouped.setdefault("t:?" + str(len(grouped)), []).append(row)
             continue
+        if current_start is None or (when - current_start).total_seconds() > window_seconds:
+            current_start = when
+            current_key = "t:" + when.strftime("%Y%m%dT%H%M%S")
+        grouped.setdefault(current_key, []).append(row)
+
+    dates = [m.date() for m in (moment(r) for r in fills) if m is not None]
     if not dates:
         return None
     span_days = max(1, (max(dates) - min(dates)).days + 1)
     returns, capitals = [], []
-    for legs in executions.values():
+    for legs in grouped.values():
+        noted_gross = next((g for g in (_note_tag(l.get("notes"), "gross") for l in legs) if g), None)
+        noted_cost = next((c for c in (_note_tag(l.get("notes"), "cost") for l in legs) if c), None)
         buys = []
         for leg in legs:
             try:
@@ -584,16 +624,24 @@ def _measure_arb_history(imports_dir: Path = DEFAULT_IMPORTS_DIR, min_fills: int
                     buys.append((float(leg.get("price") or 0.0), float(leg.get("quantity") or 0.0)))
             except ValueError:
                 continue
-        if len(buys) >= 2 and sum(px for px, _ in buys) > 0:
-            returns.append(1.0 / sum(px for px, _ in buys) - 1.0)
-            capitals.append(sum(px * qty for px, qty in buys))
+        try:
+            if noted_gross is not None:
+                returns.append(float(noted_gross))
+                capitals.append(float(noted_cost) if noted_cost is not None
+                                else sum(px * qty for px, qty in buys))
+            elif len(buys) >= 2 and sum(px for px, _ in buys) > 0:
+                returns.append(1.0 / sum(px for px, _ in buys) - 1.0)
+                capitals.append(sum(px * qty for px, qty in buys))
+        except ValueError:
+            continue
     return {
-        "fills": len(fills), "executions": len(executions), "span_days": span_days,
-        "arb_per_day": len(executions) / span_days,
+        "fills": len(fills), "executions": len(grouped), "span_days": span_days,
+        "arb_per_day": len(grouped) / span_days,
         "gross_return_mean": float(np.mean(returns)) if returns else None,
         "gross_return_std": float(np.std(returns)) if len(returns) >= 2 else None,
         "capital_mean": float(np.mean(capitals)) if capitals else None,
         "priced_executions": len(returns), "files": len(files),
+        "window_seconds": float(window_seconds),
     }
 
 
@@ -797,7 +845,8 @@ def _day_label(day_index: int) -> str:
     return datetime.fromtimestamp(int(day_index) * 86400, tz=timezone.utc).strftime("%Y-%m-%d")
 
 
-def format_calibration_report(report: Dict[str, Any]) -> str:
+def format_calibration_report(report: Dict[str, Any], last_days: Optional[int] = REPORT_LAST_DAYS) -> str:
+    """`last_days` daily rows per coin (default 7); None or 0 prints the complete table."""
     lines = ["[CAL] stress calibration - shock = daily realized vol > %.1fx the COIN's median; a coin qualifies with >= %d days"
              % (STRESS_SHOCK_MULTIPLE, STRESS_MIN_DAYS)]
     stress = report.get("stress") or {}
@@ -811,7 +860,12 @@ def format_calibration_report(report: Dict[str, Any]) -> str:
         lines.append("[CAL]   %-12s %2d days  median daily vol %.2f%%  shock days %d  prob %.3f  multiplier %s"
                      % (coin, d["days"], d["median"] * 100, d["shocks"], d["prob"],
                         ("%.2f" % d["multiplier"]) if d["multiplier"] else "n/a"))
-        for day, vol, flag in d["daily"]:
+        rows = d["daily"]
+        shown = rows[-int(last_days):] if last_days and len(rows) > int(last_days) else rows
+        if len(shown) < len(rows):
+            lines.append("[CAL]     (showing the last %d of %d days; --all for the full table; %d shock day(s) in total)"
+                         % (len(shown), len(rows), d["shocks"]))
+        for day, vol, flag in shown:
             lines.append("[CAL]     %s  %6.2f%%%s" % (_day_label(day), vol * 100, "  <- SHOCK" if flag else ""))
     if stress.get("qualifying"):
         lines.append("[CAL]   portfolio: shock-day prob %.3f, multiplier %s over %s"
@@ -1062,6 +1116,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--calibration-report", action="store_true",
                         help="Round 61: print what the calibrations see (daily vol per coin, medians, shock days, "
                              "sports cadence, arb receipts) and exit; --json for the raw record")
+    parser.add_argument("--last-days", type=int, default=REPORT_LAST_DAYS,
+                        help="with --calibration-report: daily rows per coin to show (default %d)" % REPORT_LAST_DAYS)
+    parser.add_argument("--all", action="store_true", help="with --calibration-report: the complete daily table")
     parser.add_argument("--grid-iterations", type=int, default=DEFAULT_GRID_ITERATIONS)
     parser.add_argument("--no-grid", action="store_true", help="skip the Kelly shrinkage grid")
     parser.add_argument("--stress-correlation", type=float, default=None,
@@ -1076,7 +1133,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.calibration_report:
         report = calibration_report(args.paper_state, args.hl_db, args.sports_db, args.imports_dir)
-        print(json.dumps(report, indent=2, default=str) if args.json else format_calibration_report(report))
+        print(json.dumps(report, indent=2, default=str) if args.json
+              else format_calibration_report(report, last_days=None if args.all else args.last_days))
         return 0
     if args.assume_defaults:
         inputs = RiskInputs()

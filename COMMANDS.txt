@@ -2360,6 +2360,20 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 62 - CROSS-MARKET DUTCH RECORDER, RECEIPT TOLERANCE, COMPACT CALIBRATION REPORT
+     python -m cross_market.execution_log --pm-market SYM --pm-price 0.48 --pm-shares 100 --book betmgm
+         --selection "Buffalo Bills" --odds 2.10 --stake 47.62 --event-id E1 --sport NFL
+         [--market-type moneyline] [--line ""] [--timestamp "YYYY-MM-DD HH:MM:SS"] [--arb-group G]
+         [--pm-tx-hash ID] [--imports-dir DIR] [--sports-db P] [--json]
+         Records an EXECUTED cross-market dutch: Polymarket leg -> Tax_Reserve_Agent\data\imports
+         receipt (strategy dutched_arb, notes arb_group/gross/cost), book leg -> Sports_Desk
+         placed_bets (bet_kind arbitrage, same arb_group), one shared timestamp. Exit 0 complete,
+         1 one side failed (never raises), 2 refused (bad economics). Future executors call
+         cross_market.execution_log.record_dutch(...) at fill time.
+     risk_simulator: receipts of any venue (fills_*_dutched_arb*.csv); executions = arb_group note
+         first, else legs within 60 s; gross/cost from notes before 1/sum(prices) - 1.
+     python -m cross_market.risk_simulator --calibration-report [--last-days 7] [--all]
+
      ROUND 61 - PER-COIN SHOCK MEDIANS, CALENDAR CADENCE, ARB RECEIPTS, CALIBRATION REPORT
      python -m cross_market.risk_simulator --calibration-report [--json] [--paper-state P] [--hl-db P]
          [--sports-db P] [--imports-dir DIR]
@@ -2407,7 +2421,7 @@ esults_drops\.
          buffer. Writes obsidian_vault\Risk_Sentinel.md. ~25 s at 100k paths with the grid.
      Inputs: measured from basis_paper_state.json / hyperliquid_data.db / sports_market.db /
          Tax_Reserve_Agent.config, else "assumed" - the report lists both.
-     Test:  python -m unittest cross_market.tests.test_risk_simulator   (12, offline)
+     Test:  python -m unittest cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log   (12, offline)
 
      ROUND 57 - SENTINEL CARD IN THE TITANS NOTE, LEAD-LAG LIVE GATE
      Cross_Market_Titans.md now carries "Lead-Lag Data Readiness Sentinel (Item 18)" between
@@ -2523,7 +2537,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (17 modules, 855): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (18 modules, 862): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.
