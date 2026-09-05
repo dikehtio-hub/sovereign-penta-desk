@@ -213,6 +213,82 @@ def refresh_titans_sentinel(vault: Optional[str] = None, drop_dirs=None,
     return refresh_sentinel_block(note, lead_lag_sentinel_block(drop_dirs, "macro", now=now))
 
 
+class LeadLagRefresher:
+    """
+    Round 73 (Ruling 72-1): the Item 18 maiden run, automated behind the sentinel
+    gate. Every cycle it re-evaluates data_readiness on the stamped drops (a
+    file-name scan, cheap at 15 s). While NOT READY it does nothing and the
+    sentinel card keeps its countdown. When READY it runs lead_lag.run() for
+    `coin` once, writes the result into Cross_Market_Titans.md between the
+    lead-lag markers (the sentinel block and user notes are untouched), and then
+    waits `cooldown_hours` - measured from the run-at comment INSIDE the block,
+    so a restarted exporter honours the same cooldown. `runner` is injectable.
+    """
+
+    def __init__(self, coin: str = "BTC", cooldown_hours: float = 24.0, drop_dirs=None, db_path=None,
+                 family: str = "macro", runner=None, max_lag: int = 60, min_shift: float = 0.02,
+                 min_events: int = 5, min_points: int = 60):
+        self.coin = str(coin).upper()
+        self.cooldown_hours = float(cooldown_hours)
+        self.drop_dirs = drop_dirs
+        self.db_path = db_path
+        self.family = family
+        self.runner = runner
+        self.max_lag, self.min_shift, self.min_events, self.min_points = max_lag, min_shift, min_events, min_points
+        self.runs = 0
+        self.last_result: Optional[Dict[str, Any]] = None
+
+    def readiness(self, now: Optional[datetime] = None) -> Dict[str, Any]:
+        from cross_market.lead_lag import DEFAULT_DROP_DIRS, data_readiness, stamped_moments
+        dirs = [Path(d) for d in (self.drop_dirs if self.drop_dirs is not None else DEFAULT_DROP_DIRS)]
+        return data_readiness(stamped_moments(dirs, self.family), now=now)
+
+    def cooldown_remaining_hours(self, note: Path, now: datetime) -> Optional[float]:
+        from cross_market.titan_correlator import lead_lag_last_run
+        last = lead_lag_last_run(note)
+        if last is None:
+            return None
+        remaining = self.cooldown_hours - (now - last).total_seconds() / 3600.0
+        return remaining if remaining > 0 else None
+
+    def run(self, vault: Optional[str], now: Optional[datetime] = None) -> str:
+        """Gate, cooldown, run, render. Never raises; returns a one-line status."""
+        from cross_market.titan_correlator import (LEADLAG_END, LEADLAG_START, TITANS_NOTE, refresh_marked_block,
+                                                   render_lead_lag_block)
+        now = now or datetime.now(timezone.utc)
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        note = resolve_vault(vault) / ("%s.md" % TITANS_NOTE)
+        try:
+            info = self.readiness(now)
+        except Exception as exc:                            # noqa: BLE001
+            return "lead-lag: skipped (%s: %s)" % (type(exc).__name__, exc)
+        if not info.get("ready"):
+            return "lead-lag: gated (NOT READY: %s)" % "; ".join(info.get("reasons") or ["no data"])
+        if not note.exists():
+            return "lead-lag: READY but no %s yet (run titan_correlator --scan)" % note.name
+        remaining = self.cooldown_remaining_hours(note, now)
+        if remaining is not None:
+            return "lead-lag: READY, next run in %.1f h" % remaining
+        try:
+            if self.runner is not None:
+                result, keys = self.runner(self.coin)
+            else:
+                from cross_market.lead_lag import DEFAULT_DROP_DIRS, DEFAULT_HL_DB, run as lead_lag_run
+                dirs = [Path(d) for d in (self.drop_dirs if self.drop_dirs is not None else DEFAULT_DROP_DIRS)]
+                result, keys = lead_lag_run(self.coin, dirs, Path(self.db_path or DEFAULT_HL_DB), self.max_lag,
+                                            self.min_shift, self.min_events, self.min_points)
+            block = render_lead_lag_block(result, self.coin, keys, ran_at=now, cooldown_hours=self.cooldown_hours)
+            path, changed = refresh_marked_block(note, block, LEADLAG_START, LEADLAG_END)
+        except Exception as exc:                            # noqa: BLE001 - never break the arb export
+            return "lead-lag: run failed (%s: %s)" % (type(exc).__name__, exc)
+        self.runs += 1
+        self.last_result = result
+        verdict = (result.get("interpretation") if result.get("sufficient")
+                   else "insufficient: %s" % (result.get("reason") or "no answer"))
+        return "lead-lag: RAN %s -> %s %s (%s)" % (self.coin, path.name, "written" if changed else "unchanged", verdict)
+
+
 def _refresh_sentinel_quietly(vault: Optional[str], drop_dirs) -> str:
     try:
         path, changed = refresh_titans_sentinel(vault, drop_dirs)
@@ -322,6 +398,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--risk-seed", type=int, default=7)
     parser.add_argument("--risk-stress", type=float, default=0.0, help="stress correlation for the card (default 0)")
     parser.add_argument("--risk-assume-defaults", action="store_true", help="hermetic: no live files for the risk card")
+    parser.add_argument("--lead-lag-coin", default="BTC",
+                        help="Round 73: run Item 18 for this perp once the sentinel says READY (default BTC)")
+    parser.add_argument("--lead-lag-cooldown-hours", type=float, default=24.0,
+                        help="hours between lead-lag runs once READY (default 24)")
+    parser.add_argument("--no-lead-lag", action="store_true", help="never run the lead-lag regression from this loop")
     args = parser.parse_args(argv)
     db_path = Path(args.db or DEFAULT_DB_PATH)
     qdir = Path(args.questions or DEFAULT_QUESTIONS_DIR)
@@ -334,11 +415,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     risk = RiskRefresher(every_cycles=args.risk_every, iterations=args.risk_iterations,
                          grid_iterations=args.risk_grid_iterations, seed=args.risk_seed,
                          stress_correlation=args.risk_stress, loader=loader)
+    lead_lag = None if args.no_lead_lag else LeadLagRefresher(coin=args.lead_lag_coin,
+                                                               cooldown_hours=args.lead_lag_cooldown_hours,
+                                                               drop_dirs=sentinel_dirs)
     if not args.watch:
         path, changed = export_cross_market_arb(args.vault, db_path=db_path, questions_dir=qdir)
         print("[OK] %s %s" % (path, "written" if changed else "unchanged"))
         print("[OK] %s" % _refresh_sentinel_quietly(args.vault, sentinel_dirs))
         print("[OK] %s" % (risk.run(args.vault, 0) if risk.due(0) else risk.status(0)))
+        print("[OK] %s" % (lead_lag.run(args.vault) if lead_lag else "lead-lag: off"))
         return 0
     print("[SYNC] Cross-Market Arb -> %s every %gs. Ctrl-C to stop."
           % (resolve_vault(args.vault), args.interval))
@@ -347,9 +432,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         while True:
             path, changed = export_cross_market_arb(args.vault, db_path=db_path, questions_dir=qdir)
             risk_line = risk.run(args.vault, cycle) if risk.due(cycle) else risk.status(cycle)
-            print("[%s] %s %s · %s · %s" % (datetime.now().strftime("%H:%M:%S"), path.name,
-                                            "written" if changed else "unchanged",
-                                            _refresh_sentinel_quietly(args.vault, sentinel_dirs), risk_line))
+            lead_line = lead_lag.run(args.vault) if lead_lag else "lead-lag: off"
+            print("[%s] %s %s · %s · %s · %s" % (datetime.now().strftime("%H:%M:%S"), path.name,
+                                                 "written" if changed else "unchanged",
+                                                 _refresh_sentinel_quietly(args.vault, sentinel_dirs), risk_line,
+                                                 lead_line))
             cycle += 1
             time.sleep(args.interval)
     except KeyboardInterrupt:

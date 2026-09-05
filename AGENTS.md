@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 73 complete: ITEM 18 MAIDEN RUN AUTOMATED BEHIND THE SENTINEL GATE.
+The Cross-Market Arb exporter's loop carries a LeadLagRefresher: every
+cycle it re-reads data_readiness on the stamped drops; while NOT READY it
+does nothing; when READY it runs lead_lag.run() for --lead-lag-coin (BTC)
+once, writes the result into Cross_Market_Titans.md between
+<!-- lead-lag-horizon --> markers as "## ⚡ Lead-Lag Predictive Horizon
+(Item 18)" (after the sentinel card; user notes untouched), and then waits
+--lead-lag-cooldown-hours (24) measured from the run-at comment INSIDE the
+block, so a restarted exporter honours the same cooldown. Insufficient
+results are rendered honestly and still count as a run. --no-lead-lag
+disables it. Round 72 was verification only. 3 new tests. The 01:39:49Z
+opening tomorrow now needs no operator - only a running sync bat.
+
 Round 71 complete: THE 24/7 LAUNCHERS THROTTLE THE MARKET DASHBOARD.
 start_all_ecosystem_sync.bat and HL_Monarch/scripts/launchers/
 start_obsidian_sync.bat start the HL obsidian watcher with
@@ -430,7 +443,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 885 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 888 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -454,6 +467,22 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 73 findings
+
+- **The note is the cooldown state.** A state file would drift from the
+  note and a restart would rerun early; the run-at comment inside the
+  lead-lag block is read back by the refresher, so one run per 24 h holds
+  across restarts and even across two exporters on the same vault.
+- **The gate is the sentinel's own function** (data_readiness over
+  stamped_moments), so the card and the trigger cannot disagree; the
+  refresher is a file-name scan per cycle until READY.
+- **A run that says "insufficient" is still a run.** The block shows the
+  reason and the cooldown applies; by the next attempt there is a day more
+  of data. The runner is injectable, so the tests never open a database.
+- **refresh_sentinel_block became a wrapper over refresh_marked_block** so
+  a third block can join later without a third copy of the splice logic.
+- **Round 72 shipped nothing** (verification only; readings matched).
 
 ## Round 71 findings
 

@@ -60,6 +60,13 @@ TITANS_NOTE = "Cross_Market_Titans"
 SENTINEL_START = "<!-- lead-lag-sentinel:start -->"
 SENTINEL_END = "<!-- lead-lag-sentinel:end -->"
 SENTINEL_HEADER = "## 🛰 Lead-Lag Data Readiness Sentinel (Item 18)"
+# Round 73 (Ruling 72-1): the maiden / daily lead-lag run lives in its own marked block, after
+# the sentinel. Its run time is an HTML comment INSIDE the block, so the note is the cooldown
+# state and an exporter restart cannot rerun the regression early.
+LEADLAG_START = "<!-- lead-lag-horizon:start -->"
+LEADLAG_END = "<!-- lead-lag-horizon:end -->"
+LEADLAG_HEADER = "## ⚡ Lead-Lag Predictive Horizon (Item 18)"
+LEADLAG_RUN_TAG = "<!-- lead-lag-run-at:"
 HUB_NOTE = "Monarch_Hub"
 HL_NOTE = "HyperLiquid_Monarch"
 PM_NOTE = "Polymarket_Monarch"
@@ -773,12 +780,13 @@ def lead_lag_sentinel_block(drop_dirs=None, family: str = "macro", now: Optional
     return render_sentinel_block(data_readiness(stamped_moments(dirs, family), now=now), family=family, now=now)
 
 
-def refresh_sentinel_block(note_path: Path, block: str) -> Tuple[Path, bool]:
+def refresh_marked_block(note_path: Path, block: str, start: str, end: str) -> Tuple[Path, bool]:
     """
-    Replace the marked block inside an EXISTING Titans note (never creates one -
-    the correlator owns the note). A note without markers gets the block before
-    the architecture section, else before the user notes, else at the end.
-    Returns (path, changed) through the same hash check as a full export.
+    Replace the block between `start` and `end` inside an EXISTING note (never
+    creates one - the correlator owns the note). A note without those markers
+    gets the block before the architecture section, else before the user notes,
+    else at the end. Returns (path, changed) through the same hash check as a
+    full export.
     """
     path = Path(note_path)
     if not path.exists():
@@ -787,9 +795,9 @@ def refresh_sentinel_block(note_path: Path, block: str) -> Tuple[Path, bool]:
         content = path.read_text(encoding="utf-8")
     except Exception:                                       # noqa: BLE001 - unreadable: leave it alone
         return path, False
-    if SENTINEL_START in content and SENTINEL_END in content:
-        head, rest = content.split(SENTINEL_START, 1)
-        _, tail = rest.split(SENTINEL_END, 1)
+    if start in content and end in content:
+        head, rest = content.split(start, 1)
+        _, tail = rest.split(end, 1)
         updated = head + block + tail
     else:
         for anchor in ("## 🧭 Intelligence Architecture", USER_NOTES_HEADER):
@@ -800,6 +808,59 @@ def refresh_sentinel_block(note_path: Path, block: str) -> Tuple[Path, bool]:
         else:
             updated = content.rstrip("\n") + "\n\n" + block + "\n"
     return write_note_if_changed(path, updated)
+
+
+def refresh_sentinel_block(note_path: Path, block: str) -> Tuple[Path, bool]:
+    """The Round 57 sentinel block (see refresh_marked_block)."""
+    return refresh_marked_block(note_path, block, SENTINEL_START, SENTINEL_END)
+
+
+def lead_lag_last_run(note_path: Path) -> Optional[datetime]:
+    """When the lead-lag block in the note was last written, from its run-at comment; None when never."""
+    try:
+        content = Path(note_path).read_text(encoding="utf-8")
+    except Exception:                                       # noqa: BLE001
+        return None
+    if LEADLAG_RUN_TAG not in content:
+        return None
+    raw = content.split(LEADLAG_RUN_TAG, 1)[1].split("-->", 1)[0].strip()
+    try:
+        moment = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def render_lead_lag_block(result: Dict[str, Any], coin: str, keys: int, ran_at: datetime,
+                          cooldown_hours: float = 24.0) -> str:
+    """
+    The Item 18 result as a marked block: interpretation, best lag, correlation
+    and evidence, or the honest "insufficient" reason. The run-at comment inside
+    the block is what LeadLagRefresher reads back for its cooldown.
+    """
+    ran_at = ran_at if ran_at.tzinfo else ran_at.replace(tzinfo=timezone.utc)
+    lines = [LEADLAG_START, "%s %s -->" % (LEADLAG_RUN_TAG, ran_at.isoformat()), LEADLAG_HEADER, ""]
+    if result.get("sufficient"):
+        lag = int(result.get("best_lag_minutes") or 0)
+        lines.append("> [!SUCCESS] **%s**" % result.get("interpretation", ""))
+        lines.append("> - **Best lag**: `%+d min` · **correlation** `%+.3f` · **n** `%d` overlapping minutes"
+                     % (lag, float(result.get("correlation") or 0.0), int(result.get("n") or 0)))
+        top = sorted((c for c in result.get("curve", []) if c.get("correlation") is not None),
+                     key=lambda c: -abs(c["correlation"]))[:5]
+        if top:
+            lines.append("> - **Strongest lags**: " + " · ".join("`%+dm %+.2f`" % (c["lag_minutes"], c["correlation"])
+                                                                   for c in top))
+    else:
+        lines.append("> [!NOTE] **Insufficient data**: %s" % (result.get("reason") or "no answer"))
+    lines.append("> - **Evidence**: `%d` markets · `%d` probability shifts · `%d` %s price points · max lag `±%d min`"
+                 % (int(keys), int(result.get("events") or 0), int(result.get("price_points") or 0), coin,
+                    int(result.get("max_lag") or 0)))
+    lines.append("> - **Ran**: `%s` on the stamped drops + a read-only snapshot DB; next run after `%.0f h` "
+                 "(the sentinel card above must still read READY)" % (ran_at.strftime("%Y-%m-%d %H:%M UTC"), cooldown_hours))
+    lines.append("> - Offline research only: reads drops and a read-only database; places nothing. "
+                 "Shell twin: `python -m cross_market.lead_lag --coin %s`" % coin)
+    lines.append(LEADLAG_END)
+    return "\n".join(lines)
 
 
 def preserve_user_notes(file_path: Path, default_template: str = DEFAULT_USER_NOTES) -> str:

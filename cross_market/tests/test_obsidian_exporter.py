@@ -12,7 +12,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from cross_market.interfaces.obsidian_exporter import main as ex_main
@@ -254,3 +254,120 @@ class TestRiskRefresher(ExporterBase):
         self.assertIn("risk: Risk_Sentinel.md refreshed (40 paths)", printed)
         self.assertIn("## ⚡ Systemic Stress", (self.vault / "Risk_Sentinel.md").read_text(encoding="utf-8"))
         self.assertIn("| Recommended cash buffer |", (self.vault / "Risk_Sentinel.md").read_text(encoding="utf-8"))
+
+
+class TestLeadLagRefresher(ExporterBase):
+    """
+    Round 73 (Ruling 72-1). The maiden Item 18 run happens by itself, only when
+    the sentinel says READY, at most once per cooldown, and lands in its own
+    block of the Titans note without touching the sentinel card or user notes.
+    """
+
+    NOW = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+
+    def _stamps(self, count, spacing_min=5, ending_min_ago=3, family="macro"):
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        for i in range(count):
+            when = self.NOW - timedelta(minutes=ending_min_ago + spacing_min * i)
+            (self.questions / stamped_drop_name(when, family=family)).write_text("[]", encoding="utf-8")
+
+    def _note(self):
+        from cross_market import titan_correlator as tc
+        self.vault.mkdir(parents=True, exist_ok=True)
+        note = self.vault / ("%s.md" % tc.TITANS_NOTE)
+        note.write_text("# Titans\n\n%s\nsentinel body\n%s\n\n---\n\n## 🧭 Intelligence Architecture & "
+                        "Correlation Vectors\n\ntext\n\n---\n\n%s\nkeep me\n"
+                        % (tc.SENTINEL_START, tc.SENTINEL_END, tc.USER_NOTES_HEADER), encoding="utf-8")
+        return note
+
+    def _runner(self, calls, sufficient=True):
+        def run(coin):
+            calls.append(coin)
+            if sufficient:
+                return ({"events": 14, "price_points": 5000, "max_lag": 60, "sufficient": True, "reason": "",
+                         "best_lag_minutes": 12, "correlation": 0.41, "n": 900,
+                         "interpretation": "Polymarket leads HyperLiquid by 12 min (corr +0.41, n=900)",
+                         "curve": [{"lag_minutes": 12, "correlation": 0.41, "n": 900},
+                                   {"lag_minutes": 11, "correlation": 0.38, "n": 900}]}, 7)
+            return ({"events": 2, "price_points": 0, "max_lag": 60, "sufficient": False,
+                     "reason": "2 probability shifts < 5 required", "best_lag_minutes": None, "correlation": None,
+                     "n": 0, "interpretation": "", "curve": []}, 3)
+        return run
+
+    def test_not_ready_gates_the_run_and_leaves_the_note_alone(self):
+        from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
+        self._stamps(6)
+        note = self._note()
+        before = note.read_text(encoding="utf-8")
+        calls = []
+        r = LeadLagRefresher(drop_dirs=[self.questions], runner=self._runner(calls))
+        status = r.run(str(self.vault), now=self.NOW)
+        self.assertTrue(status.startswith("lead-lag: gated (NOT READY: span"), status)
+        self.assertEqual(calls, [])
+        self.assertEqual(note.read_text(encoding="utf-8"), before)
+        self.assertEqual(r.runs, 0)
+
+    def test_ready_runs_once_writes_the_block_and_then_waits_out_the_cooldown(self):
+        from cross_market import titan_correlator as tc
+        from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
+        self._stamps(300)                                                     # 24.9 h, 300 points, 5-min spacing
+        note = self._note()
+        calls = []
+        r = LeadLagRefresher(coin="btc", drop_dirs=[self.questions], runner=self._runner(calls))
+        status = r.run(str(self.vault), now=self.NOW)
+        self.assertTrue(status.startswith("lead-lag: RAN BTC -> Cross_Market_Titans.md written (Polymarket leads"), status)
+        self.assertEqual(calls, ["BTC"])
+        text = note.read_text(encoding="utf-8")
+        self.assertIn(tc.LEADLAG_HEADER, text)
+        self.assertIn("[!SUCCESS] **Polymarket leads HyperLiquid by 12 min", text)
+        self.assertIn("**Best lag**: `+12 min` · **correlation** `+0.410` · **n** `900`", text)
+        self.assertIn("`7` markets · `14` probability shifts · `5000` BTC price points", text)
+        self.assertIn("%s 2026-09-06T02:00:00+00:00 -->" % tc.LEADLAG_RUN_TAG, text)
+        self.assertLess(text.index(tc.SENTINEL_END), text.index(tc.LEADLAG_START))         # after the sentinel
+        self.assertLess(text.index(tc.LEADLAG_END), text.index("Intelligence Architecture"))
+        self.assertIn("sentinel body", text)
+        self.assertIn("keep me", text)
+        self.assertEqual(tc.lead_lag_last_run(note), self.NOW)
+        # Consecutive cycles inside the cooldown do not rerun. The series keeps accumulating, as a
+        # live watcher's would: a static fixture would go "stalled" after 60 min and be GATED, not
+        # cooled down - which the engine correctly did before this line was added.
+        for minutes in (0.25, 60, 23 * 60):
+            self._stamps(300, ending_min_ago=3 - minutes)
+            status = r.run(str(self.vault), now=self.NOW + timedelta(minutes=minutes))
+            self.assertTrue(status.startswith("lead-lag: READY, next run in"), status)
+        self.assertEqual(calls, ["BTC"])
+        # Past the cooldown it runs again and the run-at moves; the block is replaced, not duplicated.
+        later = self.NOW + timedelta(hours=25)
+        self._stamps(300, ending_min_ago=3 - 25 * 60)                        # keep the series READY at `later`
+        status = r.run(str(self.vault), now=later)
+        self.assertTrue(status.startswith("lead-lag: RAN BTC"), status)
+        self.assertEqual(calls, ["BTC", "BTC"])
+        text = note.read_text(encoding="utf-8")
+        self.assertEqual(text.count(tc.LEADLAG_START), 1)
+        self.assertEqual(tc.lead_lag_last_run(note), later)
+        # An insufficient result is still a run (the cooldown applies) and says why.
+        r2 = LeadLagRefresher(drop_dirs=[self.questions], runner=self._runner(calls, sufficient=False))
+        note.write_text(note.read_text(encoding="utf-8").replace(
+            "%s %s -->" % (tc.LEADLAG_RUN_TAG, later.isoformat()), "%s 2026-09-01T00:00:00+00:00 -->" % tc.LEADLAG_RUN_TAG),
+            encoding="utf-8")
+        status = r2.run(str(self.vault), now=later)
+        self.assertIn("(insufficient: 2 probability shifts < 5 required)", status)
+        self.assertIn("[!NOTE] **Insufficient data**: 2 probability shifts < 5 required", note.read_text(encoding="utf-8"))
+
+    def test_ready_without_a_titans_note_and_the_once_cli_line(self):
+        from unittest import mock
+        from cross_market.interfaces import obsidian_exporter as ex
+        self._stamps(300)
+        calls = []
+        r = ex.LeadLagRefresher(drop_dirs=[self.questions], runner=self._runner(calls))
+        self.assertTrue(r.run(str(self.vault), now=self.NOW).startswith("lead-lag: READY but no Cross_Market_Titans.md yet"))
+        self.assertEqual(calls, [])
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db),
+                                      "--questions", str(self.questions), "--risk-every", "0"]), 0)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("lead-lag: READY but no Cross_Market_Titans.md yet", printed)
+        with mock.patch("builtins.print") as fake_print:
+            ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db), "--questions", str(self.questions),
+                     "--risk-every", "0", "--no-lead-lag"])
+        self.assertIn("lead-lag: off", " ".join(str(c.args[0]) for c in fake_print.call_args_list))

@@ -2360,6 +2360,15 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 73 - ITEM 18 MAIDEN RUN AUTOMATED (Round 72 was verification only)
+     python -m cross_market.interfaces.obsidian_exporter --watch [--lead-lag-coin BTC]
+         [--lead-lag-cooldown-hours 24] [--no-lead-lag]
+         Each cycle: sentinel readiness on the stamped drops; NOT READY -> "lead-lag: gated (...)";
+         READY -> runs lead_lag.run() once, writes "## ⚡ Lead-Lag Predictive Horizon (Item 18)" into
+         Cross_Market_Titans.md (between lead-lag-horizon markers, after the sentinel card), then
+         "lead-lag: READY, next run in N h" until the cooldown (read from the block's run-at comment)
+         expires. --once runs the same check. The manual twin stays: python -m cross_market.lead_lag --coin BTC
+
      ROUND 71 - LAUNCHERS THROTTLE THE MARKET DASHBOARD (60 s)
      start_all_ecosystem_sync.bat and HL_Monarch\scripts\launchers\start_obsidian_sync.bat now run
          main.py obsidian --watch --interval 15 --throttle-seconds 60. On-demand `main.py obsidian --once`
@@ -2605,7 +2614,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (19 modules, 885): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (19 modules, 888): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.
