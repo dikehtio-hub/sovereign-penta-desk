@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 64 complete: PAPER ARB CLOSED-LOOP DRILL, STALE-QUOTE ENGINE GROUNDWORK.
+cross_market/paper_drill.py drives Betslip.stake_cross_market(paper=True)
+over synthetic equal-payout pairs, writes two paper receipts per dutch
+(tagged drill:1), shows the arb desk flip from "assumed (< 10 arb fills)"
+to "measured (paper_receipts receipts, N fills / E arbs ...)" through the
+risk simulator's own loader and --calibration-report, then REMOVES its
+receipts unless --keep (synthetic history must not be "measured" later).
+Sports_Desk/engine/stale_quotes.py is the Item-11-style core (sharp move =
+>= 2 pts at >= 0.5 pt/min; stale retail = latest quote >= 60 s before the
+move's end, <= 15 min old, >= 2 pts cheap vs the sharp post-move price;
+drifts counted as overpriced), pure functions + a fair_odds_measurements
+scanner, no execution. 7 new tests; master suite is 19 modules.
+
 Round 63 complete: MONARCH SHARK CROSS-MARKET STAKING WIRED TO THE DUTCH
 RECORDER, PAPER MODE, PATH REFUSAL, ARB LEGS OUT OF SPORTS HISTORY. Betslip.
 stake_cross_market(result, pair) records an executed cross-market dutch via
@@ -354,7 +367,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (18 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log) | 869 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 876 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -378,6 +391,26 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 64 findings
+
+- **The drill cleans up after itself by default.** Ten synthetic dutches left
+  in cross_market/data/paper_receipts would make the simulator "measure" a
+  desk that never traded; every drill receipt carries drill:1 and the drill
+  removes exactly those (a hand-written paper receipt survives - tested).
+  Reproduce in seconds: python -m cross_market.paper_drill.
+- **"Item 11" in the directive is not the master list's Item 11.** The
+  registry in MASTER_COMMAND_LIST.txt has Item 11 = Automated Prop Firm /
+  CME Futures Execution Gateway; "Multi-Bookmaker Stale Quote & Latency
+  Arbitrage" comes from Antigravity's divergent checklist (flagged twice).
+  The engine was built because it is useful groundwork, filed under the
+  Sports Desk with no item renumbering. The registry disagreement is still
+  open for the operator to settle.
+- **Velocity, not size, separates information from drift**: the same 5.6-pt
+  move counts in 4 minutes and is ignored over 175; staleness is judged
+  against the move's END, so a retail quote 30 s before the end is "not
+  yet stale" and a re-quote after it is "re-quoted", never a false hit.
+- **Live at close**: before: arb desk assumed (< 10 arb fills);after:  arb desk measured (paper_receipts receipts, 20 fills / 10 arbs over 10 calendar days);closed loop: PROVEN (10/10 dutches recorded, 0 fills -> 20, receipts cleaned).
 
 ## Round 63 findings
 

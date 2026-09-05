@@ -177,3 +177,55 @@ class TestRecordDutch(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPaperDrill(unittest.TestCase):
+    """Round 64 (Directive 64-1): the closed loop, proven in a temp folder and cleaned up after itself."""
+
+    def test_the_drill_flips_the_arb_desk_to_measured_and_cleans_its_receipts(self):
+        from datetime import datetime, timezone
+
+        from cross_market import paper_drill as pd
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "paper"
+            lines = []
+            out = pd.run_drill(count=12, folder=folder, start=datetime(2026, 9, 1, 14, 0, tzinfo=timezone.utc),
+                               keep=True, write=lines.append)
+            self.assertEqual((out["count"], out["complete"], out["kept"], out["cleaned"]), (12, 12, True, 0))
+            self.assertTrue(out["before"]["provenance"].startswith("assumed (< 10 arb fills)"))
+            self.assertTrue(out["after"]["provenance"].startswith("measured (paper receipts, 24 fills / 12 arbs"))
+            self.assertEqual((out["after"]["fills"], out["after"]["executions"]), (24, 12))
+            self.assertAlmostEqual(out["after"]["arb_per_day"], 1.0, places=6)
+            self.assertGreater(out["after"]["gross_return_mean"], 0.03)
+            self.assertTrue(out["closed_loop"])
+            self.assertIn("arb receipts: 24 fills in 24 file(s) -> 12 executions", out["calibration_line"])
+            receipts = sorted(folder.glob("fills_*_dutched_arb_*.csv"))
+            self.assertEqual(len(receipts), 24)
+            with open(receipts[0], newline="", encoding="utf-8") as handle:
+                notes = next(csv.DictReader(handle))["notes"]
+            self.assertIn("paper:1;", notes)
+            self.assertIn("drill:1;", notes)
+            self.assertTrue(any(l.startswith("[DRILL] after:  arb desk measured") for l in lines))
+            # The Shark path was used: its [DUTCH] lines are in the transcript, all PAPER.
+            self.assertGreaterEqual(sum(1 for l in lines if "[DUTCH] xm-" in l and "PAPER" in l), 12)
+            # A second run with the default cleanup removes only drill receipts.
+            hand = folder / "fills_polymarket_dutched_arb_keep_me.csv"
+            hand.write_text("timestamp,symbol,side,quantity,price,fee,tx_hash,source,notes\n"
+                            "2026-09-01 10:00:00,M,BUY,1,0.5,0,k,polymarket,strategy:dutched_arb; paper:1;\n",
+                            encoding="utf-8")
+            out = pd.run_drill(count=10, folder=folder, start=datetime(2026, 9, 20, 14, 0, tzinfo=timezone.utc),
+                               keep=False, write=lines.append)
+            self.assertEqual(out["cleaned"], 24 + 20)                            # both drills' receipts
+            self.assertEqual(sorted(p.name for p in folder.glob("*.csv")), [hand.name])
+            self.assertEqual(pd.clean_drill_receipts(folder), 0)
+            # CLI: text and JSON, exit 0 when the loop is proven.
+            with mock.patch("builtins.print") as fake_print:
+                self.assertEqual(pd.main(["--count", "10", "--folder", str(folder)]), 0)
+            printed = "\n".join(str(c.args[0]) for c in fake_print.call_args_list)
+            self.assertIn("[DRILL] closed loop: PROVEN (10/10 dutches recorded", printed)
+            self.assertIn("receipts cleaned", printed)
+            with mock.patch("builtins.print") as fake_print:
+                self.assertEqual(pd.main(["--count", "10", "--folder", str(folder), "--json"]), 0)
+            self.assertTrue(json.loads(fake_print.call_args_list[0].args[0])["closed_loop"])
+            self.assertEqual(sorted(p.name for p in folder.glob("*.csv")), [hand.name])

@@ -77,7 +77,8 @@ def record_dutch(pm_market: str, pm_price: float, pm_shares: float,
                  timestamp: Optional[str] = None, arb_group: Optional[str] = None,
                  fair_prob_at_placement: Optional[float] = None, edge_at_placement: Optional[float] = None,
                  imports_dir: Optional[Path] = None, sports_db: Optional[Path] = None,
-                 receipt_writer=None, bet_writer=None, paper: bool = False) -> Dict[str, Any]:
+                 receipt_writer=None, bet_writer=None, paper: bool = False,
+                 extra_notes: Optional[str] = None) -> Dict[str, Any]:
     """
     Record one executed cross-market dutch: the Polymarket receipt and the
     sportsbook wager, both under one arb_group and one timestamp. Returns a
@@ -92,9 +93,9 @@ def record_dutch(pm_market: str, pm_price: float, pm_shares: float,
     stamp = timestamp or datetime.now(timezone.utc).strftime(STAMP_FORMAT)
     group = arb_group or new_arb_group(stamp)
     econ = dutch_economics(pm_shares, pm_price, stake, decimal_odds)
+    tail = (" paper:1;" if paper else "") + ((" " + str(extra_notes).strip()) if extra_notes else "")
     extra = "arb_group:%s; gross:%.6f; cost:%.2f; legs:2; book_leg:%s@%.4f;%s" % (
-        group, econ.gross, econ.cost, str(book).strip().lower().replace(" ", "_"), float(decimal_odds),
-        " paper:1;" if paper else "")
+        group, econ.gross, econ.cost, str(book).strip().lower().replace(" ", "_"), float(decimal_odds), tail)
     receipts_dir = (Path(imports_dir) if imports_dir else PAPER_RECEIPTS_DIR) if paper else imports_dir
 
     if receipt_writer is None:
@@ -116,7 +117,8 @@ def record_dutch(pm_market: str, pm_price: float, pm_shares: float,
                                                             str(selection).strip().replace(" ", "_")),
                                           side="BUY", quantity=stake, price=decimal_odds, strategy=ARB_STRATEGY,
                                           venue="sportsbook", timestamp=stamp, imports_dir=receipts_dir,
-                                          extra_notes="arb_group:%s; legs:2; leg:sportsbook; paper:1;" % group)
+                                          extra_notes="arb_group:%s; legs:2; leg:sportsbook; paper:1;%s"
+                                          % (group, (" " + str(extra_notes).strip()) if extra_notes else ""))
         except Exception as exc:                            # noqa: BLE001
             print("[WARN] paper book-leg receipt not written (%s: %s)" % (type(exc).__name__, exc))
         return {

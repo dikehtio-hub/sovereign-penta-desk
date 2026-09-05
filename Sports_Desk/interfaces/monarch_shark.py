@@ -175,7 +175,8 @@ class Betslip:
         return results
 
     def stake_cross_market(self, result: Any, pair: Any, confirm: bool = True, paper: bool = False,
-                           imports_dir: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+                           imports_dir: Optional[Path] = None,
+                           extra_notes: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Round 63 (Directive 63-2): record an EXECUTED cross-market dutch - the
         Polymarket leg as an execution receipt for the Tax agent, the book leg in
@@ -217,7 +218,8 @@ class Betslip:
             event_id=str(getattr(pair, "event_id", "") or ""), sport=str(getattr(market, "sport", "") or ""),
             market_type=str(getattr(market, "market_type", "") or ""), line=str(getattr(market, "line", "") or ""),
             pm_tx_hash=None, timestamp=(self.now.strftime(STAMP_FORMAT) if self.now else None),
-            edge_at_placement=float(result.gross_arb), sports_db=self.db_path, imports_dir=imports_dir, paper=paper)
+            edge_at_placement=float(result.gross_arb), sports_db=self.db_path, imports_dir=imports_dir, paper=paper,
+            extra_notes=extra_notes)
         self.write(format_record(record))
         if paper:
             self.write("  Paper: neither the tax ledger nor placed_bets saw this. Receipts are under "
