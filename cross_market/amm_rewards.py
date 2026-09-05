@@ -309,6 +309,101 @@ def simulate(fair_path: Sequence[float], p: QuoteParams, cfg: Optional[RewardsCo
     return result
 
 
+# ------------------------------------------------------------------ Ruling R6: competitor Q from recorded books
+
+def book_mid(book: Any) -> Optional[float]:
+    """(best bid + best ask) / 2 - the live programme's midpoint, not the simulator's fair value."""
+    if not book.bids or not book.asks:
+        return None
+    return (book.bids[0].price + book.asks[0].price) / 2.0
+
+
+def book_q(book: Any, cfg: RewardsConfig, mid: Optional[float] = None) -> Dict[str, float]:
+    """
+    The whole book's programme score at one stamp: every resting level inside the window
+    and above the min size, per side. The score is linear in size, so scoring a price
+    level is exactly scoring the orders resting at it. This IS the competitor Q the
+    simulator has to assume - measured, per stamp.
+    """
+    mid = book_mid(book) if mid is None else mid
+    if mid is None:
+        return {"mid": None, "q_bid": 0.0, "q_ask": 0.0, "q_min": 0.0, "levels_in_window": 0}
+    q_bid = sum(order_score(l.price, l.size, mid, cfg) for l in book.bids)
+    q_ask = sum(order_score(l.price, l.size, mid, cfg) for l in book.asks)
+    lo, hi = BOTH_SIDES_BAND
+    in_window = sum(1 for l in list(book.bids) + list(book.asks) if abs(l.price - mid) <= cfg.max_spread and l.size >= cfg.min_size)
+    return {"mid": mid, "q_bid": q_bid, "q_ask": q_ask, "q_min": min(q_bid, q_ask) if lo <= mid <= hi else max(q_bid, q_ask),
+            "levels_in_window": in_window}
+
+
+def replay_rewards(books_dir: Path, cfg: RewardsConfig, size: float, offset: float,
+                   now: Optional[datetime] = None) -> Dict[str, Any]:
+    """
+    Ruling R6: over every recorded stamp, measure the book's Q and the share a
+    hypothetical two-sided quote of `size` at mid +/- `offset` would earn against it,
+    with the pool rate as the one remaining INPUT. Returns per-stamp rows and a summary.
+    """
+    from cross_market.latency_sniper import _STAMP_RE, Book, _utc
+    import json as _json
+    rows: List[Dict[str, Any]] = []
+    for path in sorted(Path(books_dir).glob("clob_*.json")):
+        match = _STAMP_RE.match(path.name)
+        if not match:
+            continue
+        try:
+            data = _json.loads(path.read_text(encoding="utf-8"))
+            book = Book.from_clob(match.group("token"), data, data.get("observed_at") or datetime.strptime(match.group("stamp"), "%Y%m%dT%H%M%S_%f"))
+        except Exception:                                   # noqa: BLE001
+            continue
+        if now is not None and book.observed_at > now:
+            continue
+        q = book_q(book, cfg)
+        if q["mid"] is None:
+            rows.append({"token": book.market, "observed_at": book.observed_at.isoformat(), "mid": None, "reason": "one-sided book"})
+            continue
+        my_bid, my_ask = _round_tick(q["mid"] - offset), _round_tick(q["mid"] + offset)
+        my_q = q_min(my_bid, my_ask, size, q["mid"], cfg)
+        share = my_q / (my_q + q["q_min"]) if (my_q + q["q_min"]) > 0 else 0.0
+        rows.append({"token": book.market, "observed_at": book.observed_at.isoformat(), "mid": round(q["mid"], 4),
+                     "book_q_bid": round(q["q_bid"], 2), "book_q_ask": round(q["q_ask"], 2), "book_q_min": round(q["q_min"], 2),
+                     "levels_in_window": q["levels_in_window"], "my_bid": my_bid, "my_ask": my_ask, "my_q": round(my_q, 2),
+                     "share": round(share, 6), "reward_per_day": round(cfg.pool_per_day * share, 4)})
+    scored = [r for r in rows if r.get("mid") is not None]
+    summary: Dict[str, Any] = {"stamps": len(rows), "scored": len(scored), "size": size, "offset": offset,
+                               "pool_per_day": cfg.pool_per_day, "max_spread": cfg.max_spread, "min_size": cfg.min_size,
+                               "pool_is_assumed": True}
+    if scored:
+        shares = [r["share"] for r in scored]
+        qs = [r["book_q_min"] for r in scored]
+        summary.update(share_mean=round(sum(shares) / len(shares), 6), share_min=round(min(shares), 6), share_max=round(max(shares), 6),
+                       book_q_min_mean=round(sum(qs) / len(qs), 2), book_q_min_min=round(min(qs), 2), book_q_min_max=round(max(qs), 2),
+                       reward_per_day_mean=round(cfg.pool_per_day * sum(shares) / len(shares), 4),
+                       tokens=sorted({r["token"] for r in scored}))
+    return {"rows": rows, "summary": summary}
+
+
+def format_replay(result: Dict[str, Any]) -> str:
+    s = result["summary"]
+    lines = ["REWARDS REPLAY (Ruling R6) - %d stamp(s), %d scored; quote %g shares at mid +/- %.2f; window %.2f, min size %g"
+             % (s["stamps"], s["scored"], s["size"], s["offset"], s["max_spread"], s["min_size"])]
+    for r in result["rows"][:20]:
+        if r.get("mid") is None:
+            lines.append("  %s %s: %s" % (r["token"][:12], r["observed_at"][11:19], r.get("reason")))
+            continue
+        lines.append("  %s %s: mid %.3f · book Q bid %.0f / ask %.0f / min %.0f (%d level(s) in window) · my Q %.0f · share %.2f%% · $%.4f/day"
+                     % (r["token"][:12], r["observed_at"][11:19], r["mid"], r["book_q_bid"], r["book_q_ask"], r["book_q_min"],
+                        r["levels_in_window"], r["my_q"], r["share"] * 100, r["reward_per_day"]))
+    if len(result["rows"]) > 20:
+        lines.append("  ... %d more" % (len(result["rows"]) - 20))
+    if s.get("scored"):
+        lines.append("  MEASURED competitor Q_min: mean %.0f (min %.0f, max %.0f) · my share mean %.2f%% (%.2f%%-%.2f%%)"
+                     % (s["book_q_min_mean"], s["book_q_min_min"], s["book_q_min_max"], s["share_mean"] * 100, s["share_min"] * 100, s["share_max"] * 100))
+        lines.append("  reward/day at the ASSUMED pool $%.2f: mean $%.4f - the pool rate is the only input left (Ruling R5)"
+                     % (s["pool_per_day"], s["reward_per_day_mean"]))
+    lines.append("  offline replay of recorded books; places nothing.")
+    return "\n".join(lines)
+
+
 # ------------------------------------------------------------------ paper receipts
 
 def record_paper_fills(result: SimResult, market: str, receipts_dir: Optional[Path] = None, writer=None,
@@ -381,7 +476,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--paper", action="store_true")
     parser.add_argument("--receipts-dir", type=Path, default=None)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--replay-books", type=Path, default=None,
+                        help="Ruling R6: measure competitor Q and a hypothetical quote's share over recorded CLOB stamps")
+    parser.add_argument("--quote-offset", type=float, default=0.01, help="with --replay-books: my quotes at mid +/- this")
     args = parser.parse_args(argv)
+    if args.replay_books:
+        if args.pool is None:
+            parser.error("--replay-books needs --pool (the daily rate; an INPUT until Ruling R5 records it)")
+        cfg = RewardsConfig(pool_per_day=args.pool, max_spread=args.max_spread, min_size=args.min_size)
+        result = replay_rewards(args.replay_books, cfg, size=args.size, offset=args.quote_offset)
+        print(json.dumps(result, indent=2, default=str) if args.json else format_replay(result))
+        return 0 if result["summary"]["scored"] else 1
     if args.fair_path:
         path = [float(x) for x in json.loads(Path(args.fair_path).read_text(encoding="utf-8"))]
     else:

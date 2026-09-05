@@ -146,3 +146,46 @@ class TestReceiptsAndCli(AmmBase):
         with mock.patch("builtins.print") as fake_print:
             self.assertEqual(amm.main(common), amm.EXIT_HALTED)
         self.assertIn("REFUSED: HALT.flag", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+
+
+class TestRewardsReplay(AmmBase):
+    """Round 91, Ruling R6: competitor Q measured from recorded CLOB stamps; the pool rate stays the one input."""
+
+    def test_book_q_and_the_replay_measure_the_competition(self):
+        from datetime import datetime, timedelta, timezone
+        from cross_market import latency_sniper as ls
+        now = datetime(2026, 9, 17, 18, 0, tzinfo=timezone.utc)
+        cfg = amm.RewardsConfig(pool_per_day=100.0, max_spread=0.03, min_size=50.0)
+        book = ls.Book.from_clob("T", {"bids": [{"price": "0.50", "size": "100"}, {"price": "0.48", "size": "100"}, {"price": "0.40", "size": "5000"},
+                                              {"price": "0.49", "size": "10"}],
+                                       "asks": [{"price": "0.52", "size": "200"}, {"price": "0.51", "size": "100"}]}, now)
+        q = amm.book_q(book, cfg)
+        self.assertAlmostEqual(q["mid"], 0.505)
+        # bids: 0.50 (s=0.005 -> (25/30)^2*100=69.44), 0.48 (s=0.025 -> (5/30)^2*100=2.78), 0.40 out, 0.49 below min size
+        self.assertAlmostEqual(q["q_bid"], (25 / 30) ** 2 * 100 + (5 / 30) ** 2 * 100, places=4)
+        self.assertAlmostEqual(q["q_ask"], (25 / 30) ** 2 * 100 + (15 / 30) ** 2 * 200, places=4)
+        self.assertAlmostEqual(q["q_min"], min(q["q_bid"], q["q_ask"])) ; self.assertEqual(q["levels_in_window"], 4)
+        self.assertEqual(amm.book_q(ls.Book.from_clob("E", {"bids": [], "asks": [{"price": "0.5", "size": "1"}]}, now), cfg)["q_min"], 0.0)
+        # the replay over stamps: two stamps score, a one-sided stamp is reported, a future stamp is skipped
+        out = self.root / "books"
+        payload = {"bids": [{"price": "0.50", "size": "100"}], "asks": [{"price": "0.52", "size": "200"}]}
+        ls.stamp_books(["T"], out, lambda t: payload, now=now - timedelta(seconds=60))
+        ls.stamp_books(["T"], out, lambda t: payload, now=now - timedelta(seconds=30))
+        ls.stamp_books(["S"], out, lambda t: {"bids": [], "asks": [{"price": "0.6", "size": "10"}]}, now=now - timedelta(seconds=30))
+        ls.stamp_books(["T"], out, lambda t: payload, now=now + timedelta(seconds=30))
+        result = amm.replay_rewards(out, cfg, size=100.0, offset=0.01, now=now)
+        s = result["summary"]
+        self.assertEqual((s["stamps"], s["scored"], s["pool_is_assumed"]), (3, 2, True))
+        row = next(r for r in result["rows"] if r.get("mid") is not None)
+        self.assertEqual((row["my_bid"], row["my_ask"]), (0.50, 0.52))
+        self.assertGreater(row["share"], 0.0) ; self.assertLess(row["share"], 1.0)
+        self.assertAlmostEqual(row["reward_per_day"], 100.0 * row["share"], places=4)
+        self.assertEqual(s["tokens"], ["T"])
+        text = amm.format_replay(result)
+        self.assertIn("MEASURED competitor Q_min", text) ; self.assertIn("ASSUMED pool $100.00", text) ; self.assertIn("one-sided book", text)
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(amm.main(["--replay-books", str(out), "--pool", "100", "--size", "100"]), 0)
+            self.assertEqual(amm.main(["--replay-books", str(self.root / "empty"), "--pool", "100"]), 1)
+        self.assertIn("REWARDS REPLAY (Ruling R6)", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+        with self.assertRaises(SystemExit):
+            amm.main(["--replay-books", str(out)])                                       # the pool input is mandatory

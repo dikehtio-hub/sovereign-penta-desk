@@ -2367,6 +2367,9 @@ esults_drops\.
          Offline simulator: AS quotes, Poisson retail fills, programme-shaped rewards share. Pool and competitor Q
          are INPUTS (printed as ASSUMED). Exit 3 = HALT.flag present. --paper writes maker receipts
          (strategy polymarket_amm) under cross_market\data\paper_receipts only.
+     python -m cross_market.amm_rewards --replay-books DIR --pool USDC/day [--size 100 --quote-offset 0.01] [--json]
+         Ruling R6 (Round 91): MEASURE competitor Q from recorded CLOB stamps (latency_sniper --record) and the
+         share a hypothetical quote would earn; the pool rate is the one input left (ASSUMED until Ruling R5).
      Tests: python -m unittest cross_market.tests.test_amm_rewards   (master module 22)
 
      ROUND 87 - ITEM 12 PHASE 1: LATENCY SNIPER, OFFLINE ENGINE + RECORDER (cross_market/latency_sniper.py)
@@ -2719,7 +2722,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (22 modules, 932): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards,
+     MASTER SUITE (22 modules, 933): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

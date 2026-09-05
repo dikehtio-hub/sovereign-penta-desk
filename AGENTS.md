@@ -5,6 +5,20 @@ the detail.
 
 ## Status
 
+Round 91 complete (2026-09-05): RULING R6 - COMPETITOR Q MEASURED FROM
+RECORDED BOOKS. amm_rewards.book_q() scores every resting level of a
+recorded CLOB stamp inside the programme window (per side, Q_min by the
+band rule); replay_rewards() runs it over a stamps folder and adds the
+share a hypothetical two-sided quote (--size at mid +/- --quote-offset)
+would earn; the pool rate stays the ONE input (--pool, printed ASSUMED,
+until Ruling R5 records it). CLI: amm_rewards --replay-books DIR --pool X.
+FIRST MEASUREMENT (the Fed "no change in Sept 2026" market, one real stamp
+at 16:59Z): mid 0.505, book Q bid 28,828 / ask 93,337 / Q_min 28,828 over 6
+levels in the 3-cent window; a 100-share quote at +/-1 cent earns a 0.09%
+share. Retail-sized quoting on a heavily-made market earns a rounding
+error of the pool; the module says so rather than an APY. Tests: module 22
+now 5 tests. Daemons and tonight's tasks untouched.
+
 Round 90 complete (2026-09-05): ITEM 13 PHASE 1 - AMM QUOTING ENGINE + REWARDS
 SIMULATOR (registry line 279). NEW cross_market/amm_rewards.py: Avellaneda-
 Stoikov quotes (reservation = fair - q*gamma*sigma^2*tau; half-spread = risk
@@ -622,7 +636,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 932 OK |
+| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 933 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -734,6 +748,19 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 91 findings
+
+- **Competitor Q is not an assumption any more.** One real stamp gives
+  Q_min 28,828 against a 100-share quote's 25: a 0.09% share. The
+  simulator's default competitor_q of 1,000 was optimistic by ~30x for
+  this market. The pool rate is now the only unmeasured input.
+- **Scoring a price level equals scoring its orders** because the
+  programme's score is linear in size; a depth snapshot is therefore
+  sufficient, no per-order data needed.
+- **Live mid, not fair.** The replay uses (best bid + best ask)/2 as the
+  programme does; the simulator's mid = fair is now the documented
+  difference between the two tools.
 
 ## Round 90 findings
 
