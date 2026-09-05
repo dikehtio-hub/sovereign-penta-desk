@@ -591,6 +591,43 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
 
+## Item 10 plan - C2 bot (proposed 2026-09-05, NOT built; awaiting ratification)
+
+Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
+- Transport: Telegram long polling (getUpdates), outbound HTTPS only - no
+  inbound port, no webhook on a laptop. Discord commands need a gateway
+  websocket + a dependency: Phase 2. Existing outbound Discord webhook may
+  mirror replies.
+- Process: its own detached pythonw loop (start_c2_bot.bat), pid lock
+  cross_market/data/c2_bot.pid via pid_lock (mark "c2_bot"), --status,
+  --log-file, --once, --dry-run. Never inside the exporter loop.
+- Auth, fail-closed: TELEGRAM_BOT_TOKEN (already read by the HL alerter's
+  user_env) + C2_ADMIN_IDS (comma-separated Telegram USER ids, user-level
+  env var). Empty allowlist = every message rejected and logged. Private
+  chats only (chat.type == private AND from.id allowlisted). Token never
+  printed; --status says set/unset.
+- Replay safety: persist the last update_id in cross_market/data/
+  c2_bot_offset.json; on start drop updates older than 120 s so a /halt
+  sent hours ago never fires on a restart.
+- Commands (Phase 1): /status (collector_status.json + pid liveness,
+  watcher_status, exporter_status incl. the Item 18 line, drop ages,
+  memory per pid), /bankroll (MonarchHook get_safe_bankroll,
+  get_tax_escrow, after_tax_arbitrage_hurdle, status_line), /positions
+  (basis_paper_state.json + Sports_Desk query_placed_bets, labelled
+  PAPER), /halt [CONFIRM] alias /killall (two-step; creates DEV/HALT.flag
+  with {who, when, reason} - the sentinel dynamic_config already turns
+  into emergency_killswitch and the supervisor honours; data daemons are
+  NOT killed: they hold no risk and killing them breaks series), /help.
+  /resume is CONSOLE-ONLY (delete the flag at the machine): chat can halt,
+  only the operator can resume.
+- Tests (cross_market/tests/test_c2_bot.py, master module 20): parsing,
+  allowlist fail-closed, group chat rejected, stale updates dropped,
+  offset persisted, /halt two-step in a temp root, transport injectable
+  (no network), replies <= 4,000 chars, token never in output.
+- Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
+  first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
+  window; console-only /resume.
+
 ## Round 79 findings
 
 - **`--stop` reuses the lock's own liveness test**, so it can only ever
