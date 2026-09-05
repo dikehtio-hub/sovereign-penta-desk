@@ -916,6 +916,23 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
   regenerated so this round's bullets are accurate (Seed with generated.at, Ingest).
 - lead_lag verdict JSON has no explicit tier: the adapter takes --tier from the
   operator, and refuses a --check-data payload (no `sufficient` key).
+- Round 97b (research, no code): LLM_WIKI_BACKLOG.md. Fresh gap scan: Desk 1 has
+  zero compiled pages against 27,916 cascade_excursions, 9,312 basis windows,
+  8,844 whale_wallets and 3 HL *.meta.json registrations; AGENTS.md cites 24
+  distinct Directives/Ratifications/numbered Rulings with no page; only 2
+  dashboards print a Shell twin; edge_opportunities are 96 rows all vs pinnacle
+  (moneyline 36 / spread 24 / totals 36); Daily Notes and Templates enabled but
+  unconfigured; FOMC Oct 27-28 (18:00Z) and Dec 8-9 (19:00Z, EST shift) can be
+  pre-registered now. From the field (LLM Wiki v2 / agentmemory, OKF v0.2, Bases,
+  trading-journal and pre-registration practice): adopt typed relations,
+  crystallised round digests, a calibration ledger, per-type stale_after policy,
+  Bases views, usage_count; reject embeddings, forgetting curves, self-healing
+  lint, auto-ingest daemons, mesh sync. 20 scored items sequenced: Round 98 =
+  compile what exists (HL registrations, directives catalogue, Attested
+  Computation pages, FOMC calendar, Market pages); 99-100 = CRM + journal +
+  relations + staleness; 101 = views/templates/backlinks; 102+ = cascade Events,
+  sweeper post-hoc evaluation behind a pre-registered bar, funding regime,
+  counterfactual paper P&L, quant-lab digests. Eight rulings requested.
 
 ## Round 96 findings
 
