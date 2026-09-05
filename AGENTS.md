@@ -5,6 +5,22 @@ the detail.
 
 ## Status
 
+Round 93 complete (2026-09-05): RULING R2 INSTRUMENT + FOMC RULES REGISTERED.
+latency_sniper.record_loop() / CLI --record-loop --tokens T[,..] --interval 1
+--duration 420 [--books DIR]: one read-only GET per token per interval,
+sleeping interval minus fetch time; stops at the duration, on HALT.flag
+(exit 3) or Ctrl-C; an HTTP 429 is counted and answered with a growing
+pause (5 s x n, max 30 s). cross_market/experiments/fomc_2026-09-17.rules.json
+PRE-REGISTERED with the REAL YES token ids from the 2026-09-05 macro drop:
+no change (== 0), hike 25 (== 25), hike 50+ (>= 50); the two cut markets do
+not exist in the drop today and are listed under not_found_in_drop (may be
+APPENDED before the window in a dated re-registration, never edited inside
+T-2..T+5). Event schema: kind fed_rate, payload.change_bps int, confidence
+>= 0.99 only from the statement itself. All three markets are neg_risk:
+YES side only (R4). Tests: module 21 now 13. Daemons and tonight's tasks
+untouched. THE DRILL COMMAND for 2026-09-17 17:58Z:
+  python -m cross_market.latency_sniper --record-loop --tokens <the three token ids from the rules file> --interval 1 --duration 420
+
 Round 92 complete (2026-09-05): OPTION 2 - DEPTH REPORT OVER REAL BOOKS.
 latency_sniper.depth_report(book, outcome, confidence, breakeven) walks a
 recorded book best-first and reports, per level, price (NO: 1 - bid),
@@ -657,7 +673,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 934 OK |
+| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 935 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -769,6 +785,20 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 93 findings
+
+- **The cut markets do not exist yet.** The drop holds "no change", "hike
+  25" and "hike 50+" for September 2026 - and the hold/hike pair is priced
+  50/50. Registering what exists today with real token ids, and listing
+  what does not, is what makes the file a registration instead of a
+  template; anything new is appended before the window, dated.
+- **Cadence is measured against a clock the test controls.** Fetch time
+  is subtracted from the interval, so a 0.3 s fetch pair on a 1 s cadence
+  sleeps 0.4 s; the test asserts that number.
+- **429 is expected, not exceptional.** Seven minutes of one-second polling
+  on three tokens is 1,260 GETs; the loop backs off and keeps the stamps it
+  has rather than dying at the moment that matters.
 
 ## Round 92 findings
 

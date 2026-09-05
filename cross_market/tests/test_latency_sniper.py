@@ -337,3 +337,94 @@ class TestDepthReport(SniperBase):
         self.assertEqual([r["side"] for r in payload], ["BUY_YES", "BUY_NO"])
         with mock.patch("builtins.print"):
             self.assertEqual(ls.main(["--depth-report", "--books", str(self.root / "none"), "--assume-defaults"]), 1)
+
+
+class TestRecordLoop(SniperBase):
+    """Round 93 (Ruling R2b): the recording loop - cadence, duration, HALT, 429 back-off, interrupt; no network."""
+
+    def test_loop_keeps_cadence_stops_on_duration_halt_429_and_interrupt(self):
+        clock = {"t": 0.0}
+        slept = []
+
+        def tick():
+            return clock["t"]
+
+        def sleep(s):
+            slept.append(round(s, 3))
+            clock["t"] += s
+        calls = []
+
+        def fetch(token):
+            calls.append(token)
+            clock["t"] += 0.3                                          # each fetch costs 0.3 s
+            return {"bids": [{"price": "0.4", "size": "1"}], "asks": [{"price": "0.6", "size": "1"}]}
+        wall = {"n": 0}
+
+        def now_wall():
+            wall["n"] += 1
+            return NOW + timedelta(seconds=wall["n"])
+        out = self.root / "books"
+        with mock.patch("builtins.print"):
+            stats = ls.record_loop(["A", "B"], out, fetch, interval=1.0, duration=3.0, clock=tick, sleep=sleep, wall=now_wall,
+                                   halt_path=self.halt)
+        self.assertEqual((stats["polls"], stats["stamps"], stats["failures"], stats["stopped"]), (3, 6, 0, "duration"))
+        self.assertTrue(all(abs(s - 0.4) < 1e-6 for s in slept), slept)                # 1.0 - 2 x 0.3 s of fetching
+        self.assertEqual(len(list(out.glob("clob_A_*.json"))), 3)
+        # HALT.flag mid-loop stops it with the reason
+        clock["t"] = 0.0
+        polls = {"n": 0}
+
+        def fetch_then_halt(token):
+            polls["n"] += 1
+            if polls["n"] == 3:
+                self.halt.write_text("{}", encoding="utf-8")
+            return fetch(token)
+        with mock.patch("builtins.print"):
+            stats = ls.record_loop(["A", "B"], out, fetch_then_halt, interval=1.0, duration=60.0, clock=tick, sleep=sleep, wall=now_wall,
+                                   halt_path=self.halt)
+        self.assertEqual((stats["stopped"], stats["polls"]), ("halt", 2))
+        self.halt.unlink()
+        # HTTP 429 on one poll: counted, backed off, the loop continues
+        clock["t"] = 0.0
+        slept.clear()
+        state = {"n": 0}
+
+        def flaky(token):
+            state["n"] += 1
+            if state["n"] == 2:
+                err = OSError("too many requests")
+                err.code = 429
+                raise err
+            return fetch(token)
+        with mock.patch("builtins.print") as fake_print:
+            stats = ls.record_loop(["A"], out, flaky, interval=1.0, duration=3.0, clock=tick, sleep=sleep, wall=now_wall, halt_path=self.halt)
+        self.assertEqual(stats["rate_limited"], 1) ; self.assertIn(5.0, slept)
+        self.assertIn("rate limited", " ".join(str(c.args[0]) for c in fake_print.call_args_list))
+        self.assertGreaterEqual(stats["failures"], 1)
+        # Ctrl-C from inside a fetch ends the loop cleanly
+
+        def interrupt(token):
+            raise KeyboardInterrupt
+        with mock.patch("builtins.print"):
+            stats = ls.record_loop(["A"], out, interrupt, interval=1.0, duration=3.0, clock=tick, sleep=sleep, wall=now_wall, halt_path=self.halt)
+        self.assertEqual(stats["stopped"], "interrupt")
+        # the CLI: --record-loop with a patched fetch and a tiny duration; HALT -> exit 3
+        with mock.patch.object(ls, "default_fetch", lambda token, timeout=5.0: {"asks": [{"price": "0.5", "size": "1"}], "bids": []}), \
+                mock.patch.object(ls.time, "sleep", lambda s: None), mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ls.main(["--record-loop", "--tokens", "T1,T2", "--interval", "0", "--duration", "0.05",
+                                      "--books", str(self.root / "loop"), "--halt-flag", str(self.halt)]), 0)
+            self.assertEqual(ls.main(["--record-loop", "--tokens", "", "--books", str(self.root / "loop")]), 1)
+            self.halt.write_text("{}", encoding="utf-8")
+            self.assertEqual(ls.main(["--record-loop", "--tokens", "T1", "--duration", "5", "--books", str(self.root / "loop"),
+                                      "--halt-flag", str(self.halt)]), ls.EXIT_HALTED)
+        self.assertGreaterEqual(len(list((self.root / "loop").glob("clob_T1_*.json"))), 1)
+        # the pre-registered FOMC rules load, resolve a hold and a hike, and carry real token ids
+        rules = ls.load_rules(Path(__file__).resolve().parents[1] / "experiments" / "fomc_2026-09-17.rules.json")
+        self.assertGreaterEqual(len(rules), 3)
+        hold = ls.Event("fed_rate", {"change_bps": 0}, "fed", 0.995, NOW)
+        hike = ls.Event("fed_rate", {"change_bps": 25}, "fed", 0.995, NOW)
+        by_label = {r.label: r for r in rules}
+        self.assertEqual(by_label["FOMC 2026-09-17: no change"].resolve(hold), "YES")
+        self.assertEqual(by_label["FOMC 2026-09-17: no change"].resolve(hike), "NO")
+        self.assertEqual(by_label["FOMC 2026-09-17: hike 25 bps"].resolve(hike), "YES")
+        self.assertTrue(all(r.market.isdigit() and len(r.market) > 20 for r in rules))

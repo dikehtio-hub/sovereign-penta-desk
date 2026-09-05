@@ -2385,6 +2385,10 @@ esults_drops\.
      python -m cross_market.latency_sniper --depth-report --books DIR [--confidence 0.995] [--assume-defaults] [--json]
          Option 2 (Round 92): per recorded book, what a sniper knowing the outcome could take level by level
          (odds, after-tax breakeven, edge/share, cumulative VWAP) - an upper bound before anyone pulls.
+     python -m cross_market.latency_sniper --record-loop --tokens T1,T2,T3 --interval 1 --duration 420 [--books DIR]
+         Ruling R2 (Round 93): the FOMC drill recorder - start at T-2 min (2026-09-17 17:58Z), stamps every second for
+         7 minutes; stops at the duration, on HALT.flag (exit 3) or Ctrl-C; HTTP 429 backs off. Rules pre-registered in
+         cross_market\experiments\fomc_2026-09-17.rules.json (real token ids; never edited inside the window).
      Tests: python -m unittest cross_market.tests.test_latency_sniper   (master module 21)
 
      ROUND 85 - ITEM 10 PHASE 1: TELEGRAM C2 BOT (cross_market/interfaces/c2_bot.py)
@@ -2725,7 +2729,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (22 modules, 934): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards,
+     MASTER SUITE (22 modules, 935): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

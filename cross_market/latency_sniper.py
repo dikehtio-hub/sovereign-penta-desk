@@ -33,6 +33,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -220,6 +221,65 @@ def default_fetch(token: str, timeout: float = 5.0) -> Dict[str, Any]:
     request = urllib.request.Request(CLOB_BOOK_URL % token, headers=FETCH_HEADERS)
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+RATE_LIMIT_BACKOFF_S = 5.0                       # after an HTTP 429: wait this long per consecutive limited poll, capped
+RATE_LIMIT_BACKOFF_MAX_S = 30.0
+
+
+def record_loop(tokens: Sequence[str], out_dir: Path, fetch: Callable[[str], Dict[str, Any]], interval: float = 1.0,
+                duration: float = 420.0, clock: Optional[Callable[[], float]] = None,
+                sleep: Optional[Callable[[float], None]] = None, wall: Optional[Callable[[], datetime]] = None,
+                halt_path: Path = DEFAULT_HALT_FLAG, fee_rate: float = 0.0, log: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
+    """
+    Ruling R2 (Round 93): stamp every token's book once per `interval` seconds for `duration`
+    seconds - T-2 min to T+5 min around a release at the defaults. Sleeps interval minus the
+    fetch time; stops cleanly at the duration, on HALT.flag, or on Ctrl-C. An HTTP 429 is
+    counted and answered with a growing pause, never a crash. Read-only GETs only.
+    """
+    tick = clock or time.monotonic
+    pause = sleep or time.sleep
+    now_wall = wall or _now
+    log = log or print                          # resolved at call time, never bound at import (Rounds 77-80)
+    tokens = [str(t).strip() for t in tokens if str(t).strip()]
+    stats: Dict[str, Any] = {"polls": 0, "stamps": 0, "failures": 0, "rate_limited": 0, "seconds": 0.0,
+                             "stopped": "duration", "interval": float(interval), "duration": float(duration)}
+    limited = {"count": 0}
+
+    def guarded(token: str) -> Dict[str, Any]:
+        try:
+            return fetch(token)
+        except Exception as exc:                            # noqa: BLE001 - classify, then let stamp_books skip it
+            if getattr(exc, "code", None) == 429:
+                limited["count"] += 1
+            raise
+    start = tick()
+    try:
+        while tick() - start < duration:
+            if Path(halt_path).exists():
+                log("[RECORD] HALT.flag present at %s - stopping" % halt_path)
+                stats["stopped"] = "halt"
+                break
+            t0 = tick()
+            before = limited["count"]
+            written = stamp_books(tokens, out_dir, guarded, now=now_wall(), fee_rate=fee_rate)
+            stats["polls"] += 1
+            stats["stamps"] += len(written)
+            stats["failures"] += len(tokens) - len(written)
+            if limited["count"] > before:
+                stats["rate_limited"] += 1
+                backoff = min(RATE_LIMIT_BACKOFF_MAX_S, RATE_LIMIT_BACKOFF_S * stats["rate_limited"])
+                log("[RECORD] rate limited (HTTP 429) - backing off %.0fs" % backoff)
+                pause(backoff)
+                continue
+            pause(max(0.0, float(interval) - (tick() - t0)))
+    except KeyboardInterrupt:
+        stats["stopped"] = "interrupt"
+        log("[RECORD] interrupted")
+    stats["seconds"] = round(tick() - start, 2)
+    log("[RECORD] done: %d poll(s), %d stamp(s), %d failure(s), %d rate-limited, %.0fs, stopped by %s"
+        % (stats["polls"], stats["stamps"], stats["failures"], stats["rate_limited"], stats["seconds"], stats["stopped"]))
+    return stats
 
 
 def load_books(books_dir: Path, now: Optional[datetime] = None) -> Dict[str, Book]:
@@ -544,6 +604,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--record", action="store_true", help="stamp the CLOB book of --tokens into --books (read-only GET)")
     parser.add_argument("--tokens", default="", help="with --record: comma-separated YES token ids")
     parser.add_argument("--fee-rate", type=float, default=0.0, help="with --record: the fee rate stored on the stamps")
+    parser.add_argument("--record-loop", action="store_true",
+                        help="Ruling R2: stamp --tokens every --interval seconds for --duration seconds (default 1 s x 420 s "
+                             "= T-2 to T+5 min); stops at the duration, on HALT.flag, or Ctrl-C; read-only GETs")
+    parser.add_argument("--interval", type=float, default=1.0, help="with --record-loop: seconds between polls")
+    parser.add_argument("--duration", type=float, default=420.0, help="with --record-loop: total seconds")
     parser.add_argument("--depth-report", action="store_true",
                         help="Option 2 (Round 92): for every recorded book, what a sniper knowing the outcome could take, "
                              "level by level, YES and NO (NO deferred on neg_risk books, Ruling R4)")
@@ -570,6 +635,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0 if reports else 1
     books_dir = Path(args.books or DEFAULT_BOOKS_DIR)
     halt = Path(args.halt_flag or DEFAULT_HALT_FLAG)
+    if args.record_loop:
+        tokens = [t.strip() for t in args.tokens.split(",") if t.strip()]
+        if not tokens:
+            print("[RECORD] --tokens is empty")
+            return 1
+        stats = record_loop(tokens, books_dir, default_fetch, interval=args.interval, duration=args.duration,
+                            halt_path=halt, fee_rate=args.fee_rate)
+        return EXIT_HALTED if stats["stopped"] == "halt" else (0 if stats["stamps"] else 1)
     if args.record:
         tokens = [t.strip() for t in args.tokens.split(",") if t.strip()]
         if not tokens:
