@@ -5,6 +5,21 @@ the detail.
 
 ## Status
 
+Round 61 complete: PER-COIN SHOCK MEDIANS, CALENDAR-DAY CADENCE, ARB RECEIPT
+HISTORY, --calibration-report. stress_calibration() judges each held perp
+against its OWN median daily vol (shock = > 3x it), qualifies a coin at >= 14
+distinct days, and averages shock probability / multiplier over qualifying
+coins (Ruling 61-1). Sports cadence = settled / calendar days spanned
+(Ruling 61-3). _measure_arb_history reads fills_polymarket_dutched_arb*.csv
+receipts in Tax_Reserve_Agent/data/imports (+ processed/): fills sharing a
+timestamp are one execution, >= 2 BUY legs price a dutch (1/sum - 1), >= 10
+fills replace arb_per_day / gross return / std / capital, else "assumed (< 10
+arb fills)". `python -m cross_market.risk_simulator --calibration-report
+[--json]` prints the per-coin daily vol table with shock days, the sports
+settlement line and the arb receipt line for auditing before the 14-day mark.
+3 new tests. Live: no coin qualifies yet (4 days), no settled wagers, no arb
+receipts - every calibration says so.
+
 Round 60 complete: STRESS CALIBRATION FROM REALIZED VOL, SPORTS SETTLEMENT
 HISTORY, FRACTIONAL CADENCE. load_live_inputs now measures stress_day_prob
 and stress_vol_multiplier from hyperliquid_data.db when >= 14 distinct days
@@ -311,7 +326,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 853 OK |
+| master + bridges + cross-market + exporters + ingestors (17 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator) | 855 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -335,6 +350,30 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 61 findings
+
+- **Per-coin medians, per-coin gates, unweighted means.** A coin with fewer
+  than 14 days is skipped rather than diluting the pool; the portfolio
+  shock probability is the mean over qualifying coins, the multiplier the
+  mean over coins that had a shock day. Test: ANSEM at 3x XPL's baseline vol
+  with one 9% day reads 1 shock in 20 per coin; pooled it would have read
+  every ANSEM day as a shock.
+- **Calendar-day cadence only lowers the number**: 20 wagers on two dates
+  two weeks apart are 1.43 a day, not 10. A one-day history has a one-day
+  span by the ruling's own formula.
+- **Arb executions are receipts grouped by timestamp.** The receipt contract
+  (Tax_Reserve_Agent/interfaces/receipts.py, Polymarket strategies/base.py)
+  writes ONE FILE PER LEG named fills_polymarket_<strategy>_<stamp>_<uuid>.csv
+  with the strategy in `notes`; the two legs of a dutch share the second.
+  Gross return per execution = 1 / sum(BUY leg prices) - 1; capital =
+  sum(price x qty). Receipts say nothing about leg failures or desync, so
+  arb_leg_fail_prob / arb_desync_loss_max stay assumed even when the rate
+  and return are measured.
+- **The audit report is the calibration's own view**, not a re-derivation:
+  it calls the same functions the loader calls and prints their inputs, so
+  what it shows on 15 September is exactly what the simulator will use.
+- **Live at close**: stress calibration - shock = daily realized vol > 3.0x the COIN's median; a coin qualifies with >= 14 days;XPL           3 day(s) with >= 12 hourly returns - not enough (< 14);para:ANSEM    3 day(s) with >= 12 hourly returns - not enough (< 14);portfolio: nothing qualifies yet - stress inputs stay assumed (0.02 / 3.0x);sports settlement: < 20 settled wagers - cadence and win rate stay assumed;arb receipts: < 10 fills matching fills_polymarket_dutched_arb*.csv - arb inputs stay assumed;held coins: para:ANSEM, XPL.
 
 ## Round 60 findings
 

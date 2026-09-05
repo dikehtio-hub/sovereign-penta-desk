@@ -234,6 +234,114 @@ class TestCalibrationFromHistory(unittest.TestCase):
             self.assertEqual((inputs.stress_day_prob, inputs.stress_vol_multiplier), (0.02, 3.0))
             self.assertEqual(inputs.provenance["stress_day_prob"], "assumed (< 14 days of marks)")
 
+    def test_per_coin_medians_keep_a_high_beta_token_from_moving_a_majors_bar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "hl.db"
+            self.marks_db(db, days=20, shock_days=(3, 11), coin="XPL")            # 0.5% moves, 2 shock days
+            # ANSEM: 1.5% baseline moves (3x XPL's) and ONE 9% shock day. Pooled with XPL, every
+            # ANSEM day would read as a shock; per coin it is 1 of 20.
+            con = sqlite3.connect(str(db))
+            px = 10.0
+            for hour in range(20 * 24):
+                step = 0.09 if (hour // 24) == 7 else 0.015
+                px *= (1.0 + step) if hour % 2 else (1.0 - step)
+                con.execute("INSERT INTO asset_snapshots VALUES (?,?,?,?,?)", (hour * 3_600_000, "para:ANSEM", "para", 1e-5, px))
+            con.commit()
+            con.close()
+            cal = rs.stress_calibration(db, ["XPL", "para:ANSEM"])
+            self.assertEqual(cal["qualifying"], ["XPL", "para:ANSEM"])
+            self.assertEqual((cal["coins"]["XPL"]["shocks"], cal["coins"]["para:ANSEM"]["shocks"]), (2, 1))
+            self.assertAlmostEqual(cal["coins"]["para:ANSEM"]["median"], 3 * cal["coins"]["XPL"]["median"], delta=0.01)
+            self.assertAlmostEqual(cal["prob"], (2 / 20 + 1 / 20) / 2, places=6)  # unweighted mean over coins
+            self.assertAlmostEqual(cal["multiplier"], 6.0, delta=0.3)              # both coins: shock = 6x their own median
+            self.assertEqual((cal["shocks"], cal["coin_days"], cal["days"]), (3, 40, 20))
+            prob, multiplier, days, shocks, coin_days = rs._measure_stress_from_vol(db, ["XPL", "para:ANSEM"])
+            self.assertAlmostEqual(prob, 0.075, places=6)
+            # A coin without 14 days is skipped, not averaged in.
+            thin = rs.stress_calibration(db, ["XPL", "NOPE"])
+            self.assertEqual(thin["qualifying"], ["XPL"])
+            self.assertFalse(thin["coins"]["NOPE"]["qualifies"])
+            self.assertAlmostEqual(thin["prob"], 0.10, places=6)
+            text = rs.format_calibration_report({"coins": ["XPL", "NOPE"], "stress": thin, "sports": None, "arbs": None})
+            self.assertIn("XPL          20 days", text)
+            self.assertIn("<- SHOCK", text)
+            self.assertIn("NOPE          0 day(s)", text)
+            self.assertIn("portfolio: shock-day prob 0.100", text)
+            self.assertIn("sports settlement: < 20 settled wagers", text)
+            self.assertIn("arb receipts: < 10 fills", text)
+
+    @staticmethod
+    def receipts(folder, executions, start="2026-09-01", prices=(0.48, 0.49), qty=100.0, processed_from=None):
+        """One two-leg dutched arb per execution, one receipt file per leg, `days` apart."""
+        import csv
+        import uuid
+        from datetime import date, timedelta
+        Path(folder).mkdir(parents=True, exist_ok=True)
+        (Path(folder) / "processed").mkdir(exist_ok=True)
+        first = date.fromisoformat(start)
+        for i in range(executions):
+            stamp = "%s 14:%02d:00" % ((first + timedelta(days=i)).isoformat(), i % 60)
+            target = Path(folder) / ("processed" if processed_from is not None and i >= processed_from else "")
+            for leg, price in enumerate(prices):
+                path = target / ("fills_polymarket_dutched_arb_%s_%s.csv" % (stamp.replace(" ", "_").replace(":", ""),
+                                                                            uuid.uuid4().hex[:8]))
+                with open(path, "w", newline="", encoding="utf-8") as handle:
+                    writer = csv.writer(handle)
+                    writer.writerow(["timestamp", "symbol", "side", "quantity", "price", "fee", "tx_hash", "source", "notes"])
+                    writer.writerow([stamp, "MKT_%d_%s" % (i, "YES" if leg == 0 else "NO"), "BUY", "%.6f" % qty,
+                                     "%.6f" % price, "0", "k%d%d" % (i, leg), "polymarket", "strategy:dutched_arb;"])
+
+    def test_arb_receipts_replace_the_assumed_desk_at_ten_fills(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            imports = Path(tmp) / "imports"
+            self.receipts(imports, executions=6, processed_from=3)              # 12 fills, 3 files in processed/
+            arbs = rs._measure_arb_history(imports)
+            self.assertEqual((arbs["fills"], arbs["executions"], arbs["files"], arbs["span_days"]), (12, 6, 12, 6))
+            self.assertAlmostEqual(arbs["arb_per_day"], 1.0, places=6)
+            self.assertAlmostEqual(arbs["gross_return_mean"], 1 / 0.97 - 1, places=6)   # 3.09% dutch
+            self.assertAlmostEqual(arbs["gross_return_std"], 0.0, places=6)
+            self.assertAlmostEqual(arbs["capital_mean"], 97.0, places=6)
+            state = Path(tmp) / "book.json"
+            state.write_text(json.dumps({"cash": 50_000.0, "positions": {}}))
+            inputs = rs.load_live_inputs(state, Path(tmp) / "none.db", Path(tmp) / "none2.db", use_tax_config=False,
+                                         imports_dir=imports)
+            self.assertAlmostEqual(inputs.arb_per_day, 1.0, places=6)
+            self.assertAlmostEqual(inputs.arb_capital, 97.0, places=6)
+            self.assertEqual(inputs.provenance["arb_per_day"],
+                             "measured (imports receipts, 12 fills / 6 arbs over 6 calendar days)")
+            self.assertEqual(inputs.provenance["arb_gross_return"], inputs.provenance["arb_per_day"])
+            self.assertEqual(inputs.provenance["arb_leg_fail_prob"], "assumed")   # receipts say nothing about failures
+            # Nine fills: assumed, and it says why. A folder that does not exist: the same.
+            few = Path(tmp) / "few"
+            self.receipts(few, executions=4)
+            (sorted(few.glob("*.csv"))[0]).unlink()                                # 7 fills
+            self.assertIsNone(rs._measure_arb_history(few))
+            inputs = rs.load_live_inputs(state, Path(tmp) / "none.db", Path(tmp) / "none2.db", use_tax_config=False,
+                                         imports_dir=few)
+            self.assertEqual(inputs.provenance["arb_per_day"], "assumed (< 10 arb fills)")
+            self.assertEqual(inputs.arb_per_day, 1.0)
+            self.assertIsNone(rs._measure_arb_history(Path(tmp) / "missing"))
+            # The audit report shows the receipts and the CLI prints it.
+            report = rs.calibration_report(state, Path(tmp) / "none.db", Path(tmp) / "none2.db", imports)
+            self.assertEqual(report["coins"], ["BTC"])
+            self.assertEqual(report["arbs"]["executions"], 6)
+            text = rs.format_calibration_report(report)
+            self.assertIn("arb receipts: 12 fills in 12 file(s) -> 6 executions over 6 calendar days = 1.00/day", text)
+            self.assertIn("gross return 0.0309", text)
+            with mock.patch("builtins.print") as fake_print:
+                self.assertEqual(rs.main(["--calibration-report", "--paper-state", str(state), "--hl-db",
+                                          str(Path(tmp) / "none.db"), "--sports-db", str(Path(tmp) / "none2.db"),
+                                          "--imports-dir", str(imports)]), 0)
+            printed = fake_print.call_args_list[0].args[0]
+            self.assertIn("[CAL] stress calibration", printed)
+            self.assertIn("unavailable:", printed)                                 # no hl.db at that path
+            self.assertIn("6 executions", printed)
+            with mock.patch("builtins.print") as fake_print:
+                self.assertEqual(rs.main(["--calibration-report", "--json", "--paper-state", str(state), "--hl-db",
+                                          str(Path(tmp) / "none.db"), "--sports-db", str(Path(tmp) / "none2.db"),
+                                          "--imports-dir", str(imports)]), 0)
+            self.assertEqual(json.loads(fake_print.call_args_list[0].args[0])["arbs"]["fills"], 12)
+
     @staticmethod
     def bets_db(path, outcomes, days=8, odds=1.91):
         con = sqlite3.connect(str(path))
@@ -264,7 +372,18 @@ class TestCalibrationFromHistory(unittest.TestCase):
             self.assertAlmostEqual(inputs.sports_bets_per_day, 3.0, places=6)
             self.assertAlmostEqual(inputs.sports_win_prob_mean, 13 / 22, places=6)
             self.assertEqual(inputs.provenance["sports_bets_per_day"],
-                             "measured (sports.db placed_bets, 24 wagers, 8 active days, 2 push(es) excluded)")
+                             "measured (sports.db placed_bets, 24 wagers over 8 calendar days, 2 push(es) excluded)")
+            # Ruling 61-3: calendar days, not active days. 20 wagers on two dates two weeks apart
+            # is 20 / 14 a day, not 20 / 2.
+            sparse = Path(tmp) / "sparse.db"
+            self.bets_db(sparse, ["WIN"] * 11 + ["LOSS"] * 9, days=2)          # day 1 and day 2 only
+            con = sqlite3.connect(str(sparse))
+            con.execute("UPDATE placed_bets SET placed_at = '2026-09-14T18:00:00Z' WHERE placed_at LIKE '2026-09-02%'")
+            con.commit()
+            con.close()
+            cadence, _, _, wagers, span, _ = rs._measure_sports_history(sparse)
+            self.assertEqual((wagers, span), (20, 14))
+            self.assertAlmostEqual(cadence, 20 / 14, places=6)
             self.assertEqual(inputs.provenance["sports_win_prob_mean"], inputs.provenance["sports_bets_per_day"])
             # Nineteen settled: still assumed, and it says why.
             few = Path(tmp) / "few.db"
@@ -392,8 +511,9 @@ class TestShrinkageAndInputs(unittest.TestCase):
             self.assertEqual(inputs.provenance["sports_win_prob_mean"], "assumed")
             self.assertEqual(inputs.provenance["sports_bets_per_day"], "assumed (< 20 settled wagers)")
             self.assertEqual(inputs.provenance["stress_day_prob"], "assumed (< 14 days of marks)")
+            self.assertEqual(inputs.provenance["arb_per_day"], "assumed (< 10 arb fills)")
             self.assertEqual(inputs.provenance["tax_rate"], "assumed")
-            self.assertEqual(inputs.provenance["arb_capital"], "assumed")
+            self.assertEqual(inputs.provenance["arb_capital"], "assumed (< 10 arb fills)")
             self.assertEqual(inputs.provenance["basis_funding_half_life_days"], "assumed")
             # A sports DB with positive-Kelly edges is measured.
             sdb = root / "sports.db"

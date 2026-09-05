@@ -61,6 +61,9 @@ DEFAULT_PAPER_STATE = DEV_ROOT / "HyperLiquid" / "HL_Monarch" / "data" / "basis_
 DEFAULT_HL_DB = DEV_ROOT / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db"
 DEFAULT_SPORTS_DB = DEV_ROOT / "Sports_Desk" / "data" / "sports_market.db"
 DEFAULT_VAULT = DEV_ROOT / "obsidian_vault"
+DEFAULT_IMPORTS_DIR = DEV_ROOT / "Tax_Reserve_Agent" / "data" / "imports"      # execution receipts land here
+ARB_RECEIPT_GLOB = "fills_polymarket_dutched_arb*.csv"
+ARB_MIN_FILLS = 10
 RISK_NOTE = "Risk_Sentinel"
 HOURS_PER_YEAR = 24 * 365
 SHRINKAGE_GRID = (0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0)
@@ -427,21 +430,21 @@ STRESS_SHOCK_MULTIPLE = 3.0
 STRESS_MIN_RETURNS_PER_DAY = 12
 
 
-def _measure_stress_from_vol(hl_db: Path, coins: Sequence[str], min_days: int = STRESS_MIN_DAYS,
-                             shock_multiple: float = STRESS_SHOCK_MULTIPLE):
+def stress_calibration(hl_db: Path, coins: Sequence[str], min_days: int = STRESS_MIN_DAYS,
+                       shock_multiple: float = STRESS_SHOCK_MULTIPLE) -> Optional[Dict[str, Any]]:
     """
-    Round 60 (Directive 60-1). Daily realized vol per held perp from hourly marks
-    (std of a day's hourly log returns x sqrt(24), days with >= 12 returns), pooled
-    across coins. A shock day is a coin-day above `shock_multiple` x the median
-    daily vol - NOT the 95th percentile, which would make the probability 5% by
-    construction. Returns (shock_day_prob, vol_multiplier or None, distinct days,
-    shock coin-days, coin-days) or None when fewer than `min_days` distinct UTC
-    days exist.
+    Round 60/61 (Directives 60-1, 61-1, Ruling 61-1: PER-COIN medians). For each
+    held perp: daily realized vol from hourly marks (std of the day's hourly log
+    returns x sqrt(24), days with >= 12 returns), the coin's own median, and its
+    shock days (vol > shock_multiple x that coin's median) - so a high-beta token
+    cannot move the bar for a major. A coin qualifies with >= min_days distinct
+    UTC days. The portfolio figures are the unweighted means over qualifying
+    coins: shock_day_prob over all of them, vol_multiplier over those that had a
+    shock day (None when none did). Returns None when no coin qualifies.
     """
     con = sqlite3.connect("file:%s?mode=ro" % Path(hl_db).as_posix(), uri=True)
+    per_coin: Dict[str, Dict[str, Any]] = {}
     try:
-        daily_vols: List[float] = []
-        dates = set()
         for coin in coins:
             rows = con.execute("SELECT timestamp, mark_px FROM asset_snapshots WHERE coin=? AND mark_px > 0 "
                                "ORDER BY timestamp", (coin,)).fetchall()
@@ -454,30 +457,57 @@ def _measure_stress_from_vol(hl_db: Path, coins: Sequence[str], min_days: int = 
                 if cur - prev != 1 or hourly[prev] <= 0 or hourly[cur] <= 0:
                     continue
                 by_day.setdefault(cur // 24, []).append(math.log(hourly[cur] / hourly[prev]))
-            for day, rets in by_day.items():
-                if len(rets) >= STRESS_MIN_RETURNS_PER_DAY:
-                    daily_vols.append(float(np.std(rets) * math.sqrt(24.0)))
-                    dates.add(day)
+            daily = [(day, float(np.std(rets) * math.sqrt(24.0))) for day, rets in sorted(by_day.items())
+                     if len(rets) >= STRESS_MIN_RETURNS_PER_DAY]
+            if len(daily) < min_days:
+                per_coin[coin] = {"days": len(daily), "qualifies": False, "median": None, "shocks": 0,
+                                  "prob": None, "multiplier": None, "daily": []}
+                continue
+            vols = np.array([v for _, v in daily], dtype=float)
+            median = float(np.median(vols))
+            flags = vols > shock_multiple * median if median > 0 else np.zeros(vols.size, dtype=bool)
+            per_coin[coin] = {
+                "days": len(daily), "qualifies": True, "median": median, "shocks": int(flags.sum()),
+                "prob": float(flags.mean()),
+                "multiplier": float(vols[flags].mean() / median) if flags.any() and median > 0 else None,
+                "daily": [(day, vol, bool(flag)) for (day, vol), flag in zip(daily, flags)],
+            }
     finally:
         con.close()
-    if len(dates) < min_days or not daily_vols:
+    qualifying = {c: d for c, d in per_coin.items() if d["qualifies"]}
+    if not qualifying:
+        return {"coins": per_coin, "qualifying": [], "prob": None, "multiplier": None, "days": 0,
+                "shocks": 0, "coin_days": 0, "shock_multiple": shock_multiple, "min_days": min_days}
+    multipliers = [d["multiplier"] for d in qualifying.values() if d["multiplier"] is not None]
+    return {
+        "coins": per_coin, "qualifying": sorted(qualifying),
+        "prob": float(np.mean([d["prob"] for d in qualifying.values()])),
+        "multiplier": float(np.mean(multipliers)) if multipliers else None,
+        "days": max(d["days"] for d in qualifying.values()),
+        "shocks": sum(d["shocks"] for d in qualifying.values()),
+        "coin_days": sum(d["days"] for d in qualifying.values()),
+        "shock_multiple": shock_multiple, "min_days": min_days,
+    }
+
+
+def _measure_stress_from_vol(hl_db: Path, coins: Sequence[str], min_days: int = STRESS_MIN_DAYS,
+                             shock_multiple: float = STRESS_SHOCK_MULTIPLE):
+    """(shock_day_prob, vol_multiplier or None, distinct days, shock coin-days, coin-days) - per-coin medians
+    averaged over the qualifying coins; None when no coin has `min_days` days."""
+    cal = stress_calibration(hl_db, coins, min_days=min_days, shock_multiple=shock_multiple)
+    if not cal or not cal["qualifying"]:
         return None
-    vols = np.array(daily_vols, dtype=float)
-    median = float(np.median(vols))
-    if median <= 0:
-        return None
-    shock = vols > shock_multiple * median
-    prob = float(shock.mean())
-    multiplier = float(vols[shock].mean() / median) if shock.any() else None
-    return prob, multiplier, len(dates), int(shock.sum()), int(vols.size)
+    return cal["prob"], cal["multiplier"], cal["days"], cal["shocks"], cal["coin_days"]
 
 
 def _measure_sports_history(sports_db: Path, min_wagers: int = 20):
     """
-    Round 60 (Directive 60-2). Settled wagers in placed_bets (outcome WIN / LOSS /
-    PUSH): cadence = settled / distinct placement days, win rate = wins / (wins +
-    losses) - a push is neither - and the mean decimal odds. None below
-    `min_wagers` settled or when the table is absent.
+    Round 60 (Directive 60-2) with Ruling 61-3: settled wagers in placed_bets
+    (outcome WIN / LOSS / PUSH). Cadence = settled / CALENDAR days spanned
+    ((last placement - first placement).days + 1), so weekend-only wagering is not
+    simulated every day; win rate = wins / (wins + losses) - a push is neither;
+    mean decimal odds. Returns (cadence, win_prob, odds, wagers, span_days,
+    pushes); None below `min_wagers` settled or when the table is absent.
     """
     con = sqlite3.connect("file:%s?mode=ro" % Path(sports_db).as_posix(), uri=True)
     try:
@@ -492,12 +522,79 @@ def _measure_sports_history(sports_db: Path, min_wagers: int = 20):
     wins = sum(1 for r in rows if r[2] == "WIN")
     losses = sum(1 for r in rows if r[2] == "LOSS")
     pushes = len(rows) - wins - losses
-    days = {str(r[0])[:10] for r in rows if r[0]}
-    if not days or wins + losses == 0:
+    dates = []
+    for r in rows:
+        try:
+            dates.append(datetime.strptime(str(r[0])[:10], "%Y-%m-%d").date())
+        except ValueError:
+            continue
+    if not dates or wins + losses == 0:
         return None
+    span_days = max(1, (max(dates) - min(dates)).days + 1)
     odds = [float(r[1]) for r in rows if r[1] is not None and float(r[1]) > 1.0]
-    return (len(rows) / len(days), wins / (wins + losses), float(np.mean(odds)) if odds else None,
-            len(rows), len(days), pushes)
+    return (len(rows) / span_days, wins / (wins + losses), float(np.mean(odds)) if odds else None,
+            len(rows), span_days, pushes)
+
+
+def _measure_arb_history(imports_dir: Path = DEFAULT_IMPORTS_DIR, min_fills: int = ARB_MIN_FILLS):
+    """
+    Round 61 (Directive 61-2). Execution receipts of the cross-market arb desk:
+    one-row CSVs named fills_polymarket_dutched_arb_*.csv in the Tax agent's
+    imports folder (and imports/processed once ingested). Fills sharing a
+    timestamp are one execution (the legs of one dutch); an execution with >= 2
+    BUY legs has gross return 1 / sum(leg prices) - 1 and capital
+    sum(price x quantity). Returns None below `min_fills` fills.
+    """
+    import csv
+    root = Path(imports_dir)
+    files = []
+    for folder in (root, root / "processed"):
+        try:
+            files.extend(sorted(folder.glob(ARB_RECEIPT_GLOB)))
+        except Exception:                                   # noqa: BLE001
+            continue
+    fills: List[Dict[str, Any]] = []
+    for path in files:
+        try:
+            with open(path, newline="", encoding="utf-8") as handle:
+                for row in csv.DictReader(handle):
+                    fills.append(row)
+        except Exception:                                   # noqa: BLE001 - a bad receipt is skipped
+            continue
+    if len(fills) < min_fills:
+        return None
+    executions: Dict[str, List[Dict[str, Any]]] = {}
+    dates = []
+    for row in fills:
+        stamp = str(row.get("timestamp") or "").strip()
+        executions.setdefault(stamp, []).append(row)
+        try:
+            dates.append(datetime.strptime(stamp[:10], "%Y-%m-%d").date())
+        except ValueError:
+            continue
+    if not dates:
+        return None
+    span_days = max(1, (max(dates) - min(dates)).days + 1)
+    returns, capitals = [], []
+    for legs in executions.values():
+        buys = []
+        for leg in legs:
+            try:
+                if str(leg.get("side") or "").upper() == "BUY":
+                    buys.append((float(leg.get("price") or 0.0), float(leg.get("quantity") or 0.0)))
+            except ValueError:
+                continue
+        if len(buys) >= 2 and sum(px for px, _ in buys) > 0:
+            returns.append(1.0 / sum(px for px, _ in buys) - 1.0)
+            capitals.append(sum(px * qty for px, qty in buys))
+    return {
+        "fills": len(fills), "executions": len(executions), "span_days": span_days,
+        "arb_per_day": len(executions) / span_days,
+        "gross_return_mean": float(np.mean(returns)) if returns else None,
+        "gross_return_std": float(np.std(returns)) if len(returns) >= 2 else None,
+        "capital_mean": float(np.mean(capitals)) if capitals else None,
+        "priced_executions": len(returns), "files": len(files),
+    }
 
 
 def _measure_sports_edges(sports_db: Path):
@@ -537,7 +634,8 @@ def _tax_rate_from_config() -> Optional[float]:
 
 
 def load_live_inputs(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFAULT_HL_DB,
-                     sports_db: Path = DEFAULT_SPORTS_DB, use_tax_config: bool = True) -> RiskInputs:
+                     sports_db: Path = DEFAULT_SPORTS_DB, use_tax_config: bool = True,
+                     imports_dir: Path = DEFAULT_IMPORTS_DIR) -> RiskInputs:
     """
     RiskInputs from the live files, every field labelled. Missing or thin sources fall
     back to the dataclass defaults, labelled "assumed". Never raises.
@@ -624,7 +722,7 @@ def load_live_inputs(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFA
         history = None
     if history:
         cadence, win_prob, odds, wagers, days, pushes = history
-        source = "measured (%s placed_bets, %d wagers, %d active days%s)" % (
+        source = "measured (%s placed_bets, %d wagers over %d calendar days%s)" % (
             Path(sports_db).name, wagers, days, (", %d push(es) excluded" % pushes) if pushes else "")
         inputs.sports_bets_per_day, prov["sports_bets_per_day"] = cadence, source
         inputs.sports_win_prob_mean, prov["sports_win_prob_mean"] = win_prob, source
@@ -632,6 +730,24 @@ def load_live_inputs(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFA
             inputs.sports_decimal_odds, prov["sports_decimal_odds"] = odds, source
     else:
         prov.setdefault("sports_bets_per_day", "assumed (< 20 settled wagers)")
+    arbs = None
+    try:
+        arbs = _measure_arb_history(imports_dir)
+    except Exception:                                       # noqa: BLE001
+        arbs = None
+    if arbs:
+        source = "measured (%s receipts, %d fills / %d arbs over %d calendar days)" % (
+            Path(imports_dir).name, arbs["fills"], arbs["executions"], arbs["span_days"])
+        inputs.arb_per_day, prov["arb_per_day"] = arbs["arb_per_day"], source
+        if arbs["gross_return_mean"] is not None:
+            inputs.arb_gross_return, prov["arb_gross_return"] = arbs["gross_return_mean"], source
+        if arbs["gross_return_std"] is not None:
+            inputs.arb_return_std, prov["arb_return_std"] = arbs["gross_return_std"], source
+        if arbs["capital_mean"] is not None:
+            inputs.arb_capital, prov["arb_capital"] = arbs["capital_mean"], source
+    else:
+        for name in ("arb_per_day", "arb_gross_return", "arb_return_std", "arb_capital"):
+            prov.setdefault(name, "assumed (< %d arb fills)" % ARB_MIN_FILLS)
     rate = _tax_rate_from_config() if use_tax_config else None
     if rate is not None:
         inputs.tax_rate, prov["tax_rate"] = rate, "measured (Tax_Reserve_Agent.config)"
@@ -649,6 +765,82 @@ def load_live_inputs(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFA
 
 
 # ------------------------------------------------------------------ reports
+
+def calibration_report(paper_state: Path = DEFAULT_PAPER_STATE, hl_db: Path = DEFAULT_HL_DB,
+                       sports_db: Path = DEFAULT_SPORTS_DB, imports_dir: Path = DEFAULT_IMPORTS_DIR) -> Dict[str, Any]:
+    """Round 61 (Directive 61-1): everything the calibrations saw, for auditing before the 14-day mark."""
+    coins: List[str] = []
+    try:
+        state = json.loads(Path(paper_state).read_text(encoding="utf-8"))
+        coins = [str(p.get("coin") or k) for k, p in (state.get("positions") or {}).items() if isinstance(p, dict)]
+    except Exception:                                       # noqa: BLE001
+        coins = []
+    coins = coins or ["BTC"]
+    try:
+        stress = stress_calibration(hl_db, coins)
+    except Exception as exc:                                # noqa: BLE001
+        stress = {"error": "%s: %s" % (type(exc).__name__, exc), "coins": {}, "qualifying": []}
+    try:
+        sports = _measure_sports_history(sports_db)
+    except Exception:                                       # noqa: BLE001
+        sports = None
+    try:
+        arbs = _measure_arb_history(imports_dir)
+    except Exception:                                       # noqa: BLE001
+        arbs = None
+    return {"coins": coins, "stress": stress, "sports": sports, "arbs": arbs,
+            "paths": {"paper_state": str(paper_state), "hl_db": str(hl_db), "sports_db": str(sports_db),
+                      "imports_dir": str(imports_dir)}}
+
+
+def _day_label(day_index: int) -> str:
+    return datetime.fromtimestamp(int(day_index) * 86400, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def format_calibration_report(report: Dict[str, Any]) -> str:
+    lines = ["[CAL] stress calibration - shock = daily realized vol > %.1fx the COIN's median; a coin qualifies with >= %d days"
+             % (STRESS_SHOCK_MULTIPLE, STRESS_MIN_DAYS)]
+    stress = report.get("stress") or {}
+    if stress.get("error"):
+        lines.append("[CAL]   unavailable: %s" % stress["error"])
+    for coin, d in sorted((stress.get("coins") or {}).items()):
+        if not d["qualifies"]:
+            lines.append("[CAL]   %-12s %2d day(s) with >= %d hourly returns - not enough (< %d)"
+                         % (coin, d["days"], STRESS_MIN_RETURNS_PER_DAY, STRESS_MIN_DAYS))
+            continue
+        lines.append("[CAL]   %-12s %2d days  median daily vol %.2f%%  shock days %d  prob %.3f  multiplier %s"
+                     % (coin, d["days"], d["median"] * 100, d["shocks"], d["prob"],
+                        ("%.2f" % d["multiplier"]) if d["multiplier"] else "n/a"))
+        for day, vol, flag in d["daily"]:
+            lines.append("[CAL]     %s  %6.2f%%%s" % (_day_label(day), vol * 100, "  <- SHOCK" if flag else ""))
+    if stress.get("qualifying"):
+        lines.append("[CAL]   portfolio: shock-day prob %.3f, multiplier %s over %s"
+                     % (stress["prob"], ("%.2f" % stress["multiplier"]) if stress["multiplier"] else "n/a (no shock day)",
+                        ", ".join(stress["qualifying"])))
+    else:
+        lines.append("[CAL]   portfolio: nothing qualifies yet - stress inputs stay assumed (0.02 / 3.0x)")
+    sports = report.get("sports")
+    if sports:
+        cadence, win_prob, odds, wagers, span, pushes = sports
+        lines.append("[CAL] sports settlement: %d settled wagers over %d calendar days -> %.2f/day; win rate %.3f "
+                     "(pushes excluded: %d); mean odds %s" % (wagers, span, cadence, win_prob, pushes,
+                                                              ("%.2f" % odds) if odds else "n/a"))
+    else:
+        lines.append("[CAL] sports settlement: < 20 settled wagers - cadence and win rate stay assumed")
+    arbs = report.get("arbs")
+    if arbs:
+        lines.append("[CAL] arb receipts: %d fills in %d file(s) -> %d executions over %d calendar days = %.2f/day; "
+                     "gross return %s +/- %s over %d priced; capital mean %s"
+                     % (arbs["fills"], arbs["files"], arbs["executions"], arbs["span_days"], arbs["arb_per_day"],
+                        ("%.4f" % arbs["gross_return_mean"]) if arbs["gross_return_mean"] is not None else "n/a",
+                        ("%.4f" % arbs["gross_return_std"]) if arbs["gross_return_std"] is not None else "n/a",
+                        arbs["priced_executions"],
+                        ("$%s" % "{:,.0f}".format(arbs["capital_mean"])) if arbs["capital_mean"] is not None else "n/a"))
+    else:
+        lines.append("[CAL] arb receipts: < %d fills matching %s - arb inputs stay assumed" % (ARB_MIN_FILLS, ARB_RECEIPT_GLOB))
+    lines.append("[CAL] held coins: %s" % ", ".join(report.get("coins") or []))
+    return "\n".join(lines)
+
 
 def buffer_recommendation(result: Dict[str, Any], shrinkage: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Cash to keep unallocated: the VaR99 horizon drawdown in dollars, plus the sizing multiplier."""
@@ -865,6 +1057,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--paper-state", type=Path, default=DEFAULT_PAPER_STATE)
     parser.add_argument("--hl-db", type=Path, default=DEFAULT_HL_DB)
     parser.add_argument("--sports-db", type=Path, default=DEFAULT_SPORTS_DB)
+    parser.add_argument("--imports-dir", type=Path, default=DEFAULT_IMPORTS_DIR,
+                        help="Tax agent imports folder holding fills_polymarket_dutched_arb*.csv receipts")
+    parser.add_argument("--calibration-report", action="store_true",
+                        help="Round 61: print what the calibrations see (daily vol per coin, medians, shock days, "
+                             "sports cadence, arb receipts) and exit; --json for the raw record")
     parser.add_argument("--grid-iterations", type=int, default=DEFAULT_GRID_ITERATIONS)
     parser.add_argument("--no-grid", action="store_true", help="skip the Kelly shrinkage grid")
     parser.add_argument("--stress-correlation", type=float, default=None,
@@ -877,11 +1074,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--no-vault", action="store_true", help="do not write Risk_Sentinel.md")
     args = parser.parse_args(argv)
 
+    if args.calibration_report:
+        report = calibration_report(args.paper_state, args.hl_db, args.sports_db, args.imports_dir)
+        print(json.dumps(report, indent=2, default=str) if args.json else format_calibration_report(report))
+        return 0
     if args.assume_defaults:
         inputs = RiskInputs()
         inputs.provenance = {f.name: "assumed" for f in fields(RiskInputs) if f.name != "provenance"}
     else:
-        inputs = load_live_inputs(args.paper_state, args.hl_db, args.sports_db)
+        inputs = load_live_inputs(args.paper_state, args.hl_db, args.sports_db, imports_dir=args.imports_dir)
     if args.inputs:
         overrides = json.loads(Path(args.inputs).read_text(encoding="utf-8"))
         merged = inputs.to_dict()

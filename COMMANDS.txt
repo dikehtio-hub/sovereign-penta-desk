@@ -2360,6 +2360,18 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 61 - PER-COIN SHOCK MEDIANS, CALENDAR CADENCE, ARB RECEIPTS, CALIBRATION REPORT
+     python -m cross_market.risk_simulator --calibration-report [--json] [--paper-state P] [--hl-db P]
+         [--sports-db P] [--imports-dir DIR]
+         Prints what the calibrations see: per held perp the daily realized vol table with its own
+         median and SHOCK days (> 3x that coin's median), whether it qualifies (>= 14 days), the
+         portfolio shock prob / multiplier; the sports settlement cadence (settled / calendar days
+         spanned, pushes excluded from the win rate); the arb receipts (fills_polymarket_dutched_arb*.csv
+         in Tax_Reserve_Agent\data\imports and imports\processed: fills -> executions by timestamp,
+         gross return 1/sum(BUY prices) - 1, capital). Exit 0 always. Run it before the 14-day mark.
+     load_live_inputs now also measures arb_per_day / arb_gross_return / arb_return_std / arb_capital
+         from >= 10 arb receipt fills, else "assumed (< 10 arb fills)".
+
      ROUND 60 - STRESS CALIBRATION FROM DATA, SPORTS SETTLEMENT HISTORY, FRACTIONAL CADENCE
      risk_simulator load_live_inputs (automatic in the CLI and the exporter loop):
          stress_day_prob / stress_vol_multiplier measured from hyperliquid_data.db once >= 14 distinct
@@ -2511,7 +2523,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (17 modules, 853): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (17 modules, 855): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.
