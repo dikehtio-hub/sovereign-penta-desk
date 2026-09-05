@@ -290,6 +290,17 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   has no variable in its environment and alerts through the fallback, which
   a fresh variable-less process proved (discord_url found). tests/conftest.py
   (new) neutralises the fallback for every test so no suite posts to Discord.
+- **The watchdog's relaunch path was fired once against the live service**
+  (TerminalDashboard.relaunch_service(): cmd with CREATE_NO_WINDOW -> the bat
+  -> powershell Start-Process -> pythonw). The spawned supervisor logged
+  `already_running` holder_pid 46740 at 01:44:34Z and exited; one supervisor
+  remained. So a watchdog firing while a live lock holder exists leaves
+  exactly that ERROR line in collector_service.jsonl - it is the expected
+  signature, not a fault. The new supervisor also logged its keep_awake hold.
+- **Only HL_Monarch reads DISCORD_WEBHOOK_URL / TELEGRAM_***: no other desk
+  has a reader, so no other suite can post to Discord from a shell that has
+  the user-level variable. The fallback is read at alerter construction:
+  rotating the webhook needs a restart of long-lived processes.
 - **Lead-lag has no data yet.** One-shot fetcher runs do not stamp (stamping
   is a --watch feature), the drop dir held only the two family files, and no
   watcher process existed, so the ">24h of stamped macro drops" clock had not
