@@ -157,3 +157,47 @@ class TestZeroBankroll(ExporterBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTitansSentinelRefresh(ExporterBase):
+    """Round 57 (Directive 57-1): the Arb exporter keeps the Titans note's sentinel block current."""
+
+    def test_refresh_updates_only_the_block_and_leaves_a_missing_note_missing(self):
+        from datetime import timedelta
+        from unittest import mock
+
+        from cross_market import titan_correlator as tc
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        from cross_market.interfaces import obsidian_exporter as ex
+
+        note = self.vault / ("%s.md" % tc.TITANS_NOTE)
+        path, changed = ex.refresh_titans_sentinel(str(self.vault), drop_dirs=[self.questions], now=NOW)
+        self.assertEqual((path, changed), (note, False))
+        self.assertFalse(note.exists())                                    # never created here
+        self.vault.mkdir(parents=True, exist_ok=True)
+        note.write_text("# Titans\n\n%s\nold\n%s\n\n## 📝 Titan Investigation Notes\nkeep me\n"
+                        % (tc.SENTINEL_START, tc.SENTINEL_END), encoding="utf-8")
+        for i in range(6):
+            (self.questions / stamped_drop_name(NOW - timedelta(minutes=5 * i), family="macro")).write_text("[]")
+        path, changed = ex.refresh_titans_sentinel(str(self.vault), drop_dirs=[self.questions], now=NOW)
+        self.assertTrue(changed)
+        text = note.read_text(encoding="utf-8")
+        self.assertIn("`6 points / 0.4h @ 12.0/h`", text)
+        self.assertIn("[NOT READY]", text)
+        self.assertIn("keep me", text)
+        self.assertNotIn("\nold\n", text)
+        # --once runs the export AND the refresh on the real clock, and reports both: fresh
+        # stamps make a new segment (refreshed), and a second run with nothing new is unchanged.
+        real_now = datetime.now(timezone.utc)
+        for i in range(6):
+            (self.questions / stamped_drop_name(real_now - timedelta(minutes=5 * i), family="macro")).write_text("[]")
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db),
+                                      "--questions", str(self.questions)]), 0)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("sentinel: %s refreshed" % note.name, printed)
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ex.main(["--once", "--vault", str(self.vault), "--db", str(self.db),
+                                      "--questions", str(self.questions)]), 0)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("sentinel: %s unchanged" % note.name, printed)          # only the clock line moved

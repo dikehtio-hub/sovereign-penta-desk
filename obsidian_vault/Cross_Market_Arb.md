@@ -5,17 +5,17 @@ tags:
   - cross-market
   - arbitrage
   - tax-asymmetry
-last_synced: "2026-09-05 01:07:00 UTC"
+last_synced: "2026-09-05 02:49:10 UTC"
 ---
 
 # ⚖️ Cross-Market Arbitrage - Polymarket vs Sportsbook
 
 > [!INFO] **Desk Snapshot**
-> - **Questions loaded**: `710`
+> - **Questions loaded**: `851`
 > - **Matched pairs**: `0`  •  **Clearing after tax**: **`0`**
 > - **Pricing capital**: `$1,000.00`  _(bankroll is $0.00 - pairs priced on a nominal $1,000.00; verdicts are unaffected, stakes are notional)_
 > - **Reference hurdles**: capital reading, no capacity **`16.75%`** • wagering reading **`23.93%`**
-> - **Last Synchronized**: `2026-09-05 01:07:00 UTC`
+> - **Last Synchronized**: `2026-09-05 02:49:10 UTC`
 
 > **Cockpit Navigation**: [[Monarch_Hub|👑 Master Hub]] • [[Sports_Desk|🏈 Sports Desk]] • [[Polymarket_Monarch|🌐 Polymarket]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]]
 

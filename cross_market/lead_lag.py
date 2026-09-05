@@ -420,6 +420,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--min-ready-points", type=int, default=READY_MIN_POINTS)
     parser.add_argument("--max-gap-minutes", type=float, default=READY_MAX_GAP_MINUTES)
     parser.add_argument("--json", action="store_true", help="with --check-data: print JSON instead of lines")
+    parser.add_argument("--force", action="store_true",
+                        help="Round 57 (Directive 57-2): run the correlation on the live drop dirs even when "
+                             "--check-data says NOT READY (explicit --drops / --events are never gated)")
     args = parser.parse_args(argv)
     drop_dirs = [Path(d) for d in args.drops] if args.drops else DEFAULT_DROP_DIRS
     if args.check_data:
@@ -427,6 +430,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                               min_points=args.min_ready_points, max_gap_minutes=args.max_gap_minutes)
         print(json.dumps(info, indent=2) if args.json else format_readiness(info, args.family))
         return 0 if info["ready"] else EXIT_NOT_READY
+    if not args.drops and not args.events and not args.force:
+        # Round 57 (Directive 57-2): the first live evaluation waits for the sentinel.
+        info = data_readiness(stamped_moments(drop_dirs, "macro"))
+        if not info["ready"]:
+            print(format_readiness(info, "macro"))
+            print("[GATE] the live drop dirs are not ready for an honest run - refusing (exit %d); "
+                  "pass --force to run anyway, or --drops / --events for research data" % EXIT_NOT_READY)
+            return EXIT_NOT_READY
     result, keys = run(args.coin.upper(), drop_dirs, Path(args.db) if args.db else DEFAULT_HL_DB, args.max_lag,
                        args.min_shift, args.min_events, args.min_points,
                        events_csv=Path(args.events) if args.events else None)

@@ -172,6 +172,72 @@ class TestTitanCorrelator(unittest.TestCase):
         _, second_written = self.correlator.export_to_obsidian()
         self.assertFalse(second_written)
 
+    def test_the_sentinel_block_renders_refreshes_in_place_and_ignores_its_own_clock(self):
+        """
+        Round 57 (Directive 57-1). The Item 18 readiness verdict is a marked
+        block inside the Titans note: the correlator renders it from the same
+        drop dirs, the Arb exporter replaces just the block, and the block's
+        own timestamp line is invisible to the change hash.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        from cross_market import titan_correlator as tc
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        from cross_market.lead_lag import data_readiness
+
+        now = datetime(2026, 9, 5, 3, 0, tzinfo=timezone.utc)
+        stamps = [now - timedelta(minutes=3 + 5 * i) for i in range(14)][::-1]      # 14 points over 65 min
+        block = tc.render_sentinel_block(data_readiness(stamps, now=now), now=now)
+        self.assertTrue(block.startswith(tc.SENTINEL_START) and block.endswith(tc.SENTINEL_END))
+        self.assertIn("**Verdict: `[NOT READY]`**", block)
+        self.assertIn("`14 points / 1.1h @ 12.0/h`", block)
+        self.assertIn("**Data Readiness ETA**: `2026-09-06T01:52Z`", block)                # segment start + 24h
+        self.assertIn("**Blocking**: span 1.1h < 24h; points 14 < 200", block)
+        self.assertIn("newest stamp 3 min ago", block)
+        ready = tc.render_sentinel_block(data_readiness([now - timedelta(minutes=5 * i) for i in range(300)], now=now), now=now)
+        self.assertIn("[!SUCCESS] **Verdict: `[READY]`**", ready)
+        self.assertIn("**Gate**: open", ready)
+        self.assertNotIn("ETA", ready)
+        empty = tc.render_sentinel_block(data_readiness([], now=now), now=now)
+        self.assertIn("no stamps", empty)
+        self.assertIn("restart the watcher", empty)
+
+        # The full export carries the block between the macro table and the architecture section.
+        drops = self.root / "drops"
+        drops.mkdir()
+        for stamp in stamps:
+            (drops / stamped_drop_name(stamp, family="macro")).write_text("[]", encoding="utf-8")
+        self.correlator.drop_dirs = [drops]
+        note_path, _ = self.correlator.export_to_obsidian()
+        content = note_path.read_text(encoding="utf-8")
+        self.assertLess(content.index("Macro Co-Positioning"), content.index(tc.SENTINEL_START))
+        self.assertLess(content.index(tc.SENTINEL_END), content.index("Intelligence Architecture"))
+        self.assertIn("`14 points / 1.1h @ 12.0/h`", content)
+
+        # refresh_sentinel_block replaces only the block; the rest of the note is untouched.
+        new_block = tc.render_sentinel_block(data_readiness(stamps[:5], now=now), now=now)
+        path, changed = tc.refresh_sentinel_block(note_path, new_block)
+        self.assertTrue(changed)
+        refreshed = note_path.read_text(encoding="utf-8")
+        self.assertIn("`5 points / 0.3h @ 12.0/h`", refreshed)
+        self.assertNotIn("`14 points", refreshed)
+        self.assertEqual(refreshed.count(tc.SENTINEL_START), 1)
+        self.assertEqual(refreshed.split(tc.SENTINEL_START)[0], content.split(tc.SENTINEL_START)[0])
+        self.assertEqual(refreshed.split(tc.SENTINEL_END)[1], content.split(tc.SENTINEL_END)[1])
+        # Only the clock line differs: no rewrite.
+        later = tc.render_sentinel_block(data_readiness(stamps[:5], now=now), now=now + timedelta(minutes=7))
+        self.assertNotEqual(later, new_block)
+        self.assertFalse(tc.refresh_sentinel_block(note_path, later)[1])
+        # A note without markers gets the block before the architecture section; a missing note stays missing.
+        legacy = self.vault / "legacy.md"
+        legacy.write_text("# Old note\n\n## 🧭 Intelligence Architecture & Correlation Vectors\n\ntext\n", encoding="utf-8")
+        self.assertTrue(tc.refresh_sentinel_block(legacy, new_block)[1])
+        text = legacy.read_text(encoding="utf-8")
+        self.assertLess(text.index(tc.SENTINEL_END), text.index("Intelligence Architecture"))
+        missing = self.vault / "missing.md"
+        self.assertEqual(tc.refresh_sentinel_block(missing, new_block), (missing, False))
+        self.assertFalse(missing.exists())
+
     def test_user_notes_preservation_across_export(self):
         note_path, _ = self.correlator.export_to_obsidian()
         custom_note = f"\n# Header\n{USER_NOTES_HEADER}\n- Hand-written investigation: Titan is market making on BTC perps.\n"

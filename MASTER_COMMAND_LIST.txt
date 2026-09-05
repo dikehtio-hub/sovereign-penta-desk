@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 (Round 50 Milestone)
-Last Update: Round 56 Complete (watcher --status, sync-bat guard, lead-lag readiness sentinel)
-Status:      2,468 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
+Last Update: Round 57 Complete (sentinel card in Cross_Market_Titans.md, lead-lag live gate)
+Status:      2,471 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -66,7 +66,7 @@ TABLE OF CONTENTS
 4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,468 tests across all 5 desks):
+5. RUN FULL OFFLINE VERIFICATION (2,471 tests across all 5 desks):
    python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
@@ -353,6 +353,9 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       # Round 56: operator status (exit 0 running / 3 stopped) and the Item 18 data sentinel:
       python -m cross_market.ingestors.polymarket_fetcher --status [--json]
       python -m cross_market.lead_lag --check-data [--family macro] [--json]   # exit 0 ready / 3 not
+      # Round 57: the same verdict as a card in obsidian_vault/Cross_Market_Titans.md (between
+      # lead-lag-sentinel markers), refreshed by the Cross-Market Arb Obsidian Sync every cycle.
+      python -m cross_market.lead_lag [--coin BTC]      # live dirs are GATED: exit 3 until READY, --force to override
 
       # Item 18 lead-lag (offline research; needs timestamped Polymarket drops):
       python -m cross_market.lead_lag --coin BTC

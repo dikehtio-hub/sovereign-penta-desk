@@ -250,3 +250,23 @@ class TestReadiness(LeadLagCase):
                              ll.EXIT_NOT_READY)
         parsed = json.loads(fake_print.call_args_list[0].args[0])
         self.assertEqual((parsed["points"], parsed["ready"]), (2, False))
+
+
+class TestLiveGate(LeadLagCase):
+    """Round 57 (Directive 57-2): the live drop dirs are gated behind the sentinel; --force opens it."""
+
+    def test_unforced_live_runs_refuse_until_the_sentinel_is_ready(self):
+        from unittest import mock
+        with mock.patch.object(ll, "DEFAULT_DROP_DIRS", [self.drops]), mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--db", str(self.db)]), ll.EXIT_NOT_READY)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("[GATE]", printed)
+        self.assertIn("NOT READY", printed)
+        with mock.patch.object(ll, "DEFAULT_DROP_DIRS", [self.drops]), mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--db", str(self.db), "--force"]), 0)     # forced: runs (and finds nothing)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertNotIn("[GATE]", printed)
+        # Explicit --drops is research data and is never gated (the Round 51 tests rely on it).
+        with mock.patch.object(ll, "DEFAULT_DROP_DIRS", [self.drops]), mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--db", str(self.db), "--drops", str(self.drops)]), 0)
+        self.assertNotIn("[GATE]", " ".join(str(c.args[0]) for c in fake_print.call_args_list))

@@ -54,6 +54,12 @@ if str(HL_DIR) not in sys.path and HL_DIR.is_dir():
 
 # Obsidian notes
 TITANS_NOTE = "Cross_Market_Titans"
+
+# Round 57 (Directive 57-1): the Item 18 data-readiness sentinel lives in the note between
+# these markers, so the Arb exporter can refresh JUST the block every cycle.
+SENTINEL_START = "<!-- lead-lag-sentinel:start -->"
+SENTINEL_END = "<!-- lead-lag-sentinel:end -->"
+SENTINEL_HEADER = "## 🛰 Lead-Lag Data Readiness Sentinel (Item 18)"
 HUB_NOTE = "Monarch_Hub"
 HL_NOTE = "HyperLiquid_Monarch"
 PM_NOTE = "Polymarket_Monarch"
@@ -596,9 +602,12 @@ class TitanCorrelator:
         flow = measure_perp_flow(self.hl_db_path)
         return build_macro_signals(fed, btc, flow)
 
-    def generate_markdown(self, titans: List[TitanProfile], signals: List[MacroSignal]) -> str:
+    def generate_markdown(self, titans: List[TitanProfile], signals: List[MacroSignal],
+                          sentinel: Optional[str] = None) -> str:
         """Render the complete Cross_Market_Titans.md dashboard."""
         synced_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        # Round 57 (Directive 57-1): the Item 18 readiness sentinel, from the same drop dirs.
+        sentinel_block = sentinel if sentinel is not None else lead_lag_sentinel_block(self.drop_dirs)
 
         # Titans Table
         titan_rows = []
@@ -673,6 +682,10 @@ Tracks alignment between **Polymarket event market sentiment**, **HyperLiquid pe
 
 ---
 
+{sentinel_block}
+
+---
+
 ## 🧭 Intelligence Architecture & Correlation Vectors
 
 1. **Directional Entity Resolution (Titans)**:
@@ -701,6 +714,94 @@ Tracks alignment between **Polymarket event market sentiment**, **HyperLiquid pe
         return write_note_if_changed(out_file, markdown_body)
 
 
+def _short_iso(value: Optional[str]) -> str:
+    """2026-09-06T01:40Z from an ISO string; the text itself when it does not parse."""
+    if not value:
+        return "n/a"
+    try:
+        moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return str(value)
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+
+def render_sentinel_block(info: Dict[str, Any], family: str = "macro", now: Optional[datetime] = None) -> str:
+    """
+    The readiness verdict as an Obsidian callout between SENTINEL markers.
+    Everything that changes on every check (the checked time, the newest-stamp
+    age) sits on the **Checked** line, which the change hash ignores, so the
+    note is rewritten only when the numbers that matter move.
+    """
+    now = now or datetime.now(timezone.utc)
+    ready = bool(info.get("ready"))
+    verdict = "[READY]" if ready else "[NOT READY]"
+    points, span, rate = info.get("points", 0), float(info.get("span_hours") or 0.0), info.get("rate_per_hour")
+    segment = "`%d points / %.1fh @ %s/h`" % (points, span, ("%.1f" % rate) if rate else "n/a")
+    since = _short_iso(info.get("segment_start"))
+    age = info.get("newest_age_min")
+    age_text = ("%.0f min ago" % age) if age is not None else "no stamps"
+    lines = [
+        SENTINEL_START,
+        SENTINEL_HEADER,
+        "",
+        "> [!%s] **Verdict: `%s`**" % ("SUCCESS" if ready else "WARNING", verdict),
+        "> - **Series**: `%s` stamped drops, latest continuous segment (no gap > %.0f min), %d on disk"
+        % (family, float(info.get("max_gap_minutes") or 0.0), int(info.get("points_total") or 0)),
+        "> - **Segment**: %s since `%s`; largest gap `%s min`, `%d` break(s)"
+        % (segment, since, info.get("largest_gap_min") if info.get("largest_gap_min") is not None else "n/a",
+           int(info.get("breaks") or 0)),
+        "> - **Bar**: span ≥ %.0fh and ≥ %d points, watcher still adding"
+        % (float(info.get("min_span_hours") or 0.0), int(info.get("min_points") or 0)),
+    ]
+    if ready:
+        lines.append("> - **Gate**: open - the first honest live run may proceed: `python -m cross_market.lead_lag --coin BTC`")
+    else:
+        lines.append("> - **Blocking**: %s" % ("; ".join(info.get("reasons") or ()) or "n/a"))
+        lines.append("> - **Data Readiness ETA**: `%s`"
+                     % (_short_iso(info.get("eta")) if info.get("eta") else "none while nothing is accumulating (restart the watcher)"))
+    lines.append("> - **Checked**: `%s` · newest stamp %s" % (now.strftime("%Y-%m-%d %H:%M UTC"), age_text))
+    lines.append("> - Shell twin: `python -m cross_market.lead_lag --check-data` (exit 0 = ready, 3 = not)")
+    lines.append(SENTINEL_END)
+    return "\n".join(lines)
+
+
+def lead_lag_sentinel_block(drop_dirs=None, family: str = "macro", now: Optional[datetime] = None) -> str:
+    """The block for the live series under `drop_dirs` (default: the Polymarket drop dirs). Offline."""
+    from cross_market.lead_lag import data_readiness, stamped_moments
+    dirs = [Path(d) for d in (drop_dirs if drop_dirs is not None else DEFAULT_DROP_DIRS)]
+    now = now or datetime.now(timezone.utc)
+    return render_sentinel_block(data_readiness(stamped_moments(dirs, family), now=now), family=family, now=now)
+
+
+def refresh_sentinel_block(note_path: Path, block: str) -> Tuple[Path, bool]:
+    """
+    Replace the marked block inside an EXISTING Titans note (never creates one -
+    the correlator owns the note). A note without markers gets the block before
+    the architecture section, else before the user notes, else at the end.
+    Returns (path, changed) through the same hash check as a full export.
+    """
+    path = Path(note_path)
+    if not path.exists():
+        return path, False
+    try:
+        content = path.read_text(encoding="utf-8")
+    except Exception:                                       # noqa: BLE001 - unreadable: leave it alone
+        return path, False
+    if SENTINEL_START in content and SENTINEL_END in content:
+        head, rest = content.split(SENTINEL_START, 1)
+        _, tail = rest.split(SENTINEL_END, 1)
+        updated = head + block + tail
+    else:
+        for anchor in ("## 🧭 Intelligence Architecture", USER_NOTES_HEADER):
+            if anchor in content:
+                before, after = content.split(anchor, 1)
+                updated = before.rstrip("\n") + "\n\n" + block + "\n\n---\n\n" + anchor + after
+                break
+        else:
+            updated = content.rstrip("\n") + "\n\n" + block + "\n"
+    return write_note_if_changed(path, updated)
+
+
 def preserve_user_notes(file_path: Path, default_template: str = DEFAULT_USER_NOTES) -> str:
     """Multi-encoding user notes preservation."""
     path = Path(file_path)
@@ -724,6 +825,7 @@ def preserve_user_notes(file_path: Path, default_template: str = DEFAULT_USER_NO
 _VOLATILE_PATTERNS = (
     re.compile(r"^last_synced:.*$", re.MULTILINE),
     re.compile(r"^\s*>\s*-\s*\*\*Last (?:Updated|Synchronized|Refreshed)\*\*:.*$", re.MULTILINE),
+    re.compile(r"^\s*>\s*-\s*\*\*Checked\*\*:.*$", re.MULTILINE),          # Round 57: the sentinel's own clock
 )
 
 

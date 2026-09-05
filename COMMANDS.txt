@@ -2360,6 +2360,14 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 57 - SENTINEL CARD IN THE TITANS NOTE, LEAD-LAG LIVE GATE
+     Cross_Market_Titans.md now carries "Lead-Lag Data Readiness Sentinel (Item 18)" between
+         <!-- lead-lag-sentinel:start --> / end markers: verdict, points / span @ rate, blocking
+         reasons, ETA, checked time. Written by  python -m cross_market.titan_correlator --scan
+         and refreshed every cycle by the Cross-Market Arb Obsidian Sync (exporter --watch/--once).
+     python -m cross_market.lead_lag            (no --drops/--events) -> sentinel first; NOT READY
+         prints the verdict + [GATE] and exits 3.  --force runs anyway.  --drops / --events ungated.
+
      ROUND 56 - WATCHER --status, SYNC-BAT GUARD, LEAD-LAG READINESS SENTINEL
      python -m cross_market.ingestors.polymarket_fetcher --status [--json] [--folder DIR] [--pid-file P]
          lock holder (pid, started, command) or stale/no lock; newest stamped drop + age per
@@ -2466,7 +2474,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (16 modules, 832): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (16 modules, 835): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

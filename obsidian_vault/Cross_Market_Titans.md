@@ -8,13 +8,13 @@ tags:
   - polymarket
   - quant-trading-lab
   - dashboard
-last_synced: "2026-09-05 01:09:36 UTC"
+last_synced: "2026-09-05 02:49:10 UTC"
 ---
 
 # 👑 Cross-Market Titan & Macro Intelligence Desk
 
 > [!INFO] **Executive Overview**
-> - **Last Synchronized**: `2026-09-05 01:09:36 UTC`
+> - **Last Synchronized**: `2026-09-05 02:49:10 UTC`
 > - **Target Vault**: `C:\Users\ixis1\Desktop\DEV\obsidian_vault`
 > - **Confirmed Titan Entities**: `0` institutional actors
 > - **Active Macro Signals**: `3` convergent vectors
@@ -40,9 +40,24 @@ Tracks alignment between **Polymarket event market sentiment**, **HyperLiquid pe
 
 | Macro Theme | Polymarket Sentiment | HyperLiquid Perp Flow | Co-Positioning State | Signal Strength |
 | :--- | :--- | :--- | :--- | :---: |
-| **Federal Reserve Interest Rate Cut** | `YES 93% implied (Will no Fed rate cuts happen in 2026?)` | `Longs paying (OI-weighted funding +7.4% APR), OI $5.72B -0.6% / 24h` | ⚡ DIVERGENT (PM yes; perps not confirming) | `MEDIUM` |
-| **Bitcoin Milestone ($100k)** | `YES 5% implied (Will Bitcoin reach $100,000 in September?)` | `Longs paying (OI-weighted funding +7.4% APR), OI $5.72B -0.6% / 24h` | ⚡ DIVERGENT (PM no; perps long) | `MEDIUM` |
-| **Crypto Majors Perp Flow (BTC/ETH/SOL)** | `n/a (HyperLiquid-only telemetry)` | `Longs paying (OI-weighted funding +7.4% APR), OI $5.72B -0.6% / 24h` | 🟡 LONGS PAYING, OI FLAT OR SHRINKING | `LOW` |
+| **Federal Reserve Interest Rate Cut** | `YES 93% implied (Will no Fed rate cuts happen in 2026?)` | `Longs paying (OI-weighted funding +8.7% APR), OI $5.71B -0.9% / 24h` | ⚡ DIVERGENT (PM yes; perps not confirming) | `MEDIUM` |
+| **Bitcoin Milestone ($100k)** | `YES 5% implied (Will Bitcoin reach $100,000 in September?)` | `Longs paying (OI-weighted funding +8.7% APR), OI $5.71B -0.9% / 24h` | ⚡ DIVERGENT (PM no; perps long) | `MEDIUM` |
+| **Crypto Majors Perp Flow (BTC/ETH/SOL)** | `n/a (HyperLiquid-only telemetry)` | `Longs paying (OI-weighted funding +8.7% APR), OI $5.71B -0.9% / 24h` | 🟡 LONGS PAYING, OI FLAT OR SHRINKING | `LOW` |
+
+---
+
+<!-- lead-lag-sentinel:start -->
+## 🛰 Lead-Lag Data Readiness Sentinel (Item 18)
+
+> [!WARNING] **Verdict: `[NOT READY]`**
+> - **Series**: `macro` stamped drops, latest continuous segment (no gap > 60 min), 16 on disk
+> - **Segment**: `16 points / 1.1h @ 13.2/h` since `2026-09-05T01:39Z`; largest gap `5.1 min`, `0` break(s)
+> - **Bar**: span ≥ 24h and ≥ 200 points, watcher still adding
+> - **Blocking**: span 1.1h < 24h; points 16 < 200
+> - **Data Readiness ETA**: `2026-09-06T01:39Z`
+> - **Checked**: `2026-09-05 02:49 UTC` · newest stamp 1 min ago
+> - Shell twin: `python -m cross_market.lead_lag --check-data` (exit 0 = ready, 3 = not)
+<!-- lead-lag-sentinel:end -->
 
 ---
 

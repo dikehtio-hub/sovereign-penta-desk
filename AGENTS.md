@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+Round 57 complete: SENTINEL CARD IN Cross_Market_Titans.md, LEAD-LAG LIVE GATE.
+The Titan correlator renders a "Lead-Lag Data Readiness Sentinel (Item 18)"
+callout between HTML markers (verdict, segment points/span/rate, blocking
+reasons, ETA, checked time) from data_readiness over its own drop dirs; the
+Cross-Market Arb Obsidian exporter refreshes JUST that block every cycle
+(refresh_titans_sentinel; a missing note is never created by it). The
+block's clock line is excluded from the change hash, so the note is
+rewritten only when the numbers move. lead_lag without --drops/--events now
+runs the sentinel first and refuses (exit 3) until READY unless --force.
+3 new tests. Live: NOT READY, 16 points / 1.1h @ 13.2/h since 01:39Z, ETA
+2026-09-06T01:39Z.
+
 Round 56 complete: WATCHER --status, SYNC-BAT GUARD, LEAD-LAG READINESS
 SENTINEL. polymarket_fetcher --status [--json] reports the lock holder (pid,
 start, command), a stale lock, and the newest stamped drop per family; exit 0
@@ -256,7 +268,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 832 OK |
+| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 835 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -280,6 +292,35 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 57 findings
+
+- **Directive path corrected**: there is no cross_market/exporters/; the
+  exporter is cross_market/interfaces/obsidian_exporter.py and the Titans
+  note is written by titan_correlator.export_to_obsidian (manual --scan). A
+  block that only a manual scan refreshes would go stale at once, so the
+  15 s Arb exporter loop refreshes the marked block; the correlator still
+  owns the note and its creation.
+- **Two writers, one file, no fight**: refresh_sentinel_block replaces only
+  the text between <!-- lead-lag-sentinel:start/end -->; an older note gets
+  the block inserted before the architecture section; a missing note is left
+  missing. Both writers go through write_note_if_changed, and the sentinel's
+  **Checked** line joined _VOLATILE_PATTERNS, so a refresh with the same
+  numbers is a no-op. Proved live: `exporter --once` right after `--scan`
+  reported "sentinel: Cross_Market_Titans.md unchanged".
+- **The gate is code, not a note.** `python -m cross_market.lead_lag` with no
+  --drops / --events runs data_readiness on DEFAULT_DROP_DIRS first and exits
+  3 with the sentinel text and a [GATE] line; --force runs anyway; explicit
+  --drops / --events (research data, the Round 51 tests) are never gated.
+- **Fixture clocks vs the real clock**: the exporter test first anchored its
+  stamps at the fixture NOW (2026-09-04); the CLI run uses the real clock,
+  saw a 15 h-old series, and correctly rewrote the block as stalled. The test
+  now writes real-clock stamps for the CLI part. The sentinel's behaviour was
+  right; the test's premise was wrong.
+- **Refresh cadence depends on the operator session**: the block updates
+  while "Cross-Market Arb Obsidian Sync" (start_all_ecosystem_sync.bat) runs;
+  no exporter was running at close, so the note shows the 02:49Z scan until
+  the sync bat is started. The correlator's --scan also refreshes it.
 
 ## Round 56 findings
 

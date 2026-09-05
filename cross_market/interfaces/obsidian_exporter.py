@@ -200,6 +200,29 @@ def export_cross_market_arb(vault: Optional[str] = None, hook: Any = None,
                                  render(snapshot, synced_at, vault_path))
 
 
+def refresh_titans_sentinel(vault: Optional[str] = None, drop_dirs=None,
+                            now: Optional[datetime] = None) -> Tuple[Path, bool]:
+    """
+    Round 57 (Directive 57-1): this exporter is the cross-market process that
+    runs every 15 s, so it keeps the Titans note's Lead-Lag sentinel block
+    current. Only the marked block is touched; a missing note is left missing
+    (the Titan correlator's --scan creates it).
+    """
+    from cross_market.titan_correlator import TITANS_NOTE, lead_lag_sentinel_block, refresh_sentinel_block
+    note = resolve_vault(vault) / ("%s.md" % TITANS_NOTE)
+    return refresh_sentinel_block(note, lead_lag_sentinel_block(drop_dirs, "macro", now=now))
+
+
+def _refresh_sentinel_quietly(vault: Optional[str], drop_dirs) -> str:
+    try:
+        path, changed = refresh_titans_sentinel(vault, drop_dirs)
+    except Exception as exc:                                # noqa: BLE001 - never break the arb export
+        return "sentinel: skipped (%s: %s)" % (type(exc).__name__, exc)
+    if not path.exists():
+        return "sentinel: no %s yet (run titan_correlator --scan)" % path.name
+    return "sentinel: %s %s" % (path.name, "refreshed" if changed else "unchanged")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Cross-Market Arb -> Obsidian exporter")
     parser.add_argument("--vault", type=str, default=None)
@@ -212,17 +235,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     db_path = Path(args.db or DEFAULT_DB_PATH)
     qdir = Path(args.questions or DEFAULT_QUESTIONS_DIR)
 
+    sentinel_dirs = [qdir] if args.questions else None    # explicit drops -> the sentinel reads the same
     if not args.watch:
         path, changed = export_cross_market_arb(args.vault, db_path=db_path, questions_dir=qdir)
         print("[OK] %s %s" % (path, "written" if changed else "unchanged"))
+        print("[OK] %s" % _refresh_sentinel_quietly(args.vault, sentinel_dirs))
         return 0
     print("[SYNC] Cross-Market Arb -> %s every %gs. Ctrl-C to stop."
           % (resolve_vault(args.vault), args.interval))
     try:
         while True:
             path, changed = export_cross_market_arb(args.vault, db_path=db_path, questions_dir=qdir)
-            print("[%s] %s %s" % (datetime.now().strftime("%H:%M:%S"), path.name,
-                                  "written" if changed else "unchanged"))
+            print("[%s] %s %s · %s" % (datetime.now().strftime("%H:%M:%S"), path.name,
+                                       "written" if changed else "unchanged",
+                                       _refresh_sentinel_quietly(args.vault, sentinel_dirs)))
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print("\n[STOP] Cross-Market Arb exporter stopped.")
