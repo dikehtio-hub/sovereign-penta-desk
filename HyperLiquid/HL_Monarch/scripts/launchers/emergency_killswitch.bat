@@ -9,4 +9,4 @@ echo ======================================================================
 python -m config.dynamic_config --killswitch
 echo.
 echo 🚨 EMERGENCY STOP ACTIVATED. All new entries halted.
-timeout /t 3 >nul
+timeout /t 3 >nul 2>&1

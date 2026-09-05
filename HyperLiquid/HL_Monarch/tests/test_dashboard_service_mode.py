@@ -290,8 +290,10 @@ def test_a_read_only_dashboard_relaunches_a_dead_service_once_per_cooldown_and_a
     dash = TerminalDashboard.__new__(TerminalDashboard)
     dash.service_mode, dash.service_pid, dash._service_alive = True, 4242, True
     dash._watchdog_last_relaunch, dash._service_dead_since, dash._status_stale_alerted = 0.0, None, False
+    dash._watchdog_attempts, dash._service_abandoned = 0, False
     alerter = Alerter()
-    kw = dict(relaunch=lambda: relaunches.append(1) or True, alerter=alerter, log=log, enabled=True, cooldown=300.0)
+    kw = dict(relaunch=lambda: relaunches.append(1) or True, alerter=alerter, log=log, enabled=True, cooldown=300.0,
+              max_attempts=0)                                                   # Round 53 semantics: unlimited
 
     assert dash.service_watchdog(True, now=1000.0, **kw) is None                 # alive: nothing to do
     assert dash.service_watchdog(False, now=1005.0, **kw) == "relaunched"        # dies: log, alert, relaunch
@@ -305,12 +307,13 @@ def test_a_read_only_dashboard_relaunches_a_dead_service_once_per_cooldown_and_a
     assert dash._service_dead_since is None
     # A relaunch whose command cannot be issued is logged as such.
     assert dash.service_watchdog(False, now=2000.0, relaunch=lambda: False, alerter=alerter, log=log,
-                                 enabled=True, cooldown=300.0) == "relaunch_failed"
-    assert events[-1] == ("service_relaunch", {"issued": False, "service_pid": 4242})
+                                 enabled=True, cooldown=300.0, max_attempts=0) == "relaunch_failed"
+    assert events[-1][0] == "service_relaunch" and events[-1][1]["issued"] is False
+    assert events[-1][1]["service_pid"] == 4242
     # Watchdog disabled: the death is still logged and alerted, nothing is launched.
     dash._service_dead_since, dash._watchdog_last_relaunch = None, 0.0
     assert dash.service_watchdog(False, now=3000.0, relaunch=lambda: relaunches.append(9), alerter=alerter,
-                                 log=log, enabled=False, cooldown=300.0) == "dead"
+                                 log=log, enabled=False, cooldown=300.0, max_attempts=0) == "dead"
     assert 9 not in relaunches
     # A STANDALONE dashboard never relaunches: it is the ingester.
     dash.service_mode = False
@@ -333,3 +336,111 @@ def test_a_read_only_dashboard_relaunches_a_dead_service_once_per_cooldown_and_a
     dash._service_alive = False
     status.write_text(json.dumps({"unclassified_dexs": [], "checked_at": 1.0}), encoding="utf-8")
     assert dash.status_stale_watch(status, alerter=alerter, log=log) is False    # dead service: the watchdog's job
+
+
+def test_the_watchdog_gives_up_after_the_relaunch_ceiling_and_alerts_once(monkeypatch):
+    """
+    Round 54 (Ruling 54-2). A relaunch whose service is still dead at the next
+    cooldown has failed. After SERVICE_WATCHDOG_MAX_RELAUNCHES of those (a live
+    foreign process holding the lock, a broken launcher) the watchdog logs
+    service_abandoned, alerts once through its own cooldown key, and stops
+    relaunching; the service coming back resets everything. A failed spawn
+    counts as an attempt. 0 keeps Round 53's unlimited behaviour.
+    """
+    from ui.terminal_dashboard import TerminalDashboard
+
+    class Alerter:
+        def __init__(self):
+            self.down, self.abandoned = [], []
+
+        def alert_service_down(self, pid, reason="process gone"):
+            self.down.append(pid)
+
+        def alert_service_abandoned(self, pid, attempts):
+            self.abandoned.append((pid, attempts))
+
+    events, relaunches = [], []
+    log = lambda event, **f: events.append((event, f))
+    dash = TerminalDashboard.__new__(TerminalDashboard)
+    dash.service_mode, dash.service_pid, dash._service_alive = True, 4242, True
+    dash._watchdog_last_relaunch, dash._service_dead_since, dash._status_stale_alerted = 0.0, None, False
+    dash._watchdog_attempts, dash._service_abandoned = 0, False
+    alerter = Alerter()
+    kw = dict(relaunch=lambda: relaunches.append(1) or True, alerter=alerter, log=log, enabled=True,
+              cooldown=300.0, max_attempts=3)
+
+    assert dash.service_watchdog(False, now=1000.0, **kw) == "relaunched"        # attempt 1
+    assert events[-1][1]["attempt"] == 1 and events[-1][1]["max_attempts"] == 3
+    assert dash.service_watchdog(False, now=1100.0, **kw) == "dead"              # inside the cooldown
+    assert dash.service_watchdog(False, now=1300.0, **kw) == "relaunched"        # attempt 2
+    assert dash.service_watchdog(False, now=1600.0, **kw) == "relaunched"        # attempt 3
+    assert len(relaunches) == 3
+    assert dash.service_watchdog(False, now=1900.0, **kw) == "abandoned"         # 3 failed: give up, once
+    assert events[-1][0] == "service_abandoned"
+    assert events[-1][1] == {"service_pid": 4242, "relaunches": 3, "dead_for_s": 900.0}
+    assert alerter.abandoned == [(4242, 3)] and alerter.down == [4242]
+    assert dash.service_watchdog(False, now=2200.0, **kw) == "dead"              # quiet from here on
+    assert dash.service_watchdog(False, now=9000.0, **kw) == "dead"
+    assert len(relaunches) == 3 and len(alerter.abandoned) == 1
+    assert [e for e, _ in events].count("service_abandoned") == 1
+    # The service comes back (a human ran the launcher): everything resets.
+    assert dash.service_watchdog(True, now=9100.0, **kw) == "back"
+    assert events[-1][1] == {"service_pid": 4242, "dead_for_s": 8100.0, "relaunches": 3}
+    assert dash._watchdog_attempts == 0 and dash._service_abandoned is False
+    assert dash.service_watchdog(False, now=9500.0, **kw) == "relaunched"        # a new episode starts at 1
+    assert events[-1][1]["attempt"] == 1 and len(relaunches) == 4
+    # A spawn that cannot be issued still consumes an attempt.
+    failing = dict(kw, relaunch=lambda: False)
+    assert dash.service_watchdog(False, now=9800.0, **failing) == "relaunch_failed"
+    assert dash._watchdog_attempts == 2
+
+    # An alerter that raises never breaks the viewer.
+    class Broken(Alerter):
+        def alert_service_abandoned(self, pid, attempts):
+            raise RuntimeError("webhook down")
+
+    dash.service_watchdog(False, now=10100.0, **kw)                              # attempt 3
+    assert dash.service_watchdog(False, now=10400.0, **dict(kw, alerter=Broken())) == "abandoned"
+    # The real alerter's abandonment message uses its own cooldown key, so the
+    # service-down alert of the same episode cannot swallow it.
+    from analytics.alerter import WebhookAlerter
+    real = WebhookAlerter()
+    sent = []
+    monkeypatch.setattr(real, "_dispatch_alert", lambda title, desc, color=0: sent.append((title, desc)))
+    real.alert_service_down(4242)
+    real.alert_service_abandoned(4242, 3)
+    real.alert_service_abandoned(4242, 3)                                        # cooldown: not twice
+    assert [t for t, _ in sent] == ["🛑 COLLECTOR SERVICE DOWN", "🚨 COLLECTOR WATCHDOG GAVE UP"]
+    assert "`3`" in sent[1][1] and "start_collector.bat" in sent[1][1]
+
+
+def test_the_alerter_finds_a_webhook_written_after_the_process_started(monkeypatch):
+    """
+    Round 54 (Ruling 54-6). The webhook went into the USER-level variables while
+    the service, the supervisor and the dashboard were already running, and
+    none of them could see it (a process keeps the environment it was born
+    with). user_env looks at os.environ first and then at the user-level
+    registry value; missing keys, a foreign OS or a broken registry give None.
+    """
+    from analytics import alerter as mod
+    from analytics.alerter import WebhookAlerter, user_env
+
+    assert user_env("X", environ={"X": "from-env"}, registry=lambda n: "from-registry") == "from-env"
+    assert user_env("X", environ={}, registry=lambda n: "from-registry") == "from-registry"
+    assert user_env("X", environ={"X": ""}, registry=lambda n: "  ") is None
+    assert user_env("X", environ={}, registry=lambda n: None) is None
+
+    def broken(name):
+        raise FileNotFoundError(name)
+
+    assert user_env("X", environ={}, registry=broken) is None
+    # The alerter picks the registry value up without a fresh shell...
+    monkeypatch.setattr(mod, "_registry_user_env",
+                        lambda name: "https://discord.example/hook" if name == "DISCORD_WEBHOOK_URL" else None)
+    assert WebhookAlerter().discord_url == "https://discord.example/hook"
+    assert WebhookAlerter().tg_token is None
+    # ...and an explicit argument still wins.
+    assert WebhookAlerter(discord_webhook_url="explicit").discord_url == "explicit"
+    # Outside the fallback nothing changes: no variable anywhere means a silent alerter.
+    monkeypatch.setattr(mod, "_registry_user_env", lambda name: None)
+    assert WebhookAlerter().discord_url is None

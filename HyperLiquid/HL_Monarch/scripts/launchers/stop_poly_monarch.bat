@@ -7,4 +7,4 @@ echo 🌐 Stopping Polymarket Monarch Daemon...
 echo ======================================================================
 taskkill /FI "WINDOWTITLE eq Polymarket Monarch*" /F /T >nul 2>&1
 echo ✓ Polymarket Monarch stopped.
-timeout /t 2 >nul
+timeout /t 2 >nul 2>&1

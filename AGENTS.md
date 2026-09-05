@@ -5,6 +5,20 @@ the detail.
 
 ## Status
 
+Round 54 complete: WATCHDOG CEILING + ABANDONMENT ALERT, USER-LEVEL WEBHOOK
+FALLBACK, LAUNCHER DETACHMENT ROOT CAUSE FIXED. The dashboard watchdog gives
+up after SERVICE_WATCHDOG_MAX_RELAUNCHES (3) relaunches that left the service
+dead, logs service_abandoned and alerts once (own cooldown key); the service
+coming back resets it. WebhookAlerter.user_env reads DISCORD_WEBHOOK_URL /
+TELEGRAM_* from os.environ and then from the USER-level registry value, so a
+process born before the variable existed still alerts (tests neutralise the
+fallback via tests/conftest.py). start_collector.bat launches the supervisor
+with PowerShell Start-Process: a caller that captures the launcher's output
+returns at once instead of blocking for the service's lifetime. Service and
+the multi-tag Polymarket watcher restarted with the variable exported; the
+dashboard runs without it and alerts through the registry fallback (proved
+from a fresh variable-less process). 2 new tests.
+
 Round 53 complete: DETACHED SUPERVISOR, DASHBOARD WATCHDOG + ALERTS, TAG-FAMILY
 DROPS, LIVE WATCHER WIRED. start_collector.bat now launches the supervisor
 under pythonw (no console window to close; the logger skips its console
@@ -242,6 +256,46 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 54 findings
+
+- **Ceiling semantics**: an attempt is a relaunch issued while the service is
+  dead; it counts as failed when the service is still dead at the NEXT
+  cooldown. So three relaunches get their full 300 s each, and only at the
+  fourth due time does the watchdog log service_abandoned (relaunches,
+  dead_for_s), alert through alert_service_abandoned (cooldown key
+  abandoned:COLLECTOR, so the service-down alert of the same episode cannot
+  swallow it) and go quiet. service_back resets the counter; a failed spawn
+  consumes an attempt; max_attempts <= 0 restores Round 53's unlimited loop.
+- **The Round 53 hang explanation was wrong and is corrected here.** Under a
+  non-console stdin `timeout /t 3` exits at once ("Input redirection is not
+  supported"), and every launcher already had `>nul`. The real cause was
+  measured: `start "" pythonw ...` hands the caller's stdout/stderr pipe to the
+  detached child, so any caller that captures the launcher's output waits for
+  the child's whole life (12.3 s for a 12 s sleeper; forever for a supervisor).
+  PowerShell Start-Process (ShellExecute, no handle inheritance) returned in
+  0.4 s. start_collector.bat now uses it. The ratified `2>&1` sweep was applied
+  to 13 launchers anyway; it is cosmetic.
+- **The webhook was invisible to every running process.** DISCORD_WEBHOOK_URL
+  is set at USER level (121 chars) but none of supervisor 31800, collector
+  10180, dashboard 48792 or its shim saw it: a process keeps the environment
+  it was born with, and all four predate the variable. Whale alerts, service
+  alerts and the Round 53 watchdog alerts were all silent. Fix in two layers:
+  user_env() falls back to HKCU\Environment (never raises; strips), and this
+  round's restart exported the value into the supervisor, collector and
+  watcher. The dashboard alive now was opened at 01:36:27Z by the Round 53
+  PowerShell launcher call, which had been blocked since 00:59 on the old
+  supervisor's inherited pipe and resumed the instant that supervisor was
+  killed - a second, independent confirmation of the inheritance cause. It
+  has no variable in its environment and alerts through the fallback, which
+  a fresh variable-less process proved (discord_url found). tests/conftest.py
+  (new) neutralises the fallback for every test so no suite posts to Discord.
+- **Lead-lag has no data yet.** One-shot fetcher runs do not stamp (stamping
+  is a --watch feature), the drop dir held only the two family files, and no
+  watcher process existed, so the ">24h of stamped macro drops" clock had not
+  started. The multi-tag watcher was started in its own console this round;
+  stamped polymarket_macro_<stamp>Z.json copies accumulate from now
+  (every 300 s when prices change). Item 3 stays queued until >24h exist.
 
 ## Round 53 findings
 

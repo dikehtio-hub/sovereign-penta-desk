@@ -20,6 +20,37 @@ from config.settings import (
 
 logger = logging.getLogger("Alerter")
 
+def _registry_user_env(name: str) -> Optional[str]:
+    """The USER-level environment variable as Windows stores it (HKCU\\Environment); None elsewhere."""
+    if os.name != "nt":
+        return None
+    import winreg
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+        value, _kind = winreg.QueryValueEx(key, name)
+    return str(value).strip() or None
+
+
+def user_env(name: str, environ=None, registry=None) -> Optional[str]:
+    """
+    Round 54 (Ruling 54-6). A process only sees the environment it was born
+    with, so a webhook written to the user's variables AFTER a service or
+    dashboard started stays invisible to it. Look in os.environ first, then in
+    the user-level registry value, so a relaunched or long-lived process finds
+    the webhook without a fresh shell. Never raises.
+    """
+    environ = os.environ if environ is None else environ
+    value = environ.get(name)
+    if value:
+        return value
+    registry = _registry_user_env if registry is None else registry
+    try:
+        value = registry(name)
+    except Exception:                                       # noqa: BLE001 - missing key, no registry, anything
+        return None
+    value = str(value).strip() if value is not None else ""
+    return value or None
+
+
 class WebhookAlerter:
     def __init__(
         self,
@@ -28,9 +59,9 @@ class WebhookAlerter:
         telegram_chat_id: Optional[str] = None,
         cooldown_seconds: float = ALERT_COOLDOWN_SECONDS,
     ):
-        self.discord_url = discord_webhook_url or os.environ.get("DISCORD_WEBHOOK_URL")
-        self.tg_token = telegram_bot_token or os.environ.get("TELEGRAM_BOT_TOKEN")
-        self.tg_chat_id = telegram_chat_id or os.environ.get("TELEGRAM_CHAT_ID")
+        self.discord_url = discord_webhook_url or user_env("DISCORD_WEBHOOK_URL")
+        self.tg_token = telegram_bot_token or user_env("TELEGRAM_BOT_TOKEN")
+        self.tg_chat_id = telegram_chat_id or user_env("TELEGRAM_CHAT_ID")
         self.enabled = bool(self.discord_url or (self.tg_token and self.tg_chat_id))
         # Per-coin alert cooldown. One liquidation cascade prints many qualifying
         # fills within seconds - without this, a single event becomes a dozen
@@ -129,6 +160,18 @@ class WebhookAlerter:
         self._dispatch_alert("🛑 COLLECTOR SERVICE DOWN",
                              f"**Service PID:** `{pid}`\n**Reason:** `{reason}`\n"
                              "**Effect:** no ingestion until relaunched (the dashboard's watchdog tries once per cooldown)",
+                             0xFF0000)
+
+    def alert_service_abandoned(self, pid, attempts: int):
+        """Round 54 (Ruling 54-2): the watchdog gave up; a human has to look. Its own cooldown key so the
+        service-down alert of the same episode never swallows it."""
+        if not self.should_send("abandoned", "COLLECTOR"):
+            return
+        self._dispatch_alert("🚨 COLLECTOR WATCHDOG GAVE UP",
+                             f"**Service PID:** `{pid}`\n**Relaunches issued:** `{attempts}` - the service never came back\n"
+                             "**Likely cause:** a live process holds data/collector_service.pid, or the launcher fails\n"
+                             "**Action:** run start_collector.bat by hand and read data/collector_service.jsonl; "
+                             "the watchdog resumes once the service is seen alive",
                              0xFF0000)
 
     def alert_status_stale(self, age_seconds: float, max_age_seconds: float):

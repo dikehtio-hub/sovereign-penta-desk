@@ -71,6 +71,8 @@ class TerminalDashboard:
         # Round 53: dead-service watchdog + alerts (Rulings 53-1/53-2).
         self.alerter = WebhookAlerter()
         self._watchdog_last_relaunch: float = 0.0
+        self._watchdog_attempts: int = 0            # Round 54: relaunches issued this dead episode
+        self._service_abandoned: bool = False       # Round 54: ceiling reached, waiting for a human
         self._service_dead_since: Optional[float] = None
         self._status_stale_alerted = False
         self._service_checked_at: float = 0.0
@@ -151,7 +153,8 @@ class TerminalDashboard:
 
     def service_watchdog(self, alive: bool, now: Optional[float] = None, relaunch=None,
                          alerter=None, log=None, enabled: Optional[bool] = None,
-                         cooldown: Optional[float] = None) -> Optional[str]:
+                         cooldown: Optional[float] = None,
+                         max_attempts: Optional[int] = None) -> Optional[str]:
         """
         Round 53 (Rulings 53-1/53-2). Only a dashboard that STARTED read-only
         acts: when its service dies it logs service_dead, alerts once per
@@ -159,9 +162,15 @@ class TerminalDashboard:
         when the service is back it logs service_back. A standalone dashboard
         is the ingester itself and never relaunches anything. Returns the
         action taken, for the log and the tests.
+
+        Round 54 (Ruling 54-2): a relaunch counts as failed when the service is
+        still dead at the next cooldown. After max_attempts of those the
+        watchdog logs service_abandoned, alerts once, and stops issuing
+        relaunches until the service is seen alive again (which resets the
+        counter). max_attempts <= 0 means unlimited.
         """
         from config.settings import (DASHBOARD_LOG_PATH, SERVICE_WATCHDOG_COOLDOWN_SECONDS,
-                                     SERVICE_WATCHDOG_ENABLED)
+                                     SERVICE_WATCHDOG_ENABLED, SERVICE_WATCHDOG_MAX_RELAUNCHES)
         if not self.service_mode:
             return None
         now = time.monotonic() if now is None else now
@@ -170,11 +179,15 @@ class TerminalDashboard:
         log = log or (lambda event, **fields: append_dashboard_event(DASHBOARD_LOG_PATH, event, **fields))
         enabled = SERVICE_WATCHDOG_ENABLED if enabled is None else enabled
         cooldown = SERVICE_WATCHDOG_COOLDOWN_SECONDS if cooldown is None else cooldown
+        max_attempts = SERVICE_WATCHDOG_MAX_RELAUNCHES if max_attempts is None else max_attempts
         if alive:
             if self._service_dead_since is not None:
                 log("service_back", service_pid=self.service_pid,
-                    dead_for_s=round(now - self._service_dead_since, 1))
+                    dead_for_s=round(now - self._service_dead_since, 1),
+                    relaunches=self._watchdog_attempts)
                 self._service_dead_since = None
+                self._watchdog_attempts = 0
+                self._service_abandoned = False
                 return "back"
             return None
         action = "dead"
@@ -186,9 +199,23 @@ class TerminalDashboard:
             except Exception:                               # noqa: BLE001 - alerting must not break the viewer
                 pass
         if enabled and now - self._watchdog_last_relaunch >= cooldown:
+            if max_attempts > 0 and self._watchdog_attempts >= max_attempts:
+                if self._service_abandoned:
+                    return action                           # ceiling reached earlier: stay quiet
+                self._service_abandoned = True
+                log("service_abandoned", service_pid=self.service_pid,
+                    relaunches=self._watchdog_attempts,
+                    dead_for_s=round(now - self._service_dead_since, 1))
+                try:
+                    alerter.alert_service_abandoned(self.service_pid, self._watchdog_attempts)
+                except Exception:                           # noqa: BLE001 - alerting must not break the viewer
+                    pass
+                return "abandoned"
             self._watchdog_last_relaunch = now
+            self._watchdog_attempts += 1
             issued = bool(relaunch())
-            log("service_relaunch", issued=issued, service_pid=self.service_pid)
+            log("service_relaunch", issued=issued, service_pid=self.service_pid,
+                attempt=self._watchdog_attempts, max_attempts=max_attempts)
             action = "relaunched" if issued else "relaunch_failed"
         return action
 

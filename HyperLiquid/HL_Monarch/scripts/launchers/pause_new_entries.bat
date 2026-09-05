@@ -9,4 +9,4 @@ echo ======================================================================
 python -m config.dynamic_config --pause
 echo.
 echo ⏸️ New trade entries paused. Existing positions remain active.
-timeout /t 2 >nul
+timeout /t 2 >nul 2>&1

@@ -9,4 +9,4 @@ echo ======================================================================
 python -m config.dynamic_config --resume
 echo.
 echo 🟢 System armed. Normal execution resumed.
-timeout /t 2 >nul
+timeout /t 2 >nul 2>&1

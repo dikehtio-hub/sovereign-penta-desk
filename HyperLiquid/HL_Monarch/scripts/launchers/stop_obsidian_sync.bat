@@ -8,4 +8,4 @@ echo 👑 Stopping Monarch Obsidian Sync Daemon...
 echo ======================================================================
 taskkill /FI "WINDOWTITLE eq Monarch Obsidian Sync*" /F /T >nul 2>&1
 echo ✓ Obsidian sync watcher stopped.
-timeout /t 2 >nul
+timeout /t 2 >nul 2>&1

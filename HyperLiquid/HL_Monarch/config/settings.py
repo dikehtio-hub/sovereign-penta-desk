@@ -497,6 +497,10 @@ COLLECTOR_LOG_MAX_BYTES = 20_000_000
 # configured) when the service dies or the status file goes stale.
 SERVICE_WATCHDOG_ENABLED = True
 SERVICE_WATCHDOG_COOLDOWN_SECONDS = 300.0
+# Round 54 (Ruling 54-2): after this many relaunches with the service still dead
+# at the next cooldown, the watchdog stops trying, logs service_abandoned and alerts
+# once. 0 = unlimited (Round 53 behaviour). Resets when the service comes back.
+SERVICE_WATCHDOG_MAX_RELAUNCHES = 3
 START_COLLECTOR_BAT = BASE_DIR / "scripts" / "launchers" / "start_collector.bat"
 # How old the collector's status file may be before the dashboard stops trusting
 # it: a dead collector's last write must not keep claiming a badge.

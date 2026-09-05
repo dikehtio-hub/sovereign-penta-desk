@@ -19,4 +19,4 @@ if exist "data\collector_service.pid" (
     del /f /q "data\collector_service.pid" >nul 2>&1
 )
 echo ✓ Collector daemon stopped.
-timeout /t 2 >nul
+timeout /t 2 >nul 2>&1

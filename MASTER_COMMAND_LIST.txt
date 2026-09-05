@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 (Round 50 Milestone)
-Last Update: Round 53 Complete (detached supervisor, watchdog, tag-family drops)
-Status:      2,449 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
+Last Update: Round 54 Complete (watchdog ceiling, user-level webhook, launcher detachment fix)
+Status:      2,451 Tests Passing Offline | 0 Failures | 14 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -50,6 +50,11 @@ TABLE OF CONTENTS
 3. CHECK CURRENT PAPER HARVESTER STATE & PnL:
    python HyperLiquid/HL_Monarch/main.py basis --harvest
 
+   # Round 54: the watchdog gives up after SERVICE_WATCHDOG_MAX_RELAUNCHES (3) failed relaunches
+   # (dashboard.jsonl: service_abandoned + one "WATCHDOG GAVE UP" alert). Manual fix:
+   #   scripts\launchers\start_collector.bat   then   type data\collector_service.jsonl
+   # Alerts read DISCORD_WEBHOOK_URL from the process env OR the user-level variable (setx).
+
    # The supervisor runs DETACHED (pythonw, no window) since Round 53. Its state:
    python HyperLiquid/HL_Monarch/run_collector_service.py --status
    # A read-only dashboard relaunches a dead service itself (dashboard.jsonl: service_dead,
@@ -61,7 +66,7 @@ TABLE OF CONTENTS
 4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,449 tests across all 5 desks):
+5. RUN FULL OFFLINE VERIFICATION (2,451 tests across all 5 desks):
    python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================

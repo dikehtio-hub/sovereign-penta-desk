@@ -2360,6 +2360,22 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 54 - WATCHDOG CEILING, USER-LEVEL WEBHOOK, LAUNCHER DETACHMENT FIX
+     Dashboard watchdog: SERVICE_WATCHDOG_MAX_RELAUNCHES (3). A relaunch that leaves the
+         service dead at the next cooldown has failed; after 3 the watchdog logs
+         service_abandoned (dashboard.jsonl), alerts once ("COLLECTOR WATCHDOG GAVE UP") and
+         stops. Fix by hand: start_collector.bat, then read data\collector_service.jsonl.
+         The service coming back resets it. 0 = unlimited.
+     Webhooks: WebhookAlerter reads DISCORD_WEBHOOK_URL / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
+         from the process env, then from the USER-level registry value (HKCU\Environment),
+         so a process started before the variable was set still alerts. Set once with
+         setx DISCORD_WEBHOOK_URL "<url>"  (no .env needed). Tests never see it (conftest).
+     start_collector.bat: supervisor launched via PowerShell Start-Process (no handle
+         inheritance) - calling the bat from a script / agent that captures output returns
+         immediately. All launchers: timeout /t N >nul 2>&1.
+     Polymarket watcher (multi-tag, 300 s) is running in its own console; stamped macro
+         copies accumulate for Item 18 lead-lag (needs >24h before the first live run).
+
      ROUND 53 - DETACHED SUPERVISOR, WATCHDOG + ALERTS, TAG-FAMILY DROPS
      start_collector.bat -> pythonw run_collector_service.py --quiet (DETACHED: no window;
          closing terminals cannot kill it). Watch it via data\collector_service.jsonl,

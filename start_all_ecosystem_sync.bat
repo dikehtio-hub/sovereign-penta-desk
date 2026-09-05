@@ -49,4 +49,4 @@ echo ======================================================================
 echo 🌟 All 5 Trading Desks are actively streaming live telemetry into:
 echo    %OBSIDIAN_VAULT_PATH%
 echo ======================================================================
-timeout /t 3 >nul
+timeout /t 3 >nul 2>&1

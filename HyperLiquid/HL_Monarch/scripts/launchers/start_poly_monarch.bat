@@ -8,4 +8,4 @@ echo 🌐 Starting Polymarket Monarch Intelligence Suite...
 echo ======================================================================
 start "Polymarket Monarch" run_monarch_poly.bat
 echo ✓ Polymarket Monarch launched.
-timeout /t 3 >nul
+timeout /t 3 >nul 2>&1

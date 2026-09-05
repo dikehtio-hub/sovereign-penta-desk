@@ -7,4 +7,4 @@ echo ======================================================================
 echo ⚖️ Applying Balanced Risk Preset ($10k Notional, 2 Slots, 25%% Floor)...
 echo ======================================================================
 python -m config.dynamic_config --preset balanced
-timeout /t 2 >nul
+timeout /t 2 >nul 2>&1
