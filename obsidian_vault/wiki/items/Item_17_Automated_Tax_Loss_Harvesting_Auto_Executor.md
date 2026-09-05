@@ -13,7 +13,7 @@ tags:
 - deployed
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -25,10 +25,8 @@ dev:
   item: 17
   tier: 4
   registry_checked: true
-  asserts:
-  - file: Tax_Reserve_Agent/main.py
-    pattern: .
-    claim: primary code present at the registered path
+  requires_files:
+  - Tax_Reserve_Agent/main.py
 ---
 # Item 17: Automated Tax-Loss Harvesting Auto-Executor
 

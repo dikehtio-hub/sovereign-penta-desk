@@ -1,17 +1,17 @@
 ---
 type: Ruling
-title: R1 - text not recorded in the repository
-description: Referenced as part of the R1-R6 series; no ruling text exists in AGENTS.md,
-  COMMANDS.txt, any module docstring or any commit message at ec98342. Placeholder
-  until Antigravity supplies the text.
+title: R1 - never issued (deprecated placeholder)
+description: 'Part of the R1-R6 numbering but never issued: no ruling text exists
+  in AGENTS.md, COMMANDS.txt, any module docstring or any commit message. Confirmed
+  by Antigravity in Round 97; kept so the numbering has a home.'
 tags:
 - ruling
 - desk-3
 - r1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
-status: draft
+  at: '2026-09-05T20:48:24Z'
+status: deprecated
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -20,12 +20,11 @@ sources:
 dev:
   desk: 3
   ruling_id: R1
+  round: 97
 ---
-# Ruling R1 - text not recorded in the repository
+# Ruling R1 - never issued (deprecated placeholder)
 
-The R1-R6 numbering is used across Rounds 88-93 (R2, R4, R6 are cited by commit). A whole-word search of the handoff log, the command references, the module docstrings and `git log` at ec98342 finds no definition of R1. This page exists so the numbering has a home and so lint can see the hole.
-
-**Action**: Antigravity to supply the text; on receipt this page is rewritten and `verified` is appended.
+The R1-R6 numbering is used across Rounds 88-93 (R2, R4, R6 are cited by commit). A whole-word search of the handoff log, the command references, the module docstrings and `git log` at ec98342 found no definition of R1, and Antigravity confirmed in Round 97 that none was issued. This page is a deprecated historical placeholder: nothing cites it, and nothing should.
 
 ## Applies to
 
@@ -35,4 +34,5 @@ The R1-R6 numbering is used across Rounds 88-93 (R2, R4, R6 are cited by commit)
 
 ## Provenance
 
+- Round 97
 - NOT ratified: no recorded text

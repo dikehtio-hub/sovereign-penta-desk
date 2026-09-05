@@ -10,11 +10,11 @@ tags:
 - r6
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: stable
 verified:
 - by: antigravity/architect
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T17:48:20Z'
 sources:
 - id: agents-md
   resource: AGENTS.md

@@ -130,6 +130,7 @@ class Document:
     body: str
     error: str | None = None
     links: set[str] = field(default_factory=set)
+    constitution: bool = False  # WIKI_SCHEMA.md: linted for L1/L4/L5/C1, exempt from L2-listing and L3
 
 
 # ---------------------------------------------------------------- ownership
@@ -213,7 +214,8 @@ def extract_links(body: str) -> set[str]:
     """Targets of [[wikilinks]] and [text](path) links, anchors stripped."""
     out: set[str] = set()
     for m in WIKILINK_RE.finditer(body):
-        out.add(m.group(1).strip())
+        # inside a Markdown table the alias pipe is escaped: [[page\|alias]]
+        out.add(m.group(1).strip().rstrip("\\").strip())
     for m in MDLINK_RE.finditer(body):
         target = m.group(1).split("#", 1)[0]
         if target and "://" not in target:
@@ -232,18 +234,39 @@ def iter_page_files(vault: Path) -> Iterable[Path]:
             yield p
 
 
-def load_documents(vault: Path) -> list[Document]:
+def load_documents(vault: Path, include_constitution: bool = True) -> list[Document]:
     docs: list[Document] = []
     for p in iter_page_files(vault):
         text = p.read_text(encoding="utf-8")
         meta, body, err = try_parse(text)
         docs.append(Document(path=p, meta=meta, body=body, error=err, links=extract_links(body)))
+    schema = vault / "WIKI_SCHEMA.md"
+    if include_constitution and schema.is_file():
+        text = schema.read_text(encoding="utf-8")
+        meta, body, err = try_parse(text)
+        docs.append(Document(path=schema, meta=meta, body=body, error=err, links=extract_links(body), constitution=True))
     return docs
 
 
 def load_pages(vault: Path) -> list[Page]:
-    """Parsable pages only. Lint uses load_documents to see the failures too."""
-    return [Page(d.path, d.meta, d.body) for d in load_documents(vault) if d.meta is not None]
+    """Parsable wiki pages only (the constitution is not a page). Lint uses load_documents."""
+    return [Page(d.path, d.meta, d.body) for d in load_documents(vault) if d.meta is not None and not d.constitution]
+
+
+def load_page(path: Path) -> Page | None:
+    """One page by path, or None when it does not exist or has no parseable frontmatter."""
+    if not path.is_file():
+        return None
+    meta, body, err = try_parse(path.read_text(encoding="utf-8"))
+    return None if meta is None else Page(path, meta, body)
+
+
+def iter_index_files(vault: Path) -> Iterable[Path]:
+    """Every index.md below the owned folders (OKF: an index may appear in any directory)."""
+    for d in OWNED_DIRS:
+        root = vault / d
+        if root.is_dir():
+            yield from sorted(root.rglob("index.md"))
 
 
 # ---------------------------------------------------------------- index.md
@@ -285,6 +308,8 @@ def parse_index(text: str) -> tuple[list[IndexEntry], list[str]]:
     for n, line in enumerate(lines, 1):
         if not line.strip():
             continue
+        if line.startswith("> "):
+            continue  # a note under a heading (raw/index.md lists streams that are not on this machine this way)
         h = INDEX_HEADING_RE.match(line)
         if h:
             section = h.group(1).strip()
@@ -295,7 +320,7 @@ def parse_index(text: str) -> tuple[list[IndexEntry], list[str]]:
                 errors.append(f"index.md:{n}: entry before any section heading")
             entries.append(IndexEntry(section, m.group("title"), m.group("path"), m.group("desc")))
             continue
-        errors.append(f"index.md:{n}: not a section heading or '* [Title](path) - description' line")
+        errors.append(f"index.md:{n}: not a section heading, a '> note', or a '* [Title](path) - description' line")
     return entries, errors
 
 

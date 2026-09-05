@@ -9,7 +9,7 @@ tags:
 - deployed
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -21,16 +21,10 @@ dev:
   item: 8
   tier: 2
   registry_checked: true
-  asserts:
-  - file: HyperLiquid/HL_Monarch/strategies/funding_harvester.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: HyperLiquid/HL_Monarch/analytics/funding_arbitrage.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: HyperLiquid/HL_Monarch/main.py
-    pattern: .
-    claim: primary code present at the registered path
+  requires_files:
+  - HyperLiquid/HL_Monarch/strategies/funding_harvester.py
+  - HyperLiquid/HL_Monarch/analytics/funding_arbitrage.py
+  - HyperLiquid/HL_Monarch/main.py
 ---
 # Item 8: Hyperliquid Delta-Neutral Funding Rate Harvester (Basis Bot)
 

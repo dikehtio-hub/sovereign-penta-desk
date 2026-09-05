@@ -9,7 +9,7 @@ tags:
 - desk-2
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -26,6 +26,12 @@ dev:
   - file: Sports_Desk/engine/fair_value.py
     pattern: 'def '
     claim: the pure devigging engine is at its registered path
+  parameters:
+  - name: kelly_fraction
+    value: 0.25
+    file: Sports_Desk/engine/fair_value.py
+    pattern: 'def kelly_fraction\(fair_prob: float, offered_odds: float, fraction:
+      float = ([0-9.]+)\)'
 ---
 # Desk 2: Sports Desk
 

@@ -9,7 +9,7 @@ tags:
 - deployed
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -21,16 +21,10 @@ dev:
   item: 1
   tier: 1
   registry_checked: true
-  asserts:
-  - file: Sports_Desk/engine/fair_value.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: Sports_Desk/ingestors/odds_fetcher.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: Sports_Desk/ingestors/odds_watcher.py
-    pattern: .
-    claim: primary code present at the registered path
+  requires_files:
+  - Sports_Desk/engine/fair_value.py
+  - Sports_Desk/ingestors/odds_fetcher.py
+  - Sports_Desk/ingestors/odds_watcher.py
 ---
 # Item 1: Sports Odds Ingestion & Fair-Value (No-Vig) Engine
 

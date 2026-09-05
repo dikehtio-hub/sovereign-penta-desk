@@ -26,7 +26,7 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -160,6 +160,10 @@ DESKS: tuple[DeskSpec, ...] = (
          "Sports_Desk/data/odds_drops/, results_drops/"),
         asserts=({"file": "Sports_Desk/engine/fair_value.py", "pattern": r"def ",
                   "claim": "the pure devigging engine is at its registered path"},),
+        parameters=(
+            {"name": "kelly_fraction", "value": 0.25, "file": "Sports_Desk/engine/fair_value.py",
+             "pattern": r"def kelly_fraction\(fair_prob: float, offered_odds: float, fraction: float = ([0-9.]+)\)"},
+        ),
     ),
     DeskSpec(
         3, "Cross-Market Desk", "Cross_Market_Desk",
@@ -182,6 +186,8 @@ DESKS: tuple[DeskSpec, ...] = (
             {"name": "lead_lag_latency_minutes_crypto", "value": 5.0,
              "file": "cross_market/experiments/lead_lag_tier2b.meta.json",
              "pattern": r'"latency_minutes_crypto":\s*([0-9.]+)'},
+            {"name": "kelly_fraction", "value": 0.25, "file": "cross_market/latency_sniper.py",
+             "pattern": r"^KELLY_FRACTION = ([0-9.]+)"},
         ),
     ),
     DeskSpec(
@@ -216,9 +222,12 @@ DESKS: tuple[DeskSpec, ...] = (
              "file": "Tax_Reserve_Agent/config.yaml", "pattern": r"^\s*federal_ordinary_rate:\s*([0-9.]+)"},
             {"name": "state_tax_rate_nj", "value": 0.0637,
              "file": "Tax_Reserve_Agent/config.yaml", "pattern": r"^\s*state_tax_rate:\s*([0-9.]+)"},
+            {"name": "kelly_fraction", "value": 0.25, "file": "Tax_Reserve_Agent/interfaces/monarch_hook.py",
+             "pattern": r"^KELLY_FRACTION = ([0-9.]+)"},
         ),
     ),
 )
+# `kelly_fraction` is declared on Desks 2, 3 and 5 on purpose: lint C3 checks the three files agree.
 
 # Items whose registry block carries no Primary Code line.
 ITEM_DESK_FALLBACK = {7: 2, 10: 3, 11: 4, 12: 3, 13: 3}
@@ -241,8 +250,20 @@ def desk_filename(d: DeskSpec) -> str:
     return f"Desk_{d.number:02d}_{d.slug}.md"
 
 
+# Round 97 ruling 11: hand-curated slugs where six title words truncate awkwardly.
+SLUG_OVERRIDES: dict[int, str] = {
+    4: "Section_1256_Futures_Tax_60_40",
+    19: "Multi_Desk_Monte_Carlo_Risk_Of_Ruin",
+}
+
+
 def item_filename(item: ItemSpec) -> str:
-    return f"Item_{item.number:02d}_{slugify(item.title)}.md"
+    return f"Item_{item.number:02d}_{SLUG_OVERRIDES.get(item.number) or slugify(item.title)}.md"
+
+
+def registry_mtime(registry: Path) -> datetime:
+    """Round 97 ruling 12: the default generated.at is the registry's mtime, so --force is byte-idempotent."""
+    return datetime.fromtimestamp(registry.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
 
 
 # ---------------------------------------------------------------- rulings
@@ -260,18 +281,19 @@ class RulingSpec:
     ratified: bool                  # True -> verified by Antigravity
     asserts: tuple[dict[str, str], ...] = ()
     status: str = "stable"
+    ratified_at: str | None = None  # the ratifying commit's instant (Round 97 ruling 6c), else the seed time
 
 
 RULINGS: tuple[RulingSpec, ...] = (
     RulingSpec(
-        "R1", "R1 - text not recorded in the repository",
-        "Referenced as part of the R1-R6 series; no ruling text exists in AGENTS.md, COMMANDS.txt, any "
-        "module docstring or any commit message at ec98342. Placeholder until Antigravity supplies the text.",
+        "R1", "R1 - never issued (deprecated placeholder)",
+        "Part of the R1-R6 numbering but never issued: no ruling text exists in AGENTS.md, COMMANDS.txt, any "
+        "module docstring or any commit message. Confirmed by Antigravity in Round 97; kept so the numbering has a home.",
         "The R1-R6 numbering is used across Rounds 88-93 (R2, R4, R6 are cited by commit). A whole-word search "
-        "of the handoff log, the command references, the module docstrings and `git log` at ec98342 finds no "
-        "definition of R1. This page exists so the numbering has a home and so lint can see the hole.\n\n"
-        "**Action**: Antigravity to supply the text; on receipt this page is rewritten and `verified` is appended.",
-        3, (12, 13), None, None, False, status="draft",
+        "of the handoff log, the command references, the module docstrings and `git log` at ec98342 found no "
+        "definition of R1, and Antigravity confirmed in Round 97 that none was issued. This page is a deprecated "
+        "historical placeholder: nothing cites it, and nothing should.",
+        3, (12, 13), 97, None, False, status="deprecated",
     ),
     RulingSpec(
         "R2", "R2 - record the CLOB around a scheduled print",
@@ -285,14 +307,15 @@ RULINGS: tuple[RulingSpec, ...] = (
         3, (12,), 93, "49f85f8", True,
         asserts=({"file": "cross_market/latency_sniper.py", "pattern": r"def record_loop",
                   "claim": "the recording loop exists"},),
+        ratified_at="2026-09-05T18:13:11Z",
     ),
     RulingSpec(
-        "R3", "R3 - text not recorded in the repository",
-        "Referenced as part of the R1-R6 series; no ruling text exists in AGENTS.md, COMMANDS.txt, any "
-        "module docstring or any commit message at ec98342. Placeholder until Antigravity supplies the text.",
-        "As for R1: the number is part of the series but no definition survives in the repository. "
-        "**Action**: Antigravity to supply the text; on receipt this page is rewritten and `verified` is appended.",
-        3, (12, 13), None, None, False, status="draft",
+        "R3", "R3 - never issued (deprecated placeholder)",
+        "Part of the R1-R6 numbering but never issued: no ruling text exists anywhere in the repository. "
+        "Confirmed by Antigravity in Round 97; kept so the numbering has a home.",
+        "As for R1: the number is part of the series but no definition exists, and Antigravity confirmed in Round 97 "
+        "that none was issued. Deprecated historical placeholder.",
+        3, (12, 13), 97, None, False, status="deprecated",
     ),
     RulingSpec(
         "R4", "R4 - neg_risk books skip the NO side",
@@ -305,6 +328,7 @@ RULINGS: tuple[RulingSpec, ...] = (
         3, (12,), 88, "da48cf3", True,
         asserts=({"file": "cross_market/latency_sniper.py", "pattern": r"neg_risk",
                   "claim": "the neg_risk field is read and acted on"},),
+        ratified_at="2026-09-05T17:15:05Z",
     ),
     RulingSpec(
         "R5", "R5 - record the rewards pool rate (pending)",
@@ -330,6 +354,7 @@ RULINGS: tuple[RulingSpec, ...] = (
         3, (13,), 91, "fe40a1a", True,
         asserts=({"file": "cross_market/amm_rewards.py", "pattern": r"def book_q",
                   "claim": "book_q exists"},),
+        ratified_at="2026-09-05T17:48:20Z",
     ),
     RulingSpec(
         "R95", "R95 - Ratification of the knowledge layer (R95-A to R95-G)",
@@ -348,7 +373,8 @@ RULINGS: tuple[RulingSpec, ...] = (
         "- **R95-F Journal debrief**: paper receipts only (paper:1); checks against the Tax Reserve Agent after-tax "
         "hurdle and Risk Sentinel drawdowns.\n"
         "- **R95-G Module 23**: the knowledge/ package is Master Module 23.",
-        3, tuple(range(1, 21)), 96, None, True,
+        3, tuple(range(1, 21)), 96, "ea63111", True,
+        ratified_at="2026-09-05T20:10:31Z",
     ),
 )
 
@@ -407,12 +433,12 @@ def build_item_page(item: ItemSpec, desks: dict[int, DeskSpec], vault: Path, dev
     body += [f"- [[{ruling_filename(r)[:-3]}|{r.title}]]" for r in rulings]
     body.append("")
 
-    asserts = [{"file": c, "pattern": r".", "claim": "primary code present at the registered path"}
-               for c in code if (dev_root / c).is_file()]
+    # Round 97 ruling 10: a file-exists check is `dev.requires_files`, not a "." regex.
+    requires = [c for c in code if (dev_root / c).is_file()]
     dev: dict[str, Any] = {"desk": desk.number, "item": item.number, "tier": item.tier,
                            "registry_checked": item.checked}
-    if asserts:
-        dev["asserts"] = asserts
+    if requires:
+        dev["requires_files"] = requires
     meta = make_meta(
         "Item", f"Item {item.number}: {item.title.title()}",
         (what.split(". ")[0].rstrip(".") + ".")[:300],
@@ -436,6 +462,11 @@ def build_desk_page(d: DeskSpec, items: list[ItemSpec], vault: Path, dev_root: P
              f" · {'deployed' if i.checked else 'roadmap'}" for i in mine] or ["- (none in the registry)"]
     body += ["", "## Rulings", ""]
     body += [f"- [[{ruling_filename(r)[:-3]}|{r.title}]]" for r in rulings]
+    if d.number == 3:
+        body += ["", "## Compiled pages (Phase 2 adapters)", "",
+                 "- [[experiments_register|Experiments register]] - pre-registrations and verdicts",
+                 "- [[btc_macro_regime|BTC macro regime]] - lead-lag classification history",
+                 "- [[latency_decay|Latency decay across events]] - post-print depth survival per event"]
     body += ["", "## Other desks", ""]
     body += [f"- [[{desk_filename(o)[:-3]}|Desk {o.number}: {o.name}]]" for o in DESKS if o.number != d.number]
     body += ["", "## Related", "", "- [[Monarch_Hub|Monarch Hub]] (exporter-owned dashboard index)", ""]
@@ -483,7 +514,7 @@ def build_ruling_page(r: RulingSpec, desks: dict[int, DeskSpec], items: list[Ite
         dev["asserts"] = a
     extra: dict[str, Any] = {}
     if r.ratified:
-        extra["verified"] = [{"by": ANTIGRAVITY, "at": iso(at)}]
+        extra["verified"] = [{"by": ANTIGRAVITY, "at": r.ratified_at or iso(at)}]
     meta = make_meta("Ruling", r.title, r.description,
                      tags=["ruling", f"desk-{r.desk}", r.rid.lower()], generated_by=by, at=at,
                      status=r.status, sources=sources, dev=dev, **extra)
@@ -516,7 +547,7 @@ def build_all(items: list[ItemSpec], vault: Path, dev_root: Path, registry: Path
 
 def seed(vault: Path, dev_root: Path, registry: Path, *, at: datetime | None = None,
          by: str = GENERATED_BY, force: bool = False, dry_run: bool = False) -> SeedReport:
-    at = at or now_utc()
+    at = at or registry_mtime(registry)
     items = parse_registry(registry.read_text(encoding="utf-8"))
     report = SeedReport()
     for page in build_all(items, vault, dev_root, registry, at, by):
@@ -534,7 +565,7 @@ def seed(vault: Path, dev_root: Path, registry: Path, *, at: datetime | None = N
         n_items = sum(1 for _ in items)
         report.log = append_log(
             vault, "Seed",
-            f"Round 96 seed from the Top 20 registry: {len(report.written)} page(s) written, "
+            f"seed from the Top 20 registry (generated.at {iso(at)}): {len(report.written)} page(s) written, "
             f"{len(report.skipped)} kept ({len(DESKS)} desks, {n_items} items, {len(RULINGS)} rulings); "
             f"[index](index.md) rebuilt.", when=at).name
     return report
@@ -548,7 +579,7 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap.add_argument("--registry", type=Path, default=None, help=f"default <dev-root>/{REGISTRY_NAME}")
     ap.add_argument("--force", action="store_true", help="rewrite pages that already exist")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--at", default=None, help="ISO 8601 instant for generated.at (default now)")
+    ap.add_argument("--at", default=None, help="ISO 8601 instant for generated.at (default: the registry file's mtime)")
     args = ap.parse_args(argv)
 
     if halted(args.dev_root):

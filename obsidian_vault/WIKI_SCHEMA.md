@@ -5,8 +5,11 @@ description: How the DEV trading wiki is laid out, what a page must carry, who m
 tags: [constitution, schema, okf, round-96]
 generated:
   by: claude-code/fable-5.1
-  at: 2026-09-05T20:10:00Z
-status: draft   # becomes stable, with a verified block, only when Antigravity has read THIS text (s.2)
+  at: 2026-09-05T20:45:00Z
+verified:
+  - by: antigravity/architect
+    at: 2026-09-05T20:30:00Z   # Round 97 ruling 8: the constitution TEXT was read and approved
+status: stable
 sources:
   - id: round-95-blueprint
     resource: LLM_WIKI_BLUEPRINT.md
@@ -18,8 +21,8 @@ sources:
     resource: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
     title: llm-wiki (gist)
 dev:
-  round: 96
-  ruling_ids: [R95-A, R95-B, R95-C, R95-D, R95-E, R95-F, R95-G]
+  round: 97
+  ruling_ids: [R95-A, R95-B, R95-C, R95-D, R95-E, R95-F, R95-G, R96-1, R96-2, R96-3, R96-4, R96-5, R96-6, R96-7, R96-8, R96-9, R96-10, R96-11, R96-12, R96-13]
 ---
 
 # WIKI_SCHEMA: the knowledge layer constitution
@@ -83,7 +86,8 @@ Every non-reserved `.md` under the owned folders starts with a YAML block.
   and may carry `id`, `title`, `author`, `last_modified`.
 - **DEV namespace** `dev:` (all optional): `desk` (1-5), `item` (1-20),
   `round`, `ruling_id`, `tier`, `registry_checked`, `supersedes`,
-  `asserts`, `parameters`, `window`, `evidence`.
+  `asserts`, `parameters`, `requires_files`, `window`, `token_id`,
+  `tokens`, `history`, `evidence`.
 
 ```yaml
 ---
@@ -107,11 +111,24 @@ dev:
 
 `dev.asserts[]` = `{file, pattern, claim}`: the page claims something about
 a source file and names the regex that must still match (lint C1).
-`dev.parameters[]` = `{name, value, file, pattern}`: the page states a
-number; the regex's first group must still equal it in the owning file
-(lint C1; commas, `$` and spaces are ignored in the comparison).
+`dev.parameters[]` = `{name, value, file, pattern | json_path}`: the page
+states a number; the regex's first group, or the value at the dotted
+`json_path` when the owning file is JSON, must still equal it (lint C1). Use
+`json_path` for JSON sources: the same key can occur in several blocks (the
+Tier 2b registration has `series.readiness.min_points` 200 and
+`bars.min_points` 60). Values compare as floats when both sides parse as numbers after
+stripping commas, `$` and spaces, else as normalised strings (Round 97
+ruling 2). The same `name` on two pages must carry the same value (lint C3):
+`kelly_fraction` is declared on Desks 2, 3 and 5 for exactly that reason.
+`dev.requires_files[]`: paths that must exist (lint C1); the Phase 1 idiom
+of an assert with pattern `.` is retired (ruling 10).
 `dev.window` = `{start, end}`: a registration window; the page may not be
 written inside it (`write_page` refuses; lint C5 reports).
+`dev.token_id` / `dev.tokens[]`: Polymarket YES token ids the page is bound
+to; lint C2 checks them against the newest drops.
+`dev.history[]`: machine-managed rows on Regime and Concept pages (one per
+verdict or per event x market); the body table is rendered from it, never
+hand-edited.
 
 ## 4. Page types and folders
 
@@ -157,7 +174,10 @@ written only by `knowledge.pages.append_log`:
 ```
 
 A human edit to `log.md` is a lint error. `index.md` is regenerated, never
-hand-edited.
+hand-edited. A nested `index.md` (OKF allows one per folder) follows the same
+grammar; `raw/index.md` is the manifest of federated raw streams, with paths
+relative to `raw/`, and may carry `> note` lines for streams that are
+expected but not present on the current machine.
 
 ## 6. The two DEV rules on top of OKF
 
@@ -207,16 +227,18 @@ The debrief places no orders and changes no threshold.
 
 | Code | Check |
 |---|---|
-| L1 | frontmatter parses; `type` present; OKF shapes hold |
-| L2 | `index.md` / `log.md` on the reserved formats; index paths exist; every page listed; log newest first |
-| L3 | orphan: no inbound link from another page (`index.md` does not count) |
+| L1 | frontmatter parses; `type` present; OKF shapes hold. The constitution is in scope (ruling 5) |
+| L2 | root `index.md` / `log.md` on the reserved formats; index paths exist; every page listed (the constitution is not a page); log newest first; every nested `index.md` (e.g. `raw/index.md`) format-checked with paths resolved against its own folder |
+| L3 | orphan: no inbound link from another page (`index.md` does not count; the constitution is exempt) |
 | L4 | `stale_after` passed and not `deprecated` |
 | L5 | a local `sources[].resource` no longer on disk |
-| C1 | `dev.asserts` pattern no longer matches, or `dev.parameters` value drifted from its file |
-| C5 | a page modified inside its own `dev.window` |
-| C2 C3 C4 C6 | Phase 2-3: expired market tokens, cross-desk parameter conflicts, unhedged tax liability, the weekly LLM contradiction pass |
+| C1 | `dev.asserts` pattern no longer matches; `dev.parameters` value drifted (float comparison when both sides parse, ruling 2); `dev.requires_files` entry gone |
+| C2 | a `dev.token_id` / `dev.tokens[]` entry on a non-deprecated page that is absent from the newest macro and sports drops (warning: resolved, delisted, or never listed); a missing drops folder is itself one warning |
+| C3 | the same `dev.parameters[].name` with different values on two or more pages (error) |
+| C5 | `generated.at` inside the page's own `dev.window` is an error; only the file mtime inside it is a warning, because a checkout can do that (ruling 3) |
+| C4 C6 | Phase 3: unhedged tax liability; the weekly LLM contradiction pass |
 
-Lint writes nothing. `--fix-safe` (Phase 2) may only regenerate `index.md`,
+Lint writes nothing. `--fix-safe` (Phase 3) may only regenerate `index.md`,
 append to `log.md`, and set `status: deprecated` on a Market page whose
 token is gone.
 
@@ -230,16 +252,31 @@ token is gone.
   appended before a window in a dated re-registration, never edited inside.
 - a registry, vault or raw path that is missing: refuse, do not create.
 
-## 9. Commands (Phase 1)
+## 9. Commands (Phases 1-2)
 
 ```
 python -m knowledge.seed  [--vault DIR] [--dev-root DIR] [--registry FILE] [--force] [--dry-run] [--at ISO]
-python -m knowledge.lint  [--vault DIR] [--dev-root DIR] [--json]
-python -m unittest knowledge.tests.test_knowledge          (Master Module 23)
+python -m knowledge.lint  [--vault DIR] [--dev-root DIR] [--drops DIR] [--json]
+python -m knowledge.raw_manifest [--dry-run]                       -> raw/index.md
+python -m knowledge.ingest.experiments [--dir DIR] [--force]       -> wiki/experiments/ (pre-registrations)
+python -m knowledge.ingest.lead_lag --result verdict.json --tier 1|2|2b
+                                                                   -> wiki/experiments/ verdict + wiki/regimes/btc_macro_regime.md
+python -m knowledge.ingest.clob --result curve.json --event fomc_2026-09-16
+                                                                   -> wiki/profiles/, wiki/events/, wiki/concepts/latency_decay.md
+python -m unittest knowledge.tests.test_knowledge                  (Master Module 23)
 ```
 
 The seed skips pages that already exist unless `--force`, so a re-run never
-clobbers a page an ingest or a human improved.
+clobbers a page an ingest or a human improved. Its default `generated.at` is
+the registry file's mtime (ruling 12), so `--force` on an unchanged registry
+is byte-idempotent. Every ingest command reads an EXISTING `--json` output
+or registration file; none imports a desk module or opens a socket.
+
+Primed for the calendar: after the Tier 1 verdict (about 2026-09-06T01:39Z)
+run `python -m cross_market.lead_lag --coin BTC --family macro --json > verdict.json`
+then `knowledge.ingest.lead_lag --result verdict.json --tier 1`. After the
+2026-09-16 FOMC drill run the survival curve with `--json > curve.json`
+then `knowledge.ingest.clob --result curve.json --event fomc_2026-09-16`.
 
 ## 10. Amendment
 

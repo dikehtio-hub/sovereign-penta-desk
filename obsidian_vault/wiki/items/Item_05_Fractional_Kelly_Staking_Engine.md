@@ -11,7 +11,7 @@ tags:
 - deployed
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -23,13 +23,9 @@ dev:
   item: 5
   tier: 1
   registry_checked: true
-  asserts:
-  - file: Sports_Desk/engine/fair_value.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: Tax_Reserve_Agent/interfaces/monarch_hook.py
-    pattern: .
-    claim: primary code present at the registered path
+  requires_files:
+  - Sports_Desk/engine/fair_value.py
+  - Tax_Reserve_Agent/interfaces/monarch_hook.py
 ---
 # Item 5: Fractional Kelly Staking Engine
 

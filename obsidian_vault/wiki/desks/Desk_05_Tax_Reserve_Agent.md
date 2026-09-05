@@ -8,7 +8,7 @@ tags:
 - desk-5
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -34,6 +34,10 @@ dev:
     value: 0.0637
     file: Tax_Reserve_Agent/config.yaml
     pattern: ^\s*state_tax_rate:\s*([0-9.]+)
+  - name: kelly_fraction
+    value: 0.25
+    file: Tax_Reserve_Agent/interfaces/monarch_hook.py
+    pattern: ^KELLY_FRACTION = ([0-9.]+)
 ---
 # Desk 5: Tax Reserve Agent
 
@@ -58,7 +62,7 @@ The accountant every desk asks before sizing: lot engine, IRC 1256 60/40, IRC 16
 
 - [[Item_02_Sports_Gambling_Tax_Loss_Deduction_Module|Item 2: Sports Gambling Tax & Loss Deduction Module]] · deployed
 - [[Item_03_Multi_Market_Bankroll_Hurdle_Gating_Hook|Item 3: Multi-Market Bankroll Hurdle & Gating Hook]] · deployed
-- [[Item_04_Section_1256_Futures_Tax_Ingestion_60|Item 4: Section 1256 Futures Tax Ingestion (60/40 Rule)]] · deployed
+- [[Item_04_Section_1256_Futures_Tax_60_40|Item 4: Section 1256 Futures Tax Ingestion (60/40 Rule)]] · deployed
 - [[Item_17_Automated_Tax_Loss_Harvesting_Auto_Executor|Item 17: Automated Tax-Loss Harvesting Auto-Executor]] · deployed
 
 ## Rulings

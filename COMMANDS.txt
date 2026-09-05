@@ -2360,6 +2360,29 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 97 - KNOWLEDGE PHASE 2: CONSTITUTION RATIFIED, INGEST ADAPTERS, RAW MANIFEST, LINT C2/C3 (knowledge/ingest/, knowledge/raw_manifest.py)
+     python -m knowledge.ingest.experiments [--dir cross_market/experiments] [--force] [--at ISO]
+         Pre-registrations -> Experiment pages: *.meta.json bars become dev:parameters (C1 guards them), *.rules.json tokens become
+         dev:tokens (C2) and release_utc-2m..+5m becomes dev:window (write refused inside it; C5). sample files skipped.
+         Maintains wiki/concepts/experiments_register.md (every Experiment page, so none is an orphan).
+     python -m knowledge.ingest.lead_lag --result verdict.json --tier 1|2|2b [--at ISO]
+         `cross_market.lead_lag --json` output -> verdict Experiment page + wiki/regimes/btc_macro_regime.md (dev:history row per
+         verdict; classes insufficient | no-lead | contemporaneous | polymarket-leads | hyperliquid-leads | coincident; Tier 2 vs 2b
+         disagreements listed, never resolved). PRIMED for the Tier 1 verdict ~2026-09-06T01:39Z.
+     python -m knowledge.ingest.clob --result curve.json --event fomc_2026-09-16 [--at ISO]
+         `latency_sniper --survival-curve --json` output -> one Reaction Profile per market (baseline, first change, half, tenth,
+         gone, $-seconds; checkpoint table, series NOT copied), the Event page, and wiki/concepts/latency_decay.md (cross-event
+         table). PRIMED for the 2026-09-16 FOMC drill.
+     python -m knowledge.raw_manifest [--dry-run]
+         raw/index.md: every federated raw stream by desk (OKF index lines, paths relative to raw/); absent streams as `> not present` notes.
+     python -m knowledge.lint [--drops DIR] [--json]
+         NEW C2 (dev:token_id / dev:tokens absent from the newest macro + sports drops -> warning), C3 (same dev:parameters name,
+         different values across pages -> error; kelly_fraction is declared on Desks 2/3/5 for this), C1 float-aware + requires_files,
+         C5 generated.at-in-window = error / mtime-only = warning, WIKI_SCHEMA.md in scope for L1/L4/L5/C1.
+     Seed polish: Item_04_Section_1256_Futures_Tax_60_40.md, Item_19_Multi_Desk_Monte_Carlo_Risk_Of_Ruin.md; rulings verified.at =
+         historical commit instants; R1/R3 deprecated (never issued); --at defaults to the registry mtime (byte-idempotent --force).
+     Tests: python -m unittest knowledge.tests.test_knowledge   (master module 23, 61 tests)
+
      ROUND 96 - KNOWLEDGE LAYER, MASTER MODULE 23: WIKI CONSTITUTION + SEED + LINT (knowledge/, obsidian_vault/WIKI_SCHEMA.md)
      python -m knowledge.seed [--vault DIR] [--dev-root DIR] [--registry FILE] [--force] [--dry-run] [--at ISO]
          Compiles 5 Desk + 20 Item + 7 Ruling pages from the Top 20 registry (read-only) into obsidian_vault\wiki\;
@@ -2754,7 +2777,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (23 modules, 978): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
+     MASTER SUITE (23 modules, 997): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

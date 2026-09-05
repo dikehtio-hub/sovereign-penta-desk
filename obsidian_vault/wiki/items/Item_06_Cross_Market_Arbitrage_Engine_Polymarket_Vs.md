@@ -11,7 +11,7 @@ tags:
 - deployed
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -23,19 +23,11 @@ dev:
   item: 6
   tier: 2
   registry_checked: true
-  asserts:
-  - file: cross_market/hybrid_arb.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: cross_market/matcher.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: cross_market/hud.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: Sports_Desk/interfaces/monarch_shark.py
-    pattern: .
-    claim: primary code present at the registered path
+  requires_files:
+  - cross_market/hybrid_arb.py
+  - cross_market/matcher.py
+  - cross_market/hud.py
+  - Sports_Desk/interfaces/monarch_shark.py
 ---
 # Item 6: Cross-Market Arbitrage Engine (Polymarket Vs Sportsbooks)
 

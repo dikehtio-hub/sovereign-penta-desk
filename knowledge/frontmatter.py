@@ -221,13 +221,15 @@ def _validate_dev(dev: Any) -> list[str]:
         else:
             for i, p in enumerate(dev["parameters"]):
                 if not isinstance(p, dict) or not isinstance(p.get("name"), str) or "value" not in p \
-                        or not isinstance(p.get("file"), str) or not isinstance(p.get("pattern"), str):
-                    issues.append(f"dev.parameters[{i}] needs `name`, `value`, string `file` and `pattern`")
+                        or not isinstance(p.get("file"), str) \
+                        or not (isinstance(p.get("pattern"), str) or isinstance(p.get("json_path"), str)):
+                    issues.append(f"dev.parameters[{i}] needs `name`, `value`, string `file` and `pattern` or `json_path`")
                     continue
-                try:
-                    re.compile(p["pattern"])
-                except re.error as exc:
-                    issues.append(f"dev.parameters[{i}].pattern is not a valid regex: {exc}")
+                if isinstance(p.get("pattern"), str):
+                    try:
+                        re.compile(p["pattern"])
+                    except re.error as exc:
+                        issues.append(f"dev.parameters[{i}].pattern is not a valid regex: {exc}")
     if "window" in dev:
         w = dev["window"]
         if not isinstance(w, dict) or "start" not in w or "end" not in w:
@@ -242,4 +244,13 @@ def _validate_dev(dev: Any) -> list[str]:
     for key in ("desk", "item", "round"):
         if key in dev and not isinstance(dev[key], int):
             issues.append(f"dev.{key} must be an integer")
+    for key in ("requires_files", "tokens"):
+        if key in dev:
+            v = dev[key]
+            if not isinstance(v, list) or not all(isinstance(x, str) and x for x in v):
+                issues.append(f"dev.{key} must be a list of non-empty strings")
+    if "token_id" in dev and not isinstance(dev["token_id"], str):
+        issues.append("dev.token_id must be a string")
+    if "history" in dev and (not isinstance(dev["history"], list) or not all(isinstance(x, dict) for x in dev["history"])):
+        issues.append("dev.history must be a list of mappings")
     return issues

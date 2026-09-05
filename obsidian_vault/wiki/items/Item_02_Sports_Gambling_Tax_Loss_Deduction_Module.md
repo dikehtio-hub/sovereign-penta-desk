@@ -13,7 +13,7 @@ tags:
 - deployed
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -25,13 +25,9 @@ dev:
   item: 2
   tier: 1
   registry_checked: true
-  asserts:
-  - file: Tax_Reserve_Agent/engine/gambling_tax.py
-    pattern: .
-    claim: primary code present at the registered path
-  - file: Tax_Reserve_Agent/ingestors/sports_betting.py
-    pattern: .
-    claim: primary code present at the registered path
+  requires_files:
+  - Tax_Reserve_Agent/engine/gambling_tax.py
+  - Tax_Reserve_Agent/ingestors/sports_betting.py
 ---
 # Item 2: Sports Gambling Tax & Loss Deduction Module
 

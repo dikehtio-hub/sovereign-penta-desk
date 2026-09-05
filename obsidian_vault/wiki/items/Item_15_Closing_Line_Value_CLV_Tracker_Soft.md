@@ -11,7 +11,7 @@ tags:
 - deployed
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -23,10 +23,8 @@ dev:
   item: 15
   tier: 3
   registry_checked: true
-  asserts:
-  - file: Sports_Desk/interfaces/monarch_shark.py
-    pattern: .
-    claim: primary code present at the registered path
+  requires_files:
+  - Sports_Desk/interfaces/monarch_shark.py
 ---
 # Item 15: Closing Line Value (Clv) Tracker & Soft-Book Health Monitor
 

@@ -1,0 +1,216 @@
+"""Lead-lag verdict -> Experiment page + Regime history.
+
+    python -m cross_market.lead_lag --coin BTC --family macro --json > verdict.json
+    python -m knowledge.ingest.lead_lag --result verdict.json --tier 1 [--at ISO]
+
+Consumes the JSON that cross_market.lead_lag prints: events, price_points,
+sufficient, reason, best_lag_minutes, correlation, n, interpretation, curve[],
+latency_minutes, family, subfamily, subfamily_from. Writes:
+
+  wiki/experiments/lead_lag_<tier>_<scope>_<stamp>.md   the verdict, as measured
+  wiki/regimes/btc_macro_regime.md                       one history row per verdict,
+                                                          current class per tier
+
+CLASSIFICATION (fixed vocabulary, WIKI_SCHEMA.md s.7):
+  insufficient       the module could not score (events or points under the bar)
+  no-lead            |corr| at the peak below min_abs_corr
+  contemporaneous    peak |lag| inside the poll interval: repricing, not a lead
+  polymarket-leads   peak lag > 0 above the bar
+  hyperliquid-leads  peak lag < 0 above the bar
+  coincident         peak lag == 0 above the bar, no latency rule in force
+
+Where Tier 2 and Tier 2b disagree the disagreement is a finding, not a tie
+to break: both rows stay in the history and the Regime page says so.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from .. import EXIT_OK, GENERATED_BY
+from ..pages import Page, append_log, iso, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from . import add_common_args, at_from, guard, rel_to
+from .experiments import update_register
+
+REGIME_FILE = "btc_macro_regime"
+DEFAULT_MIN_ABS_CORR = 0.2
+CLASSES = ("insufficient", "no-lead", "contemporaneous", "polymarket-leads", "hyperliquid-leads", "coincident")
+
+
+def classify(result: dict[str, Any], min_abs_corr: float = DEFAULT_MIN_ABS_CORR) -> str:
+    if not result.get("sufficient"):
+        return "insufficient"
+    corr = result.get("correlation")
+    tau = result.get("best_lag_minutes")
+    if corr is None or tau is None:
+        return "insufficient"
+    if abs(float(corr)) < min_abs_corr:
+        return "no-lead"
+    latency = float(result.get("latency_minutes") or 0.0)
+    if latency > 0 and abs(int(tau)) <= latency:
+        return "contemporaneous"
+    if int(tau) > 0:
+        return "polymarket-leads"
+    if int(tau) < 0:
+        return "hyperliquid-leads"
+    return "coincident"
+
+
+def scope_of(result: dict[str, Any]) -> str:
+    fam = str(result.get("family") or "all")
+    sub = result.get("subfamily")
+    return f"{fam}_{sub}" if sub else fam
+
+
+def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier: str, source: str,
+                    at: datetime | None = None, by: str = GENERATED_BY,
+                    min_abs_corr: float = DEFAULT_MIN_ABS_CORR) -> Page:
+    at = at or now_utc()
+    cls = classify(result, min_abs_corr)
+    scope = scope_of(result)
+    stamp = at.strftime("%Y%m%dT%H%MZ")
+    title = f"Lead-lag verdict: Tier {tier}, {scope.replace('_', ' / ')}, {at.strftime('%Y-%m-%d %H:%M')}Z"
+    corr = result.get("correlation")
+    tau = result.get("best_lag_minutes")
+    body = [f"# {title}", "", f"> Class: **{cls}** · {result.get('interpretation') or result.get('reason') or ''}".rstrip(), "",
+            "## Verdict", "", "| Field | Value |", "|---|---|",
+            f"| tier | {tier} |", f"| family / subfamily | {result.get('family')} / {result.get('subfamily') or '-'} |",
+            f"| membership | {result.get('subfamily_from') or 'label'} |",
+            f"| sufficient | {result.get('sufficient')} |",
+            f"| probability shifts (events) | {result.get('events')} |",
+            f"| price points | {result.get('price_points')} |",
+            f"| best lag (min, + = Polymarket leads) | {_lag(tau)} |",
+            f"| correlation at peak | {_corr(corr)} |",
+            f"| n at peak | {result.get('n')} |",
+            f"| latency rule (min) | {result.get('latency_minutes')} |",
+            f"| bar (min abs corr) | {min_abs_corr} |",
+            f"| classification | **{cls}** |", ""]
+    if result.get("reason"):
+        body += ["## Reason", "", str(result["reason"]), ""]
+    curve = [c for c in (result.get("curve") or []) if isinstance(c, dict) and c.get("correlation") is not None]
+    if curve:
+        top = sorted(curve, key=lambda c: -abs(float(c["correlation"])))[:5]
+        body += ["## Strongest lags", "", "| Lag (min) | Corr | n |", "|---|---|---|"]
+        body += [f"| {int(c['lag_minutes']):+d} | {float(c['correlation']):+.3f} | {c.get('n')} |" for c in top]
+        body.append("")
+    body += ["## Related", "", f"- [[{REGIME_FILE}|BTC macro regime]]",
+             "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
+             "- [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]", ""]
+    dev: dict[str, Any] = {
+        "desk": 3, "item": 18, "kind": "lead_lag_verdict", "tier": str(tier),
+        "family": result.get("family"), "subfamily": result.get("subfamily"),
+        "membership": result.get("subfamily_from") or "label",
+        "sufficient": bool(result.get("sufficient")), "best_lag_minutes": tau, "correlation": corr,
+        "n": result.get("n"), "events": result.get("events"), "price_points": result.get("price_points"),
+        "latency_minutes": result.get("latency_minutes"), "min_abs_corr": min_abs_corr, "classification": cls,
+    }
+    meta = make_meta("Experiment", title,
+                     f"Tier {tier} lead-lag verdict for {scope.replace('_', ' / ')}: {cls}.",
+                     tags=["experiment", "desk-3", "item-18", "lead-lag", "verdict", f"tier-{tier}", cls],
+                     generated_by=by, at=at, status="draft",
+                     sources=[{"id": "verdict-json", "resource": source, "title": "cross_market.lead_lag --json output",
+                               "author": "process:cross_market.lead_lag"}],
+                     dev=dev)
+    return Page(page_path(vault, "Experiment", f"lead_lag_tier{tier}_{scope}_{stamp}"), meta, "\n".join(body))
+
+
+def _corr(v) -> str:
+    return "-" if v is None else f"{float(v):+.3f}"
+
+
+def _lag(v) -> str:
+    return "-" if v is None else str(v)
+
+
+def _render_regime(history: list[dict[str, Any]]) -> str:
+    latest: dict[str, dict[str, Any]] = {}
+    for row in history:  # history is chronological; the last row per (tier, scope) wins
+        latest[f"{row.get('tier')}|{row.get('scope')}"] = row
+    lines = ["# BTC macro regime", "",
+             "> One row per lead-lag verdict. The class vocabulary is fixed in WIKI_SCHEMA.md s.7; where Tier 2 and",
+             "> Tier 2b disagree for the same scope, that disagreement is the finding (the dual-tagged markets carry it).", "",
+             "## Current, per tier and scope", "", "| Tier | Scope | Membership | Class | Lag (min) | Corr | n | As of |", "|---|---|---|---|---|---|---|---|"]
+    for key in sorted(latest):
+        r = latest[key]
+        lines.append(f"| {r.get('tier')} | {r.get('scope')} | {r.get('membership')} | **{r.get('class')}** | "
+                     f"{_lag(r.get('lag'))} | {_corr(r.get('corr'))} | {r.get('n')} | {r.get('at')} |")
+    lines += ["", "## Disagreements", ""]
+    by_scope: dict[str, dict[str, str]] = {}
+    for key, r in latest.items():
+        by_scope.setdefault(str(r.get("scope")), {})[str(r.get("tier"))] = str(r.get("class"))
+    dis = [(s, t) for s, t in by_scope.items() if len(set(t.values())) > 1]
+    lines += [f"- **{s}**: " + ", ".join(f"Tier {k} says {v}" for k, v in sorted(t.items())) for s, t in dis] or ["- none"]
+    lines += ["", "## History", "", "| At | Tier | Scope | Membership | Class | Lag | Corr | n | Verdict page |", "|---|---|---|---|---|---|---|---|---|"]
+    for r in history:
+        lines.append(f"| {r.get('at')} | {r.get('tier')} | {r.get('scope')} | {r.get('membership')} | {r.get('class')} | "
+                     f"{_lag(r.get('lag'))} | {_corr(r.get('corr'))} | {r.get('n')} | [[{r.get('page')}]] |")
+    lines += ["", "## Related", "", "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
+              "- [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]", ""]
+    return "\n".join(lines)
+
+
+def update_regime(vault: Path, verdict: Page, *, at: datetime, by: str = GENERATED_BY) -> Page:
+    path = page_path(vault, "Regime", REGIME_FILE)
+    existing = load_page(path)
+    history: list[dict[str, Any]] = []
+    if existing is not None:
+        dev = existing.meta.get("dev") or {}
+        history = [dict(r) for r in dev.get("history", []) if isinstance(r, dict)]
+    d = verdict.meta["dev"]
+    history.append({"at": iso(at), "tier": d["tier"], "scope": scope_of(d), "membership": d["membership"],
+                    "class": d["classification"], "lag": d["best_lag_minutes"], "corr": d["correlation"], "n": d["n"],
+                    "page": verdict.path.stem})
+    current = {f"tier {r['tier']} {r['scope']}": r["class"] for r in history}
+    meta = make_meta("Regime", "BTC macro regime",
+                     "Rolling classification of the Polymarket macro / Hyperliquid BTC lead-lag verdicts, per tier and scope, with the full history.",
+                     tags=["regime", "desk-3", "item-18", "lead-lag"], generated_by=by, at=at, status="draft",
+                     sources=[{"id": "verdicts", "resource": "obsidian_vault/wiki/experiments",
+                               "title": "lead-lag verdict pages", "author": by}],
+                     dev={"desk": 3, "item": 18, "current": current, "classes": list(CLASSES), "history": history})
+    return Page(path, meta, _render_regime(history))
+
+
+def ingest_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier: str, source: str,
+                   at: datetime | None = None, by: str = GENERATED_BY) -> tuple[Page, Page]:
+    at = at or now_utc()
+    verdict = compile_verdict(result, vault, dev_root, tier=tier, source=source, at=at, by=by)
+    write_page(verdict, vault, now=at)
+    regime = update_regime(vault, verdict, at=at, by=by)
+    write_page(regime, vault, now=at)
+    write_page(update_register(vault, at=at, by=by), vault, now=at)
+    write_index(vault, load_pages(vault))
+    append_log(vault, "Ingest", f"lead-lag Tier {tier} verdict ({scope_of(result)}): **{verdict.meta['dev']['classification']}** -> "
+               f"[[{verdict.path.stem}]]; [[{REGIME_FILE}]] history now {len(regime.meta['dev']['history'])} row(s).", when=at)
+    return verdict, regime
+
+
+def main(argv: list[str] | None = None, out=None) -> int:
+    out = out or sys.stdout
+    ap = argparse.ArgumentParser(prog="knowledge.ingest.lead_lag", description=__doc__.split("\n\n")[0])
+    add_common_args(ap)
+    ap.add_argument("--result", type=Path, required=True, help="file holding `cross_market.lead_lag --json` output")
+    ap.add_argument("--tier", required=True, choices=["1", "2", "2b"])
+    args = ap.parse_args(argv)
+    code = guard(args, out)
+    if code is not None:
+        return code
+    if not args.result.is_file():
+        print(f"[REFUSE] result file not found: {args.result} (exit 3)", file=out)
+        return 3
+    result = json.loads(args.result.read_text(encoding="utf-8"))
+    if not isinstance(result, dict) or "sufficient" not in result:
+        print("[REFUSE] not a lead_lag verdict JSON (no `sufficient` key) (exit 3)", file=out)
+        return 3
+    verdict, regime = ingest_verdict(result, args.vault, args.dev_root, tier=args.tier,
+                                     source=rel_to(args.result, args.dev_root), at=at_from(args))
+    print(f"[WRITE] {verdict.path.relative_to(args.vault).as_posix()}  class={verdict.meta['dev']['classification']}", file=out)
+    print(f"[WRITE] {regime.path.relative_to(args.vault).as_posix()}  history={len(regime.meta['dev']['history'])}", file=out)
+    return EXIT_OK
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

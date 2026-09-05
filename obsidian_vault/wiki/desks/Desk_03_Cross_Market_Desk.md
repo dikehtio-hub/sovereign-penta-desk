@@ -9,7 +9,7 @@ tags:
 - desk-3
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: draft
 sources:
 - id: top20-registry
@@ -35,6 +35,10 @@ dev:
     value: 5.0
     file: cross_market/experiments/lead_lag_tier2b.meta.json
     pattern: '"latency_minutes_crypto":\s*([0-9.]+)'
+  - name: kelly_fraction
+    value: 0.25
+    file: cross_market/latency_sniper.py
+    pattern: ^KELLY_FRACTION = ([0-9.]+)
 ---
 # Desk 3: Cross-Market Desk
 
@@ -70,17 +74,23 @@ Cross-venue desk: Polymarket vs sportsbook dutching arb, Titan correlator and le
 - [[Item_12_Polymarket_Breaking_News_Oracle_Latency_Sniper|Item 12: Polymarket Breaking News & Oracle Latency Sniper]] · roadmap
 - [[Item_13_Polymarket_Automated_Market_Maker_Rewards_Bot|Item 13: Polymarket Automated Market Maker & Rewards Bot]] · roadmap
 - [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator (Macro -> Crypto -> Predictions)]] · deployed
-- [[Item_19_Multi_Desk_Monte_Carlo_Risk_Of|Item 19: Multi-Desk Monte Carlo Risk-Of-Ruin Simulator]] · deployed
+- [[Item_19_Multi_Desk_Monte_Carlo_Risk_Of_Ruin|Item 19: Multi-Desk Monte Carlo Risk-Of-Ruin Simulator]] · deployed
 
 ## Rulings
 
-- [[Ruling_R01|R1 - text not recorded in the repository]]
+- [[Ruling_R01|R1 - never issued (deprecated placeholder)]]
 - [[Ruling_R02|R2 - record the CLOB around a scheduled print]]
-- [[Ruling_R03|R3 - text not recorded in the repository]]
+- [[Ruling_R03|R3 - never issued (deprecated placeholder)]]
 - [[Ruling_R04|R4 - neg_risk books skip the NO side]]
 - [[Ruling_R05|R5 - record the rewards pool rate (pending)]]
 - [[Ruling_R06|R6 - competitor Q is measured from recorded books]]
 - [[Ruling_R95|R95 - Ratification of the knowledge layer (R95-A to R95-G)]]
+
+## Compiled pages (Phase 2 adapters)
+
+- [[experiments_register|Experiments register]] - pre-registrations and verdicts
+- [[btc_macro_regime|BTC macro regime]] - lead-lag classification history
+- [[latency_decay|Latency decay across events]] - post-print depth survival per event
 
 ## Other desks
 

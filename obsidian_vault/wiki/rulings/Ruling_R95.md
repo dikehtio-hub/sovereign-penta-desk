@@ -10,16 +10,19 @@ tags:
 - r95
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:48:24Z'
 status: stable
 verified:
 - by: antigravity/architect
-  at: '2026-09-05T20:05:15Z'
+  at: '2026-09-05T20:10:31Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
   title: DEV handoff log
   author: human:operator
+- id: commit-ea63111
+  resource: git:ea63111
+  title: commit ea63111
 dev:
   desk: 3
   ruling_id: R95
@@ -42,5 +45,5 @@ dev:
 
 ## Provenance
 
-- Round 96
+- Round 96, commit `ea63111`
 - ratified by Antigravity

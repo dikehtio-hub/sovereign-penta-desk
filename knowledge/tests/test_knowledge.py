@@ -76,11 +76,13 @@ class TempVault(unittest.TestCase):
         (self.dev_root / "MASTER_COMMAND_LIST.txt").write_text(FIXTURE_REGISTRY, encoding="utf-8")
         (self.dev_root / "cross_market").mkdir()
         (self.dev_root / "cross_market" / "latency_sniper.py").write_text(
-            "def record_loop():\n    pass\n\nNEG = 'neg_risk'\n", encoding="utf-8")
+            "KELLY_FRACTION = 0.25\n\ndef record_loop():\n    pass\n\nNEG = 'neg_risk'\n", encoding="utf-8")
         (self.dev_root / "cross_market" / "amm_rewards.py").write_text(
             "def book_q():\n    'Ruling R5 pending'\n", encoding="utf-8")
         (self.dev_root / "Sports_Desk" / "engine").mkdir(parents=True)
-        (self.dev_root / "Sports_Desk" / "engine" / "fair_value.py").write_text("def devig(): pass\n", encoding="utf-8")
+        (self.dev_root / "Sports_Desk" / "engine" / "fair_value.py").write_text(
+            "def devig(): pass\n\ndef kelly_fraction(fair_prob: float, offered_odds: float, fraction: float = 0.25) -> float:\n    return 0.0\n",
+            encoding="utf-8")
         (self.dev_root / "quant_trading_lab").mkdir()
         (self.dev_root / "quant_trading_lab" / "CLAUDE.md").write_text(
             "- Single Trade Risk Budget: 1.0% ($1,000)\n- Hard Daily Drawdown Killswitch: $3,500.00 (3.5%)\n",
@@ -234,8 +236,8 @@ class OwnershipTests(TempVault):
 
     def test_extract_links(self):
         links = pages.extract_links("see [[Desk_03_Cross_Market_Desk|Desk 3]] and [[R4#sec]] and [x](wiki/a.md#h) "
-                                    "and [ext](https://example.com)")
-        self.assertEqual(links, {"Desk_03_Cross_Market_Desk", "R4", "wiki/a.md"})
+                                    "and [ext](https://example.com) and | [[in_table\\|alias]] |")
+        self.assertEqual(links, {"Desk_03_Cross_Market_Desk", "R4", "wiki/a.md", "in_table"})
 
 
 class IndexAndLogTests(TempVault):
@@ -341,6 +343,36 @@ class LintTests(TempVault):
         self.assertTrue(any("purged" in m for m in l5))
         self.assertTrue(any("missing.json" in m for m in l5))
 
+    def test_c1_numeric_semantics_and_requires_files(self):
+        self.clean_pair()
+        self.write("wiki/concepts/a.md", page_text(title="A", body="# A\n\nsee [[b]]\n", dev={
+            "parameters": [
+                {"name": "k", "value": "0.20", "file": "cross_market/latency_sniper.py", "pattern": r"KELLY_FRACTION = ([0-9.]+)"},  # 0.25 != 0.20
+                {"name": "k2", "value": 0.250, "file": "cross_market/latency_sniper.py", "pattern": r"KELLY_FRACTION = ([0-9.]+)"},  # equal as floats
+                {"name": "txt", "value": "neg_risk", "file": "cross_market/latency_sniper.py", "pattern": r"NEG = '([a-z_]+)'"},  # strings
+            ],
+            "requires_files": ["cross_market/latency_sniper.py", "cross_market/vanished.py"]}))
+        c1 = [x.message for x in self.findings() if x.code == "C1"]
+        self.assertEqual(len(c1), 2, c1)
+        self.assertTrue(any("k drift: page says '0.20'" in m for m in c1))
+        self.assertTrue(any("requires_files[1] missing: cross_market/vanished.py" in m for m in c1))
+        self.assertTrue(lint.values_equal("3,500.00", 3500) and lint.values_equal("0.2", "0.20") and not lint.values_equal("a", "b"))
+
+    def test_c1_json_path_disambiguates_repeated_keys(self):
+        """The real tier2b file: readiness.min_points is 200, bars.min_points is 60. A regex takes the first."""
+        self.clean_pair()
+        (self.dev_root / "reg.json").write_text(json.dumps({"series": {"readiness": {"min_points": 200}}, "bars": {"min_points": 60}}), encoding="utf-8")
+        self.write("wiki/concepts/a.md", page_text(title="A", body="# A\n\nsee [[b]]\n", dev={"parameters": [
+            {"name": "by_path", "value": 60, "file": "reg.json", "json_path": "bars.min_points"},
+            {"name": "by_regex", "value": 60, "file": "reg.json", "pattern": r'"min_points":\s*([0-9.]+)'},
+            {"name": "missing_path", "value": 1, "file": "reg.json", "json_path": "bars.nope"}]}))
+        c1 = [x.message for x in self.findings() if x.code == "C1"]
+        self.assertEqual(len(c1), 2, c1)
+        self.assertTrue(any("by_regex drift: page says 60, reg.json says '200'" in m for m in c1))
+        self.assertTrue(any("missing_path: json_path bars.nope not found" in m for m in c1))
+        self.assertEqual(fm.validate({"type": "X", "dev": {"parameters": [{"name": "n", "value": 1, "file": "f"}]}}),
+                         ["dev.parameters[0] needs `name`, `value`, string `file` and `pattern` or `json_path`"])
+
     def test_c1_assert_and_parameter_drift(self):
         self.clean_pair()
         self.write("wiki/concepts/a.md", page_text(title="A", body="# A\n\nsee [[b]]\n", dev={
@@ -363,19 +395,81 @@ class LintTests(TempVault):
         self.assertTrue(any("risk drift: page says 2.0" in m and "'1.0'" in m for m in c1))
         self.assertTrue(any("absent: pattern not found" in m for m in c1))
 
-    def test_c5_edit_inside_window(self):
+    def test_c5_generated_at_is_an_error_and_mtime_alone_a_warning(self):
         self.clean_pair()
         start, end = NOW - timedelta(minutes=2), NOW + timedelta(minutes=5)
-        p = self.write("wiki/concepts/ev.md", page_text("Event", title="Ev", body="# Ev\n\n[[a]]\n",
-                                                        dev={"window": {"start": pages.iso(start), "end": pages.iso(end)}}))
+        window = {"start": pages.iso(start), "end": pages.iso(end)}
+        # generated.at = NOW is inside the window -> error regardless of mtime
+        p = self.write("wiki/concepts/ev.md", page_text("Event", title="Ev", body="# Ev\n\n[[a]]\n", dev={"window": window}))
         self.write("wiki/concepts/a.md", page_text(title="A", body="# A\n\nsee [[b]] [[ev]]\n"))
         pages.write_index(self.vault)
-        inside = (NOW + timedelta(minutes=1)).timestamp()
-        os.utime(p, (inside, inside))
-        self.assertIn("C5", self.codes())
         before = (start - timedelta(hours=1)).timestamp()
         os.utime(p, (before, before))
+        c5 = [x for x in self.findings() if x.code == "C5"]
+        self.assertEqual([x.severity for x in c5], ["error"])
+        self.assertIn("generated.at", c5[0].message)
+        # generated.at outside, mtime inside -> warning (a checkout can do that)
+        meta = pages.make_meta("Event", "Ev", "d", at=start - timedelta(days=1), dev={"window": window})
+        p.write_text(fm.serialize(meta, "# Ev\n\n[[a]]\n"), encoding="utf-8")
+        inside = (NOW + timedelta(minutes=1)).timestamp()
+        os.utime(p, (inside, inside))
+        c5 = [x for x in self.findings() if x.code == "C5"]
+        self.assertEqual([x.severity for x in c5], ["warning"])
+        self.assertIn("mtime", c5[0].message)
+        # both outside -> nothing
+        os.utime(p, (before, before))
         self.assertNotIn("C5", self.codes())
+
+    def test_constitution_is_linted_for_l1_but_exempt_from_index_and_orphans(self):
+        self.clean_pair()
+        self.write("WIKI_SCHEMA.md", "---\ntitle: no type\n---\n# constitution\n")
+        f = self.findings()
+        self.assertTrue(any(x.code == "L1" and x.path == "WIKI_SCHEMA.md" for x in f))
+        self.assertFalse(any(x.code in ("L2", "L3") and x.path == "WIKI_SCHEMA.md" for x in f))
+        self.write("WIKI_SCHEMA.md", page_text("Constitution", title="C", body="# C\n"))
+        self.assertEqual(self.findings(), [])
+        self.assertEqual([p.path.name for p in pages.load_pages(self.vault)], ["a.md", "b.md"])  # not a page
+
+    def test_c2_expired_tokens_against_newest_drops(self):
+        self.clean_pair()
+        drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
+        drops.mkdir(parents=True)
+        (drops / "polymarket_macro_20260901T000000_000000Z.json").write_text(json.dumps([{"token_id": "OLD"}]), encoding="utf-8")
+        (drops / "polymarket_macro_20260905T000000_000000Z.json").write_text(json.dumps([{"token_id": "LIVE1"}, {"token_id": "LIVE2"}]), encoding="utf-8")
+        (drops / "polymarket_sports_20260905T000000_000000Z.json").write_text(json.dumps([{"token_id": "SPORT1"}]), encoding="utf-8")
+        self.write("wiki/concepts/a.md", page_text(title="A", body="# A\n\nsee [[b]]\n",
+                                                   dev={"tokens": ["LIVE1", "SPORT1", "OLD"], "token_id": "GONE"}))
+        self.write("wiki/concepts/b.md", page_text(title="B", body="# B\n\nsee [[a]]\n", status="deprecated", dev={"token_id": "GONE2"}))
+        c2 = [x for x in self.findings() if x.code == "C2"]
+        self.assertEqual(sorted(m.message.split(" not in")[0] for m in c2), ["token GONE...", "token OLD..."])  # deprecated page skipped
+        self.assertTrue(all(x.severity == "warning" for x in c2))
+        # explicit drops folder that does not exist -> one warning, nothing else
+        c2 = [x for x in lint.lint_vault(self.vault, self.dev_root, now=NOW, drops=self.root / "nope") if x.code == "C2"]
+        self.assertEqual(len(c2), 1)
+        self.assertIn("drops folder not found", c2[0].message)
+
+    def test_c3_cross_desk_parameter_conflicts(self):
+        self.clean_pair()
+        f = self.dev_root / "cross_market" / "latency_sniper.py"
+        self.write("wiki/concepts/a.md", page_text(title="A", body="# A\n\nsee [[b]]\n", dev={"parameters": [
+            {"name": "kelly_fraction", "value": 0.25, "file": "cross_market/latency_sniper.py", "pattern": r"KELLY_FRACTION = ([0-9.]+)"},
+            {"name": "fee_rate", "value": 0.0, "file": "cross_market/latency_sniper.py", "pattern": r"KELLY_FRACTION = ([0-9.]+)"}]}))
+        self.write("wiki/concepts/b.md", page_text(title="B", body="# B\n\nsee [[a]]\n", dev={"parameters": [
+            {"name": "kelly_fraction", "value": "0.250", "file": "cross_market/latency_sniper.py", "pattern": r"KELLY_FRACTION = ([0-9.]+)"},
+            {"name": "fee_rate", "value": 0.02, "file": "cross_market/latency_sniper.py", "pattern": r"KELLY_FRACTION = ([0-9.]+)"}]}))
+        self.assertTrue(f.exists())
+        c3 = [x for x in self.findings() if x.code == "C3"]
+        self.assertEqual(len(c3), 1)
+        self.assertIn("'fee_rate' conflicts", c3[0].message)  # kelly agrees as floats; fee_rate does not
+        self.assertIn("wiki/concepts/a.md says 0.0", c3[0].message)
+
+    def test_l2_validates_nested_index_files(self):
+        self.clean_pair()
+        (self.vault / "raw").mkdir(exist_ok=True)
+        (self.vault / "raw" / "index.md").write_text("# Desk\n* [ok](../wiki/concepts/a.md) - fine\n* [bad](../nowhere/x.md) - gone\nfree text\n", encoding="utf-8")
+        l2 = [x for x in self.findings() if x.code == "L2" and x.path == "raw/index.md"]
+        self.assertEqual(len(l2), 2)
+        self.assertTrue(any("does not exist: ../nowhere/x.md" in x.message for x in l2))
 
     def test_cli_exit_codes_and_json(self):
         self.clean_pair()
@@ -431,6 +525,23 @@ class SeedTests(TempVault):
                          "Section_1256_Futures_Tax_Ingestion_60")
         self.assertEqual(seed.ruling_filename(seed.RULINGS[3]), "Ruling_R04.md")
         self.assertEqual(seed.ruling_filename(seed.RULINGS[-1]), "Ruling_R95.md")
+        # Round 97 ruling 11: curated overrides for Items 4 and 19
+        self.assertEqual(seed.item_filename(seed.ItemSpec(4, "SECTION 1256 FUTURES TAX INGESTION (60/40 RULE)", True)),
+                         "Item_04_Section_1256_Futures_Tax_60_40.md")
+        self.assertEqual(seed.item_filename(seed.ItemSpec(19, "MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR", True)),
+                         "Item_19_Multi_Desk_Monte_Carlo_Risk_Of_Ruin.md")
+
+    def test_seed_default_at_is_registry_mtime_so_force_is_byte_idempotent(self):
+        reg = self.registry()
+        fixed = datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+        os.utime(reg, (fixed, fixed))
+        seed.seed(self.vault, self.dev_root, reg)
+        first = {p: p.read_bytes() for p in (self.vault / "wiki").rglob("*.md")}
+        r4, _ = fm.parse((self.vault / "wiki/rulings/Ruling_R04.md").read_text(encoding="utf-8"))
+        self.assertEqual(r4["generated"]["at"], "2026-09-05T12:00:00Z")
+        seed.seed(self.vault, self.dev_root, reg, force=True)
+        second = {p: p.read_bytes() for p in (self.vault / "wiki").rglob("*.md")}
+        self.assertEqual(first, second)
 
     def test_seed_writes_pages_index_log_and_is_lint_clean(self):
         report = seed.seed(self.vault, self.dev_root, self.registry(), at=NOW)
@@ -442,7 +553,7 @@ class SeedTests(TempVault):
         self.assertTrue(idx.startswith("# Desk\n"))
         self.assertIn("* [R4 - neg_risk books skip the NO side](wiki/rulings/Ruling_R04.md) - ", idx)
         log = (self.vault / "log.md").read_text(encoding="utf-8")
-        self.assertTrue(log.startswith("## 2026-09-05\n* **Seed**: Round 96 seed"))
+        self.assertTrue(log.startswith("## 2026-09-05\n* **Seed**: seed from the Top 20 registry (generated.at 2026-09-05T20:00:00Z)"), log)
         for d in ("wiki", "crm", "journal", "raw"):
             self.assertTrue((self.vault / d).is_dir())
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
@@ -456,7 +567,6 @@ class SeedTests(TempVault):
         self.assertEqual(r4["dev"]["asserts"][0]["file"], "cross_market/latency_sniper.py")
         self.assertIn({"id": "commit-da48cf3", "resource": "git:da48cf3", "title": "commit da48cf3"}, r4["sources"])
         r1, body = fm.parse((self.vault / "wiki/rulings/Ruling_R01.md").read_text(encoding="utf-8"))
-        self.assertEqual(r1["status"], "draft")
         self.assertNotIn("verified", r1)
         self.assertIn("NOT ratified", body)
         d4, _ = fm.parse((self.vault / "wiki/desks/Desk_04_Quant_Trading_Lab.md").read_text(encoding="utf-8"))
@@ -466,8 +576,14 @@ class SeedTests(TempVault):
         self.assertNotIn("parameters", d5["dev"])  # config.yaml absent in the fixture: nothing emitted
         item1, _ = fm.parse((self.vault / "wiki/items" / "Item_01_Sports_Odds_Ingestion_Fair_Value_No.md").read_text(encoding="utf-8"))
         self.assertEqual(item1["dev"], {"desk": 2, "item": 1, "tier": 1, "registry_checked": True,
-                                        "asserts": [{"file": "Sports_Desk/engine/fair_value.py", "pattern": ".",
-                                                     "claim": "primary code present at the registered path"}]})
+                                        "requires_files": ["Sports_Desk/engine/fair_value.py"]})
+        # Round 97: historical ratification instants, deprecated R1/R3, kelly_fraction on desks 2 and 3 (5 absent here)
+        self.assertEqual(r4["verified"][0]["at"], "2026-09-05T17:15:05Z")
+        self.assertEqual(r1["status"], "deprecated")
+        d2, _ = fm.parse((self.vault / "wiki/desks/Desk_02_Sports_Desk.md").read_text(encoding="utf-8"))
+        d3, _ = fm.parse((self.vault / "wiki/desks/Desk_03_Cross_Market_Desk.md").read_text(encoding="utf-8"))
+        self.assertEqual([p["value"] for p in d2["dev"]["parameters"] if p["name"] == "kelly_fraction"], [0.25])
+        self.assertEqual([p["value"] for p in d3["dev"]["parameters"] if p["name"] == "kelly_fraction"], [0.25])
 
     def test_seed_is_idempotent_and_force_rewrites(self):
         first = seed.seed(self.vault, self.dev_root, self.registry(), at=NOW)
@@ -506,6 +622,274 @@ class SeedTests(TempVault):
         for rel in after - before:
             self.assertTrue(rel.startswith(("wiki/", "crm/", "journal/", "raw/")) or rel in ("index.md", "log.md"), rel)
         self.assertFalse(any((self.vault / "Whales").iterdir()))
+
+
+# ---------------------------------------------------------------- ingest adapters (Round 97)
+
+from knowledge import raw_manifest  # noqa: E402
+from knowledge.ingest import clob as ingest_clob  # noqa: E402
+from knowledge.ingest import experiments as ingest_exp  # noqa: E402
+from knowledge.ingest import lead_lag as ingest_ll  # noqa: E402
+
+RULES_JSON = {
+    "experiment": "latency_sniper_fomc_2026-09-16",
+    "registered_utc": "2026-09-05T18:10:19+00:00",
+    "release_utc": "2026-09-16T18:00:00+00:00",
+    "status": "PRE-REGISTERED (Ruling R2c). NEVER edit inside the event window (T-2 min to T+5 min).",
+    "event_schema": {"kind": "fed_rate", "payload": {"change_bps": "int"}, "source": "federalreserve.gov", "confidence": ">= 0.99"},
+    "reading": "All markets are neg_risk: Ruling R4.",
+    "not_found_in_drop": ["FOMC 2026-09-17: cut 25 bps"],
+    "rules": [
+        {"label": "FOMC 2026-09-16: no change", "market": "TOK_NOCHANGE", "kind": "fed_rate", "field": "change_bps", "op": "==",
+         "value": 0, "outcome_if_true": "YES", "yes_price_at_registration": 0.5, "neg_risk": True},
+        {"label": "FOMC 2026-09-16: hike 25 bps", "market": "TOK_HIKE25", "kind": "fed_rate", "field": "change_bps", "op": "==",
+         "value": 25, "outcome_if_true": "YES", "yes_price_at_registration": 0.5, "neg_risk": True},
+    ],
+    "corrections": [{"at_utc": "2026-09-05T18:15:46+00:00", "what": "date corrected", "before_window": True}],
+}
+META_JSON = {
+    "experiment": "lead_lag_tier2_subfamilies",
+    "registered_utc": "2026-09-05T10:00:03+00:00",
+    "status": "PRE-REGISTERED - runs only AFTER the Tier 1 maiden run has written its verdict.",
+    "bars": {"min_abs_corr": 0.2, "min_events": 5, "min_points": 60, "insufficient_rule": "text", "latency_minutes_crypto": 5.0},
+    "subfamilies": {"fed-rates": {"role": "exogenous", "reading": "Tier 1"}, "crypto": {"role": "endogenous", "reading": "latency rule"}},
+    "commands": ["python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates"],
+    "caveats": ["not independent of Tier 1"],
+}
+VERDICT_JSON = {
+    "events": 41, "price_points": 1440, "max_lag": 60, "sufficient": True, "reason": "",
+    "best_lag_minutes": 12, "correlation": 0.31, "n": 200,
+    "interpretation": "Polymarket leads HyperLiquid by 12 min (corr +0.31, n=200)",
+    "curve": [{"lag_minutes": 12, "correlation": 0.31, "n": 200}, {"lag_minutes": -3, "correlation": -0.05, "n": 210},
+              {"lag_minutes": 0, "correlation": 0.12, "n": 215}],
+    "latency_minutes": 0.0, "family": "macro", "subfamily": None, "subfamily_from": None, "price_error": None,
+}
+CURVE_JSON = {
+    "anchor": "2026-09-16T18:00:00+00:00", "release_utc": "2026-09-16T18:00:00+00:00", "anchor_minus_release_s": 0.0,
+    "event": {"kind": "fed_rate", "payload": {"change_bps": 0}, "confidence": 0.995}, "step_seconds": 1.0, "stamps": 12,
+    "markets": [
+        {"market": "TOK_NOCHANGE", "rule": "FOMC 2026-09-16: no change", "outcome": "YES", "side": "BUY_YES", "stamps": 6,
+         "neg_risk": True, "deferred": None,
+         "series": [
+             {"delta_s": -2.0, "observed_at": "2026-09-16T17:59:58+00:00", "fillable_shares": 1000, "fillable_notional": 500.0, "vwap": 0.5, "clearing_levels": 4, "best_price": 0.5, "expected_profit": 490.0, "changed": False, "stamp": "a"},
+             {"delta_s": -1.0, "observed_at": "2026-09-16T17:59:59+00:00", "fillable_shares": 1000, "fillable_notional": 500.0, "vwap": 0.5, "clearing_levels": 4, "best_price": 0.5, "expected_profit": 490.0, "changed": False, "stamp": "b"},
+             {"delta_s": 0.0, "observed_at": "2026-09-16T18:00:00+00:00", "fillable_shares": 1000, "fillable_notional": 500.0, "vwap": 0.5, "clearing_levels": 4, "best_price": 0.5, "expected_profit": 490.0, "changed": False, "stamp": "c"},
+             {"delta_s": 1.0, "observed_at": "2026-09-16T18:00:01+00:00", "fillable_shares": 400, "fillable_notional": 240.0, "vwap": 0.6, "clearing_levels": 2, "best_price": 0.55, "expected_profit": 150.0, "changed": True, "stamp": "d"},
+             {"delta_s": 2.0, "observed_at": "2026-09-16T18:00:02+00:00", "fillable_shares": 50, "fillable_notional": 45.0, "vwap": 0.9, "clearing_levels": 1, "best_price": 0.9, "expected_profit": 4.0, "changed": True, "stamp": "e"},
+             {"delta_s": 3.0, "observed_at": "2026-09-16T18:00:03+00:00", "fillable_shares": 0, "fillable_notional": 0.0, "vwap": None, "clearing_levels": 0, "best_price": None, "expected_profit": 0.0, "changed": True, "stamp": "f"},
+         ],
+         "summary": {"baseline_notional": 500.0, "baseline_delta_s": -1.0, "pre_print_stamps": 2, "post_print_stamps": 4,
+                     "first_change_s": 1.0, "half_s": 1.0, "tenth_s": 2.0, "gone_s": 3.0, "max_post_notional": 500.0, "notional_seconds": 785.0}},
+        {"market": "TOK_HIKE25", "rule": "FOMC 2026-09-16: hike 25 bps", "outcome": "NO", "side": "BUY_NO", "stamps": 6,
+         "neg_risk": True, "deferred": "neg_risk market: NO side deferred to Phase 2 (Ruling R4)", "series": [], "summary": None},
+    ],
+}
+
+
+class IngestFixture(TempVault):
+    def setUp(self):
+        super().setUp()
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW)  # desks/items/rulings to link to
+        for name in ("verdict.json", "v2.json", "v3.json", "x.json", "curve.json", "a.json", "b.json"):
+            (self.dev_root / name).write_text("{}", encoding="utf-8")  # the raw sources the pages will cite (L5)
+        self.exp_dir = self.dev_root / "cross_market" / "experiments"
+        self.exp_dir.mkdir()
+        (self.exp_dir / "fomc_2026-09-16.rules.json").write_text(json.dumps(RULES_JSON), encoding="utf-8")
+        (self.exp_dir / "lead_lag_tier2.meta.json").write_text(json.dumps(META_JSON), encoding="utf-8")
+        (self.exp_dir / "sniper_rules.sample.json").write_text(json.dumps({"rules": [], "release_utc": None}), encoding="utf-8")
+        drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
+        drops.mkdir(parents=True)
+        (drops / "polymarket_macro_20260905T000000_000000Z.json").write_text(
+            json.dumps([{"token_id": "TOK_NOCHANGE"}, {"token_id": "TOK_HIKE25"}]), encoding="utf-8")
+
+
+class ExperimentsIngestTests(IngestFixture):
+    def test_rules_registration_becomes_experiment_with_window_tokens_and_links(self):
+        report = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        self.assertEqual(sorted(report.written), ["wiki/experiments/fomc_2026-09-16_rules.md", "wiki/experiments/lead_lag_tier2_meta.md"])
+        self.assertEqual(report.ignored, ["sniper_rules.sample.json"])
+        meta, body = fm.parse((self.vault / "wiki/experiments/fomc_2026-09-16_rules.md").read_text(encoding="utf-8"))
+        self.assertEqual(meta["type"], "Experiment")
+        self.assertEqual(meta["status"], "draft")
+        self.assertEqual(meta["dev"]["window"], {"start": "2026-09-16T17:58:00Z", "end": "2026-09-16T18:05:00Z"})
+        self.assertEqual(meta["dev"]["tokens"], ["TOK_NOCHANGE", "TOK_HIKE25"])
+        self.assertEqual(meta["dev"]["not_found_in_drop"], ["FOMC 2026-09-17: cut 25 bps"])
+        self.assertEqual(meta["sources"][0]["resource"], "cross_market/experiments/fomc_2026-09-16.rules.json")
+        self.assertIn("| FOMC 2026-09-16: no change | `change_bps == 0` | YES |", body)
+        self.assertIn("[[Ruling_R04|", body)
+        reg, reg_body = fm.parse((self.vault / "wiki/concepts/experiments_register.md").read_text(encoding="utf-8"))
+        self.assertEqual(reg["dev"]["pages"], ["fomc_2026-09-16_rules", "lead_lag_tier2_meta"])
+        self.assertIn("[[fomc_2026-09-16_rules\\|", reg_body)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_meta_registration_carries_bars_as_parameters(self):
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        meta, body = fm.parse((self.vault / "wiki/experiments/lead_lag_tier2_meta.md").read_text(encoding="utf-8"))
+        names = {p["name"]: p["value"] for p in meta["dev"]["parameters"]}
+        self.assertEqual(names, {"lead_lag_min_abs_corr": 0.2, "lead_lag_min_events": 5, "lead_lag_min_points": 60,
+                                 "lead_lag_latency_minutes_crypto": 5.0})
+        self.assertEqual({p["json_path"] for p in meta["dev"]["parameters"]},
+                         {"bars.min_abs_corr", "bars.min_events", "bars.min_points", "bars.latency_minutes_crypto"})
+        self.assertTrue(all("pattern" not in p for p in meta["dev"]["parameters"]))
+        self.assertEqual(meta["dev"]["item"], 18)
+        self.assertIn("| `min_abs_corr` | 0.2 |", body)
+        # C1 verifies the bars against the JSON: corrupt one and lint must fire
+        (self.exp_dir / "lead_lag_tier2.meta.json").write_text(json.dumps(dict(META_JSON, bars=dict(META_JSON["bars"], min_abs_corr=0.3))), encoding="utf-8")
+        self.assertTrue(any(x.code == "C1" and "lead_lag_min_abs_corr drift" in x.message
+                            for x in lint.lint_vault(self.vault, self.dev_root, now=NOW)))
+
+    def test_experiment_window_refuses_writes_inside_it_and_c2_sees_missing_tokens(self):
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        inside = datetime(2026, 9, 16, 18, 1, 0, tzinfo=timezone.utc)
+        with self.assertRaises(pages.WriteRefused):
+            ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=inside, force=True)
+        drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
+        (drops / "polymarket_macro_20260906T000000_000000Z.json").write_text(json.dumps([{"token_id": "TOK_NOCHANGE"}]), encoding="utf-8")
+        c2 = [x for x in lint.lint_vault(self.vault, self.dev_root, now=NOW) if x.code == "C2"]
+        self.assertEqual(len(c2), 1)
+        self.assertIn("TOK_HIKE25", c2[0].message)
+
+    def test_experiments_skip_existing_unless_force_and_cli_guards(self):
+        first = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        second = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        self.assertEqual(second.written, [])
+        self.assertEqual(sorted(second.skipped), sorted(first.written))
+        third = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW, force=True)
+        self.assertEqual(len(third.written), 2)
+        log = (self.vault / "log.md").read_text(encoding="utf-8")
+        self.assertEqual(log.count("**Ingest**"), 2)  # the no-op run appended nothing
+        out = io.StringIO()
+        self.assertEqual(ingest_exp.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--dir", str(self.exp_dir),
+                                          "--at", "2026-09-05T20:00:00Z"], out=out), EXIT_OK)
+        self.assertIn("[KEEP]", out.getvalue())
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(ingest_exp.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=io.StringIO()), EXIT_HALT)
+
+
+class LeadLagIngestTests(IngestFixture):
+    def test_classify_vocabulary(self):
+        c = ingest_ll.classify
+        self.assertEqual(c({"sufficient": False}), "insufficient")
+        self.assertEqual(c({"sufficient": True, "correlation": 0.1, "best_lag_minutes": 7}), "no-lead")
+        self.assertEqual(c({"sufficient": True, "correlation": 0.4, "best_lag_minutes": 3, "latency_minutes": 5.0}), "contemporaneous")
+        self.assertEqual(c({"sufficient": True, "correlation": 0.4, "best_lag_minutes": 12, "latency_minutes": 5.0}), "polymarket-leads")
+        self.assertEqual(c({"sufficient": True, "correlation": -0.3, "best_lag_minutes": -9}), "hyperliquid-leads")
+        self.assertEqual(c({"sufficient": True, "correlation": 0.3, "best_lag_minutes": 0}), "coincident")
+
+    def test_verdict_and_regime_pages_then_history_accumulates(self):
+        v, r = ingest_ll.ingest_verdict(VERDICT_JSON, self.vault, self.dev_root, tier="1", source="verdict.json", at=NOW)
+        self.assertEqual(v.path.name, "lead_lag_tier1_macro_20260905T2000Z.md")
+        self.assertEqual(v.meta["dev"]["classification"], "polymarket-leads")
+        self.assertEqual(v.meta["dev"]["best_lag_minutes"], 12)
+        self.assertEqual(r.path.name, "btc_macro_regime.md")
+        self.assertEqual(r.meta["dev"]["current"], {"tier 1 macro": "polymarket-leads"})
+        self.assertEqual(len(r.meta["dev"]["history"]), 1)
+        body = r.path.read_text(encoding="utf-8")
+        self.assertIn("| 1 | macro | label | **polymarket-leads** | 12 | +0.310 | 200 |", body)
+        self.assertIn("- none", body)  # no disagreements yet
+        # Tier 2 crypto subfamily, contemporaneous, later
+        later = NOW + timedelta(days=1)
+        t2 = dict(VERDICT_JSON, subfamily="crypto", subfamily_from="label", best_lag_minutes=2, correlation=0.35, latency_minutes=5.0)
+        v2, r2 = ingest_ll.ingest_verdict(t2, self.vault, self.dev_root, tier="2", source="v2.json", at=later)
+        self.assertEqual(v2.meta["dev"]["classification"], "contemporaneous")
+        self.assertEqual(len(r2.meta["dev"]["history"]), 2)
+        # Tier 2b on the same scope with a different class -> a disagreement line
+        t2b = dict(t2, subfamily_from="tags", best_lag_minutes=15)
+        _, r3 = ingest_ll.ingest_verdict(t2b, self.vault, self.dev_root, tier="2b", source="v3.json", at=later + timedelta(hours=1))
+        body = r3.path.read_text(encoding="utf-8")
+        self.assertIn("**macro_crypto**: Tier 2 says contemporaneous, Tier 2b says polymarket-leads", body)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=later + timedelta(hours=2)), [])
+        log = (self.vault / "log.md").read_text(encoding="utf-8")
+        self.assertIn("lead-lag Tier 1 verdict (macro): **polymarket-leads**", log)
+
+    def test_insufficient_verdict_is_a_non_verdict(self):
+        res = {"sufficient": False, "reason": "3 probability shifts < 5 required", "events": 3, "price_points": 100,
+               "family": "macro", "subfamily": "fed-rates", "subfamily_from": "tags", "curve": [], "latency_minutes": 0.0}
+        v, r = ingest_ll.ingest_verdict(res, self.vault, self.dev_root, tier="2b", source="x.json", at=NOW)
+        self.assertEqual(v.meta["dev"]["classification"], "insufficient")
+        self.assertIn("3 probability shifts < 5 required", v.body)
+        self.assertEqual(r.meta["dev"]["current"], {"tier 2b macro_fed-rates": "insufficient"})
+
+    def test_cli_reads_file_and_refuses_non_verdicts(self):
+        f = self.root / "verdict.json"
+        f.write_text(json.dumps(VERDICT_JSON), encoding="utf-8")
+        out = io.StringIO()
+        self.assertEqual(ingest_ll.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--result", str(f),
+                                         "--tier", "1", "--at", "2026-09-05T20:00:00Z"], out=out), EXIT_OK)
+        self.assertIn("class=polymarket-leads", out.getvalue())
+        f.write_text(json.dumps({"ready": False}), encoding="utf-8")  # a --check-data payload, not a verdict
+        self.assertEqual(ingest_ll.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--result", str(f), "--tier", "1"],
+                                        out=io.StringIO()), EXIT_HALT)
+
+
+class ClobIngestTests(IngestFixture):
+    def test_profiles_event_and_concept_from_curve(self):
+        profiles, event, concept = ingest_clob.ingest_survival(CURVE_JSON, self.vault, self.dev_root, event_id="fomc_2026-09-16",
+                                                                source="curve.json", at=NOW)
+        self.assertEqual(sorted(p.path.name for p in profiles),
+                         ["fomc_2026-09-16__FOMC_2026_09_16_hike_25_bps.md", "fomc_2026-09-16__FOMC_2026_09_16_no_change.md"])
+        nc = next(p for p in profiles if p.meta["dev"]["token_id"] == "TOK_NOCHANGE")
+        self.assertEqual(nc.meta["type"], "Reaction Profile")
+        self.assertEqual(nc.meta["dev"]["summary"]["half_s"], 1.0)
+        self.assertEqual(nc.meta["dev"]["summary"]["notional_seconds"], 785.0)
+        self.assertIn("| half of baseline gone by | 1 s |", nc.body)
+        self.assertIn("| +1 | $240 | 400 | 0.6 | 2 | yes |", nc.body)   # checkpoint row
+        self.assertNotIn("17:59:58", nc.body)                             # the per-second series is not copied
+        deferred = next(p for p in profiles if p.meta["dev"]["token_id"] == "TOK_HIKE25")
+        self.assertIn("NO side deferred", deferred.body)
+        self.assertIsNone(deferred.meta["dev"]["summary"]["half_s"])
+        self.assertEqual(event.meta["type"], "Event")
+        self.assertEqual(event.meta["dev"]["payload"], {"change_bps": 0})
+        self.assertEqual(len(event.meta["dev"]["profiles"]), 2)
+        self.assertEqual(concept.meta["type"], "Concept")
+        self.assertEqual(len(concept.meta["dev"]["history"]), 2)
+        self.assertIn("| fomc_2026-09-16 | FOMC 2026-09-16: no change | YES | $500 | 1 s | 1 s | 2 s | 3 s | $785 |", concept.body)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_reingesting_an_event_replaces_its_rows_and_a_second_event_adds(self):
+        ingest_clob.ingest_survival(CURVE_JSON, self.vault, self.dev_root, event_id="fomc_2026-09-16", source="a.json", at=NOW)
+        _, _, concept = ingest_clob.ingest_survival(CURVE_JSON, self.vault, self.dev_root, event_id="fomc_2026-09-16", source="a.json",
+                                                    at=NOW + timedelta(hours=1))
+        self.assertEqual(len(concept.meta["dev"]["history"]), 2)
+        other = dict(CURVE_JSON, anchor="2026-10-28T18:00:00+00:00", release_utc="2026-10-28T18:00:00+00:00")
+        _, _, concept = ingest_clob.ingest_survival(other, self.vault, self.dev_root, event_id="fomc_2026-10-28", source="b.json",
+                                                    at=NOW + timedelta(days=53))
+        self.assertEqual(len(concept.meta["dev"]["history"]), 4)
+        self.assertEqual({r["event"] for r in concept.meta["dev"]["history"]}, {"fomc_2026-09-16", "fomc_2026-10-28"})
+
+    def test_cli_guards(self):
+        f = self.root / "curve.json"
+        f.write_text(json.dumps(CURVE_JSON), encoding="utf-8")
+        out = io.StringIO()
+        self.assertEqual(ingest_clob.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--result", str(f),
+                                           "--event", "fomc_2026-09-16", "--at", "2026-09-16T18:10:00Z"], out=out), EXIT_OK)
+        self.assertIn("rows=2", out.getvalue())
+        self.assertEqual(ingest_clob.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--result", str(f),
+                                           "--event", "bad id!"], out=io.StringIO()), EXIT_HALT)
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(ingest_clob.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--result", str(f),
+                                           "--event", "x"], out=io.StringIO()), EXIT_HALT)
+
+
+class RawManifestTests(IngestFixture):
+    def test_manifest_lists_present_streams_in_okf_format_and_lints_clean(self):
+        text = raw_manifest.build_manifest(self.dev_root, self.vault)
+        entries, errors = pages.parse_index(text)
+        self.assertEqual(errors, [])
+        titles = {e.title for e in entries}
+        self.assertIn("Pre-registrations", titles)          # cross_market/experiments exists in the fixture
+        self.assertIn("Polymarket drops", titles)
+        self.assertNotIn("Tax ledger", titles)              # not in the fixture -> "Not present" section, no link
+        self.assertIn("# Not present on this machine", text)
+        self.assertIn("> not present: Tax ledger (`Tax_Reserve_Agent/data/tax_ledger.db`)", text)
+        target = raw_manifest.write_manifest(self.dev_root, self.vault)
+        self.assertEqual(target, self.vault / "raw" / "index.md")
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+        out = io.StringIO()
+        self.assertEqual(raw_manifest.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out), EXIT_OK)
+        self.assertIn("raw manifest:", out.getvalue())
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(raw_manifest.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=io.StringIO()), EXIT_HALT)
 
 
 if __name__ == "__main__":  # pragma: no cover

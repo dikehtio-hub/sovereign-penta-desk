@@ -1,17 +1,17 @@
 ---
 type: Ruling
-title: R3 - text not recorded in the repository
-description: Referenced as part of the R1-R6 series; no ruling text exists in AGENTS.md,
-  COMMANDS.txt, any module docstring or any commit message at ec98342. Placeholder
-  until Antigravity supplies the text.
+title: R3 - never issued (deprecated placeholder)
+description: 'Part of the R1-R6 numbering but never issued: no ruling text exists
+  anywhere in the repository. Confirmed by Antigravity in Round 97; kept so the numbering
+  has a home.'
 tags:
 - ruling
 - desk-3
 - r3
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T20:05:15Z'
-status: draft
+  at: '2026-09-05T20:48:24Z'
+status: deprecated
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -20,10 +20,11 @@ sources:
 dev:
   desk: 3
   ruling_id: R3
+  round: 97
 ---
-# Ruling R3 - text not recorded in the repository
+# Ruling R3 - never issued (deprecated placeholder)
 
-As for R1: the number is part of the series but no definition survives in the repository. **Action**: Antigravity to supply the text; on receipt this page is rewritten and `verified` is appended.
+As for R1: the number is part of the series but no definition exists, and Antigravity confirmed in Round 97 that none was issued. Deprecated historical placeholder.
 
 ## Applies to
 
@@ -33,4 +34,5 @@ As for R1: the number is part of the series but no definition survives in the re
 
 ## Provenance
 
+- Round 97
 - NOT ratified: no recorded text

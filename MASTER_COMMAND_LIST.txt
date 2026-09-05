@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 19:43 EDT (Round 50 Milestone — commit a9c547d)
-Last Update: 2026-09-05 16:15 EDT (Round 96 Complete — knowledge layer Master Module 23: WIKI_SCHEMA.md constitution, seed + lint, 32 wiki pages)
-Status:      2,617 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
+Last Update: 2026-09-05 16:55 EDT (Round 97 Complete — knowledge Phase 2: constitution ratified, ingest adapters (experiments, lead_lag, clob), raw manifest, lint C2/C3)
+Status:      2,636 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -539,30 +539,35 @@ Obsidian Vault Locations:
   Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md [Added: 2026-09-03 21:53 EDT (Round 26L)]
 
 ================================================================================
-5. MASTER OFFLINE TEST SUITES (2,617 Tests Total)
+5. MASTER OFFLINE TEST SUITES (2,636 Tests Total)
 ================================================================================
 
 Every modification MUST be verified offline against all 3 test suites. Never push
-a commit without all 2,617 tests passing!
+a commit without all 2,636 tests passing!
 
 1. HyperLiquid Monarch (pytest — 1,093 tests):
    [Updated: 2026-09-05 04:39 EDT (Round 72)]
    cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q
 
-2. Master & Bridges Suite (unittest — 23 modules, 978 tests):
-   [Updated: 2026-09-05 16:15 EDT (Round 96)]
+2. Master & Bridges Suite (unittest — 23 modules, 997 tests):
+   [Updated: 2026-09-05 16:55 EDT (Round 97)]
    python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards knowledge.tests.test_knowledge
 
 3. Tax Reserve Agent Suite (unittest — 5 modules, 546 tests):
    [Updated: 2026-09-04 23:21 EDT (Round 58)]
    python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
-4. Knowledge Layer — Master Module 23 (unittest — 42 tests; also inside suite 2):
-   [Added: 2026-09-05 16:15 EDT (Round 96)]
+4. Knowledge Layer — Master Module 23 (unittest — 61 tests; also inside suite 2):
+   [Added: 2026-09-05 16:15 EDT (Round 96) | Phase 2: 2026-09-05 16:55 EDT (Round 97)]
    python -m unittest knowledge.tests.test_knowledge
-   python -m knowledge.lint [--json]                exit 0 clean | 1 findings | 3 HALT.flag; writes nothing
-   python -m knowledge.seed [--dry-run] [--force]   5 Desk + 20 Item + 7 Ruling pages from the registry; never clobbers without --force
-   Constitution: obsidian_vault\WIKI_SCHEMA.md · owned: obsidian_vault\{wiki,crm,journal,raw}\ + index.md, log.md (dashboards unreachable)
+   python -m knowledge.lint [--drops DIR] [--json]  L1-L5, C1 (float-aware drift + requires_files), C2 expired tokens, C3 cross-desk
+                                                    parameter conflicts, C5 (generated.at = error, mtime-only = warning); exit 0 | 1 | 3
+   python -m knowledge.seed [--dry-run] [--force]   5 Desk + 20 Item + 7 Ruling pages; generated.at defaults to the registry mtime (idempotent)
+   python -m knowledge.raw_manifest                 raw\index.md: every federated raw stream, OKF index format, paths relative to raw\
+   python -m knowledge.ingest.experiments [--force] cross_market\experiments\*.json -> wiki\experiments\ + experiments_register
+   python -m knowledge.ingest.lead_lag --result verdict.json --tier 1|2|2b     -> verdict Experiment page + wiki\regimes\btc_macro_regime.md
+   python -m knowledge.ingest.clob --result curve.json --event fomc_2026-09-16 -> wiki\profiles\, wiki\events\, wiki\concepts\latency_decay.md
+   Constitution: obsidian_vault\WIKI_SCHEMA.md (verified by antigravity/architect, Round 97) · owned: obsidian_vault\{wiki,crm,journal,raw}\ + index.md, log.md
 
 Single-Line Full Verification Command (PowerShell):
    [Updated: 2026-09-05 04:39 EDT (Round 72)]

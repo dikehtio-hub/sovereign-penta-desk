@@ -5,6 +5,39 @@ the detail.
 
 ## Status
 
+Round 97 complete (2026-09-05): KNOWLEDGE PHASE 2 - CONSTITUTION RATIFIED, INGEST
+ADAPTERS, RAW MANIFEST, LINT C2/C3 (Antigravity rulings 1-13 on Round 96 applied).
+WIKI_SCHEMA.md now carries verified: antigravity/architect and status stable
+(ruling 8) and documents every change below. NEW knowledge/ingest/: experiments.py
+(cross_market/experiments/*.json -> Experiment pages; bars become dev:parameters
+addressed by json_path, rules tokens become dev:tokens, release-2m..+5m becomes
+dev:window; maintains wiki/concepts/experiments_register.md so no Experiment is
+an orphan), lead_lag.py (lead_lag --json -> verdict Experiment page + wiki/regimes/
+btc_macro_regime.md with a dev:history row per verdict and a fixed class
+vocabulary insufficient|no-lead|contemporaneous|polymarket-leads|hyperliquid-
+leads|coincident; Tier 2 vs 2b disagreements listed, never resolved; PRIMED for
+the Tier 1 verdict ~2026-09-06T01:39Z), clob.py (survival-curve --json -> one
+Reaction Profile per market, the Event page, wiki/concepts/latency_decay.md cross-
+event table; the per-second series is NOT copied; PRIMED for 2026-09-16). NEW
+knowledge/raw_manifest.py -> raw/index.md (17 federated streams present, OKF index
+lines relative to raw/, absent streams as `> not present` notes). LINT: C2 expired
+tokens vs the newest macro+sports drops (warning; missing drops folder = one
+warning), C3 same dev:parameters name with different values across pages (error;
+kelly_fraction 0.25 now declared on Desks 2/3/5 and checked against
+fair_value.py, latency_sniper.py, monarch_hook.py), C1 float-aware comparison +
+dev:requires_files + json_path for JSON sources, C5 generated.at-in-window =
+error / mtime-only = warning, constitution in scope for L1/L4/L5/C1 and exempt
+from L2-listing/L3, nested index.md files validated. SEED: Item_04_Section_1256_
+Futures_Tax_60_40 and Item_19_Multi_Desk_Monte_Carlo_Risk_Of_Ruin (old files git
+rm'd), rulings verified.at = the ratifying commit instants (R4 17:15:05Z, R6
+17:48:20Z, R2 18:13:11Z, R95 20:10:31Z), R1/R3 deprecated (never issued), --at
+defaults to the registry mtime so --force is byte-idempotent, Desk 3 links the
+compiled pages. REAL VAULT: 36 pages + constitution + raw/index.md, lint CLEAN.
+Lint C1 fired on real data during the round: the Tier 2b registration has
+min_points twice (readiness 200, bars 60) and a regex takes the first; hence
+json_path. Tests: module 23 = 61; master 23 modules 997; total 1,093 + 997 + 546
+= 2,636, all green offline. Daemons and tonight's tasks untouched.
+
 Round 96 complete (2026-09-05): PHASE 1 - WIKI CONSTITUTION, SEED PAGES, MASTER
 MODULE 23 (Ratification R95-A..G). NEW obsidian_vault/WIKI_SCHEMA.md (the
 constitution: layers and ownership, actors, OKF v0.2 frontmatter + dev:
@@ -864,6 +897,25 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 97 findings
+
+- C1 caught a real ambiguity on the first real run: `"min_points"` occurs twice
+  in lead_lag_tier2b.meta.json (series.readiness 200, bars 60). Regexes cannot
+  scope JSON; `dev.parameters[].json_path` (dotted path) now addresses JSON
+  sources and the experiments adapter emits it instead of a pattern.
+- Registration pages had no inbound link (L3). Rather than editing seed-owned
+  pages from an adapter, a machine-maintained wiki/concepts/experiments_register.md
+  lists every Experiment page (registrations and verdicts) and Desk 3 links it,
+  the Regime page and the latency-decay Concept.
+- Table cells need `[[page\|alias]]`; the wikilink extractor now strips the
+  escaping backslash, otherwise every table link is an orphan-maker.
+- `raw/index.md` lists absent streams as `> not present` notes; parse_index
+  accepts `> ` lines so the reserved grammar stays strict for entries.
+- The seed's log text no longer names a round; log.md was restored from HEAD and
+  regenerated so this round's bullets are accurate (Seed with generated.at, Ingest).
+- lead_lag verdict JSON has no explicit tier: the adapter takes --tier from the
+  operator, and refuses a --check-data payload (no `sufficient` key).
 
 ## Round 96 findings
 
