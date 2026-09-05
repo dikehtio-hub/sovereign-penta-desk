@@ -605,7 +605,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (21 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper) | 927 OK |
+| master + bridges + cross-market + exporters + ingestors (21 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper) | 928 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -695,6 +695,19 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 88 findings
+
+- **Ruling R4 is enforced in code, not in prose.** Book carries `neg_risk`
+  (from the live stamp's field); evaluate() skips a NO outcome on a
+  neg_risk book with the reason "NO side deferred to Phase 2 (Ruling R4)"
+  and still lifts the winning outcome's YES asks. A standalone market's NO
+  side is unchanged.
+- **Registry reconciliation.** Antigravity reports "17 of 20 complete";
+  lines 80-415 show Items 7, 10, 11, 12, 13 unchecked. Items 10 and 12 have
+  Phase 1 built (modules 20 and 21) but are not complete; their checkboxes
+  were NOT changed (lines 80-415 preserved). A ruling is needed on whether
+  a Phase 1 build checks the box or the Status line reads "Phase 1 built".
 
 ## Round 87 findings
 

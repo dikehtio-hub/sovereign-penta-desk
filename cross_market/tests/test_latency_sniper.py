@@ -276,3 +276,27 @@ class TestLiveShape(SniperBase):
             self.assertIn(key, stamp)
         self.assertEqual(stamp["token_id"], "T")
         self.assertEqual(ls.load_books(self.root / "books", now=NOW)["T"].bids[0].price, 0.4)
+
+
+class TestNegRiskRuling(SniperBase):
+    """Round 88, Ruling R4: on a neg_risk event only the winning outcome's YES asks are lifted; its NO side waits."""
+
+    def test_neg_risk_books_skip_the_no_side_and_keep_the_yes_side(self):
+        cut = ls.Book.from_clob("CUT25", {"asks": [{"price": "0.90", "size": "100"}], "bids": [], "neg_risk": True},
+                                NOW - timedelta(seconds=2), fee_rate=0.02)
+        hold = ls.Book.from_clob("HOLD", {"asks": [], "bids": [{"price": "0.05", "size": "1000"}]},
+                                 NOW - timedelta(seconds=2), fee_rate=0.02, neg_risk=True)
+        self.assertTrue(cut.neg_risk and hold.neg_risk)
+        out = ls.evaluate(self.event, self.rules, {"CUT25": cut, "HOLD": hold}, fair_breakeven, cap_150, now=NOW, halt_path=self.halt)
+        self.assertEqual([o.market for o in out["opportunities"]], ["CUT25"])          # YES on the winner: taken
+        skipped = {s["market"]: s["reason"] for s in out["skipped"]}
+        self.assertIn("neg_risk market: NO side deferred to Phase 2 (Ruling R4)", skipped["HOLD"])
+        # the same NO side on a standalone market is still hit, as before
+        plain = ls.Book.from_clob("HOLD", {"asks": [], "bids": [{"price": "0.05", "size": "1000"}]}, NOW - timedelta(seconds=2), fee_rate=0.02)
+        self.assertFalse(plain.neg_risk)
+        out = ls.evaluate(self.event, self.rules[1:2], {"HOLD": plain}, fair_breakeven, cap_150, now=NOW, halt_path=self.halt)
+        self.assertEqual(out["opportunities"][0].side, "BUY_NO")
+        # the flag travels from the live stamp through the loader
+        out_dir = self.root / "books"
+        ls.stamp_books(["T"], out_dir, lambda t: {"asks": [{"price": "0.5", "size": "1"}], "bids": [], "neg_risk": True}, now=NOW)
+        self.assertTrue(ls.load_books(out_dir, now=NOW)["T"].neg_risk)

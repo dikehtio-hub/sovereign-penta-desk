@@ -148,9 +148,11 @@ class Book:
     asks: List[Level]                               # best (lowest) first
     observed_at: datetime
     fee_rate: float = 0.0
+    neg_risk: bool = False                          # Ruling R4: a multi-outcome event sharing collateral
 
     @classmethod
-    def from_clob(cls, market: str, payload: Dict[str, Any], observed_at: Any, fee_rate: float = 0.0) -> "Book":
+    def from_clob(cls, market: str, payload: Dict[str, Any], observed_at: Any, fee_rate: float = 0.0,
+                  neg_risk: Optional[bool] = None) -> "Book":
         """The CLOB /book shape: {"bids": [{"price": "0.45", "size": "100"}], "asks": [...]}; junk levels skipped."""
         def levels(rows: Any) -> List[Level]:
             out = []
@@ -164,7 +166,9 @@ class Book:
             return out
         bids = sorted(levels(payload.get("bids")), key=lambda l: -l.price)
         asks = sorted(levels(payload.get("asks")), key=lambda l: l.price)
-        return cls(market=str(market), bids=bids, asks=asks, observed_at=_utc(observed_at), fee_rate=float(fee_rate))
+        flag = payload.get("neg_risk") if neg_risk is None else neg_risk
+        return cls(market=str(market), bids=bids, asks=asks, observed_at=_utc(observed_at), fee_rate=float(fee_rate),
+                   neg_risk=bool(flag))
 
     def age_s(self, now: datetime) -> float:
         return (now - self.observed_at).total_seconds()
@@ -391,6 +395,13 @@ def evaluate(event: Event, rules: Sequence[Rule], books: Dict[str, Book], breake
         age = book.age_s(now)
         if age < 0 or age > max_book_age_s:
             out["skipped"].append({"market": rule.market, "rule": label, "reason": "book stale (age %.1fs > %.0fs)" % (age, max_book_age_s)})
+            continue
+        if outcome == "NO" and book.neg_risk:
+            # Ruling R4 (Round 88): on a neg_risk event the outcomes share collateral, so hitting YES bids is
+            # not the atomic "buy NO" it is on a standalone market. Phase 1 lifts YES asks on the winning
+            # outcome token only; the NO side of neg_risk markets waits for Phase 2.
+            out["skipped"].append({"market": rule.market, "rule": label,
+                                   "reason": "neg_risk market: NO side deferred to Phase 2 (Ruling R4); only BUY_YES on the winning outcome"})
             continue
         levels = book.asks if outcome == "YES" else book.bids
         fills, cap_notional, capped_by = walk_book(levels, outcome, event.confidence, book.fee_rate, breakeven, cap)
