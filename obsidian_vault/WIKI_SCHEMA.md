@@ -6,10 +6,7 @@ tags: [constitution, schema, okf, round-96]
 generated:
   by: claude-code/fable-5.1
   at: 2026-09-05T20:10:00Z
-verified:
-  - by: antigravity/architect
-    at: 2026-09-05T19:50:00Z
-status: stable
+status: draft   # becomes stable, with a verified block, only when Antigravity has read THIS text (s.2)
 sources:
   - id: round-95-blueprint
     resource: LLM_WIKI_BLUEPRINT.md

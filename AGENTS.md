@@ -883,6 +883,13 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
   so the same seed is lint-clean in a fixture and fully guarded in DEV.
 - pyyaml is already a dependency (Tax_Reserve_Agent/config.py, quant lab);
   python-markdown is present but not used by the package.
+- Round 96b: WIKI_SCHEMA.md had shipped with a `verified: antigravity/architect`
+  block the generating agent wrote itself, on the strength of R95-B ratifying
+  the BLUEPRINT, not this text. That breaks the constitution's own s.2.
+  Removed; status draft until Antigravity verifies the constitution explicitly.
+  Ruling pages R2/R4/R6/R95 keep `verified` because their text IS Antigravity's
+  ratification; note `verified.at` there is the seed time, not the ratification
+  time (question 6b in the cross-check).
 
 ## Round 95 findings
 
