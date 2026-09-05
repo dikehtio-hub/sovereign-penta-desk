@@ -151,11 +151,17 @@ def find_market_probability(keyword_groups, drop_dirs=(), pm_db_path: Optional[P
             best = candidate
 
     if pm_db_path and Path(pm_db_path).exists():
+        rows = []
         try:
             con = connect_ro(Path(pm_db_path))
-            rows = con.execute("SELECT market_title, outcome, price, timestamp FROM whale_trades "
-                               "ORDER BY timestamp DESC LIMIT 5000").fetchall()
-            con.close()
+            try:                                            # Round 52: close even when the table is absent
+                rows = con.execute("SELECT market_title, outcome, price, timestamp FROM whale_trades "
+                                   "ORDER BY timestamp DESC LIMIT 5000").fetchall()
+            finally:
+                con.close()
+        except Exception:                                   # noqa: BLE001 - a missing table is "no market"
+            rows = []
+        try:
             for title, outcome, price, ts in rows:
                 if not any(_matches(title, g) for g in keyword_groups):
                     continue

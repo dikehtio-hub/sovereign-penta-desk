@@ -5,17 +5,17 @@ tags:
   - bot-control
   - operations
   - launchers
-last_synced: "2026-09-04 22:50:54 UTC"
+last_synced: "2026-09-04 23:55:38 UTC"
 ---
 
 # 🎮 Monarch Bot Control & Activation Deck
 
 > [!INFO] **Live Service Telemetry & Operational State**
-> - **HyperLiquid Ingestion Collector**: 🟢 **ONLINE (PID: 8820)** • SQLite DB Updated: `2s ago`
-> - **Polymarket Engine**: ⚪ **IDLE (239593s ago)**
+> - **HyperLiquid Ingestion Collector**: 🟢 **ONLINE (PID: 8820)** • SQLite DB Updated: `0s ago`
+> - **Polymarket Engine**: ⚪ **IDLE (243475s ago)**
 > - **Active Risk Preset**: `CUSTOM` • Capital Per Leg: `$10,000`
 > - **Execution State**: 🟢 **ACCEPTING ENTRIES** • Kill-Switch: 🟢 **ARMED (NORMAL)**
-> - **Last Synchronized**: `2026-09-04 22:50:54 UTC`
+> - **Last Synchronized**: `2026-09-04 23:55:38 UTC`
 
 ---
 

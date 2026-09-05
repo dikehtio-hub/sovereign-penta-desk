@@ -54,6 +54,17 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
 DEFAULT_DROP_DIR = (Path(__file__).resolve().parents[2]
                     / "Sports_Desk" / "data" / "polymarket_drops")
 DEFAULT_DROP_NAME = "polymarket_sports.json"      # ONE current file, overwritten - see write_drop
+# Round 52 (Ruling 51-1): in --watch mode a change also writes a STAMPED copy
+# beside the canonical file, so a probability series accumulates for Item 18.
+# The canonical file stays the exporter's "latest"; stamped copies are pruned
+# on the ecosystem's 192h retention standard, by the stamp in their name.
+STAMP_FORMAT = "%Y%m%dT%H%M%S_%fZ"
+STAMPED_PATTERN = re.compile(r"^polymarket_(\d{8}T\d{6}_\d{6})Z\.json$")
+DROP_RETENTION_HOURS = 192.0
+# Round 52 (Ruling 51-2): tags are Gamma tag SLUGS (verified live 2026-09-05:
+# /events?tag_slug=crypto pages like tag_id does; /tags/slug/crypto -> id 21).
+# "sports" keeps the verified tag_id=1 path and the fixture normalisation.
+SPORTS_TAG_SLUG = "sports"
 
 GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
 SPORTS_TAG_ID = 1                                  # /tags/slug/sports -> {"id": "1", "label": "Sports"}
@@ -212,7 +223,7 @@ def looks_like_team(outcome: str) -> bool:
 
 def normalise_event(event: Dict[str, Any], sports: Sequence[str] = DEFAULT_SPORTS,
                     fee_rate: float = 0.0, fetched_at: Optional[str] = None,
-                    keep_dead: bool = False) -> Dict[str, Any]:
+                    keep_dead: bool = False, category: Optional[str] = None) -> Dict[str, Any]:
     """
     One Gamma event -> the questions in it that the matcher can read.
 
@@ -227,8 +238,13 @@ def normalise_event(event: Dict[str, Any], sports: Sequence[str] = DEFAULT_SPORT
 
     sport = sport_of(event, sports)
     if sport is None:
-        skip("not_a_traded_league")
-        return out
+        if not category:
+            skip("not_a_traded_league")
+            return out
+        # Round 52: a non-sports tag (crypto, fed-rates...) is kept under its own
+        # label; the arb matcher never pairs it with a sportsbook fixture, and the
+        # Titan macro block reads it by keyword.
+        sport = str(category).strip().upper()
     fetched_at = fetched_at or _iso(datetime.now(timezone.utc))
     base = {
         "sport": sport, "fee_rate": float(fee_rate), "event_slug": event.get("slug", ""),
@@ -308,8 +324,8 @@ def normalise_events(events: Iterable[Dict[str, Any]], **kwargs: Any) -> Dict[st
 
 def fetch_events(url: str = GAMMA_EVENTS_URL, tag_id: int = SPORTS_TAG_ID,
                  limit: int = 100, pages: int = 3, timeout: float = 15.0,
-                 getter: Optional[Callable[[str, Dict[str, Any], float], Any]] = None
-                 ) -> List[Dict[str, Any]]:
+                 getter: Optional[Callable[[str, Dict[str, Any], float], Any]] = None,
+                 tag_slug: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Active sports events from Gamma, highest 24h volume first, paged.
 
@@ -329,8 +345,13 @@ def fetch_events(url: str = GAMMA_EVENTS_URL, tag_id: int = SPORTS_TAG_ID,
     events: List[Dict[str, Any]] = []
     offset = 0
     for _ in range(max(1, int(pages))):
-        page = getter(url, {"tag_id": int(tag_id), "closed": "false", "limit": int(limit),
-                            "offset": offset, "order": "volume24hr", "ascending": "false"}, timeout)
+        params: Dict[str, Any] = {"closed": "false", "limit": int(limit), "offset": offset,
+                                  "order": "volume24hr", "ascending": "false"}
+        if tag_slug:
+            params["tag_slug"] = str(tag_slug)           # Round 52: any Gamma tag by slug
+        else:
+            params["tag_id"] = int(tag_id)               # the verified sports path
+        page = getter(url, params, timeout)
         if not isinstance(page, list):
             raise FetchError("Gamma returned %s, expected a JSON list of events" % type(page).__name__)
         if not page:
@@ -340,6 +361,51 @@ def fetch_events(url: str = GAMMA_EVENTS_URL, tag_id: int = SPORTS_TAG_ID,
         if len(page) < int(limit):
             break
     return events
+
+
+def filter_by_keywords(questions: Sequence[Dict[str, Any]], keywords: Sequence[str]) -> List[Dict[str, Any]]:
+    """Questions whose text contains ANY keyword (case-insensitive); no keywords keeps all."""
+    wanted = [str(k).strip().lower() for k in (keywords or ()) if str(k).strip()]
+    if not wanted:
+        return list(questions)
+    return [q for q in questions if any(k in str(q.get("question") or "").lower() for k in wanted)]
+
+
+def collect_live_questions(url: str, tags: Sequence[str], keywords: Sequence[str] = (),
+                           sports: Sequence[str] = DEFAULT_SPORTS, fee_rate: float = 0.0,
+                           limit: int = 100, pages: int = 3,
+                           getter: Optional[Callable[[str, Dict[str, Any], float], Any]] = None,
+                           log: Callable[[str], None] = print) -> List[Dict[str, Any]]:
+    """
+    One watcher, several tags (Round 52, Ruling 51-2). "sports" fetches by the
+    verified tag_id and keeps the fixture normalisation; any other slug fetches
+    by tag_slug, is labelled by that slug, and is narrowed by `keywords` when
+    given. Questions are deduplicated by token, first tag wins.
+    """
+    out: List[Dict[str, Any]] = []
+    seen: set = set()
+    for tag in tags:
+        slug = str(tag).strip().lower()
+        if not slug:
+            continue
+        if slug == SPORTS_TAG_SLUG:
+            events = fetch_events(url, tag_id=SPORTS_TAG_ID, limit=limit, pages=pages, getter=getter)
+            result = normalise_events(events, sports=sports, fee_rate=fee_rate)
+            questions = result["questions"]
+        else:
+            events = fetch_events(url, limit=limit, pages=pages, getter=getter, tag_slug=slug)
+            result = normalise_events(events, sports=sports, fee_rate=fee_rate, category=slug)
+            questions = filter_by_keywords(result["questions"], keywords)
+        if result["skipped"]:
+            log("[GAMMA %s] %d event(s): kept %d question(s), skipped %s"
+                % (slug, result["events"], len(questions), result["skipped"]))
+        for q in questions:
+            token = str(q.get("token_id") or "")
+            if token and token in seen:
+                continue
+            seen.add(token)
+            out.append(q)
+    return out
 
 
 def validate_questions(questions: Any) -> List[Dict[str, Any]]:
@@ -387,6 +453,59 @@ def write_drop(questions: Sequence[Dict[str, Any]], drop_dir: Path = DEFAULT_DRO
     return target
 
 
+def stamped_drop_name(now: Optional[datetime] = None) -> str:
+    """polymarket_<UTC stamp to the microsecond>Z.json - never collides with the canonical name."""
+    now = now or datetime.now(timezone.utc)
+    return "polymarket_%s.json" % now.strftime(STAMP_FORMAT)
+
+
+def is_stamped_drop(path: Path) -> bool:
+    return bool(STAMPED_PATTERN.match(Path(path).name))
+
+
+def stamp_of(path: Path) -> Optional[datetime]:
+    """The UTC moment encoded in a stamped drop's name, or None for any other file."""
+    match = STAMPED_PATTERN.match(Path(path).name)
+    if not match:
+        return None
+    try:
+        return datetime.strptime(match.group(1) + "Z", STAMP_FORMAT).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def write_stamped_copy(questions: Sequence[Dict[str, Any]], drop_dir: Path = DEFAULT_DROP_DIR,
+                       now: Optional[datetime] = None) -> Path:
+    """The same questions under a stamped name (Round 52) - the series Item 18 reads."""
+    return write_drop(questions, drop_dir, name=stamped_drop_name(now))
+
+
+def prune_stamped_drops(drop_dir: Path = DEFAULT_DROP_DIR, retention_hours: float = DROP_RETENTION_HOURS,
+                        now: Optional[datetime] = None) -> List[Path]:
+    """
+    Delete stamped drops older than `retention_hours` by the stamp in their
+    NAME (a copied file's mtime lies; its name does not). The canonical file
+    and anything unstamped are never touched. Returns what was deleted.
+    """
+    now = now or datetime.now(timezone.utc)
+    deleted: List[Path] = []
+    try:
+        candidates = sorted(Path(drop_dir).glob("polymarket_*.json"))
+    except Exception:                                       # noqa: BLE001
+        return deleted
+    for path in candidates:
+        stamp = stamp_of(path)
+        if stamp is None:
+            continue
+        if (now - stamp).total_seconds() > retention_hours * 3600.0:
+            try:
+                path.unlink()
+                deleted.append(path)
+            except OSError:
+                continue
+    return deleted
+
+
 # ---------------------------------------------------------------------------
 # Polling
 # ---------------------------------------------------------------------------
@@ -394,7 +513,9 @@ def write_drop(questions: Sequence[Dict[str, Any]], drop_dir: Path = DEFAULT_DRO
 def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DROP_DIR,
          name: Optional[str] = None, interval: float = 300.0,
          max_polls: Optional[int] = None, sleep: Callable[[float], None] = time.sleep,
-         log: Callable[[str], None] = print) -> Dict[str, int]:
+         log: Callable[[str], None] = print, stamped: bool = False,
+         retention_hours: float = DROP_RETENTION_HOURS,
+         clock: Optional[Callable[[], datetime]] = None) -> Dict[str, int]:
     """
     Re-fetch on a timer and write ONLY when the prices changed.
 
@@ -402,8 +523,9 @@ def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DR
     set with a fresh `fetched_at` would manufacture a price history that was
     never quoted.
     """
-    stats = {"polls": 0, "drops": 0, "skipped_unchanged": 0, "errors": 0}
+    stats = {"polls": 0, "drops": 0, "skipped_unchanged": 0, "errors": 0, "stamped": 0, "pruned": 0}
     last: Optional[str] = None
+    clock = clock or (lambda: datetime.now(timezone.utc))
     while True:
         stats["polls"] += 1
         try:
@@ -422,6 +544,13 @@ def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DR
                 stats["drops"] += 1
                 last = current
                 log("[DROP] poll %d: %d question(s) -> %s" % (stats["polls"], len(questions), target))
+                if stamped:
+                    # Round 52 (Ruling 51-1): the series copy, and the retention sweep.
+                    copy = write_stamped_copy(questions, drop_dir, now=clock())
+                    stats["stamped"] += 1
+                    pruned = prune_stamped_drops(drop_dir, retention_hours=retention_hours, now=clock())
+                    stats["pruned"] += len(pruned)
+                    log("[STAMP] %s%s" % (copy.name, (" (pruned %d older than %.0fh)" % (len(pruned), retention_hours)) if pruned else ""))
         if max_polls is not None and stats["polls"] >= max_polls:
             return stats
         sleep(interval)
@@ -444,7 +573,17 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="Polymarket taker fee as a fraction, if you know it (default 0.0 - not inferred)")
     parser.add_argument("--folder", type=Path, default=None, help="drop folder")
     parser.add_argument("--name", default=None, help="drop file name (default: %s, overwritten)" % DEFAULT_DROP_NAME)
-    parser.add_argument("--watch", action="store_true", help="poll on --interval; write only on change")
+    parser.add_argument("--tags", default=None,
+                        help="comma-separated Gamma tag slugs to fetch in one watcher, e.g. sports,crypto "
+                             "(default: the --tag-id sports path only)")
+    parser.add_argument("--keywords", default=None,
+                        help="comma-separated words; NON-sports tags keep only questions mentioning one, "
+                             "e.g. \"fed cut,bitcoin\"")
+    parser.add_argument("--watch", action="store_true",
+                        help="poll on --interval; write only on change; also writes a stamped copy per change")
+    parser.add_argument("--no-stamp", action="store_true", help="in --watch mode, do not write stamped copies")
+    parser.add_argument("--retention-hours", type=float, default=DROP_RETENTION_HOURS,
+                        help="prune stamped copies older than this (default %.0f, the ecosystem standard)" % DROP_RETENTION_HOURS)
     parser.add_argument("--interval", type=float, default=300.0)
     parser.add_argument("--max-polls", type=int, default=None)
     args = parser.parse_args(argv)
@@ -452,7 +591,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     folder = Path(args.folder or DEFAULT_DROP_DIR)
     sports = tuple(s.strip().upper() for s in args.sports.split(",") if s.strip())
 
-    if args.live:
+    tags = [t.strip() for t in (args.tags or "").split(",") if t.strip()]
+    keywords = [k.strip() for k in (args.keywords or "").split(",") if k.strip()]
+
+    if args.live and tags:
+        def source() -> List[Dict[str, Any]]:
+            return collect_live_questions(args.url, tags, keywords, sports=sports, fee_rate=args.fee_rate,
+                                          limit=args.limit, pages=args.pages)
+    elif args.live:
         def source() -> List[Dict[str, Any]]:
             events = fetch_events(args.url, tag_id=args.tag_id, limit=args.limit, pages=args.pages)
             result = normalise_events(events, sports=sports, fee_rate=args.fee_rate)
@@ -465,7 +611,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return sample_questions()
 
     if args.watch:
-        poll(source, folder, name=args.name, interval=args.interval, max_polls=args.max_polls)
+        poll(source, folder, name=args.name, interval=args.interval, max_polls=args.max_polls,
+             stamped=not args.no_stamp, retention_hours=args.retention_hours)
         return 0
     questions = validate_questions(source())
     target = write_drop(questions, folder, name=args.name)

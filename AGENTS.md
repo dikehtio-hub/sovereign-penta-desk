@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 52 complete: STAMPED POLYMARKET DROPS, MULTI-TAG WATCHER, LEAK FIX, VAULT
+TRACKED. `--watch` now writes a stamped copy (`polymarket_<UTC stamp>Z.json`)
+beside the canonical file on every price change and prunes copies older than
+192h by the stamp in their name, so Item 18 gets its probability series.
+`--tags sports,crypto,fed-rates` fetches several Gamma tags in one watcher
+(non-sports by verified `tag_slug`, labelled by slug, narrowed by `--keywords`).
+The unclosed read-only connection in find_market_probability is closed on the
+no-table path. open_dashboard.bat (Antigravity's root launcher) and the five
+new whale dossiers are tracked. 5 new tests. No collector code; no restart.
+
 Round 51 complete: MEASURED MACRO SIGNALS & ITEM 18 LEAD-LAG (OFFLINE). The
 Titan note's macro block is no longer three hard-coded narratives: Polymarket
 probabilities are looked up in whale_trades and in drop files (keyword groups
@@ -196,7 +206,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 809 OK |
+| master + bridges + cross-market + exporters + ingestors (16 modules, incl. test_titan_correlator, test_lead_lag) | 814 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -220,6 +230,31 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 52 findings
+
+- **The multi-tag watcher works live** (one-shot into a temp folder, NOT the
+  real drop dir): 717 questions - sports 417 (MLB 276, NFL 117, NBA 24),
+  crypto 203, fed-rates 97 - and among them a real "Will Bitcoin reach
+  $100,000 in September?" at 5% and a $76k-$82k daily ladder. Pointing the
+  real watcher at these tags would replace the SAMPLE drop the arb note has
+  shown since Round 34 with live sports questions; that is Antigravity's call.
+- **Gamma `tag_slug` is real**: /events?tag_slug=crypto pages exactly like
+  tag_id, and /tags/slug/crypto resolves to id 21. Round 34's "?tag=sports is
+  ignored" stands - the parameter name is tag_slug, not tag.
+- **The ResourceWarning was mine** (Round 51's find_market_probability opened
+  a connection and raised past its close when whale_trades was absent), not
+  lead_lag.load_mark_series as the handoff guessed - tracemalloc placed it.
+  Now try/finally. The three cross-market modules run clean under
+  -W error::ResourceWarning.
+- **Non-sports questions carry sport = the tag slug upper-cased** (CRYPTO,
+  FED-RATES). The arb matcher never pairs them with a sportsbook fixture; the
+  cross-market exporter will LIST them as unmatched if they land in the real
+  drop dir. A separate canonical file per tag family would avoid that - not
+  built, asked.
+- Stamped copies and the exporter: load_questions dedups by token with the
+  newest FILE (mtime) winning, and a stamped copy is written right after the
+  canonical one with identical content, so "latest" is unaffected.
 
 ## Round 51 findings
 

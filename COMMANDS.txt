@@ -2360,6 +2360,16 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 52 - STAMPED DROPS, MULTI-TAG WATCHER, LEAK FIX
+     python -m cross_market.ingestors.polymarket_fetcher --live --watch --interval 300
+         --tags sports,crypto,fed-rates --keywords "fed,rate cut,bitcoin,btc"
+         canonical polymarket_sports.json (exporter's latest) + polymarket_<stamp>Z.json per
+         change (Item 18 series), pruned at --retention-hours 192. --no-stamp opts out.
+         Non-sports questions are labelled by tag slug (CRYPTO, FED-RATES).
+     Live probe 2026-09-05 (temp folder): 717 questions incl. "Will Bitcoin reach
+         $100,000 in September?" at 5%. The REAL drop dir still holds the sample.
+     tests: cross_market.tests.test_polymarket_fetcher (TestStampedDrops, TestTagsAndKeywords)
+
      ROUND 51 - MEASURED MACRO SIGNALS, ITEM 18 LEAD-LAG (OFFLINE RESEARCH)
      python -m cross_market.titan_correlator --report | --scan
          macro block now MEASURED: Polymarket probability via whale_trades / drop files
@@ -2403,7 +2413,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (16 modules, 809): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (16 modules, 814): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

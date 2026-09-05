@@ -315,7 +315,8 @@ class TestWriteAndPoll(Base):
             return qs
 
         stats = poll(source, self.drop, interval=0, max_polls=4, sleep=lambda s: None, log=logs.append)
-        self.assertEqual(stats, {"polls": 4, "drops": 2, "skipped_unchanged": 2, "errors": 0})
+        self.assertEqual(stats, {"polls": 4, "drops": 2, "skipped_unchanged": 2, "errors": 0,
+                                 "stamped": 0, "pruned": 0})                     # Round 52: stamp counters, off here
         self.assertTrue(any(line.startswith("[SKIP]") for line in logs))
         self.assertEqual(load_questions(self.drop)[0]["yes_price"], 0.60)
 
@@ -336,7 +337,14 @@ class TestWriteAndPoll(Base):
         self.assertTrue((self.drop / DEFAULT_DROP_NAME).exists())
         self.assertEqual(main(["--sample", "--folder", str(self.drop), "--watch", "--interval", "0",
                                "--max-polls", "2"]), 0)
-        self.assertEqual(len(list(self.drop.glob("*.json"))), 1)
+        # Round 52 (Ruling 51-1): --watch also writes ONE stamped copy per change beside the canonical file.
+        names = sorted(f.name for f in self.drop.glob("*.json"))
+        self.assertEqual(len(names), 2)
+        self.assertIn(DEFAULT_DROP_NAME, names)
+        self.assertTrue(any(n.startswith("polymarket_2") and n.endswith("Z.json") for n in names))
+        self.assertEqual(main(["--sample", "--folder", str(self.drop), "--watch", "--interval", "0",
+                               "--max-polls", "1", "--no-stamp"]), 0)
+        self.assertEqual(len(list(self.drop.glob("*.json"))), 2)                 # --no-stamp adds nothing
 
 
 class TestExporterDedup(Base):
@@ -356,6 +364,122 @@ class TestExporterDedup(Base):
         loaded = load_questions(self.drop)
         self.assertEqual(len(loaded), 2)
         self.assertEqual([q["yes_price"] for q in loaded if q["token_id"] == "t"], [0.4])
+
+
+class TestStampedDrops(Base):
+    """Round 52 (Ruling 51-1): a change writes the canonical file AND a stamped copy; old copies are pruned by name."""
+
+    def test_stamped_copies_accumulate_only_on_change_and_the_exporter_still_reads_the_latest(self):
+        from datetime import timedelta
+        from cross_market.ingestors.polymarket_fetcher import (is_stamped_drop, poll, prune_stamped_drops,
+                                                               stamp_of, stamped_drop_name)
+        from cross_market import lead_lag
+        moments = iter(NOW + timedelta(minutes=5 * i) for i in range(20))
+        prices = iter([0.55, 0.55, 0.60, 0.60])
+        base = sample_questions(now=NOW)
+
+        def source():
+            price = next(prices)
+            return [dict(base[0], yes_price=str(price))] + base[1:]
+
+        logs = []
+        stats = poll(source, self.drop, interval=0, max_polls=4, sleep=lambda s: None, log=logs.append,
+                     stamped=True, clock=lambda: next(moments))
+        self.assertEqual((stats["drops"], stats["stamped"], stats["skipped_unchanged"]), (2, 2, 2))
+        files = sorted(self.drop.glob("*.json"))
+        stamped = [f for f in files if is_stamped_drop(f)]
+        self.assertEqual(len(stamped), 2)
+        self.assertIn(self.drop / DEFAULT_DROP_NAME, files)
+        self.assertFalse(is_stamped_drop(self.drop / DEFAULT_DROP_NAME))
+        self.assertEqual(stamp_of(stamped[0]), NOW)                              # the clock, to the microsecond
+        self.assertIsNone(stamp_of(self.drop / DEFAULT_DROP_NAME))
+        self.assertEqual(stamped_drop_name(NOW), "polymarket_20260904T120000_000000Z.json")
+        # The exporter still sees ONE price per market - the newest.
+        loaded = load_questions(self.drop)
+        self.assertEqual([float(q["yes_price"]) for q in loaded if q["token_id"] == base[0]["token_id"]], [0.6])
+        # And Item 18 sees the series: two observations of the moved market.
+        series = lead_lag.probability_series(lead_lag.load_drop_records([self.drop]))
+        self.assertEqual(len(series[base[0]["token_id"]]), 3)                    # canonical + 2 stamped
+        self.assertEqual(len(lead_lag.probability_shifts(series, min_shift=0.02)), 1)
+        # Retention prunes by the stamp in the name, never the canonical file.
+        deleted = prune_stamped_drops(self.drop, retention_hours=192.0, now=NOW + timedelta(hours=192, minutes=1))
+        self.assertEqual([d.name for d in deleted], [stamped[0].name])           # the first copy is 192h01m old
+        self.assertTrue((self.drop / DEFAULT_DROP_NAME).exists())
+        self.assertEqual(len([f for f in self.drop.glob("*.json") if is_stamped_drop(f)]), 1)
+        self.assertEqual(prune_stamped_drops(self.root / "absent"), [])
+
+    def test_watch_without_stamps_behaves_as_before(self):
+        from cross_market.ingestors.polymarket_fetcher import poll
+        stats = poll(lambda: sample_questions(now=NOW), self.drop, interval=0, max_polls=2,
+                     sleep=lambda s: None, log=lambda m: None, stamped=False)
+        self.assertEqual((stats["drops"], stats["stamped"]), (1, 0))
+        self.assertEqual([f.name for f in self.drop.glob("*.json")], [DEFAULT_DROP_NAME])
+
+
+class TestTagsAndKeywords(unittest.TestCase):
+    """Round 52 (Ruling 51-2): one watcher, several Gamma tags; non-sports tags are labelled and keyword-filtered."""
+
+    @staticmethod
+    def crypto_event(question, ask, token):
+        return {"slug": "btc-100k", "title": question, "tags": [{"label": "Crypto"}], "volume24hr": "1000",
+                "markets": [{"question": question, "outcomes": json.dumps(["Yes", "No"]),
+                             "outcomePrices": json.dumps(["0.6", "0.4"]), "clobTokenIds": json.dumps([token, token + "n"]),
+                             "bestAsk": ask, "bestBid": ask - 0.02, "active": True, "closed": False,
+                             "conditionId": "c-" + token, "slug": "m-" + token}]}
+
+    def test_fetch_by_tag_slug_sends_the_slug_and_not_the_sports_id(self):
+        from cross_market.ingestors.polymarket_fetcher import fetch_events
+        calls = []
+
+        def getter(url, params, timeout):
+            calls.append(dict(params))
+            return []
+
+        fetch_events("http://example.invalid/events", getter=getter, tag_slug="crypto")
+        self.assertEqual(calls[0]["tag_slug"], "crypto")
+        self.assertNotIn("tag_id", calls[0])
+
+    def test_a_non_sports_event_is_kept_under_its_category_only_when_asked(self):
+        from cross_market.ingestors.polymarket_fetcher import normalise_event
+        event = self.crypto_event("Will Bitcoin hit $100k in 2026?", 0.64, "tok-btc")
+        self.assertEqual(normalise_event(event)["skipped"], {"not_a_traded_league": 1})
+        result = normalise_event(event, category="crypto")
+        self.assertEqual(len(result["questions"]), 1)
+        q = result["questions"][0]
+        self.assertEqual((q["sport"], q["yes_price"], q["token_id"]), ("CRYPTO", 0.64, "tok-btc"))
+
+    def test_keywords_narrow_non_sports_tags_and_tokens_are_deduplicated(self):
+        from cross_market.ingestors.polymarket_fetcher import collect_live_questions, filter_by_keywords
+        from cross_market.tests.test_polymarket_fetcher import gamma_event
+        payload = {"sports": [gamma_event(slug="a")],
+                   "crypto": [self.crypto_event("Will Bitcoin hit $100k in 2026?", 0.64, "tok-btc"),
+                              self.crypto_event("Will Ethereum flip Bitcoin?", 0.05, "tok-flip"),
+                              self.crypto_event("Kraken IPO by 2027?", 0.30, "tok-ipo")],
+                   "fed-rates": [self.crypto_event("Fed rate cut in September?", 0.88, "tok-fed")]}
+        calls = []
+
+        def getter(url, params, timeout):
+            calls.append(dict(params))
+            if params.get("offset"):
+                return []
+            return payload["sports"] if "tag_id" in params else payload[params["tag_slug"]]
+
+        questions = collect_live_questions("http://example.invalid/events", ["sports", "crypto", "fed-rates"],
+                                           keywords=["bitcoin", "fed"], getter=getter, log=lambda m: None)
+        sports = [q for q in questions if q["sport"] not in ("CRYPTO", "FED-RATES")]
+        self.assertGreaterEqual(len(sports), 1)                                    # the fixture path is untouched
+        self.assertEqual({q["token_id"] for q in questions if q["sport"] == "CRYPTO"}, {"tok-btc", "tok-flip"})
+        self.assertEqual([q["token_id"] for q in questions if q["sport"] == "FED-RATES"], ["tok-fed"])
+        self.assertNotIn("tok-ipo", {q["token_id"] for q in questions})            # no keyword: dropped
+        self.assertEqual([c.get("tag_id") for c in calls if "tag_id" in c], [SPORTS_TAG_ID])
+        self.assertEqual({c["tag_slug"] for c in calls if "tag_slug" in c}, {"crypto", "fed-rates"})
+        self.assertEqual(filter_by_keywords([{"question": "A"}], []), [{"question": "A"}])
+        # And the Titan macro lookup reads these questions straight from a drop.
+        from cross_market.titan_correlator import BTC_MILESTONE_KEYWORDS, FED_CUT_KEYWORDS, find_market_probability
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "polymarket_macro.json").write_text(json.dumps(questions), encoding="utf-8")
+            self.assertAlmostEqual(find_market_probability(BTC_MILESTONE_KEYWORDS, [Path(tmp)])["probability"], 0.64)
+            self.assertAlmostEqual(find_market_probability(FED_CUT_KEYWORDS, [Path(tmp)])["probability"], 0.88)
 
 
 if __name__ == "__main__":

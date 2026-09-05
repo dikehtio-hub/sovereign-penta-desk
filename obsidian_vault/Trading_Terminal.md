@@ -5,7 +5,7 @@ tags:
   - trading-terminal
   - hurdle-tracker
   - execution-telemetry
-last_synced: "2026-09-04 22:50:54 UTC"
+last_synced: "2026-09-04 23:55:38 UTC"
 ---
 
 # 📈 Monarch Trading Terminal & 50-Trade Hurdle Tracker
@@ -13,11 +13,11 @@ last_synced: "2026-09-04 22:50:54 UTC"
 > [!INFO] **Live Delta-Neutral Harvester Telemetry**
 > - **Total Account Equity**: **`$100.3K`** (Starting: `$100.0K`)
 > - **Available Cash Balance**: **`$60.3K`** • Deployed Collateral: **`$40.0K`**
-> - **Net Realized Yield / PnL**: **`+$310.41`**
-> - **Accrued Funding Yield**: **`+$351.40`** (52 accrual cycles)
+> - **Net Realized Yield / PnL**: **`+$313.92`**
+> - **Accrued Funding Yield**: **`+$354.91`** (53 accrual cycles)
 > - **Total Execution Fees Paid**: `$41.00` (Net of maker/taker accounting)
 > - **Active Basis Pairs**: `2 pairs deployed`
-> - **Last Synchronized**: `2026-09-04 22:50:54 UTC`
+> - **Last Synchronized**: `2026-09-04 23:55:38 UTC`
 
 ---
 
@@ -46,8 +46,8 @@ last_synced: "2026-09-04 22:50:54 UTC"
 
 | Asset | Spot Pair | Leg Notional | Spot Entry | Perp Entry | Entry APR | Realised APR | Funding Accrued | Duration |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`para:ANSEM`** | `UANSEM` | $10.0K | `$0.2996` | `$0.2996` | `+2924.75%` | `+545.07%` | **`+$323.56`** | `88.1h` |
-| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+20.07%` | **`+$3.89`** | `45.2h` |
+| **`para:ANSEM`** | `UANSEM` | $10.0K | `$0.2996` | `$0.2996` | `+2924.75%` | `+540.38%` | **`+$326.94`** | `89.2h` |
+| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+19.56%` | **`+$4.02`** | `46.2h` |
 
 ---
 
