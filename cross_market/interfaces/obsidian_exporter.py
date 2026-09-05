@@ -248,7 +248,12 @@ class RiskRefresher:
         self.runs = 0
 
     def signature(self):
-        """(equity to the dollar, positions, coins) from the paper book; None when unreadable."""
+        """
+        (equity to the hundred dollars, positions, coins) from the paper book; None when
+        unreadable. Hundreds, not dollars: the harvester adds every hourly funding accrual
+        to cash, and a dollar-rounded signature would re-simulate every few hours on
+        accruals alone. A position opening or closing moves equity by thousands.
+        """
         from cross_market.risk_simulator import DEFAULT_PAPER_STATE
         path = Path(self.paper_state or DEFAULT_PAPER_STATE)
         try:
@@ -258,7 +263,7 @@ class RiskRefresher:
         positions = state.get("positions") or {}
         caps = [float(p.get("capital") or 0.0) for p in positions.values() if isinstance(p, dict)]
         equity = float(state.get("cash") or 0.0) + sum(caps)
-        return (round(equity), len(caps), tuple(sorted(str(k) for k in positions)))
+        return (int(round(equity / 100.0)) * 100, len(caps), tuple(sorted(str(k) for k in positions)))
 
     def due(self, cycle: int) -> bool:
         if self.every_cycles <= 0:

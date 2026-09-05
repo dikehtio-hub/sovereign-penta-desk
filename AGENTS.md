@@ -331,10 +331,13 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   loop refresh uses 20,000 paths and a 5,000-path grid (~5 s) and the card
   prints its path count, so the CLI run stays the reference figure.
 - **"Significant shift" is the paper book's signature**, read from the small
-  JSON every cycle: equity to the dollar, position count, coin set. A new
-  position or a $1 change re-simulates at once; the databases are read only
-  when a refresh runs. The signature is taken AFTER the run so a book that
-  moves during the simulation triggers again next cycle.
+  JSON every cycle: equity to the HUNDRED dollars, position count, coin set.
+  Hundreds because basis_harvester.accrue adds every hourly funding accrual
+  to cash (my handoff first assumed it did not); dollar rounding would have
+  re-simulated every few hours on accruals alone. A position opening or
+  closing moves equity by thousands and re-simulates at once; the databases
+  are read only when a refresh runs. The signature is taken AFTER the run so
+  a book that moves during the simulation triggers again next cycle.
 - **Stress is a correlation applied to three levers on the same day**: perp
   vol x(1 + c(mult - 1)), funding x(1 - c) minus c x |daily mean| (flips at
   c = 1), arb leg-fail x(1 + c). The shock mask is drawn every day whatever c

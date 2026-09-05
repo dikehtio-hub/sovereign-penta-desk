@@ -229,6 +229,8 @@ class TestRiskRefresher(ExporterBase):
         self.assertEqual(r.status(2), "risk: next in 1 cycle(s)")
         self.assertTrue(r.due(3))                                              # every 3 cycles
         self.assertEqual(r.run(str(self.vault), 3), "risk: Risk_Sentinel.md unchanged (60 paths)")
+        book.write_text(json.dumps({"cash": 60_030.0, "positions": {"XPL": {"capital": 20_000.0}}}), encoding="utf-8")
+        self.assertFalse(r.due(4))                                             # an hourly accrual is not a shift
         book.write_text(json.dumps({"cash": 61_500.0, "positions": {"XPL": {"capital": 20_000.0}}}), encoding="utf-8")
         self.assertTrue(r.due(4))                                              # the book moved: due at once
         self.assertEqual(r.runs, 2)
