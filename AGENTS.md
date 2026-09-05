@@ -5,6 +5,31 @@ the detail.
 
 ## Status
 
+Round 95 complete (2026-09-05): RESEARCH ROUND - LLM WIKI x DEV SYNTHESIS
+BLUEPRINT (no code, no daemon, no dashboard touched). NEW LLM_WIKI_BLUEPRINT.md
+(OKF-shaped frontmatter on the document itself): read-only audit of the five
+desks' knowledge assets (what is stored, what evaporates, what the vault
+shows); the finding that DEV already has Karpathy's three layers unnamed -
+raw = desk data/ folders, schema = AGENTS.md + CLAUDE.md + registry, wiki =
+missing (563 KB of AGENTS prose and docstring essays stand in for it); a
+design that adds wiki/ crm/ journal/ raw/ INSIDE obsidian_vault (exporters
+keep owning dashboards and Whales/ Wallets/ Trading_Taxes/), federates raw in
+place (4.9 GB does not move), and puts the constitution in a new
+obsidian_vault/WIKI_SCHEMA.md; OKF v0.2 frontmatter (type required; generated,
+verified, status, stale_after, sources) plus a dev: namespace with
+dev:asserts / dev:parameters so lint can check every copied number against
+its owning file (copied-state drift, the Round 94 header defect class); the
+dashboards' "shell twins" map to OKF's Attested Computation type; ingest
+adapters over EXISTING --json outputs (survival curve -> Reaction Profile,
+lead_lag verdict -> Experiment + Regime, receipts -> journal, whales/sharps/
+titan cache -> crm); lint L1-L5 structural + C1-C6 DEV-specific (stale
+thresholds, expired tokens, cross-desk conflicts, unhedged tax, in-window
+edits, contradictions); phases 1-5 ordered by the 2026-09-06 Tier 1 verdict
+and the 2026-09-16 FOMC drill; seven rulings requested (placement,
+constitution file, OKF depth, verification actor, dashboard git tracking,
+debrief scope, module 23). Tests unchanged: 1,093 + 936 + 546 = 2,575, all
+green this session. Daemons and tonight's tasks untouched.
+
 Round 94 complete (2026-09-05): SURVIVAL-CURVE HARNESS + FOMC DRILL SCHEDULED.
 latency_sniper --survival-curve --event event.json --rules
 cross_market\experiments\fomc_2026-09-16.rules.json --books DIR [--step-seconds 1]
@@ -812,6 +837,24 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 95 findings
+
+- Read-only audit, 15:24-15:32 EDT. SQLite opened with `file:...?mode=ro`.
+- Highest-value evaporating streams, ranked: post-print book decay (survival
+  curve prints to console; 1,260 stamps due 2026-09-16), lead-lag verdicts
+  (overwritten in a marker block every 15 s), rulings R1-R6 as prose only,
+  cascade/liquidation events, entity identity (8 resolved EOA->proxy pairs in
+  titan_identities_cache.json never reach the 120 entity notes), 96 unreviewed
+  edge_opportunities, the 4 experiment meta files, statute rationale in
+  config.yaml comments, the empty 2026-09-02.md daily note.
+- Vault: 11 dashboards (52 KB) + 79 whale + 41 wallet notes, all whole-file
+  overwrites; only Cross_Market_Titans.md uses marker blocks; Bases, Daily
+  Notes, Properties, Templates, Graph, Backlinks all enabled.
+- OKF v0.2 verified from the spec (June 2026, GoogleCloudPlatform/
+  knowledge-catalog): only `type` is required; reserved index.md / log.md
+  formats adopted verbatim; unknown keys must be tolerated (hence `dev:`).
+- No repo file other than LLM_WIKI_BLUEPRINT.md and this log was written.
 
 ## Round 94 findings
 
