@@ -2360,6 +2360,15 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 77 - TIER 2b PRE-REGISTERED (MEMBERSHIP BY `tags`, NEW FILE)
+     python -m cross_market.lead_lag --check-data --subfamily-from tags
+         readiness of the TAGGED macro series (starts at the post-maiden watcher restart; same bar).
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5
+         Tier 2b (cross_market\experiments\lead_lag_tier2b.meta.json): a market counts in every subfamily its
+         `tags` list names. Untagged records are skipped. Report next to Tier 2; a disagreement is the finding.
+         Run ONLY after Tier 1's verdict, the watcher restart, and --check-data --subfamily-from tags = READY.
+
      ROUND 76 - TAGS RECORDED PER QUESTION (INERT UNTIL THE WATCHER RESTARTS)
      Drop questions fetched with --tags now carry `tags` (every tag the market matched, --tags order);
      `sport` is unchanged (first tag's label). The RUNNING watcher predates this: restart it AFTER the
@@ -2658,7 +2667,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (19 modules, 900): the Sports_Desk + cross_market modules above plus
+     MASTER SUITE (19 modules, 901): the Sports_Desk + cross_market modules above plus
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

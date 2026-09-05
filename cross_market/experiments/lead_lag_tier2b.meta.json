@@ -1,0 +1,53 @@
+{
+  "experiment": "lead_lag_tier2b_dual_tag_membership",
+  "registered_utc": "2026-09-05T14:27:34.659416+00:00",
+  "status": "PRE-REGISTERED - runs only after (1) the Tier 1 maiden verdict is in Cross_Market_Titans.md, (2) the watcher has been restarted with the Round 76 code, and (3) the TAGGED macro series clears the readiness bar on its own",
+  "decision": "Ratification 76-3 (Round 77 prompt): Tier 2 stays an exclusive partition by `sport`; membership analysis is registered here as Tier 2b in a NEW file, never by amending lead_lag_tier2.meta.json.",
+  "differs_from_tier2_only_in": "MEMBERSHIP: a question belongs to every subfamily named in its Round 76 `tags` list, so a market fetched under both crypto and fed-rates counts in BOTH. Under Tier 2 (first tag wins) it counts once, as crypto.",
+  "series": {
+    "what": "macro stamps whose questions carry `tags` - counted from the first tagged stamp on; untagged records (pre-restart) are never inferred from `sport`",
+    "readiness": {
+      "min_span_hours": 24,
+      "min_points": 200,
+      "max_gap_minutes": 60
+    },
+    "command": "python -m cross_market.lead_lag --check-data --subfamily-from tags"
+  },
+  "subfamilies": {
+    "fed-rates": {
+      "filter": "`tags` contains fed-rates",
+      "role": "exogenous: a policy repricing that BTC may or may not follow",
+      "reading": "the Tier 1 interpretation, unchanged"
+    },
+    "crypto": {
+      "filter": "`tags` contains crypto",
+      "role": "endogenous: the question is a function of the BTC price",
+      "reading": "a peak with |lag| <= 5 min (POLL_INTERVAL_MINUTES) is 'contemporaneous repricing within the poll interval: latency, not a lead'; only a peak OUTSIDE the poll interval that clears the bar may be called a lead"
+    }
+  },
+  "membership": "tags",
+  "bars": {
+    "min_abs_corr": 0.2,
+    "min_events": 5,
+    "min_points": 60,
+    "insufficient_rule": "a subfamily under min_events or min_points is 'insufficient', not a verdict",
+    "latency_minutes_crypto": 5.0,
+    "latency_minutes_fed_rates": 0.0
+  },
+  "commands": [
+    "python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags",
+    "python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5"
+  ],
+  "reading_rule": "Report Tier 2 and Tier 2b side by side per subfamily. Where they agree, the dual-tagged markets do not drive the result. Where they disagree, that disagreement IS the finding: the dual-tagged markets carry it, and neither tier is 'the' answer. Tier 2b never overrides Tier 2; the Tier 1 bar and verdict are untouched.",
+  "state_at_registration": {
+    "macro_stamps_on_disk": 153,
+    "tagged_macro_stamps_on_disk": 0,
+    "note": "counts only; no correlation of any kind was run for this registration. Tagged stamps begin when the watcher is restarted after the Tier 1 verdict (Ratification 76-2)."
+  },
+  "caveats": [
+    "Not independent of Tier 2: the same markets and the same BTC return series.",
+    "A Tier 2b subfamily can be READY only ~24 h after the post-maiden watcher restart.",
+    "The `tags` list holds the slugs the market was fetched under (--tags), not every Gamma tag on the event."
+  ],
+  "enforced_in_code": "lead_lag.load_drop_records(subfamily_from='tags'), lead_lag.tagged_stamped_moments(), CLI --subfamily-from tags (gate and --check-data count tagged stamps only)"
+}

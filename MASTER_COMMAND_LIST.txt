@@ -5,7 +5,7 @@ File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 19:43 EDT (Round 50 Milestone — commit a9c547d)
 Last Update: 2026-09-05 04:39 EDT (Round 72 Complete — commit e91417c)
-Status:      2,539 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
+Status:      2,540 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -70,7 +70,7 @@ TABLE OF CONTENTS
    [Added: 2026-09-04 18:51 EDT (Round 50 Milestone)]
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,539 tests across all 5 desks):
+5. RUN FULL OFFLINE VERIFICATION (2,540 tests across all 5 desks):
    [Added: 2026-09-04 19:43 EDT (Round 50 Milestone) | Last Synchronized: 2026-09-05 04:39 EDT (Round 72)]
    python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
@@ -394,6 +394,9 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       python -m cross_market.maiden_protocol [--no-tier2] [--json]     # exit 0 passed / 3 not yet / 1 failed
       # Round 76: drop questions carry `tags` once the watcher is restarted AFTER the maiden verdict:
       #   fetcher --status (pid) -> taskkill /F /PID <pid> -> start_polymarket_watcher.bat   (inside 60 min)
+      # Round 77: Tier 2b (cross_market/experiments/lead_lag_tier2b.meta.json, do not amend) - after the restart + 24 h:
+      python -m cross_market.lead_lag --check-data --subfamily-from tags
+      python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5
       # Round 58 (2026-09-04 23:21 EDT — Item 19): multi-desk Monte Carlo risk-of-ruin; writes obsidian_vault/Risk_Sentinel.md
       python -m cross_market.risk_simulator --iterations 100000 [--json] [--no-vault] [--assume-defaults]
       # Round 59 (2026-09-04 23:41 EDT): --stress-correlation 0..1 [--stress-day-prob 0.02] [--stress-vol-multiplier 3] -> baseline vs
@@ -534,11 +537,11 @@ Obsidian Vault Locations:
   Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md [Added: 2026-09-03 21:53 EDT (Round 26L)]
 
 ================================================================================
-5. MASTER OFFLINE TEST SUITES (2,539 Tests Total)
+5. MASTER OFFLINE TEST SUITES (2,540 Tests Total)
 ================================================================================
 
 Every modification MUST be verified offline against all 3 test suites. Never push
-a commit without all 2,539 tests passing!
+a commit without all 2,540 tests passing!
 
 1. HyperLiquid Monarch (pytest — 1,093 tests):
    [Updated: 2026-09-05 04:39 EDT (Round 72)]

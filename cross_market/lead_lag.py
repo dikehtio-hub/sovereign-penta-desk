@@ -98,8 +98,19 @@ def record_subfamily(question: Dict[str, Any]) -> str:
     return str(question.get(SUBFAMILY_LABEL) or "").strip().lower()
 
 
+SUBFAMILY_SOURCES = ("label", "tags")
+
+
+def record_tags(question: Dict[str, Any]) -> Optional[List[str]]:
+    """The lower-cased `tags` list a Round 76 drop question carries, or None when the record predates the field."""
+    raw = question.get("tags")
+    if not isinstance(raw, list):
+        return None
+    return [str(t).strip().lower() for t in raw if str(t).strip()]
+
+
 def load_drop_records(drop_dirs: Iterable[Path], family: Optional[str] = None,
-                      subfamily: Optional[str] = None) -> List[Dict[str, Any]]:
+                      subfamily: Optional[str] = None, subfamily_from: str = "label") -> List[Dict[str, Any]]:
     """
     Every question in every *.json drop under `drop_dirs` as
     {ts_ms, key, probability, question, file, label}. A question's key is its token_id,
@@ -108,7 +119,14 @@ def load_drop_records(drop_dirs: Iterable[Path], family: Optional[str] = None,
     NFL questions (the sentinel gates on macro stamps; the regression should read
     the same series). `subfamily` (Round 74, Tier 2) keeps only the questions whose
     tag label matches, e.g. "fed-rates" or "crypto" inside the macro drops.
+    `subfamily_from` (Round 77, Tier 2b, registered in lead_lag_tier2b.meta.json):
+    "label" reads the first-tag label `sport` - an exclusive partition, the Tier 2
+    methodology; "tags" reads MEMBERSHIP of the Round 76 `tags` list, so a market
+    tagged both ways counts in both subfamilies. Records without a `tags` field
+    predate Round 76 and are not Tier 2b data: skipped, never guessed from the label.
     """
+    if subfamily_from not in SUBFAMILY_SOURCES:
+        raise ValueError("subfamily_from must be one of %s, got %r" % (SUBFAMILY_SOURCES, subfamily_from))
     records: List[Dict[str, Any]] = []
     wanted = str(subfamily).strip().lower() if subfamily else None
     for directory in drop_dirs:
@@ -139,10 +157,16 @@ def load_drop_records(drop_dirs: Iterable[Path], family: Optional[str] = None,
                 if not key:
                     continue
                 label = record_subfamily(q)
-                if wanted is not None and label != wanted:
-                    continue
+                tags = record_tags(q)
+                if wanted is not None:
+                    if subfamily_from == "tags":
+                        if tags is None or wanted not in tags:
+                            continue
+                    elif label != wanted:
+                        continue
                 records.append({"ts_ms": ts, "key": key, "probability": prob,
-                                "question": str(q.get("question") or ""), "file": path.name, "label": label})
+                                "question": str(q.get("question") or ""), "file": path.name, "label": label,
+                                "tags": tags})
     records.sort(key=lambda r: (r["ts_ms"], r["key"]))
     return records
 
@@ -319,6 +343,8 @@ def lead_lag_report(shifts: List[Dict[str, Any]], marks: List[Tuple[int, float]]
 
 def format_report(result: Dict[str, Any], coin: str, keys: int) -> str:
     scope = " / ".join(str(s) for s in (result.get("family"), result.get("subfamily")) if s)
+    if result.get("subfamily") and result.get("subfamily_from") == "tags":
+        scope += " (tags)"
     lines = ["", f"ITEM 18 - LEAD-LAG: Polymarket probability shifts vs HyperLiquid {coin} returns"
              + (f"  [{scope}]" if scope else ""),
              f"  markets: {keys}   probability shifts: {result['events']}   price points: {result['price_points']}   "
@@ -340,9 +366,9 @@ def format_report(result: Dict[str, Any], coin: str, keys: int) -> str:
 def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_shift: float,
         min_events: int, min_points: int, events_csv: Optional[Path] = None,
         family: Optional[str] = None, subfamily: Optional[str] = None,
-        latency_minutes: float = 0.0) -> Tuple[Dict[str, Any], int]:
+        latency_minutes: float = 0.0, subfamily_from: str = "label") -> Tuple[Dict[str, Any], int]:
     records = (load_event_csv(events_csv) if events_csv
-               else load_drop_records(drop_dirs, family=family, subfamily=subfamily))
+               else load_drop_records(drop_dirs, family=family, subfamily=subfamily, subfamily_from=subfamily_from))
     series = probability_series(records)
     shifts = probability_shifts(series, min_shift=min_shift)
     marks: List[Tuple[int, float]] = []
@@ -358,6 +384,7 @@ def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_s
     report = lead_lag_report(shifts, marks, max_lag=max_lag, min_events=min_events, min_points=min_points,
                              latency_minutes=latency_minutes)
     report["family"], report["subfamily"] = family, subfamily
+    report["subfamily_from"] = subfamily_from if subfamily else None
     # Round 75: a database that could not be read is a failed run, not an "insufficient data" verdict.
     # The refresher must not record it (a 24 h cooldown on a transient lock would bury the maiden run).
     report["price_error"] = price_error
@@ -389,6 +416,36 @@ def stamped_moments(drop_dirs: Iterable[Path], family: str = "macro") -> List[da
                 continue
             stamp = stamp_of(path)
             if stamp is not None:
+                out.append(stamp)
+    return sorted(out)
+
+
+def tagged_stamped_moments(drop_dirs: Iterable[Path], family: str = "macro") -> List[datetime]:
+    """
+    Round 77 (Tier 2b): the stamps whose questions carry `tags` (Round 76) - the only
+    series Tier 2b may read, counted from the first tagged stamp on. Files are opened,
+    so this is a research-CLI helper, not a per-cycle probe.
+    """
+    from cross_market.ingestors.polymarket_fetcher import STAMPED_PATTERN, stamp_of
+    out: List[datetime] = []
+    for directory in drop_dirs:
+        try:
+            files = list(Path(directory).glob("polymarket_*.json"))
+        except Exception:                                   # noqa: BLE001
+            continue
+        for path in files:
+            match = STAMPED_PATTERN.match(path.name)
+            if not match or (family != "any" and (match.group(1) or "sports") != family):
+                continue
+            stamp = stamp_of(path)
+            if stamp is None:
+                continue
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:                               # noqa: BLE001
+                continue
+            items = data if isinstance(data, list) else (data.get("questions") if isinstance(data, dict) else None) or []
+            if any(isinstance(q, dict) and isinstance(q.get("tags"), list) for q in items):
                 out.append(stamp)
     return sorted(out)
 
@@ -492,6 +549,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="Tier 2 reading rule: a peak within this many minutes of zero is contemporaneous "
                              "repricing (poll latency), not a lead; the Tier 2 crypto run passes %g. Default 0 = off"
                              % POLL_INTERVAL_MINUTES)
+    parser.add_argument("--subfamily-from", default="label", choices=SUBFAMILY_SOURCES,
+                        help="Round 77: 'label' = the first-tag label `sport` (Tier 2, exclusive partition); "
+                             "'tags' = membership of the Round 76 `tags` list (Tier 2b, registered in "
+                             "cross_market/experiments/lead_lag_tier2b.meta.json; untagged records are skipped "
+                             "and --check-data / the gate count only tagged stamps)")
     parser.add_argument("--min-span-hours", type=float, default=READY_MIN_SPAN_HOURS)
     parser.add_argument("--min-ready-points", type=int, default=READY_MIN_POINTS)
     parser.add_argument("--max-gap-minutes", type=float, default=READY_MAX_GAP_MINUTES)
@@ -501,24 +563,28 @@ def main(argv: Optional[List[str]] = None) -> int:
                              "--check-data says NOT READY (explicit --drops / --events are never gated)")
     args = parser.parse_args(argv)
     drop_dirs = [Path(d) for d in args.drops] if args.drops else DEFAULT_DROP_DIRS
+    tagged = args.subfamily_from == "tags"
     if args.check_data:
         family = args.family or "macro"
-        info = data_readiness(stamped_moments(drop_dirs, family), min_span_hours=args.min_span_hours,
+        stamps = tagged_stamped_moments(drop_dirs, family) if tagged else stamped_moments(drop_dirs, family)
+        info = data_readiness(stamps, min_span_hours=args.min_span_hours,
                               min_points=args.min_ready_points, max_gap_minutes=args.max_gap_minutes)
-        print(json.dumps(info, indent=2) if args.json else format_readiness(info, family))
+        print(json.dumps(info, indent=2) if args.json else format_readiness(info, family + (" (tagged stamps)" if tagged else "")))
         return 0 if info["ready"] else EXIT_NOT_READY
     if not args.drops and not args.events and not args.force:
         # Round 57 (Directive 57-2): the first live evaluation waits for the sentinel.
-        info = data_readiness(stamped_moments(drop_dirs, "macro"))
+        # Round 77: a Tier 2b run waits for the TAGGED series to clear the same bar.
+        info = data_readiness(tagged_stamped_moments(drop_dirs, "macro") if tagged else stamped_moments(drop_dirs, "macro"))
         if not info["ready"]:
-            print(format_readiness(info, "macro"))
+            print(format_readiness(info, "macro (tagged stamps)" if tagged else "macro"))
             print("[GATE] the live drop dirs are not ready for an honest run - refusing (exit %d); "
                   "pass --force to run anyway, or --drops / --events for research data" % EXIT_NOT_READY)
             return EXIT_NOT_READY
     result, keys = run(args.coin.upper(), drop_dirs, Path(args.db) if args.db else DEFAULT_HL_DB, args.max_lag,
                        args.min_shift, args.min_events, args.min_points,
                        events_csv=Path(args.events) if args.events else None, family=args.family,
-                       subfamily=args.subfamily, latency_minutes=args.latency_minutes)
+                       subfamily=args.subfamily, latency_minutes=args.latency_minutes,
+                       subfamily_from=args.subfamily_from)
     print(format_report(result, args.coin.upper(), keys))
     return 0
 

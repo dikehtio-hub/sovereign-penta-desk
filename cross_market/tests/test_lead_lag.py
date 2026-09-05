@@ -387,3 +387,62 @@ class TestPriceReadFailure(LeadLagCase):
             f.unlink()
         empty, _ = ll.run("BTC", [self.drops], self.root / "missing" / "hl.db", 60, 0.02, 5, 60)
         self.assertEqual(empty["price_error"], "") ; self.assertIn("0 probability shifts", empty["reason"])
+
+
+class TestTier2bMembership(LeadLagCase):
+    """Round 77 (Ratification 76-3): Tier 2b reads membership of `tags`; Tier 2 (label) is untouched."""
+
+    def _drops(self):
+        for i in range(3):
+            price = "%.2f" % (0.40 + 0.05 * i)
+            (self.drops / f"polymarket_macro_2026090{1 + i}T000000_000000Z.json").write_text(json.dumps([
+                {"question": "Fed cut sends BTC?", "token_id": "tok-both", "yes_price": price,
+                 "fetched_at": f"2026-09-0{1 + i}T00:00:00Z", "sport": "CRYPTO", "tags": ["crypto", "fed-rates"]},
+                {"question": "Fed?", "token_id": "tok-fed", "yes_price": price,
+                 "fetched_at": f"2026-09-0{1 + i}T00:00:00Z", "sport": "FED-RATES", "tags": ["fed-rates"]},
+                {"question": "Legacy fed?", "token_id": "tok-legacy", "yes_price": price,
+                 "fetched_at": f"2026-09-0{1 + i}T00:00:00Z", "sport": "FED-RATES"}]), encoding="utf-8")
+        (self.drops / "polymarket_macro_20260904T000000_000000Z.json").write_text(json.dumps([
+            {"question": "Old?", "token_id": "tok-old", "yes_price": "0.50", "fetched_at": "2026-09-04T00:00:00Z",
+             "sport": "CRYPTO"}]), encoding="utf-8")
+
+    def test_membership_reads_tags_skips_untagged_records_and_gates_on_tagged_stamps(self):
+        from unittest import mock
+        self._drops()
+        keys = lambda **kw: sorted({r["key"] for r in ll.load_drop_records([self.drops], family="macro", **kw)})
+        self.assertEqual(keys(subfamily="fed-rates"), ["tok-fed", "tok-legacy"])                   # Tier 2: the label
+        self.assertEqual(keys(subfamily="crypto"), ["tok-both", "tok-old"])
+        self.assertEqual(keys(subfamily="fed-rates", subfamily_from="tags"), ["tok-both", "tok-fed"])  # Tier 2b: membership
+        self.assertEqual(keys(subfamily="crypto", subfamily_from="tags"), ["tok-both"])
+        self.assertEqual(keys(subfamily_from="tags"), ["tok-both", "tok-fed", "tok-legacy", "tok-old"])  # no subfamily: all
+        with self.assertRaises(ValueError):
+            ll.load_drop_records([self.drops], subfamily="crypto", subfamily_from="sport")
+        both = next(r for r in ll.load_drop_records([self.drops], subfamily="crypto", subfamily_from="tags") if r["key"] == "tok-both")
+        self.assertEqual((both["label"], both["tags"]), ("crypto", ["crypto", "fed-rates"]))
+        self.assertIsNone(ll.record_tags({"sport": "CRYPTO"})) ; self.assertEqual(ll.record_tags({"tags": [" Fed-Rates "]}), ["fed-rates"])
+        # three of the four macro stamps carry tags; Tier 2b counts only those
+        self.assertEqual(len(ll.tagged_stamped_moments([self.drops], "macro")), 3)
+        self.assertEqual(len(ll.stamped_moments([self.drops], "macro")), 4)
+        # run() labels the report; the CLI passes the mode through; --check-data reads the tagged series
+        result, n = ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60, family="macro", subfamily="fed-rates",
+                           subfamily_from="tags")
+        self.assertEqual((result["subfamily"], result["subfamily_from"], n), ("fed-rates", "tags", 2))
+        self.assertIn("[macro / fed-rates (tags)]", ll.format_report(result, "BTC", n))
+        plain, _ = ll.run("BTC", [self.drops], self.db, 60, 0.02, 5, 60, family="macro", subfamily="fed-rates")
+        self.assertEqual(plain["subfamily_from"], "label")
+        with mock.patch("builtins.print"), mock.patch.object(ll, "run", wraps=ll.run) as runner:
+            ll.main(["--coin", "btc", "--drops", str(self.drops), "--db", str(self.db), "--family", "macro",
+                     "--subfamily", "crypto", "--subfamily-from", "tags"])
+        self.assertEqual(runner.call_args.kwargs.get("subfamily_from"), "tags")
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--check-data", "--drops", str(self.drops), "--subfamily-from", "tags"]), ll.EXIT_NOT_READY)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("macro (tagged stamps)", printed) ; self.assertIn("(3 on disk)", printed)   # 4 stamps, 3 tagged
+        # the registration: a NEW file, the Tier 2 bars, membership by tags, Tier 2 itself untouched
+        exp = Path(__file__).resolve().parents[1] / "experiments"
+        meta = json.loads((exp / "lead_lag_tier2b.meta.json").read_text(encoding="utf-8"))
+        tier2 = json.loads((exp / "lead_lag_tier2.meta.json").read_text(encoding="utf-8"))
+        self.assertEqual(meta["membership"], "tags") ; self.assertEqual(meta["bars"], tier2["bars"])
+        self.assertEqual(sorted(meta["subfamilies"]), ["crypto", "fed-rates"])
+        self.assertIn("tier2b", meta["experiment"]) ; self.assertIn("counts only", meta["state_at_registration"]["note"])
+        self.assertNotIn("tier2b", json.dumps(tier2).lower())

@@ -5,6 +5,22 @@ the detail.
 
 ## Status
 
+Round 77 PREPARED (2026-09-05): TIER 2b PRE-REGISTERED IN A NEW FILE. The
+Round 77 prompt reached this session truncated after Directive 77-1 (the
+protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of that
+prompt was executed: cross_market/experiments/lead_lag_tier2b.meta.json
+registers membership analysis (a market in BOTH subfamilies when its Round
+76 `tags` list names both) with the Tier 2 bars copied verbatim, its own
+series (tagged macro stamps only, same 24 h / 200 / 60 min bar, counted from
+the first tagged stamp - i.e. after the post-maiden watcher restart), and a
+reading rule: report Tier 2 and Tier 2b side by side; a disagreement is
+the finding, Tier 2b never overrides Tier 2. Code: lead_lag
+load_drop_records(subfamily_from="label"|"tags"), record_tags,
+tagged_stamped_moments, CLI --subfamily-from tags (untagged records are
+skipped, never inferred from `sport`; --check-data and the gate count
+tagged stamps only). lead_lag_tier2.meta.json untouched (asserted). No
+live process touched. 1 new test.
+
 Round 76 PREPARED (2026-09-05): TAGS RECORDED ON DISK, WATCHER NOT RESTARTED.
 Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and was
 not run - `python -m cross_market.maiden_protocol` is the command. Directive
@@ -507,7 +523,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 900 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 901 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -531,6 +547,28 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 77 findings
+
+- **Membership is a different experiment, not a different filter.** The
+  same two subfamily names under Tier 2 and Tier 2b select different
+  markets, so the mode is a first-class parameter (`subfamily_from`) that
+  the report carries and the CLI header shows as "(tags)". A run cannot be
+  mistaken for the other tier after the fact.
+- **Untagged records are skipped, never guessed.** Inferring a `tags` list
+  from `sport` for pre-restart stamps would reproduce first-tag-wins and
+  call it membership. Tier 2b's series therefore starts at the watcher
+  restart, and its readiness is measured on tagged stamps alone.
+- **The registration copies the bars and adds only what differs.** The
+  bars dict is asserted equal to Tier 2's; the file is new; Tier 2's file is
+  asserted not to mention Tier 2b.
+- **A latent test-order hazard surfaced.** polymarket_fetcher bound
+  `log=print` as a default at import; test_lead_lag imports the fetcher
+  lazily inside mock.patch("builtins.print"), so when it ran FIRST the
+  poll's default log was a dead mock for the rest of the process and the
+  tee test lost its [DROP] line. The master suite never saw it (exporter
+  before lead_lag). Fix: `_emit` resolves print at call time. On-disk only,
+  inert for the running watcher.
 
 ## Round 76 findings
 

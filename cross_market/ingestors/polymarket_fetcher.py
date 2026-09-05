@@ -382,11 +382,21 @@ def filter_by_keywords(questions: Sequence[Dict[str, Any]], keywords: Sequence[s
     return [q for q in questions if any(k in str(q.get("question") or "").lower() for k in wanted)]
 
 
+def _emit(message: str) -> None:
+    """
+    Default `log` for the watcher paths. Resolves `print` at CALL time: a default of
+    `log=print` binds whatever `builtins.print` is when this module is first imported,
+    and a test that imports it lazily under mock.patch("builtins.print") would leave a
+    dead mock as the default for the rest of the process (Round 77 finding).
+    """
+    print(message)
+
+
 def collect_live_questions(url: str, tags: Sequence[str], keywords: Sequence[str] = (),
                            sports: Sequence[str] = DEFAULT_SPORTS, fee_rate: float = 0.0,
                            limit: int = 100, pages: int = 3,
                            getter: Optional[Callable[[str, Dict[str, Any], float], Any]] = None,
-                           log: Callable[[str], None] = print) -> List[Dict[str, Any]]:
+                           log: Callable[[str], None] = _emit) -> List[Dict[str, Any]]:
     """
     One watcher, several tags (Round 52, Ruling 51-2). "sports" fetches by the
     verified tag_id and keeps the fixture normalisation; any other slug fetches
@@ -629,7 +639,7 @@ def format_status(info: Dict[str, Any]) -> str:
 def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DROP_DIR,
          name: Optional[str] = None, interval: float = 300.0,
          max_polls: Optional[int] = None, sleep: Callable[[float], None] = time.sleep,
-         log: Callable[[str], None] = print, stamped: bool = False,
+         log: Callable[[str], None] = _emit, stamped: bool = False,
          retention_hours: float = DROP_RETENTION_HOURS,
          clock: Optional[Callable[[], datetime]] = None,
          split: bool = False, sports: Sequence[str] = DEFAULT_SPORTS) -> Dict[str, int]:
