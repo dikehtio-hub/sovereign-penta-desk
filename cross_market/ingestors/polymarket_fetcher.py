@@ -392,6 +392,11 @@ def _emit(message: str) -> None:
     print(message)
 
 
+def _sleep(seconds: float) -> None:
+    """Default `sleep` for poll(): resolves time.sleep at CALL time (Round 80, Ruling 79-3) - same hazard as `_emit`."""
+    time.sleep(seconds)
+
+
 def collect_live_questions(url: str, tags: Sequence[str], keywords: Sequence[str] = (),
                            sports: Sequence[str] = DEFAULT_SPORTS, fee_rate: float = 0.0,
                            limit: int = 100, pages: int = 3,
@@ -721,7 +726,7 @@ def format_status(info: Dict[str, Any]) -> str:
 
 def poll(source: Callable[[], List[Dict[str, Any]]], drop_dir: Path = DEFAULT_DROP_DIR,
          name: Optional[str] = None, interval: float = 300.0,
-         max_polls: Optional[int] = None, sleep: Callable[[float], None] = time.sleep,
+         max_polls: Optional[int] = None, sleep: Callable[[float], None] = _sleep,
          log: Callable[[str], None] = _emit, stamped: bool = False,
          retention_hours: float = DROP_RETENTION_HOURS,
          clock: Optional[Callable[[], datetime]] = None,

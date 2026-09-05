@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+Round 80 PREPARED (2026-09-05): IMPORT-TIME DEFAULTS CLOSED OUT. Ruling
+79-3 applied: poll() in both fetchers defaults `sleep` to a call-time
+`_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside
+tests finds no `= time.sleep` or `= print` default left. Directives
+80-1/2/3 (the maiden protocol ~01:40Z 2026-09-06, restart_polymarket_
+watcher.bat inside the hour after it, Tier 2b ~24 h later) are time-gated
+and were not run. 2 new tests. Watcher pid 49812 and exporter pid 56412
+untouched.
+
 Round 79 PREPARED (2026-09-05): THE POST-MAIDEN RESTART IS ONE COMMAND.
 Directives 79-1/2/3 are all time-gated (protocol ~01:40Z 2026-09-06, the
 watcher restart inside the hour after it, Tier 2b ~24 h later) and were
@@ -545,7 +554,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 904 OK |
+| master + bridges + cross-market + exporters + ingestors (19 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes) | 906 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 

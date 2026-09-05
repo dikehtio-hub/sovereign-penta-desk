@@ -267,11 +267,16 @@ def _emit(message: str) -> None:
     print(message)
 
 
+def _sleep(seconds: float) -> None:
+    """Default `sleep` for poll(): resolves time.sleep at CALL time (Round 80, Ruling 79-3) - same hazard as `_emit`."""
+    time.sleep(seconds)
+
+
 def poll(source: Callable[[], List[Dict[str, Any]]],
          drop_folder: Path = DEFAULT_DROP_FOLDER, db_path: Path = DEFAULT_DB_PATH,
          interval: float = 300.0, max_polls: Optional[int] = None,
          hurdle: Optional[Callable[[float], float]] = None, archive: bool = True,
-         run_watcher_after: bool = True, sleep: Callable[[float], None] = time.sleep,
+         run_watcher_after: bool = True, sleep: Callable[[float], None] = _sleep,
          log: Callable[[str], None] = _emit) -> Dict[str, int]:
     """
     Fetch on a timer; drop a file ONLY when the prices changed; price it.

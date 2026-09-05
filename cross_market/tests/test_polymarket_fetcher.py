@@ -910,3 +910,21 @@ class TestStopAndTags(Base):
         self.assertTrue(newest_stamp_has_tags(self.folder, "macro"))
         info = watcher_status(self.folder, now=self.now)
         self.assertTrue(info["newest_macro_tags"]) ; self.assertIn("carries tags", format_status(info))
+
+
+class TestCallTimeDefaults(unittest.TestCase):
+    """Rounds 77 and 80: poll() resolves print and time.sleep at call time, never at import time."""
+
+    def test_log_and_sleep_defaults_are_call_time_helpers(self):
+        import inspect
+        from unittest import mock
+        from cross_market.ingestors import polymarket_fetcher as pf
+        params = inspect.signature(pf.poll).parameters
+        self.assertIs(params["log"].default, pf._emit)
+        self.assertIs(params["sleep"].default, pf._sleep)
+        self.assertIs(inspect.signature(pf.collect_live_questions).parameters["log"].default, pf._emit)
+        with mock.patch("time.sleep") as fake_sleep, mock.patch("builtins.print") as fake_print:
+            pf._sleep(0.25)
+            pf._emit("x")
+        fake_sleep.assert_called_once_with(0.25)
+        fake_print.assert_called_once_with("x")

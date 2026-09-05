@@ -261,3 +261,16 @@ class TestCallTimeLog(unittest.TestCase):
         with mock.patch("builtins.print") as later:              # a fresh patch is honoured too: no frozen binding
             of._emit("again")
         later.assert_called_once_with("again")
+
+
+class TestCallTimeSleep(unittest.TestCase):
+    """Round 80 (Ruling 79-3): poll() must not freeze time.sleep as a default at import time either."""
+
+    def test_the_default_sleep_resolves_time_sleep_when_called(self):
+        import inspect
+        from unittest import mock
+        from Sports_Desk.ingestors import odds_fetcher as of
+        self.assertIs(inspect.signature(of.poll).parameters["sleep"].default, of._sleep)
+        with mock.patch("time.sleep") as fake_sleep:
+            of._sleep(0.5)
+        fake_sleep.assert_called_once_with(0.5)
