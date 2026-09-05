@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 19:43 EDT (Round 50 Milestone — commit a9c547d)
-Last Update: 2026-09-05 14:35 EDT (Round 94 Complete — survival-curve harness; FOMC drill task Monarch_FOMC_Drill for 2026-09-16 13:58 EDT)
-Status:      2,575 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
+Last Update: 2026-09-05 16:15 EDT (Round 96 Complete — knowledge layer Master Module 23: WIKI_SCHEMA.md constitution, seed + lint, 32 wiki pages)
+Status:      2,617 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -72,7 +72,7 @@ TABLE OF CONTENTS
 
 5. RUN FULL OFFLINE VERIFICATION (2,575 tests across all 5 desks):
    [Added: 2026-09-04 19:43 EDT (Round 50 Milestone) | Last Synchronized: 2026-09-05 04:39 EDT (Round 72)]
-   python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+   python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards knowledge.tests.test_knowledge && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
 2. TOP 20 ECOSYSTEM MODULES (What It Does & How To Activate)
@@ -539,27 +539,34 @@ Obsidian Vault Locations:
   Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md [Added: 2026-09-03 21:53 EDT (Round 26L)]
 
 ================================================================================
-5. MASTER OFFLINE TEST SUITES (2,575 Tests Total)
+5. MASTER OFFLINE TEST SUITES (2,617 Tests Total)
 ================================================================================
 
 Every modification MUST be verified offline against all 3 test suites. Never push
-a commit without all 2,575 tests passing!
+a commit without all 2,617 tests passing!
 
 1. HyperLiquid Monarch (pytest — 1,093 tests):
    [Updated: 2026-09-05 04:39 EDT (Round 72)]
    cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q
 
-2. Master & Bridges Suite (unittest — 22 modules, 936 tests):
-   [Updated: 2026-09-05 03:54 EDT (Round 69)]
-   python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards
+2. Master & Bridges Suite (unittest — 23 modules, 978 tests):
+   [Updated: 2026-09-05 16:15 EDT (Round 96)]
+   python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards knowledge.tests.test_knowledge
 
 3. Tax Reserve Agent Suite (unittest — 5 modules, 546 tests):
    [Updated: 2026-09-04 23:21 EDT (Round 58)]
    python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
+4. Knowledge Layer — Master Module 23 (unittest — 42 tests; also inside suite 2):
+   [Added: 2026-09-05 16:15 EDT (Round 96)]
+   python -m unittest knowledge.tests.test_knowledge
+   python -m knowledge.lint [--json]                exit 0 clean | 1 findings | 3 HALT.flag; writes nothing
+   python -m knowledge.seed [--dry-run] [--force]   5 Desk + 20 Item + 7 Ruling pages from the registry; never clobbers without --force
+   Constitution: obsidian_vault\WIKI_SCHEMA.md · owned: obsidian_vault\{wiki,crm,journal,raw}\ + index.md, log.md (dashboards unreachable)
+
 Single-Line Full Verification Command (PowerShell):
    [Updated: 2026-09-05 04:39 EDT (Round 72)]
-   python -m pytest HyperLiquid/HL_Monarch/tests -q; python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards; python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
+   python -m pytest HyperLiquid/HL_Monarch/tests -q; python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes cross_market.tests.test_c2_bot cross_market.tests.test_latency_sniper cross_market.tests.test_amm_rewards knowledge.tests.test_knowledge; python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
 6. EMERGENCY BRAKES, FAIL-SAFE SENTINELS & RULES

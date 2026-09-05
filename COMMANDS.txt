@@ -2360,6 +2360,20 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 96 - KNOWLEDGE LAYER, MASTER MODULE 23: WIKI CONSTITUTION + SEED + LINT (knowledge/, obsidian_vault/WIKI_SCHEMA.md)
+     python -m knowledge.seed [--vault DIR] [--dev-root DIR] [--registry FILE] [--force] [--dry-run] [--at ISO]
+         Compiles 5 Desk + 20 Item + 7 Ruling pages from the Top 20 registry (read-only) into obsidian_vault\wiki\;
+         rebuilds index.md and appends log.md (OKF v0.2 reserved formats). Skips existing pages unless --force. Exit 3 = HALT.flag.
+         Rulings: R2/R4/R6 verified (commits 49f85f8/da48cf3/fe40a1a); R5 draft (pending); R1/R3 draft placeholders (no text
+         exists in the repo); R95 = Ratification R95-A..G.
+     python -m knowledge.lint [--vault DIR] [--dev-root DIR] [--json]
+         L1 frontmatter (type required, OKF v0.2 shapes), L2 index/log reserved formats, L3 orphans, L4 stale_after, L5 missing
+         raw paths, C1 copied-state drift (dev:asserts / dev:parameters vs their owning files), C5 edits inside a dev:window.
+         Writes nothing. Exit 0 clean | 1 findings | 3 HALT.flag.
+         Every write in the package goes through pages.write_page: refuses any path outside obsidian_vault\{wiki,crm,journal,raw}\
+         + WIKI_SCHEMA.md, index.md, log.md - dashboards, Whales\, Wallets\, Trading_Taxes\ and data folders are unreachable.
+     Tests: python -m unittest knowledge.tests.test_knowledge   (master module 23, 42 tests)
+
      ROUND 90 - ITEM 13 PHASE 1: AMM QUOTING + REWARDS SIMULATOR (cross_market/amm_rewards.py)
      python -m cross_market.amm_rewards [--minutes 1440 --seed N | --fair-path fair.json] [--pool USDC/day
          --max-spread 0.03 --min-size 50 --competitor-q 1000 --rewards-window-quotes] [--event 600-620]
@@ -2740,7 +2754,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (22 modules, 936): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards,
+     MASTER SUITE (23 modules, 978): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

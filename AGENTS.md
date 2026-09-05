@@ -5,6 +5,33 @@ the detail.
 
 ## Status
 
+Round 96 complete (2026-09-05): PHASE 1 - WIKI CONSTITUTION, SEED PAGES, MASTER
+MODULE 23 (Ratification R95-A..G). NEW obsidian_vault/WIKI_SCHEMA.md (the
+constitution: layers and ownership, actors, OKF v0.2 frontmatter + dev:
+namespace, page types and folders, reserved index.md/log.md formats, the two
+DEV rules, ingest/query/journal/lint protocols, refusals). NEW package
+knowledge/: frontmatter.py (parse/validate/serialize; type required; actor
+regex; generated/verified/status/stale_after/sources; dev.asserts,
+dev.parameters, dev.window), pages.py (write_page is the ONLY writer and
+refuses anything outside wiki/ crm/ journal/ raw/ + WIKI_SCHEMA.md index.md
+log.md, refuses reserved names and in-window pages; index/log builders and
+parsers; wikilink extraction), lint.py (L1-L5, C1 copied-state drift via
+declared dependents, C5 in-window mtime; CLI exit 0/1/3; writes nothing),
+seed.py (parses the Top 20 registry blocks read-only; 5 Desk + 20 Item + 7
+Ruling pages; skips existing pages unless --force; rebuilds index.md; appends
+log.md). SEEDED the real vault: 32 pages, index.md, log.md; lint CLEAN.
+Rulings catalogue is honest about the record: R2, R4, R6 carry commit
+provenance and verified by antigravity/architect; R5 is draft (pending, named
+by amm_rewards.py); R1 and R3 have NO text anywhere in the repo or git
+history and are draft placeholders that say so; R95 records the seven
+ratifications. Desk pages carry dev:parameters checked by C1 against their
+owning files (lead-lag 0.20 bar and 5 min latency, quant-lab $3,500
+killswitch and 1.0 % risk, tax 0.24 federal and 0.0637 NJ). Tests: module 23
+= 42 (frontmatter, ownership, index/log, every lint code, seed parse/build/
+idempotence/force/dry-run/HALT/no-write-outside); master suite 23 modules 978;
+total 1,093 + 978 + 546 = 2,617, all green offline. Daemons and tonight's
+tasks untouched; no dashboard, entity note or data folder written.
+
 Round 95 complete (2026-09-05): RESEARCH ROUND - LLM WIKI x DEV SYNTHESIS
 BLUEPRINT (no code, no daemon, no dashboard touched). NEW LLM_WIKI_BLUEPRINT.md
 (OKF-shaped frontmatter on the document itself): read-only audit of the five
@@ -837,6 +864,25 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 96 findings
+
+- The seed is a compiler, not a template filler: Item pages are parsed from
+  the registry's `[x] ITEM N:` blocks and their `- Key:` fields; a change to
+  the registry re-seeds with --force. The registry itself is untouched.
+- R1 and R3 do not exist in the record. Whole-word search of AGENTS.md,
+  COMMANDS.txt, module docstrings and `git log` finds R2 (49f85f8), R4
+  (da48cf3), R6 (fe40a1a) and a pending R5 only. Antigravity to supply R1/R3.
+- The literal `verified.by: antigravity` in R95-D is not an OKF actor string
+  (needs human:/process:/producer-slash-version); the canonical spelling is
+  `antigravity/architect`, defined in WIKI_SCHEMA.md s.2.
+- Orphan check needs every Desk reachable without items: Desk pages link
+  their sibling desks, so a small fixture (or a desk with no registry items)
+  is not an L3 finding.
+- Seeds only emit dev:asserts/parameters whose file exists under --dev-root,
+  so the same seed is lint-clean in a fixture and fully guarded in DEV.
+- pyyaml is already a dependency (Tax_Reserve_Agent/config.py, quant lab);
+  python-markdown is present but not used by the package.
 
 ## Round 95 findings
 
