@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+Round 71 complete: THE 24/7 LAUNCHERS THROTTLE THE MARKET DASHBOARD.
+start_all_ecosystem_sync.bat and HL_Monarch/scripts/launchers/
+start_obsidian_sync.bat start the HL obsidian watcher with
+--throttle-seconds 60 (Ruling 70-1); the code default stays 0 for
+on-demand calls. A test pins both launcher lines and the default. The
+running "Monarch Obsidian Sync" window (if any) predates the flag - restart
+it from the launcher to pick it up.
+
 Round 70 complete: OPTIONAL WRITE THROTTLE FOR HyperLiquid_Monarch.md.
 `main.py obsidian --watch --throttle-seconds N` (and the module CLI) skips
 rewriting the market dashboard while its last write is younger than N
@@ -446,6 +454,16 @@ Tax config is **New Jersey resident** (Union, 07083): composite 32.37% =
   image data. All false positives.
 - **`--reconcile` added as an alias of `--check-sync`** on `monarch_shark`, with
   a test — an argparse alias regresses silently.
+
+## Round 71 findings
+
+- **Launcher lines are configuration nobody else tests**, so the flag is
+  pinned by a test that reads both bats and checks every HL watcher line;
+  the same test pins the code default at 0 so a future "helpful" default
+  cannot throttle on-demand exports silently.
+- **Two launchers, not one**: the HL tree's own start_obsidian_sync.bat
+  starts the same watcher; the HL-tree start_all_ecosystem_sync.bat does
+  not (it delegates), so it was left alone.
 
 ## Round 70 findings
 

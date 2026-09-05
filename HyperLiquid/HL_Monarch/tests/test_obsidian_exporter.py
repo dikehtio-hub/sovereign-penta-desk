@@ -147,3 +147,28 @@ class TestMarketNoteThrottle(unittest.TestCase):
         os.utime(master, None)
         self.assertTrue(market_note_throttled(master, 300))
         self.assertFalse(market_note_throttled(master, 300, now=master.stat().st_mtime + 300))
+
+
+class TestLaunchersCarryTheThrottle(unittest.TestCase):
+    """
+    Round 71 (Ruling 70-1): the 24/7 launchers run the HL obsidian watcher with a 60 s
+    market-dashboard throttle; on-demand CLI calls stay unthrottled (code default 0).
+    Pinned here because a launcher line is configuration nobody else tests.
+    """
+
+    def test_every_watcher_launcher_passes_throttle_seconds_60(self):
+        hl_root = Path(__file__).resolve().parents[1]
+        dev_root = hl_root.parents[1]
+        launchers = [dev_root / "start_all_ecosystem_sync.bat",
+                     hl_root / "scripts" / "launchers" / "start_obsidian_sync.bat"]
+        for bat in launchers:
+            self.assertTrue(bat.exists(), bat)
+            lines = [l for l in bat.read_text(encoding="utf-8", errors="replace").splitlines()
+                     if "main.py obsidian" in l and "--watch" in l]
+            self.assertTrue(lines, "%s starts no HL obsidian watcher" % bat.name)
+            for line in lines:
+                self.assertIn("--throttle-seconds 60", line, "%s: %s" % (bat.name, line))
+        # The code default stays unthrottled for on-demand calls.
+        import inspect
+        from analytics.obsidian_exporter import export_hyperliquid_to_obsidian as export_fn
+        self.assertEqual(inspect.signature(export_fn).parameters["throttle_seconds"].default, 0.0)

@@ -4,8 +4,8 @@
 File:        MASTER_COMMAND_LIST.txt
 Location:    C:\Users\ixis1\Desktop\DEV\MASTER_COMMAND_LIST.txt
 Created:     2026-09-04 (Round 50 Milestone)
-Last Update: Round 70 Complete (optional write throttle for HyperLiquid_Monarch.md)
-Status:      2,523 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
+Last Update: Round 71 Complete (launchers throttle the market dashboard at 60 s)
+Status:      2,524 Tests Passing Offline | 0 Failures | 15 of 20 Items Deployed
 
 This document is the authoritative, permanent command reference for every tool,
 daemon, strategy, exporter, test suite, and interface across all 5 sovereign desks:
@@ -66,7 +66,7 @@ TABLE OF CONTENTS
 4. RUN CROSS-MARKET TITAN SCAN (Correlate Polymarket Sharps & HL Whales):
    python -m cross_market.titan_correlator --scan
 
-5. RUN FULL OFFLINE VERIFICATION (2,523 tests across all 5 desks):
+5. RUN FULL OFFLINE VERIFICATION (2,524 tests across all 5 desks):
    python -m pytest HyperLiquid/HL_Monarch/tests -q && python -m unittest Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_new_features Sports_Desk.tests.test_fair_value Sports_Desk.tests.test_odds_watcher Sports_Desk.tests.test_results_watcher Sports_Desk.tests.test_cli_hotlist Sports_Desk.tests.test_arbitrage Sports_Desk.tests.test_monarch_shark Sports_Desk.tests.test_bridges cross_market.tests.test_hybrid_arb Sports_Desk.tests.test_odds_fetcher Sports_Desk.tests.test_obsidian_exporter cross_market.tests.test_obsidian_exporter cross_market.tests.test_polymarket_fetcher cross_market.tests.test_titan_correlator cross_market.tests.test_lead_lag cross_market.tests.test_risk_simulator cross_market.tests.test_execution_log Sports_Desk.tests.test_stale_quotes && python -m unittest Tax_Reserve_Agent.tests.test_agent Tax_Reserve_Agent.tests.test_empty_ledger Tax_Reserve_Agent.tests.test_new_features Tax_Reserve_Agent.tests.test_sports_tax Tax_Reserve_Agent.tests.test_tradovate_receipts
 
 ================================================================================
@@ -391,6 +391,7 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       # volatile in analytics/obsidian_links.normalize_for_hash; PIDs, equity, accruals, entry APRs stay hashed.
       # Round 70: `main.py obsidian --watch --throttle-seconds N` rewrites HyperLiquid_Monarch.md at most once per N s
       # (mtime-judged, full precision, other notes unaffected; 0 = unthrottled; optional, not in the sync bat).
+      # Round 71: the sync bat and start_obsidian_sync.bat pass --throttle-seconds 60 (Ruling 70-1); CLI default stays 0.
 
       # Item 18 lead-lag (offline research; needs timestamped Polymarket drops):
       python -m cross_market.lead_lag --coin BTC
@@ -486,11 +487,11 @@ Obsidian Vault Locations:
   Tax Reserve:      obsidian_vault/Trading_Taxes/Tax_Reserve_2026-09-04.md
 
 ================================================================================
-5. MASTER OFFLINE TEST SUITES (2,523 Tests Total)
+5. MASTER OFFLINE TEST SUITES (2,524 Tests Total)
 ================================================================================
 
 Every modification MUST be verified offline against all 3 test suites. Never push
-a commit without all 2,523 tests passing!
+a commit without all 2,524 tests passing!
 
 1. HyperLiquid Monarch (pytest — 1,092 tests):
    cd HyperLiquid\HL_Monarch && python -m pytest tests/ -q

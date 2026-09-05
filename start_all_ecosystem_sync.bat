@@ -16,7 +16,7 @@ set OBSIDIAN_VAULT_PATH=C:\Users\ixis1\Desktop\DEV\obsidian_vault
 
 :: 1. Launch HyperLiquid Exporter
 cd /d "C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch"
-start "Monarch Obsidian Sync" python main.py obsidian --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault"
+start "Monarch Obsidian Sync" python main.py obsidian --watch --interval 15 --vault "C:\Users\ixis1\Desktop\DEV\obsidian_vault" --throttle-seconds 60
 echo ✓ [1/5] HyperLiquid sync watcher launched.
 
 :: 2. Launch Polymarket Exporter

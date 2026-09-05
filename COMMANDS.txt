@@ -2360,6 +2360,11 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 71 - LAUNCHERS THROTTLE THE MARKET DASHBOARD (60 s)
+     start_all_ecosystem_sync.bat and HL_Monarch\scripts\launchers\start_obsidian_sync.bat now run
+         main.py obsidian --watch --interval 15 --throttle-seconds 60. On-demand `main.py obsidian --once`
+         stays unthrottled (code default 0). Restart the "Monarch Obsidian Sync" window to pick it up.
+
      ROUND 70 - OPTIONAL WRITE THROTTLE FOR HyperLiquid_Monarch.md
      python main.py obsidian --watch --interval 15 --throttle-seconds 300 --vault "...\obsidian_vault"
          Rewrites the market dashboard at most once per 300 s (mtime-judged); other notes and all
