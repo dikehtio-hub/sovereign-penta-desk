@@ -5,6 +5,27 @@ the detail.
 
 ## Status
 
+Round 92 complete (2026-09-05): OPTION 2 - DEPTH REPORT OVER REAL BOOKS.
+latency_sniper.depth_report(book, outcome, confidence, breakeven) walks a
+recorded book best-first and reports, per level, price (NO: 1 - bid),
+fee-adjusted odds, the after-tax breakeven, edge/share and cumulative
+shares / notional / VWAP - no cap: the upper bound the book offers before
+anyone pulls; NO on a neg_risk book is deferred (Ruling R4). CLI:
+latency_sniper --depth-report --books DIR [--confidence 0.995]
+[--assume-defaults] [--json]; uses the Tax Reserve Agent breakeven when the
+hook loads. MEASUREMENT: 8 live stamps recorded (4 thin Fed-governance
+markets, 4 thick: two BTC-dip, two FOMC neg_risk) into
+cross_market/data/clob_books/ (ignored). With the outcome known at 0.995
+EVERY level below ~0.99 clears the after-tax breakeven, so the "fillable"
+upper bound is simply the resting depth: thin books offer $400-$3,300 of
+YES depth (15-29 levels) and $1.3k-$41k of NO depth; thick books offer
+$50k-$3M. The number that matters is therefore not depth at rest but how
+many seconds it survives after the print - which only Ruling R2's T-2/T+5
+recording at the 2026-09-17 FOMC can measure. Registry extent corrected:
+the Top 20 spans lines 80-484 (Items 19 and 20 at ~447 and ~465), not
+80-415; the docs scripts' byte-identical check now covers 80-484. Tests:
+module 21 now 12. Daemons and tonight's tasks untouched.
+
 Round 91 complete (2026-09-05): RULING R6 - COMPETITOR Q MEASURED FROM
 RECORDED BOOKS. amm_rewards.book_q() scores every resting level of a
 recorded CLOB stamp inside the programme window (per side, Q_min by the
@@ -636,7 +657,7 @@ Suites, all offline:
 
 | suite | count |
 |---|---|
-| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 933 OK |
+| master + bridges + cross-market + exporters + ingestors (22 modules, incl. test_titan_correlator, test_lead_lag, test_risk_simulator, test_execution_log, test_stale_quotes, test_c2_bot, test_latency_sniper, test_amm_rewards) | 934 OK |
 | HL_Monarch (pytest) | 1083 passed |
 | Tax_Reserve_Agent (5 modules) | 546 OK |
 
@@ -748,6 +769,20 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 92 findings
+
+- **Knowing the outcome makes every level profitable, so depth at rest is
+  not the edge.** At confidence 0.995 the after-tax breakeven at odds 1.96
+  is 0.606, at odds 1.02 it is 0.986 - both cleared - so the walk takes the
+  whole book. The sniper's real variable is the seconds between the print
+  and the cancels, measurable only during a live release (R2).
+- **Thin vs thick is a 1,000x range in resting depth** ($400 vs $3M of YES
+  depth) at the same moment; any Phase 2 target list must be chosen by
+  depth-times-survival, not by volume.
+- **The registry is 80-484, not 80-415.** Items 19 and 20 live past 415;
+  earlier byte-identical assertions covered a subset and were never wrong,
+  but the constraint text should say 80-484.
 
 ## Round 91 findings
 

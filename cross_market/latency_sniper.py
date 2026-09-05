@@ -416,6 +416,74 @@ def evaluate(event: Event, rules: Sequence[Rule], books: Dict[str, Book], breake
     return out
 
 
+# ------------------------------------------------------------------ Option 2 (Round 92): what a resting book would give a sniper
+
+def depth_report(book: Book, outcome: str, confidence: float, breakeven: Callable[[float], float],
+                 now: Optional[datetime] = None, honour_r4: bool = True) -> Dict[str, Any]:
+    """
+    Level by level, what the resting book would hand a sniper that knew `outcome` with
+    `confidence`: each level's price (for NO, 1 - bid), fee-adjusted odds, the after-tax
+    breakeven at those odds, whether it clears, the edge per share, and the cumulative
+    fillable shares, notional and VWAP. No cap is applied - this is the upper bound the
+    book offers, before anyone pulls. Levels are ordered best-first, so the first level
+    that fails ends the walk. A NO outcome on a neg_risk book is deferred (Ruling R4).
+    """
+    now = now or _now()
+    side = "BUY_YES" if outcome == "YES" else "BUY_NO"
+    out: Dict[str, Any] = {"market": book.market, "outcome": outcome, "side": side, "confidence": confidence,
+                           "fee_rate": book.fee_rate, "neg_risk": book.neg_risk, "book_age_s": round(book.age_s(now), 1),
+                           "deferred": None, "levels": [], "levels_clearing": 0, "fillable_shares": 0.0,
+                           "fillable_notional": 0.0, "vwap": None, "expected_profit": 0.0, "best_price": None}
+    if outcome == "NO" and book.neg_risk and honour_r4:
+        out["deferred"] = "neg_risk market: NO side deferred to Phase 2 (Ruling R4)"
+        return out
+    cum_shares = 0.0
+    cum_notional = 0.0
+    for level in (book.asks if outcome == "YES" else book.bids):
+        price = level.price if outcome == "YES" else 1.0 - level.price
+        odds = effective_odds(price, book.fee_rate)
+        be = breakeven(odds)
+        if confidence < be:
+            out["levels"].append({"price": round(price, 4), "size": level.size, "odds": round(odds, 4), "breakeven": round(be, 4),
+                                  "clears": False})
+            break
+        edge = confidence * net_payoff_per_share(price, book.fee_rate) - price
+        cum_shares += level.size
+        cum_notional += price * level.size
+        out["levels"].append({"price": round(price, 4), "size": level.size, "notional": round(price * level.size, 2),
+                              "odds": round(odds, 4), "breakeven": round(be, 4), "clears": True,
+                              "edge_per_share": round(edge, 4), "cum_shares": round(cum_shares, 2),
+                              "cum_notional": round(cum_notional, 2), "vwap": round(cum_notional / cum_shares, 4)})
+        out["expected_profit"] += edge * level.size
+    clearing = [l for l in out["levels"] if l["clears"]]
+    out.update(levels_clearing=len(clearing), fillable_shares=round(cum_shares, 2), fillable_notional=round(cum_notional, 2),
+               vwap=round(cum_notional / cum_shares, 4) if cum_shares else None,
+               expected_profit=round(out["expected_profit"], 2), best_price=clearing[0]["price"] if clearing else None)
+    return out
+
+
+def format_depth(reports: Sequence[Dict[str, Any]], economics_label: str) -> str:
+    lines = ["DEPTH REPORT (Option 2) - what each recorded book would hand a sniper that knew the outcome; economics: %s" % economics_label]
+    for r in reports:
+        head = "  %s %s %s (book %.0fs old%s)" % (r["market"][:14], r["side"], "conf %.3f" % r["confidence"], r["book_age_s"],
+                                                   ", neg_risk" if r["neg_risk"] else "")
+        if r["deferred"]:
+            lines.append(head + ": " + r["deferred"])
+            continue
+        if not r["levels_clearing"]:
+            first = r["levels"][0] if r["levels"] else None
+            lines.append(head + ": nothing clears" + (" (best %.2f, breakeven %.4f)" % (first["price"], first["breakeven"]) if first else " (empty side)"))
+            continue
+        lines.append(head + ": %d level(s) clear · fillable %.0f shares / $%.2f · vwap %.4f · best %.2f · expected profit $%.2f"
+                     % (r["levels_clearing"], r["fillable_shares"], r["fillable_notional"], r["vwap"], r["best_price"], r["expected_profit"]))
+        for l in r["levels"][:4]:
+            if l["clears"]:
+                lines.append("      %.2f x %.0f  odds %.3f  breakeven %.4f  edge/share %+.4f  cum $%.2f" % (
+                    l["price"], l["size"], l["odds"], l["breakeven"], l["edge_per_share"], l["cum_notional"]))
+    lines.append("  upper bound before anyone pulls; no cap applied; offline replay of recorded books; places nothing.")
+    return "\n".join(lines)
+
+
 # ------------------------------------------------------------------ paper receipts (the only execution this module has)
 
 def record_paper(opportunity: Opportunity, event: Event, receipts_dir: Optional[Path] = None, writer=None,
@@ -476,7 +544,30 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--record", action="store_true", help="stamp the CLOB book of --tokens into --books (read-only GET)")
     parser.add_argument("--tokens", default="", help="with --record: comma-separated YES token ids")
     parser.add_argument("--fee-rate", type=float, default=0.0, help="with --record: the fee rate stored on the stamps")
+    parser.add_argument("--depth-report", action="store_true",
+                        help="Option 2 (Round 92): for every recorded book, what a sniper knowing the outcome could take, "
+                             "level by level, YES and NO (NO deferred on neg_risk books, Ruling R4)")
+    parser.add_argument("--confidence", type=float, default=0.995, help="with --depth-report: the assumed outcome confidence")
     args = parser.parse_args(argv)
+    if args.depth_report:
+        books_dir = Path(args.books or DEFAULT_BOOKS_DIR)
+        now = _utc(args.now) if args.now else _now()
+        books = load_books(books_dir, now)
+        label = "assumed (fair breakeven)"
+        breakeven, _cap = assumed_economics()
+        if not args.assume_defaults:
+            try:
+                from Tax_Reserve_Agent.interfaces.monarch_hook import get_hook
+                breakeven, _cap = hook_economics(get_hook())
+                label = "Tax Reserve Agent after-tax breakeven"
+            except Exception as exc:                        # noqa: BLE001 - the ledger may be absent; say so
+                label = "assumed (hook unavailable: %s)" % type(exc).__name__
+        reports = []
+        for token in sorted(books):
+            for outcome in ("YES", "NO"):
+                reports.append(depth_report(books[token], outcome, args.confidence, breakeven, now=now))
+        print(json.dumps(reports, indent=2, default=str) if args.json else format_depth(reports, label))
+        return 0 if reports else 1
     books_dir = Path(args.books or DEFAULT_BOOKS_DIR)
     halt = Path(args.halt_flag or DEFAULT_HALT_FLAG)
     if args.record:

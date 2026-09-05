@@ -300,3 +300,40 @@ class TestNegRiskRuling(SniperBase):
         out_dir = self.root / "books"
         ls.stamp_books(["T"], out_dir, lambda t: {"asks": [{"price": "0.5", "size": "1"}], "bids": [], "neg_risk": True}, now=NOW)
         self.assertTrue(ls.load_books(out_dir, now=NOW)["T"].neg_risk)
+
+
+class TestDepthReport(SniperBase):
+    """Round 92 (Option 2): level-by-level what a recorded book would hand a sniper; R4 honoured; CLI offline."""
+
+    def test_depth_report_walks_levels_until_breakeven_fails_and_defers_neg_risk_no(self):
+        strict = lambda odds: 1.0 / odds + 0.01
+        book = self.book("CUT25", asks=[(0.90, 100), (0.95, 200), (0.99, 500)], bids=[(0.05, 1000), (0.02, 1000)])
+        yes = ls.depth_report(book, "YES", 0.995, strict, now=NOW)
+        self.assertEqual((yes["side"], yes["levels_clearing"], yes["fillable_shares"]), ("BUY_YES", 2, 300.0))
+        self.assertAlmostEqual(yes["fillable_notional"], 90.0 + 190.0) ; self.assertAlmostEqual(yes["vwap"], 280.0 / 300.0, places=3)
+        self.assertEqual(yes["best_price"], 0.90) ; self.assertFalse(yes["levels"][-1]["clears"])    # 0.99 recorded as failing
+        self.assertGreater(yes["expected_profit"], 0)
+        no = ls.depth_report(book, "NO", 0.995, strict, now=NOW)
+        self.assertEqual((no["side"], no["levels"][0]["price"], no["levels_clearing"]), ("BUY_NO", 0.95, 2))
+        neg = ls.Book.from_clob("HOLD", {"asks": [], "bids": [{"price": "0.05", "size": "10"}], "neg_risk": True}, NOW - timedelta(seconds=1))
+        deferred = ls.depth_report(neg, "NO", 0.995, strict, now=NOW)
+        self.assertIn("Ruling R4", deferred["deferred"]) ; self.assertEqual(deferred["levels"], [])
+        self.assertIsNone(ls.depth_report(neg, "YES", 0.995, strict, now=NOW)["deferred"])           # empty side, not deferred
+        nothing = ls.depth_report(book, "YES", 0.5, strict, now=NOW)
+        self.assertEqual((nothing["levels_clearing"], nothing["vwap"]), (0, None))
+        text = ls.format_depth([yes, deferred, nothing], "assumed")
+        self.assertIn("2 level(s) clear", text) ; self.assertIn("Ruling R4", text) ; self.assertIn("nothing clears", text)
+        # CLI over recorded stamps, assumed economics, JSON and text
+        out = self.root / "books"
+        ls.stamp_books(["T1"], out, lambda t: {"asks": [{"price": "0.90", "size": "100"}], "bids": [{"price": "0.10", "size": "50"}], "neg_risk": True},
+                       now=NOW - timedelta(seconds=2))
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ls.main(["--depth-report", "--books", str(out), "--now", NOW.isoformat(), "--assume-defaults"]), 0)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("DEPTH REPORT (Option 2)", printed) ; self.assertIn("Ruling R4", printed) ; self.assertIn("places nothing", printed)
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ls.main(["--depth-report", "--books", str(out), "--now", NOW.isoformat(), "--assume-defaults", "--json"]), 0)
+        payload = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertEqual([r["side"] for r in payload], ["BUY_YES", "BUY_NO"])
+        with mock.patch("builtins.print"):
+            self.assertEqual(ls.main(["--depth-report", "--books", str(self.root / "none"), "--assume-defaults"]), 1)
