@@ -46,6 +46,13 @@ class ExporterBase(unittest.TestCase):
         self.db = self.root / "sports_market.db"
         self.questions = self.root / "polymarket_drops"
         self.questions.mkdir()
+        # Round 103b: DEFAULT_VERDICT_PATH points at the REAL cross_market/data. Any test that builds a
+        # LeadLagRefresher without an explicit verdict_path would otherwise write fixture output into the
+        # repository - it did, and the file reached a commit. Redirect the default for every test here.
+        from cross_market.interfaces import obsidian_exporter as _ex
+        self._real_verdict_path = _ex.DEFAULT_VERDICT_PATH
+        _ex.DEFAULT_VERDICT_PATH = self.root / "lead_lag_latest_verdict.json"
+        self.addCleanup(setattr, _ex, "DEFAULT_VERDICT_PATH", self._real_verdict_path)
         conn = sqlite3.connect(self.db)
         conn.execute("""CREATE TABLE fair_odds_measurements (
             id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL,
@@ -318,7 +325,22 @@ class TestLeadLagRefresher(ExporterBase):
         self.assertEqual((env["coin"], env["family"]), ("BTC", "macro"))
         self.assertEqual(env["writer"], "process:cross_market.interfaces.obsidian_exporter")
         self.assertFalse(artifact.with_suffix(".json.tmp").exists())            # written atomically, temp removed
-        self.assertTrue(DEFAULT_VERDICT_PATH.name == "lead_lag_latest_verdict.json")
+        self.assertEqual(Path(DEFAULT_VERDICT_PATH).name, "lead_lag_latest_verdict.json")
+
+    def test_the_default_artifact_path_is_never_the_real_repo_during_tests(self):
+        """Round 103b regression: a refresher built WITHOUT verdict_path must not write into
+        cross_market/data. It did, and the fixture output reached a commit."""
+        from cross_market.interfaces import obsidian_exporter as ex
+        r = ex.LeadLagRefresher(drop_dirs=[self.questions], runner=self._runner([]))
+        self.assertEqual(r.verdict_path.parent, self.root)                      # redirected by ExporterBase.setUp
+        self.assertNotIn("cross_market", str(r.verdict_path.parent))
+        self._stamps(300)
+        self._note()
+        existed_before = self._real_verdict_path.exists()
+        r.run(str(self.vault), now=self.NOW)
+        self.assertTrue(r.verdict_path.exists())                                 # written to the temp dir
+        # and the run created nothing in the repo: if the file was absent before, it is absent after
+        self.assertEqual(self._real_verdict_path.exists(), existed_before)
 
     def test_a_failed_artifact_write_never_breaks_the_export(self):
         """The artifact is a convenience; the dashboard is the product. A write failure returns None and

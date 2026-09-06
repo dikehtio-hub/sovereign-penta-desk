@@ -251,7 +251,8 @@ class LeadLagRefresher:
         # Ruling R102-2: the same run that writes the note also serialises its result dict here, so the
         # dashboard and the wiki describe ONE run. Before this, ingesting meant re-running the correlation
         # seconds later against a series the watcher had already grown - two numbers for one verdict.
-        self.verdict_path = Path(verdict_path) if verdict_path is not None else DEFAULT_VERDICT_PATH
+        # resolved at construction, but read from the module attribute so a test can redirect the default
+        self.verdict_path = Path(verdict_path) if verdict_path is not None else Path(DEFAULT_VERDICT_PATH)
         self.coin = str(coin).upper()
         self.cooldown_hours = float(cooldown_hours)
         # Round 75: an "insufficient" result is recorded but retried after `retry_hours`, not the
