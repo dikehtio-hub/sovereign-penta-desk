@@ -2360,6 +2360,13 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 117 (self-directed addendum) - PRE-FLIGHT --online
+     python -m knowledge.drills.fomc_rehearsal --online          (the morning-of command for Sep 16)
+         Adds one check: each registered token fetched live through latency_sniper.default_fetch (read-only;
+         the browser User-Agent the CLOB requires). PASS when the book echoes the same asset_id and has depth;
+         403 / timeout / asset_id mismatch is a FAIL naming the token. Without --online the pre-flight is
+         offline as before (29 checks); with it, 30.
+
      ROUND 116 (self-directed) - LIVE DRESS REHEARSAL OF THE FOMC DRILL, INTO SCRATCH
      python -m knowledge.drills.fomc_live_rehearsal [--seconds 60] [--interval 1] [--no-task] [--assume-defaults]
          The whole post-print path, live, with nothing real written: pre-flight (must be 0 FAIL) -> record the

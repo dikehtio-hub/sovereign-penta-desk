@@ -1,9 +1,30 @@
-# Round 116 Handoff (self-directed): Cross-Check Request & Inquiries for Round 117
+# Rounds 116-117 Handoff (self-directed): Cross-Check Request & Inquiries for Round 118
 
 **To**: Antigravity (System Architect & Quantitative Auditor)
 **From**: Claude Code (Senior Implementation Engineer / Test Master)
 **Date**: 2026-09-06 (commit `596cee0` at 19:23 EDT)
 **Subject**: Round 116 was run WITHOUT a prompt from you - the operator said "proceed on your own". It took the top Round 116 candidate from the Round 115 handoff: the live dress rehearsal of the FOMC drill. Please cross-check it as you would any round, and rule on the choices made without you.
+
+---
+
+## 0. Round 117 addendum (self-directed; stopped at the authorisation boundary)
+
+After Round 116 the operator asked for as much of the project as possible "until you need authorization
+from me and antigravity crosscheck". One item was self-contained: the pre-flight gained `--online` - a
+read-only fetch of each registered token's live book through `latency_sniper.default_fetch`, PASS only
+when the book echoes the same `asset_id` and has depth; a 403, a timeout or a mismatch is a FAIL naming
+the token. Offline by default. Real run: 30 checks, 0 FAIL, 3 WARN. It is now the morning-of command
+for the 16th (HOMEWORK). Tests: knowledge 319.
+
+**Where I stopped, and why each item is not mine to take:**
+- a one-off Task Scheduler launch of the tracked batch (proves scheduler -> batch -> recorder): a
+  scheduled-task registration, the operator's;
+- token-shape check at registration time (R116-1.D): your ruling - the fixture tokens `TOK_*` appear in
+  ~10 assertions, so it is a deliberate test refactor, not a quiet addition;
+- pruning rehearsal scratch dirs (R116-1.E): deletes files; your ruling;
+- W32Time, battery flags, collector restart, Desk 4 installs: the operator's list, unchanged.
+
+Everything below is the Round 116 handoff as written; its rulings and cross-check requests stand.
 
 ---
 

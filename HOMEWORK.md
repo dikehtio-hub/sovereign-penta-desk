@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 19:25 EDT (Round 116; the drill has been rehearsed live, end to end, into scratch).
+Last updated: 2026-09-06 19:40 EDT (Round 117 addendum; pre-flight --online; stopped at the authorisation boundary).
 
 ---
 
@@ -17,7 +17,9 @@ Last updated: 2026-09-06 19:25 EDT (Round 116; the drill has been rehearsed live
 - **If missed:** an underpayment penalty accrues from the deadline, not from April.
 
 ### 2026-09-16 (Wed) 13:58 EDT — FOMC drill. THE BIG ONE.
-- **Run this first:** `python -m knowledge.query --drill-card fomc-2026-09-16`.
+- **Morning of the 16th, first:** `python -m knowledge.drills.fomc_rehearsal --online` (30 checks incl.
+  a live fetch of each token) and `python -m knowledge.drills.fomc_live_rehearsal` (60 s, scratch only).
+  Then at T-2: `python -m knowledge.query --drill-card fomc-2026-09-16`.
   It prints the countdown, the rules with their FULL token ids, your standing forecast and
   the exact post-print commands ready to paste, in under 60 lines. It writes nothing, so it
   is safe to run inside the window as often as you like.
@@ -53,8 +55,8 @@ Last updated: 2026-09-06 19:25 EDT (Round 116; the drill has been rehearsed live
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 116 handoff prompt to Antigravity.** (Round 116 was self-directed on your
-      "proceed on your own"; Antigravity has not seen it yet.)
+- [ ] **Send the Rounds 116-117 handoff prompt to Antigravity.** (Both rounds were self-directed on
+      your "proceed on your own"; Antigravity has not seen either.)
 - [ ] **Start the Windows Time service.** The pre-flight found W32Time STOPPED. The clock is only
       +0.37 s off today, but nothing corrects it between now and the 16th, and a scheduler on a slow
       clock records the print as history. Two commands in an elevated PowerShell:

@@ -3440,6 +3440,26 @@ class FomcRehearsalTests(QueryCardTests):
         self.assertEqual(sorted(p.name for p in (self.dev_root / "cross_market" / "data").iterdir()), [])
         self.assertEqual(self.rh.hash_vault(self.vault), before_vault)
 
+    def test_online_token_resolution_uses_the_recorders_fetch(self):
+        """Round 117: --online proves the tokens resolve through the recorder's own fetch; offline by default."""
+        seen = []
+
+        def good(t):
+            seen.append(t)
+            return {"asset_id": t, "bids": [{"price": "0.4", "size": "1"}], "asks": []}
+        lv = self.levels(self.checks(online=good))
+        self.assertEqual(lv["tokens resolve on the CLOB (--online)"], "PASS")
+        self.assertEqual(seen, self.tokens)
+
+        def forbidden(t):
+            raise OSError("HTTP Error 403: Forbidden")
+        self.assertEqual(self.levels(self.checks(online=forbidden))["tokens resolve on the CLOB (--online)"], "FAIL")
+
+        def wrong(t):
+            return {"asset_id": "999", "bids": [{"price": "0.4", "size": "1"}], "asks": []}
+        self.assertEqual(self.levels(self.checks(online=wrong))["tokens resolve on the CLOB (--online)"], "FAIL")
+        self.assertNotIn("tokens resolve on the CLOB (--online)", self.levels(self.checks()))
+
     def test_a_trigger_one_minute_off_is_a_failure(self):
         off = (self.release - timedelta(minutes=1)).astimezone().replace(tzinfo=None).isoformat()
         self.assertEqual(self.levels(self.checks(task=self.task(triggers=[off])))["task fires at T-2 local time"], "FAIL")

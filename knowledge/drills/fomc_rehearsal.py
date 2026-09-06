@@ -34,6 +34,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -158,7 +159,8 @@ def probe_writable(directory: Path) -> tuple[bool, str]:
 def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
                task: dict[str, Any] | None, bat_text: str | None, bat_path: Path | None = None,
                recorder_text: str | None = None, bat_tracked: bool | None = None,
-               writable: tuple[bool, str] | None = None) -> list[Check]:
+               writable: tuple[bool, str] | None = None,
+               online: Callable[[str], Any] | None = None) -> list[Check]:
     out: list[Check] = []
     ok = lambda name, cond, detail: out.append(Check(name, "PASS" if cond else "FAIL", detail))  # noqa: E731
     bat_path = bat_path or (dev_root / BAT)
@@ -215,6 +217,24 @@ def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
         expect = countdown(release, now)
         ok("card countdown independently recomputed", expect in lines[0], f"expected {expect!r} in {lines[0]!r}")
     ok("card wrote nothing", hash_vault(vault) == before, "vault sha256 identical before and after the card")
+
+    # 3b. --online (Round 117): do the registered tokens still resolve on the CLOB, through the recorder's OWN
+    # fetch? A bare GET gets HTTP 403 (Round 87/116); the book echoes asset_id, so a stale or mistyped token
+    # shows up as a mismatch, not as an empty-but-plausible book.
+    if online is not None and page_tokens:
+        results = []
+        for t in page_tokens:
+            t0 = time.monotonic()
+            try:
+                book = online(t)
+                got = str(book.get("asset_id", t)) if isinstance(book, dict) else ""
+                depth = (len(book.get("bids") or []), len(book.get("asks") or [])) if isinstance(book, dict) else (0, 0)
+                fine = got == t and sum(depth) > 0
+                results.append((fine, f"{t[:8]}.. {depth[0]}b/{depth[1]}a {(time.monotonic() - t0) * 1000:.0f}ms"
+                                + ("" if got == t else f" asset_id={got[:8]}.. MISMATCH")))
+            except Exception as exc:                        # noqa: BLE001 - the failure is the finding
+                results.append((False, f"{t[:8]}.. {type(exc).__name__}: {str(exc)[:70]}"))
+        ok("tokens resolve on the CLOB (--online)", all(r[0] for r in results), "; ".join(r[1] for r in results))
 
     # 4. the batch file the task runs
     if bat_text is None:
@@ -325,7 +345,14 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap.add_argument("--dev-root", type=Path, default=DEV_ROOT)
     ap.add_argument("--no-task", action="store_true", help="skip the Task Scheduler query")
     ap.add_argument("--task-json", type=Path, default=None, help="use this JSON instead of querying the scheduler")
+    ap.add_argument("--online", action="store_true",
+                    help="also fetch each registered token's live book through the recorder's own fetch (network, read-only)")
     a = ap.parse_args(argv)
+    online = None
+    if a.online:
+        if str(a.dev_root) not in sys.path:
+            sys.path.insert(0, str(a.dev_root))
+        from cross_market.latency_sniper import default_fetch as online  # noqa: E402 - only when asked
     now = parse_iso8601(a.now) if a.now else datetime.now(timezone.utc)
     bat_path = a.dev_root / BAT
     bat_text = bat_path.read_text(encoding="utf-8", errors="replace") if bat_path.is_file() else None
@@ -335,7 +362,7 @@ def main(argv: list[str] | None = None, out=None) -> int:
         task = json.loads(a.task_json.read_text(encoding="utf-8"))
     else:
         task = collect_task()
-    checks = run_checks(a.vault, a.dev_root, a.event, now, task=task, bat_text=bat_text, bat_path=bat_path)
+    checks = run_checks(a.vault, a.dev_root, a.event, now, task=task, bat_text=bat_text, bat_path=bat_path, online=online)
     print(f"FOMC DRILL REHEARSAL - {a.event}    evaluated at {now.strftime('%Y-%m-%dT%H:%M:%SZ')}", file=out)
     print("=" * 72, file=out)
     for c in checks:

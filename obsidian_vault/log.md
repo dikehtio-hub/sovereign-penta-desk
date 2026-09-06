@@ -91,6 +91,7 @@
 * **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 1 Experiment page(s) written, 6 kept; [index](index.md) rebuilt.
 * **Ingest**: work-chain digests: 70 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
 * **Ingest**: work-chain digests: 71 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
+* **Ingest**: work-chain digests: 72 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
