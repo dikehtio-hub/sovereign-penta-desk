@@ -12,8 +12,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -25,7 +26,7 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 286
+    line: 308
     excerpt: …The Round 78 prompt again reached this session truncated after Directive
       78-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run) - both times
       the cut lands at a ```cmd fence, so the paste is losing everything after it.…
@@ -44,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 286): …The Round 78 prompt again reached this session truncated after Directive 78-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run) - both times the cut lands at a ```cmd fence, so the paste is losing everything after it.…
+- **Status** (line 308): …The Round 78 prompt again reached this session truncated after Directive 78-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run) - both times the cut lands at a ```cmd fence, so the paste is losing everything after it.…
 
 ## Related
 

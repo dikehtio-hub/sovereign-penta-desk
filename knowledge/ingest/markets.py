@@ -29,7 +29,7 @@ from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
 from ..lint import DEFAULT_DROPS, newest_drop
-from ..pages import Page, append_log, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from ..pages import Page, append_log, carry_human_fields, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
 from ..registers import update_register
 from . import add_common_args, at_from, guard, rel_to
 
@@ -118,7 +118,9 @@ def compile_market(token: str, record: dict[str, Any] | None, extra: dict[str, A
     meta = make_meta("Market", question, f"Polymarket market ({family}): {question}",
                      tags=["market", "polymarket", family.lower()], generated_by=by, at=at, status="draft",
                      resource=f"polymarket:token:{token}", sources=sources, dev=dev)
-    return Page(page_path(vault, "Market", slug), meta, "\n".join(body))
+    path = page_path(vault, "Market", slug)
+    carry_human_fields(load_page(path), meta)  # Ruling 99-2: a --force re-seed keeps a deprecation or a human verification
+    return Page(path, meta, "\n".join(body))
 
 
 @dataclass

@@ -13,8 +13,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -26,7 +27,7 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 295
+    line: 317
     excerpt: '…The Round 77 prompt reached this session truncated after Directive
       77-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of
       that prompt was executed: cross_market/experiments/lead_lag_tier2b.meta.json
@@ -48,7 +49,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 295): …The Round 77 prompt reached this session truncated after Directive 77-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of that prompt was executed: cross_market/experiments/lead_lag_tier2b.meta.json registers membership analysis (a market in BOTH subfamilies when its Round 76 `tags` list names both) with the Tier 2 bars copied verbatim, its own series (tagged macro…
+- **Status** (line 317): …The Round 77 prompt reached this session truncated after Directive 77-1 (the protocol at ~01:40Z 2026-09-06, time-gated, not run); Decision 3 of that prompt was executed: cross_market/experiments/lead_lag_tier2b.meta.json registers membership analysis (a market in BOTH subfamilies when its Round 76 `tags` list names both) with the Tier 2 bars copied verbatim, its own series (tagged macro…
 
 ## Related
 

@@ -34,7 +34,8 @@ from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
 from ..frontmatter import parse_iso8601
-from ..pages import Page, append_log, iso, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
+                     write_index, write_page)
 from ..registers import update_register as _update_register
 from . import add_common_args, at_from, guard, rel_to
 
@@ -277,10 +278,14 @@ def compile_registration(path: Path, vault: Path, dev_root: Path, at, by: str = 
     if not isinstance(data, dict) or "experiment" not in data:
         return None
     if isinstance(data.get("rules"), list) and "release_utc" in data:
-        return compile_rules_registration(data, path, vault, dev_root, at, by)
-    if isinstance(data.get("bars"), dict):
-        return compile_lead_lag_registration(data, path, vault, dev_root, at, by)
-    return compile_generic_registration(data, path, vault, dev_root, at, by)
+        page = compile_rules_registration(data, path, vault, dev_root, at, by)
+    elif isinstance(data.get("bars"), dict):
+        page = compile_lead_lag_registration(data, path, vault, dev_root, at, by)
+    else:
+        page = compile_generic_registration(data, path, vault, dev_root, at, by)
+    page.meta.setdefault("dev", {}).setdefault("tests_run", 0)  # B14: a registration has seen no data yet
+    carry_human_fields(load_page(page.path), page.meta)          # Ruling 99-2: --force never drops a ratification
+    return page
 
 
 def update_register(vault: Path, *, at, by: str = GENERATED_BY) -> Page:

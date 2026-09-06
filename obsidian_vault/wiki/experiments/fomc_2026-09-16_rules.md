@@ -10,7 +10,7 @@ tags:
 - pre-registered
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:44Z'
+  at: '2026-09-06T00:28:49Z'
 status: draft
 sources:
 - id: registration
@@ -34,6 +34,7 @@ dev:
   not_found_in_drop:
   - 'FOMC 2026-09-17: cut 25 bps'
   - 'FOMC 2026-09-17: cut 50+ bps'
+  tests_run: 0
 ---
 # Experiment: latency_sniper_fomc_2026-09-16
 

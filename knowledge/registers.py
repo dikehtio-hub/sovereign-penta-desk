@@ -35,6 +35,9 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "Entity": ("crm_register", "CRM register",
                "Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended.",
                ("type", "desk")),
+    "Journal Entry": ("journal_register", "Journal register",
+                      "Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human.",
+                      ("date", "receipts", "predictions_n")),
 }
 
 

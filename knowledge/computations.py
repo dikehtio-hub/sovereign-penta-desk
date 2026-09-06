@@ -22,7 +22,7 @@ from typing import Any
 
 from . import DEV_ROOT, EXIT_HALT, EXIT_OK, GENERATED_BY, VAULT, halted
 from .frontmatter import parse_iso8601
-from .pages import Page, append_log, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from .pages import Page, append_log, carry_human_fields, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
 from .registers import update_register
 
 KTEST = "knowledge/tests/test_knowledge.py"
@@ -95,6 +95,10 @@ COMPUTATIONS: tuple[Computation, ...] = (
     Computation("knowledge_ratify", "knowledge.ratify", "python -m knowledge.ratify --type T [--tag TAG] --ruling N-N [--by ACTOR] [--dry-run]",
                 "knowledge/ratify.py", KTEST, ("selected", "ratified", "already"),
                 "Records an Antigravity ratification: appends `verified` and sets status on the selected pages; idempotent.", "knowledge_cli", K_EXIT),
+    Computation("knowledge_journal", "knowledge.journal", "python -m knowledge.journal [--date D] [--create] | --predict ... | --score",
+                "knowledge/journal.py", KTEST, ("receipts", "predictions_n", "debrief", "scored", "pending"),
+                "The trading-day journal (paper executions, debrief) and the calibration ledger (predictions Brier-scored against Event payloads).",
+                "knowledge_cli", K_EXIT),
 )
 
 
@@ -129,7 +133,9 @@ def build_page(c: Computation, vault: Path, dev_root: Path, at: datetime, by: st
                      executor={"resource": c.module, "receipt": list(c.receipt)},
                      attester={"resource": c.test},
                      sources=sources, dev=dev)
-    return Page(page_path(vault, "Attested Computation", c.stem), meta, "\n".join(body))
+    path = page_path(vault, "Attested Computation", c.stem)
+    carry_human_fields(load_page(path), meta)  # Ruling 99-2
+    return Page(path, meta, "\n".join(body))
 
 
 @dataclass

@@ -12,7 +12,7 @@ tags:
 - pre-registered
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:44Z'
+  at: '2026-09-06T00:28:49Z'
 status: draft
 sources:
 - id: registration
@@ -46,6 +46,7 @@ dev:
     value: 0.0
     file: cross_market/experiments/lead_lag_tier2b.meta.json
     json_path: bars.latency_minutes_fed_rates
+  tests_run: 0
 ---
 # Experiment: lead_lag_tier2b_dual_tag_membership
 

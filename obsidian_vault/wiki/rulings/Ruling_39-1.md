@@ -12,8 +12,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -25,12 +26,12 @@ dev:
   kind: ruling
   citations:
   - section: Round 42 findings
-    line: 2016
+    line: 2059
     excerpt: …- **The sweep is a different KIND of exit.** Ruling 39-1 (spread is
       a cost, not a reason to leave) stands; a dead spot leg means the position was
       never delta-neutral.…
   - section: Round 39 findings
-    line: 2077
+    line: 2120
     excerpt: …Positions untouched per Ruling 39-1 (yield-only exits); no new entry
       can be classed spot-backed on those legs.…
   asserts:
@@ -48,8 +49,8 @@ verified:
 
 ## Citations
 
-- **Round 42 findings** (line 2016): …- **The sweep is a different KIND of exit.** Ruling 39-1 (spread is a cost, not a reason to leave) stands; a dead spot leg means the position was never delta-neutral.…
-- **Round 39 findings** (line 2077): …Positions untouched per Ruling 39-1 (yield-only exits); no new entry can be classed spot-backed on those legs.…
+- **Round 42 findings** (line 2059): …- **The sweep is a different KIND of exit.** Ruling 39-1 (spread is a cost, not a reason to leave) stands; a dead spot leg means the position was never delta-neutral.…
+- **Round 39 findings** (line 2120): …Positions untouched per Ruling 39-1 (yield-only exits); no new entry can be classed spot-backed on those legs.…
 
 ## Related
 

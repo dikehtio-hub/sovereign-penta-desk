@@ -11,7 +11,7 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from knowledge import EXIT_FINDINGS, EXIT_HALT, EXIT_OK
@@ -59,6 +59,12 @@ TIER 2: CORE EXECUTION & CROSS-MARKET ALPHA
 
 
 def page_text(type_="Concept", title="A page", description="Says something.", body="# A page\n", **kw) -> str:
+    # Round 100 (L7): a policed type gets a far-future stale_after unless the test passes one, or None to omit it.
+    stale = kw.pop("stale_after", "default")
+    if stale == "default" and type_ in pages.STALENESS_DAYS and kw.get("status") != "deprecated":
+        kw["stale_after"] = "2027-12-31T00:00:00Z"
+    elif stale not in ("default", None):
+        kw["stale_after"] = stale
     meta = pages.make_meta(type_, title, description, at=NOW, **kw)
     return fm.serialize(meta, body)
 
@@ -1192,7 +1198,7 @@ class RegistersAndSeedLinksTests(IngestFixture):
         body = (self.vault / "wiki/desks/Desk_04_Quant_Trading_Lab.md").read_text(encoding="utf-8")
         for stem in registers.REGISTER_STEMS:
             self.assertIn(f"[[{stem}|", body)
-        self.assertEqual(len(registers.REGISTER_STEMS), 6)
+        self.assertEqual(len(registers.REGISTER_STEMS), 7)
 
     def test_register_columns_and_cells(self):
         ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
@@ -1380,6 +1386,215 @@ class RatifyTests(RulingsIngestTests):
         (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
         self.assertEqual(ratify_mod.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--type", "Ruling", "--ruling", "98-1"],
                                          out=io.StringIO()), EXIT_HALT)
+
+
+# ---------------------------------------------------------------- Round 100: journal + calibration, relations, staleness, carry-over
+
+from knowledge import journal as journal_mod  # noqa: E402
+
+RECEIPT_HEADER = "timestamp,symbol,side,quantity,price,fee,tx_hash,source,notes\n"
+
+
+class JournalTests(IngestFixture):
+    def setUp(self):
+        super().setUp()
+        self.receipts = self.dev_root / "cross_market" / "data" / "paper_receipts"
+        self.receipts.mkdir(parents=True)
+        (self.receipts / "fills_polymarket_latency_sniper_20260905_180000_a1b2c3d4.csv").write_text(
+            RECEIPT_HEADER + "2026-09-05T18:00:03+00:00,FOMC-NOCHANGE-YES,BUY,1000.00000000,0.50000000,0.00000000,paper-1,polymarket,strategy=latency_sniper; paper\n",
+            encoding="utf-8")
+        (self.receipts / "fills_polymarket_polymarket_amm_20260905_181500_e5f6a7b8.csv").write_text(
+            RECEIPT_HEADER + "2026-09-05T18:15:00+00:00,BTC-78K-YES,SELL,100.00000000,0.98000000,0.00000000,paper-2,polymarket,strategy=polymarket_amm; paper\n"
+            + "2026-09-04T23:59:00+00:00,OLD,BUY,1,1,0,paper-0,polymarket,strategy=polymarket_amm\n",
+            encoding="utf-8")
+        self.day = date(2026, 9, 5)
+
+    def test_day_page_from_receipts_with_debrief_and_preserved_plan(self):
+        page = journal_mod.write_day(self.vault, self.dev_root, self.day, at=NOW)
+        self.assertIsNotNone(page)
+        self.assertEqual(page.path.name, "2026-09-05.md")
+        d = page.meta["dev"]
+        self.assertEqual((d["receipts"], d["notional_total"]), (2, 598.0))          # 1000*0.5 + 100*0.98; the 09-04 row is not this day
+        self.assertEqual(d["debrief"]["drawdown_check"], "PASS")                   # 598 < 3,500 killswitch from the fixture CLAUDE.md
+        self.assertEqual(d["debrief"]["hurdle_check"], "UNCHECKED")
+        self.assertEqual(d["debrief"]["by_strategy"], {"latency_sniper": 500.0, "polymarket_amm": 98.0})
+        self.assertEqual(d["parameters"][0]["name"], "daily_drawdown_killswitch_usd")
+        self.assertNotIn("stale_after", page.meta)                                 # journals are never stale
+        self.assertIn("| 2026-09-05T18:00:03+00:00 | polymarket | latency_sniper | FOMC-NOCHANGE-YES | BUY | 1000 | 0.5 | $500.00 |", page.body)
+        # the operator writes a plan; a re-run keeps it and re-renders everything else
+        text = page.path.read_text(encoding="utf-8").replace(journal_mod.PLAN_PLACEHOLDER, "Sit out the BTC ladders; drill card at T-2.")
+        page.path.write_text(text, encoding="utf-8")
+        again = journal_mod.write_day(self.vault, self.dev_root, self.day, at=NOW + timedelta(hours=1))
+        self.assertIn("Sit out the BTC ladders; drill card at T-2.", again.body)
+        self.assertEqual(again.meta["dev"]["receipts"], 2)
+        reg, _ = fm.parse((self.vault / "wiki/concepts/journal_register.md").read_text(encoding="utf-8"))
+        self.assertEqual(reg["dev"]["count"], 1)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_quiet_day_needs_create_and_flags_a_budget_breach(self):
+        quiet = date(2026, 9, 7)
+        self.assertIsNone(journal_mod.write_day(self.vault, self.dev_root, quiet, at=NOW))
+        page = journal_mod.write_day(self.vault, self.dev_root, quiet, at=NOW, create=True)
+        self.assertEqual(page.meta["dev"]["debrief"], {"executions": 0, "notional_total": 0.0, "by_strategy": {}, "drawdown_check": "N/A", "hurdle_check": "N/A"})
+        (self.receipts / "fills_polymarket_latency_sniper_20260907_x.csv").write_text(
+            RECEIPT_HEADER + "2026-09-07T18:00:03+00:00,BIG,BUY,10000.00000000,0.50000000,0,paper-9,polymarket,strategy=latency_sniper\n", encoding="utf-8")
+        page = journal_mod.write_day(self.vault, self.dev_root, quiet, at=NOW)
+        self.assertEqual(page.meta["dev"]["debrief"]["drawdown_check"], "FLAG")   # $5,000 > $3,500
+        self.assertIn("FLAG - exceeds the budget", page.body)
+
+    def test_predict_then_score_against_the_event_payload(self):
+        # two predictions before the print: one right at 0.9, one wrong at 0.8
+        journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="fomc_2026-09-16", field_="change_bps", op="==", value=0, p=0.9, at=NOW)
+        journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="fomc_2026-09-16", field_="change_bps", op=">=", value=25, p=0.8,
+                                   at=NOW + timedelta(minutes=1))
+        page = journal_mod.load_page(journal_mod.page_path(self.vault, "Journal Entry", "2026-09-05"))
+        self.assertEqual(page.meta["dev"]["predictions_n"], 2)
+        self.assertTrue(all(p["brier"] is None for p in page.meta["dev"]["predictions"]))
+        # no Event page yet -> everything pending
+        self.assertEqual(journal_mod.score_predictions(self.vault, self.dev_root, at=NOW + timedelta(hours=1)), {"scored": 0, "pending": 2})
+        # the print lands: clob ingest writes the Event with payload change_bps 0
+        ingest_clob.ingest_survival(CURVE_JSON, self.vault, self.dev_root, event_id="fomc_2026-09-16", source="curve.json",
+                                    at=datetime(2026, 9, 16, 18, 10, tzinfo=timezone.utc))
+        res = journal_mod.score_predictions(self.vault, self.dev_root, at=datetime(2026, 9, 16, 18, 20, tzinfo=timezone.utc))
+        self.assertEqual(res, {"scored": 2, "pending": 0})
+        page = journal_mod.load_page(journal_mod.page_path(self.vault, "Journal Entry", "2026-09-05"))
+        preds = page.meta["dev"]["predictions"]
+        self.assertEqual([(p["outcome"], p["brier"]) for p in preds], [(1, 0.01), (0, 0.64)])
+        self.assertEqual(preds[0]["by"], "human:operator")
+        cal, body = fm.parse((self.vault / "wiki/concepts/calibration.md").read_text(encoding="utf-8"))
+        self.assertEqual((cal["dev"]["count"], cal["dev"]["mean_brier"]), (2, 0.325))
+        self.assertEqual(cal["dev"]["reliability"], [{"bin": "0.8-0.9", "n": 1, "mean_p": 0.8, "observed": 0.0},
+                                                     {"bin": "0.9-1.0", "n": 1, "mean_p": 0.9, "observed": 1.0}])
+        self.assertIn("| 0.9-1.0 | 1 | 0.90 | 1.00 | +0.10 |", body)
+        # scoring is idempotent and a scored prediction is never re-written
+        self.assertEqual(journal_mod.score_predictions(self.vault, self.dev_root, at=NOW + timedelta(days=20)), {"scored": 0, "pending": 0})
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(days=20)), [])
+        log = (self.vault / "log.md").read_text(encoding="utf-8")
+        self.assertIn("**Journal**: prediction on [[fomc_2026-09-16]]: `change_bps == 0` with p=0.90", log)
+        self.assertIn("**Journal**: scored 2 prediction(s)", log)
+
+    def test_prediction_validation_and_cli(self):
+        with self.assertRaises(ValueError):
+            journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="e", field_="f", op="==", value=0, p=1.0, at=NOW)
+        with self.assertRaises(ValueError):
+            journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="e", field_="f", op="~", value=0, p=0.5, at=NOW)
+        base = ["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--at", "2026-09-05T20:00:00Z"]
+        out = io.StringIO()
+        self.assertEqual(journal_mod.main(base + ["--date", "2026-09-05"], out=out), EXIT_OK)
+        self.assertIn("2 execution(s)", out.getvalue())
+        out = io.StringIO()
+        self.assertEqual(journal_mod.main(base + ["--date", "2026-09-08"], out=out), EXIT_OK)
+        self.assertIn("nothing written", out.getvalue())
+        self.assertEqual(journal_mod.main(base + ["--predict", "--event", "fomc_2026-10-28", "--field", "change_bps", "--op", "==", "--value", "0", "--p", "0.7"],
+                                          out=io.StringIO()), EXIT_OK)
+        page = journal_mod.load_page(journal_mod.page_path(self.vault, "Journal Entry", "2026-09-05"))
+        self.assertEqual(page.meta["dev"]["predictions"][0]["value"], 0)  # "0" parsed as an int
+        self.assertEqual(journal_mod.main(base + ["--predict", "--event", "x"], out=io.StringIO()), EXIT_HALT)
+        out = io.StringIO()
+        self.assertEqual(journal_mod.main(base + ["--score"], out=out), EXIT_OK)
+        self.assertIn("pending 1", out.getvalue())
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(journal_mod.main(base + ["--date", "2026-09-05"], out=io.StringIO()), EXIT_HALT)
+
+
+class RelationsLintTests(TempVault):
+    def page(self, rel, **kw):
+        return self.write(rel, page_text(**kw))
+
+    def test_l6_supersedes_contradicts_measured_enforced_depends(self):
+        self.page("wiki/rulings/Ruling_R09.md", type_="Ruling", title="R9", body="# R9\n\n[[old]] [[c]]\n", stale_after="2027-01-01T00:00:00Z")
+        self.page("wiki/rulings/old.md", type_="Ruling", title="old", body="# old\n\n[[Ruling_R09]]\n", status="deprecated")
+        self.page("wiki/experiments/exp1.md", type_="Experiment", title="exp1", body="# e\n\n[[c]]\n", dev={"tests_run": 1})
+        self.page("wiki/concepts/c.md", title="c", body="# c\n\n[[Ruling_R09]] [[exp1]] [[old]]\n", stale_after="2027-01-01T00:00:00Z", dev={"relations": [
+            {"type": "supersedes", "target": "old"},                                   # ok: exists and deprecated
+            {"type": "supersedes", "target": "Ruling_R09"},                            # warning: not deprecated
+            {"type": "contradicts", "target": "old"},                                  # error unless resolved_by names a Ruling
+            {"type": "measured_by", "target": "exp1"},                                 # ok
+            {"type": "measured_by", "target": "Ruling_R09"},                           # error: not an Experiment
+            {"type": "enforced_in", "target": "cross_market/latency_sniper.py"},        # ok: exists in the fixture
+            {"type": "enforced_in", "target": "cross_market/nope.py"},                 # error
+            {"type": "depends_on", "target": "ghost"},                                 # warning
+        ]})
+        pages.write_index(self.vault)
+        l6 = [x for x in self.findings() if x.code == "L6"]
+        msgs = [x.message for x in l6]
+        self.assertEqual(sorted(x.severity for x in l6), ["error", "error", "error", "warning", "warning"])
+        self.assertTrue(any("supersedes Ruling_R09, which is not `deprecated`" in m for m in msgs))
+        self.assertTrue(any("contradicts old without a `resolved_by`" in m for m in msgs))
+        self.assertTrue(any("measured_by target is not an existing Experiment page: Ruling_R09" in m for m in msgs))
+        self.assertTrue(any("enforced_in target is not a file in the repository: cross_market/nope.py" in m for m in msgs))
+        self.assertTrue(any("depends_on target not found: ghost" in m for m in msgs))
+        # add the resolving ruling -> the contradicts error clears
+        self.page("wiki/concepts/c.md", title="c", body="# c\n\n[[Ruling_R09]] [[exp1]] [[old]]\n", stale_after="2027-01-01T00:00:00Z", dev={"relations": [
+            {"type": "contradicts", "target": "old"}, {"type": "resolved_by", "target": "Ruling_R09"}]})
+        self.assertEqual([x for x in self.findings() if x.code == "L6"], [])
+
+    def test_l6_cycle_and_frontmatter_shape(self):
+        self.page("wiki/concepts/a.md", title="a", body="# a\n\n[[b]]\n", status="deprecated", dev={"relations": [{"type": "supersedes", "target": "b"}]})
+        self.page("wiki/concepts/b.md", title="b", body="# b\n\n[[a]]\n", status="deprecated", dev={"relations": [{"type": "supersedes", "target": "a"}]})
+        pages.write_index(self.vault)
+        cyc = [x for x in self.findings() if x.code == "L6" and "cyclic" in x.message]
+        self.assertEqual(len(cyc), 2)
+        self.assertTrue(any("dev.relations[0] needs type in" in i for i in fm.validate({"type": "X", "dev": {"relations": [{"type": "likes", "target": "b"}]}})))
+        self.assertEqual(fm.validate({"type": "X", "dev": {"relations": [{"type": "enforced_in", "target": "a.py"}], "tests_run": 3}}), [])
+        self.assertTrue(fm.validate({"type": "X", "dev": {"tests_run": -1}}))
+
+
+class StalenessTests(IngestFixture):
+    def test_l7_policy_and_seeded_rulings_carry_stale_after(self):
+        r4, _ = fm.parse((self.vault / "wiki/rulings/Ruling_R04.md").read_text(encoding="utf-8"))
+        self.assertEqual(r4["stale_after"], "2027-03-04T20:00:00Z")   # NOW + 180 d
+        r1, _ = fm.parse((self.vault / "wiki/rulings/Ruling_R01.md").read_text(encoding="utf-8"))
+        self.assertNotIn("stale_after", r1)                             # deprecated: no review clock
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+        self.write("wiki/concepts/loose.md", page_text(title="Loose", body="# L\n\n[[Desk_01_HyperLiquid_Monarch]]\n", stale_after=None))
+        self.write("wiki/rulings/Ruling_R08.md", page_text("Ruling", title="R8", body="# R8\n\n[[loose]]\n", stale_after=None))
+        self.write("wiki/desks/Desk_01_HyperLiquid_Monarch.md",
+                   (self.vault / "wiki/desks/Desk_01_HyperLiquid_Monarch.md").read_text(encoding="utf-8").replace("## Other desks", "[[loose]] [[Ruling_R08]]\n\n## Other desks"))
+        pages.write_index(self.vault)
+        l7 = sorted((x.path, x.message) for x in self.findings() if x.code == "L7")
+        self.assertEqual([p for p, _ in l7], ["wiki/concepts/loose.md", "wiki/rulings/Ruling_R08.md"])
+        self.assertIn("policy: 90 d", l7[0][1])
+        # registers and history pages are exempt
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        self.assertFalse(any(x.code == "L7" and "register" in x.path for x in self.findings()))
+        self.assertEqual(pages.default_stale_after("Event", NOW), None)
+
+    def test_tests_run_counter_on_registrations_and_verdicts(self):
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        m, _ = fm.parse((self.vault / "wiki/experiments/fomc_2026-09-16_rules.md").read_text(encoding="utf-8"))
+        self.assertEqual(m["dev"]["tests_run"], 0)
+        for i in range(3):
+            v, _ = ingest_ll.ingest_verdict(VERDICT_JSON, self.vault, self.dev_root, tier="1", source="verdict.json", at=NOW + timedelta(hours=i))
+        self.assertEqual(v.meta["dev"]["tests_run"], 3)
+        v2, _ = ingest_ll.ingest_verdict(dict(VERDICT_JSON, subfamily="crypto"), self.vault, self.dev_root, tier="1", source="verdict.json",
+                                         at=NOW + timedelta(hours=5))
+        self.assertEqual(v2.meta["dev"]["tests_run"], 1)  # a different scope starts its own count
+
+
+class CarryOverTests(IngestFixture):
+    def test_force_rewrites_keep_verified_status_and_stale_after_everywhere(self):
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        computations.write_computations(self.vault, self.dev_root, at=NOW)
+        cal_dir = Path(knowledge_pkg.__file__).parent / "calendars"
+        ingest_cal.ingest_calendars(cal_dir, self.vault, self.dev_root, at=NOW)
+        ingest_mk.ingest_markets(self.vault, self.dev_root, at=NOW)
+        targets = ["wiki/experiments/fomc_2026-09-16_rules.md", "wiki/computations/knowledge_lint.md", "wiki/events/fomc_2026-10-28.md",
+                   "wiki/markets/will-no-fed-rate-cuts-happen-in-2026.md"]
+        for rel in targets:
+            p = self.vault / rel
+            text = p.read_text(encoding="utf-8").replace("status: draft", "status: stable\nstale_after: '2027-06-01T00:00:00Z'\nverified:\n- by: human:operator\n  at: '2026-09-05T21:00:00Z'", 1)
+            p.write_text(text, encoding="utf-8")
+        later = NOW + timedelta(days=1)
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=later, force=True)
+        computations.write_computations(self.vault, self.dev_root, at=later, force=True)
+        ingest_cal.ingest_calendars(cal_dir, self.vault, self.dev_root, at=later, force=True)
+        ingest_mk.ingest_markets(self.vault, self.dev_root, at=later, force=True)
+        for rel in targets:
+            m, _ = fm.parse((self.vault / rel).read_text(encoding="utf-8"))
+            self.assertEqual((m["status"], m["stale_after"], m["verified"][0]["by"]), ("stable", "2027-06-01T00:00:00Z", "human:operator"), rel)
+            self.assertEqual(m["generated"]["at"], pages.iso(later), rel)  # everything else was regenerated
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=later), [])
 
 
 if __name__ == "__main__":  # pragma: no cover

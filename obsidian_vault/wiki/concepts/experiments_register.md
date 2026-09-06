@@ -9,7 +9,7 @@ tags:
 - experiment
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:44Z'
+  at: '2026-09-06T00:28:49Z'
 status: draft
 dev:
   register_for: Experiment
@@ -29,12 +29,12 @@ dev:
 
 | Page | kind | Status | Generated |
 |---|---|---|---|
-| [[baseline_unfiltered_N12_2026-09-01_meta\|Experiment: baseline_unfiltered]] | archived_control | draft | 2026-09-05T21:52:44Z |
-| [[fomc_2026-09-16_rules\|Experiment: latency_sniper_fomc_2026-09-16]] | sniper_rules | draft | 2026-09-05T21:52:44Z |
-| [[lead_lag_tier2_meta\|Experiment: lead_lag_tier2_subfamilies]] | lead_lag | draft | 2026-09-05T21:52:44Z |
-| [[lead_lag_tier2b_meta\|Experiment: lead_lag_tier2b_dual_tag_membership]] | lead_lag | draft | 2026-09-05T21:52:44Z |
-| [[passive_fade_rebenchmark_meta\|Experiment: passive_fade_rebenchmark]] | registration | draft | 2026-09-05T21:52:44Z |
-| [[regime_filtered_v1_meta\|Experiment: regime_filtered_v1]] | registration | draft | 2026-09-05T21:52:44Z |
+| [[baseline_unfiltered_N12_2026-09-01_meta\|Experiment: baseline_unfiltered]] | archived_control | draft | 2026-09-06T00:28:49Z |
+| [[fomc_2026-09-16_rules\|Experiment: latency_sniper_fomc_2026-09-16]] | sniper_rules | draft | 2026-09-06T00:28:49Z |
+| [[lead_lag_tier2_meta\|Experiment: lead_lag_tier2_subfamilies]] | lead_lag | draft | 2026-09-06T00:28:49Z |
+| [[lead_lag_tier2b_meta\|Experiment: lead_lag_tier2b_dual_tag_membership]] | lead_lag | draft | 2026-09-06T00:28:49Z |
+| [[passive_fade_rebenchmark_meta\|Experiment: passive_fade_rebenchmark]] | registration | draft | 2026-09-06T00:28:49Z |
+| [[regime_filtered_v1_meta\|Experiment: regime_filtered_v1]] | registration | draft | 2026-09-06T00:28:49Z |
 
 6 page(s).
 

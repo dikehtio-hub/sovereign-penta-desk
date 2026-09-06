@@ -214,13 +214,52 @@ to pages and `sources` to raw. File the answer as a Concept page when the
 operator says "keep that". Two queries are pre-baked as commands in Phase 2:
 `--drill-card <event>` (one page under 60 lines at T-2) and `--regime BTC`.
 
-### Journal (R95-F)
+### Journal (R95-F; built Round 100, B10)
 
-One `journal/YYYY-MM-DD.md` per trading day: **Plan** (operator), **Executions**
-(machine, from PAPER receipts only, `paper:1`), **Debrief** (agent, checks each
-execution against the Tax Reserve Agent after-tax hurdle and the Risk Sentinel
-drawdown limits; `generated.by` the agent, never `verified` by it), **Open**.
-The debrief places no orders and changes no threshold.
+`python -m knowledge.journal --date D` writes `journal/YYYY-MM-DD.md` when
+paper receipts exist for that day, or on `--create`. Five sections: **Plan**
+(human, preserved across re-runs like a CRM judgement), **Executions**
+(machine: every CSV receipt under `cross_market/data/paper_receipts/`, one
+row per fill with notional = quantity x price; paper by location), **Calibration
+ledger** (machine-managed rows from `dev.predictions`), **Debrief** (machine:
+the day's paper notional against the quant lab's daily killswitch as a
+drawdown budget, per-strategy totals; the after-tax hurdle is reported as
+UNCHECKED because the receipt writer records no edge, and the page says so),
+**Open** (human, preserved). Journal pages are never stale.
+
+**Calibration ledger.** `--predict --event E --field F --op OP --value V --p P`
+records a probability BEFORE an event (`by: human:operator`); `--score`
+resolves every unscored prediction against the Event page's `dev.payload`
+(written by the recording adapter after the print): outcome = 1 if `F OP V`
+holds, Brier = (p - outcome)^2. `wiki/concepts/calibration.md` aggregates
+every scored prediction: count, mean Brier (0.25 is the always-0.5 baseline),
+and a reliability table by probability bin. A prediction is never edited
+after it is written; a wrong one stays wrong.
+
+### Typed relations (Round 100, B11)
+
+`dev.relations: [{type, target}]` with `type` in `supersedes | contradicts |
+resolved_by | depends_on | measured_by | enforced_in`. Targets are page stems,
+or a repository path for `enforced_in`. Lint L6: a `supersedes` target must
+exist and be `deprecated`, chains must be acyclic; a `contradicts` must be
+accompanied by `resolved_by` naming an existing Ruling page (a contradiction
+is owed a ruling); `measured_by` must name an Experiment page; `enforced_in`
+must name a file that exists.
+
+### Staleness policy (Round 100, B14)
+
+| Type | stale_after | Why |
+|---|---|---|
+| Ruling | 180 days from generation | the law is reviewed twice a year |
+| Concept | 90 days | a synthesis is re-read each quarter |
+| Market | none: lint C2 deprecates it when the token leaves the drops | resolution is the clock |
+| Reaction Profile, Event, Journal Entry | never | historical facts |
+| Registers and history pages (`dev.register_for`, `dev.history`) | exempt | regenerated wholesale |
+
+Lint L7 warns when a policed page lacks `stale_after`; lint L4 warns once it
+has passed. `dev.tests_run` on Experiment pages counts how many times a
+registration's scope has been evaluated (0 at registration; each verdict
+page carries the running count), so multiple testing is visible.
 
 ### CRM (Round 99, B8)
 
@@ -259,7 +298,9 @@ agent writes a `verified` entry, and the entry names a ruling.
 | C2 | a `dev.token_id` / `dev.tokens[]` entry on a non-deprecated page that is absent from the newest macro and sports drops (warning: resolved, delisted, or never listed); a missing drops folder is itself one warning. `lint --fix-safe` sets `status: deprecated` on a Market page so flagged and logs it (Round 97 ruling A5) |
 | C3 | the same `dev.parameters[].name` with different values on two or more pages (error) |
 | C5 | `generated.at` inside the page's own `dev.window` is an error; only the file mtime inside it is a warning, because a checkout can do that (ruling 3) |
-| C4 C6 | Phase 3: unhedged tax liability; the weekly LLM contradiction pass |
+| L6 | typed relations: `supersedes` target exists and is deprecated, chains acyclic; `contradicts` carries `resolved_by` -> an existing Ruling; `measured_by` -> an Experiment page; `enforced_in` -> a file in the repo |
+| L7 | a Ruling or Concept page without `stale_after` (policy above), unless machine-maintained or deprecated |
+| C4 C6 | Phase 3+: unhedged tax liability; the weekly LLM contradiction pass |
 
 Lint writes nothing without `--fix-safe`, and with it may only set
 `status: deprecated` on a Market page whose token is gone, regenerate
@@ -296,11 +337,16 @@ python -m knowledge.ingest.entities [--limit-whales 100] [--limit-titans 100]
                                                                    -> crm/{titans,whales,sharps,books}/ (judgement kept, evidence appended)
 python -m knowledge.ratify --type Ruling --tag extracted --ruling 98-1
                                                                    records a ratification: verified + status stable on the selected pages
+python -m knowledge.journal --date 2026-09-05 [--create]           -> journal/2026-09-05.md (executions from paper receipts, debrief)
+python -m knowledge.journal --predict --event fomc_2026-09-16 --field change_bps --op == --value 0 --p 0.9
+python -m knowledge.journal --score                                scores every unscored prediction; rebuilds wiki/concepts/calibration.md
 python -m unittest knowledge.tests.test_knowledge                  (Master Module 23)
 ```
 
-Registers: `wiki/concepts/{experiments,rulings,computations,events,markets,crm}_register.md`
-are rebuilt by the adapter that owns the type; every Desk page links all six.
+Registers: `wiki/concepts/{experiments,rulings,computations,events,markets,crm,journal}_register.md`
+are rebuilt by the adapter that owns the type; every Desk page links all seven.
+Every adapter carries `verified`, `stale_after`, a promoted status and
+`dev.ratified_by` across a `--force` rewrite (Ruling 99-2, `pages.carry_human_fields`).
 Calendars are committed YAML under `knowledge/calendars/` (FOMC from
 federalreserve.gov by hand; the December statement is 19:00Z, not 18:00Z).
 

@@ -11,8 +11,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -24,7 +25,7 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 311
+    line: 333
     excerpt: …Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and
       was not run - `python -m cross_market.maiden_protocol` is the command.…
   asserts:
@@ -42,7 +43,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 311): …Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and was not run - `python -m cross_market.maiden_protocol` is the command.…
+- **Status** (line 333): …Directive 76-1 (the protocol at ~01:40Z 2026-09-06) is time-gated and was not run - `python -m cross_market.maiden_protocol` is the command.…
 
 ## Related
 

@@ -8,7 +8,7 @@ tags:
 - archived-control
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:44Z'
+  at: '2026-09-06T00:28:49Z'
 status: draft
 sources:
 - id: registration
@@ -58,6 +58,7 @@ dev:
     json_path: fees_paid
   requires_files:
   - HyperLiquid/HL_Monarch/data/experiments/baseline_unfiltered_N12_2026-09-01.json
+  tests_run: 0
 ---
 # Experiment: baseline_unfiltered
 

@@ -13,8 +13,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -26,7 +27,7 @@ dev:
   kind: ruling
   citations:
   - section: Round 45 findings
-    line: 1949
+    line: 1992
     excerpt: …- Ruling 45-3 named `sample_orderbooks()` / `_spot_universe_cache`;
       the real names are `_sample_pass` / `_spot_universe_cached`, and the cold-start
       path is already pinned by `test_the_spot_universe_is_cached_refreshed_and_never_
@@ -46,7 +47,7 @@ verified:
 
 ## Citations
 
-- **Round 45 findings** (line 1949): …- Ruling 45-3 named `sample_orderbooks()` / `_spot_universe_cache`; the real names are `_sample_pass` / `_spot_universe_cached`, and the cold-start path is already pinned by `test_the_spot_universe_is_cached_refreshed_and_never_ guessed` (failed lookup -> zero candidates, retry, stale copy survives).
+- **Round 45 findings** (line 1992): …- Ruling 45-3 named `sample_orderbooks()` / `_spot_universe_cache`; the real names are `_sample_pass` / `_spot_universe_cached`, and the cold-start path is already pinned by `test_the_spot_universe_is_cached_refreshed_and_never_ guessed` (failed lookup -> zero candidates, retry, stale copy survives).
 
 ## Related
 

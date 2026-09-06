@@ -11,8 +11,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -24,7 +25,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 421
+    line: 443
     excerpt: '…Live note header: `15.7h ago` [STALE] - the sports feed is deliberately
       idle until real odds drops arrive (Ruling 66-1).'
   asserts:
@@ -42,7 +43,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 421): …Live note header: `15.7h ago` [STALE] - the sports feed is deliberately idle until real odds drops arrive (Ruling 66-1).
+- **Status** (line 443): …Live note header: `15.7h ago` [STALE] - the sports feed is deliberately idle until real odds drops arrive (Ruling 66-1).
 
 ## Related
 

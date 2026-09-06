@@ -27,6 +27,12 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
   C5  a page edited inside its own `dev.window`: `generated.at` inside the
       window is an error (the agent stamped it there); only the file mtime
       inside the window is a warning (a checkout can do that) - ruling 3.
+  L6  typed relations (Round 100): a `supersedes` target must exist and be
+      deprecated, and chains must be acyclic; `contradicts` needs a
+      `resolved_by` relation to an existing Ruling page; `measured_by` must
+      name an Experiment page; `enforced_in` must name a file in the repo.
+  L7  staleness policy (Round 100): a Ruling (180 d) or Concept (90 d) page
+      without `stale_after` is a warning unless it is machine-maintained.
 
 C4 (unhedged tax liability) and C6 (the LLM contradiction pass) are Phase 3.
 """
@@ -392,6 +398,80 @@ def check_c5(docs: list[Document], vault: Path) -> list[Finding]:
     return out
 
 
+def _relations(d: Document) -> list[dict]:
+    dev = _dev(d)
+    rels = dev.get("relations") if dev else None
+    return [r for r in rels if isinstance(r, dict) and isinstance(r.get("target"), str)] if isinstance(rels, list) else []
+
+
+def check_l6(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]:
+    """Typed relations (Round 100, B11). Targets are page stems (or repo paths for enforced_in)."""
+    out: list[Finding] = []
+    by_stem: dict[str, Document] = {d.path.stem: d for d in docs if d.meta is not None}
+    supersedes: dict[str, list[str]] = {}
+    for d in docs:
+        rels = _relations(d)
+        if not rels:
+            continue
+        rel = _rel(d.path, vault)
+        resolvers = [r["target"] for r in rels if r.get("type") == "resolved_by"]
+        for r in rels:
+            t, target = r.get("type"), r["target"].strip()
+            tgt = by_stem.get(target)
+            if t == "supersedes":
+                supersedes.setdefault(d.path.stem, []).append(target)
+                if tgt is None:
+                    out.append(Finding("L6", "error", rel, f"supersedes target not found: {target}"))
+                elif (tgt.meta or {}).get("status") != "deprecated":
+                    out.append(Finding("L6", "warning", rel, f"supersedes {target}, which is not `deprecated`"))
+            elif t == "contradicts":
+                if tgt is None:
+                    out.append(Finding("L6", "error", rel, f"contradicts target not found: {target}"))
+                ok = any((by_stem.get(x) or Document(Path(x), None, "")).meta and (by_stem[x].meta or {}).get("type") == "Ruling"
+                         for x in resolvers if x in by_stem)
+                if not ok:
+                    out.append(Finding("L6", "error", rel, f"contradicts {target} without a `resolved_by` relation to an existing Ruling page"))
+            elif t == "resolved_by":
+                if tgt is None or (tgt.meta or {}).get("type") != "Ruling":
+                    out.append(Finding("L6", "error", rel, f"resolved_by target is not an existing Ruling page: {target}"))
+            elif t == "measured_by":
+                if tgt is None or (tgt.meta or {}).get("type") != "Experiment":
+                    out.append(Finding("L6", "error", rel, f"measured_by target is not an existing Experiment page: {target}"))
+            elif t == "enforced_in":
+                p = Path(target)
+                if not (p if p.is_absolute() else dev_root / p).is_file():
+                    out.append(Finding("L6", "error", rel, f"enforced_in target is not a file in the repository: {target}"))
+            elif t == "depends_on":
+                if tgt is None:
+                    out.append(Finding("L6", "warning", rel, f"depends_on target not found: {target}"))
+    # supersedes chains must be acyclic
+    def reaches(start: str, node: str, seen: set[str]) -> bool:
+        for nxt in supersedes.get(node, []):
+            if nxt == start or (nxt not in seen and reaches(start, nxt, seen | {nxt})):
+                return True
+        return False
+    for stem in supersedes:
+        if reaches(stem, stem, {stem}):
+            d = by_stem.get(stem)
+            out.append(Finding("L6", "error", _rel(d.path, vault) if d else stem, f"supersedes chain is cyclic through {stem}"))
+    return out
+
+
+def check_l7(docs: list[Document], vault: Path) -> list[Finding]:
+    """Staleness policy (Round 100, B14): a policed type must carry stale_after unless machine-maintained."""
+    from .pages import STALENESS_DAYS, is_machine_maintained
+    out: list[Finding] = []
+    for d in docs:
+        if d.meta is None or d.constitution:
+            continue
+        t = d.meta.get("type")
+        if t in STALENESS_DAYS and "stale_after" not in d.meta and not is_machine_maintained(d.meta) \
+                and d.meta.get("status") != "deprecated":
+            out.append(Finding("L7", "warning", _rel(d.path, vault),
+                               f"{t} page without stale_after (policy: {STALENESS_DAYS[t]} d)"))
+    return out
+
+
 def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
                drops: Path | None = None) -> list[Finding]:
     now = now or datetime.now(timezone.utc)
@@ -404,6 +484,8 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     findings += check_l3(docs, vault)
     findings += check_l4(docs, vault, now)
     findings += check_l5(docs, vault, dev_root)
+    findings += check_l6(docs, vault, dev_root)
+    findings += check_l7(docs, vault)
     findings += check_c1(docs, vault, dev_root)
     findings += check_c2(docs, vault, drops)
     findings += check_c3(docs, vault)

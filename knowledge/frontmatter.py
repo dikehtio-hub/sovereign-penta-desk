@@ -31,6 +31,9 @@ import yaml
 
 STATUSES = ("draft", "stable", "deprecated")
 
+# dev.relations[].type (Round 100, B11). `resolved_by` is the companion a `contradicts` must carry.
+RELATION_TYPES = ("supersedes", "contradicts", "resolved_by", "depends_on", "measured_by", "enforced_in")
+
 ACTOR_RE = re.compile(
     r"^(?:human:[A-Za-z0-9_.\-]+|process:[A-Za-z0-9_.\-/]+|[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)$"
 )
@@ -253,4 +256,16 @@ def _validate_dev(dev: Any) -> list[str]:
         issues.append("dev.token_id must be a string")
     if "history" in dev and (not isinstance(dev["history"], list) or not all(isinstance(x, dict) for x in dev["history"])):
         issues.append("dev.history must be a list of mappings")
+    if "relations" in dev:
+        rels = dev["relations"]
+        if not isinstance(rels, list):
+            issues.append("dev.relations must be a list of {type, target}")
+        else:
+            for i, r in enumerate(rels):
+                if not isinstance(r, dict) or r.get("type") not in RELATION_TYPES or not isinstance(r.get("target"), str) or not r["target"]:
+                    issues.append(f"dev.relations[{i}] needs type in {'|'.join(RELATION_TYPES)} and a non-empty string target")
+    if "tests_run" in dev and (not isinstance(dev["tests_run"], int) or isinstance(dev["tests_run"], bool) or dev["tests_run"] < 0):
+        issues.append("dev.tests_run must be a non-negative integer")
+    if "predictions" in dev and (not isinstance(dev["predictions"], list) or not all(isinstance(x, dict) for x in dev["predictions"])):
+        issues.append("dev.predictions must be a list of mappings")
     return issues

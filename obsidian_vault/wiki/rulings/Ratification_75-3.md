@@ -13,8 +13,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -26,7 +27,7 @@ dev:
   kind: ratification
   citations:
   - section: Status
-    line: 311
+    line: 333
     excerpt: '…The running watcher (pid 49812) still executes the Round 75 code and
       its drops carry no `tags` field until it is restarted - deliberately left for
       AFTER the maiden verdict (Ratification 75-3): `taskkill /F /PID <pid>` then
@@ -46,7 +47,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 311): …The running watcher (pid 49812) still executes the Round 75 code and its drops carry no `tags` field until it is restarted - deliberately left for AFTER the maiden verdict (Ratification 75-3): `taskkill /F /PID <pid>` then start_polymarket_watcher.bat, inside 60 min so the series stays continuous.…
+- **Status** (line 333): …The running watcher (pid 49812) still executes the Round 75 code and its drops carry no `tags` field until it is restarted - deliberately left for AFTER the maiden verdict (Ratification 75-3): `taskkill /F /PID <pid>` then start_polymarket_watcher.bat, inside 60 min so the series stays continuous.…
 
 ## Related
 

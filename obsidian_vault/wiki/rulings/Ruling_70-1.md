@@ -12,8 +12,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -25,7 +26,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 388
+    line: 410
     excerpt: …start_all_ecosystem_sync.bat and HL_Monarch/scripts/launchers/ start_obsidian_sync.bat
       start the HL obsidian watcher with --throttle-seconds 60 (Ruling 70-1); the
       code default stays 0 for on-demand calls.…
@@ -44,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 388): …start_all_ecosystem_sync.bat and HL_Monarch/scripts/launchers/ start_obsidian_sync.bat start the HL obsidian watcher with --throttle-seconds 60 (Ruling 70-1); the code default stays 0 for on-demand calls.…
+- **Status** (line 410): …start_all_ecosystem_sync.bat and HL_Monarch/scripts/launchers/ start_obsidian_sync.bat start the HL obsidian watcher with --throttle-seconds 60 (Ruling 70-1); the code default stays 0 for on-demand calls.…
 
 ## Related
 

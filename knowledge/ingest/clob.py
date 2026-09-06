@@ -31,7 +31,8 @@ from pathlib import Path
 from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
-from ..pages import Page, append_log, iso, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
+                     write_index, write_page)
 from . import add_common_args, at_from, fmt_s, fmt_usd, guard, rel_to
 
 CONCEPT_FILE = "latency_decay"
@@ -129,6 +130,7 @@ def compile_event(result: dict[str, Any], event_id: str, profiles: list[Page], v
                      sources=[{"id": "survival-json", "resource": source, "title": "latency_sniper --survival-curve --json",
                                "author": "process:cross_market.latency_sniper"}],
                      dev=dev)
+    carry_human_fields(existing, meta)  # Ruling 99-2
     return Page(path, meta, "\n".join(body))
 
 

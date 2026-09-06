@@ -2360,6 +2360,26 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 100 - KNOWLEDGE PHASE 3: JOURNAL + CALIBRATION LEDGER, TYPED RELATIONS (L6), STALENESS POLICY (L7) (knowledge/journal.py)
+     python -m knowledge.journal --date YYYY-MM-DD [--create] [--receipts DIR] [--at ISO]
+         journal/YYYY-MM-DD.md when paper receipts exist for the day or on --create. Plan (human, preserved) · Executions (one row per
+         CSV receipt under cross_market/data/paper_receipts: timestamp, symbol, side, quantity, price, fee, tx_hash, source, notes;
+         strategy from notes or the fills_<venue>_<strategy>_ filename) · Calibration ledger · Debrief (day notional vs the quant-lab
+         daily killswitch as a drawdown budget -> PASS/FLAG; after-tax hurdle UNCHECKED because the receipt writer records no edge) ·
+         Open (human, preserved). Never stale. Maintains wiki/concepts/journal_register.md (7th register, linked from every Desk).
+     python -m knowledge.journal --predict --event fomc_2026-09-16 --field change_bps --op == --value 0 --p 0.9 [--date D]
+         Records a probability BEFORE the event as dev:predictions {event, field, op, value, p, at, by: human:operator}. Never edited after.
+     python -m knowledge.journal --score [--at ISO]
+         outcome = 1 if `field op value` holds on the Event page's dev:payload (written by ingest.clob after the print); Brier = (p-outcome)^2;
+         rebuilds wiki/concepts/calibration.md (count, mean Brier vs the 0.25 always-0.5 baseline, reliability table by p-bin).
+     Lint L6: dev:relations [{type, target}] - supersedes (target exists + deprecated; chains acyclic), contradicts (needs resolved_by -> a
+         Ruling page), measured_by (-> Experiment page), enforced_in (-> repo file), depends_on (target exists).
+     Lint L7: Ruling (180 d) and Concept (90 d) pages must carry stale_after unless machine-maintained (registers, history) or deprecated;
+         seeds and ingest.rulings now stamp it. dev:tests_run: 0 on registrations, the running verdict count per tier/scope on verdicts.
+     Ruling 99-2: pages.carry_human_fields applied in experiments, computations, calendar, markets, clob (Event), lead_lag (Regime),
+         rulings, entities, journal - a --force never drops verified, stale_after, a promoted status or dev:ratified_by.
+     Tests: python -m unittest knowledge.tests.test_knowledge   (master module 23, 91 tests)
+
      ROUND 99 - KNOWLEDGE: CRM SEEDS + DIRECTIVES RATIFIED (knowledge/ingest/entities.py, knowledge/ratify.py)
      python -m knowledge.ingest.entities [--limit-whales 100] [--limit-titans 100] [--at ISO]
          crm/titans/ (identities present on BOTH venues: cache EOA->proxy whose proxy/EOA appears in sharp_traders or tracked_wallets, or a
@@ -2817,7 +2837,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (23 modules, 1,018): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
+     MASTER SUITE (23 modules, 1,027): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

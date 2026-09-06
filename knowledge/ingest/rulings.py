@@ -26,7 +26,8 @@ from pathlib import Path
 from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
-from ..pages import Page, append_log, carry_human_fields, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from ..pages import (Page, append_log, carry_human_fields, default_stale_after, load_page, load_pages, make_meta, now_utc,
+                     page_path, write_index, write_page)
 from ..registers import update_register
 from . import add_common_args, at_from, guard, rel_to
 
@@ -158,7 +159,7 @@ def compile_ruling(cit: Citation, agents_rel: str, vault: Path, at, by: str = GE
     }
     meta = make_meta("Ruling", title, (cit.occurrences[0].excerpt.lstrip("…")[:300]),
                      tags=["ruling", cit.kind.lower(), f"round-{cit.major}", "extracted"],
-                     generated_by=by, at=at, status="draft",
+                     generated_by=by, at=at, status="draft", stale_after=default_stale_after("Ruling", at),
                      sources=[{"id": "agents-md", "resource": agents_rel,
                                "title": f"AGENTS.md · {cit.occurrences[0].section}", "author": "human:operator"}],
                      dev=dev)

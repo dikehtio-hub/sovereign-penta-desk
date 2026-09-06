@@ -1,3 +1,9 @@
+## 2026-09-06
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T00:28:42Z): 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: directives, ratifications and numbered rulings from `AGENTS.md`: 28 distinct citation(s), 28 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 6 Experiment page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: attested computations: 1 page(s) written, 14 kept (2 shell twins, 13 knowledge CLIs); [index](index.md) rebuilt.
+
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
 * **Seed**: seed from the Top 20 registry (generated.at 2026-09-05T20:48:24Z): 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

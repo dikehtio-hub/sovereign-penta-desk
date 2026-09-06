@@ -10,8 +10,9 @@ tags:
 - r5
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:42Z'
+  at: '2026-09-06T00:28:42Z'
 status: draft
+stale_after: '2027-03-05T00:28:42Z'
 sources:
 - id: agents-md
   resource: AGENTS.md

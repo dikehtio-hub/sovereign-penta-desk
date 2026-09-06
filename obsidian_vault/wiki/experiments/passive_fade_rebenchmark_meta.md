@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:44Z'
+  at: '2026-09-06T00:28:49Z'
 status: draft
 sources:
 - id: registration
@@ -76,6 +76,7 @@ dev:
     value: 0.0259
     file: HyperLiquid/HL_Monarch/data/experiments/passive_fade_rebenchmark.meta.json
     json_path: state_at_registration.cluster_p_ge_1_by_horizon.30m
+  tests_run: 0
 ---
 # Experiment: passive_fade_rebenchmark
 

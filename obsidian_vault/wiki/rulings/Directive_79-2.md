@@ -13,8 +13,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -26,14 +27,14 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 273
+    line: 295
     excerpt: '…Directive 79-2''s three manual steps are now `restart_polymarket_watcher.bat`:
       fetcher `--stop` (terminates ONLY a live lock holder whose command line is a
       watcher - a stale lock is swept, a foreign process is never a target; exit 0
       stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`,
       whose new "tags:"…'
   - section: Status
-    line: 273
+    line: 295
     excerpt: …a foreign process is never a target; exit 0 stopped / 1 still alive
       / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:"
       line says whether the newest macro stamp carries the Round 76 `tags` (the Directive
@@ -53,8 +54,8 @@ verified:
 
 ## Citations
 
-- **Status** (line 273): …Directive 79-2's three manual steps are now `restart_polymarket_watcher.bat`: fetcher `--stop` (terminates ONLY a live lock holder whose command line is a watcher - a stale lock is swept, a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:"…
-- **Status** (line 273): …a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:" line says whether the newest macro stamp carries the Round 76 `tags` (the Directive 79-2 verification, one command).…
+- **Status** (line 295): …Directive 79-2's three manual steps are now `restart_polymarket_watcher.bat`: fetcher `--stop` (terminates ONLY a live lock holder whose command line is a watcher - a stale lock is swept, a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:"…
+- **Status** (line 295): …a foreign process is never a target; exit 0 stopped / 1 still alive / 3 nothing running) -> the guarded launcher -> `--status`, whose new "tags:" line says whether the newest macro stamp carries the Round 76 `tags` (the Directive 79-2 verification, one command).…
 
 ## Related
 

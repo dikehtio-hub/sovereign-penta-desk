@@ -32,7 +32,8 @@ from pathlib import Path
 from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
-from ..pages import Page, append_log, iso, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
+                     write_index, write_page)
 from . import add_common_args, at_from, guard, rel_to
 from .experiments import update_register
 
@@ -100,6 +101,9 @@ def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier
     body += ["## Related", "", f"- [[{REGIME_FILE}|BTC macro regime]]",
              "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
              "- [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]", ""]
+    # B14: tests_run = how many verdicts this tier/scope has now been evaluated for (multiple-testing counter)
+    prior = sum(1 for p in load_pages(vault) if p.type == "Experiment" and (p.meta.get("dev") or {}).get("kind") == "lead_lag_verdict"
+                and str((p.meta.get("dev") or {}).get("tier")) == str(tier) and scope_of(p.meta.get("dev") or {}) == scope)
     dev: dict[str, Any] = {
         "desk": 3, "item": 18, "kind": "lead_lag_verdict", "tier": str(tier),
         "family": result.get("family"), "subfamily": result.get("subfamily"),
@@ -107,6 +111,7 @@ def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier
         "sufficient": bool(result.get("sufficient")), "best_lag_minutes": tau, "correlation": corr,
         "n": result.get("n"), "events": result.get("events"), "price_points": result.get("price_points"),
         "latency_minutes": result.get("latency_minutes"), "min_abs_corr": min_abs_corr, "classification": cls,
+        "tests_run": prior + 1,
     }
     meta = make_meta("Experiment", title,
                      f"Tier {tier} lead-lag verdict for {scope.replace('_', ' / ')}: {cls}.",
@@ -196,6 +201,7 @@ def update_regime(vault: Path, verdict: Page, *, at: datetime, by: str = GENERAT
                      sources=[{"id": "verdicts", "resource": "obsidian_vault/wiki/experiments",
                                "title": "lead-lag verdict pages", "author": by}],
                      dev={"desk": 3, "item": 18, "current": current, "classes": list(CLASSES), "history": history})
+    carry_human_fields(existing, meta)  # Ruling 99-2
     return Page(path, meta, _render_regime(history))
 
 

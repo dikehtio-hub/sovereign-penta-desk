@@ -5,6 +5,31 @@ the detail.
 
 ## Status
 
+Round 100 complete (2026-09-05): KNOWLEDGE PHASE 3 - JOURNAL + CALIBRATION LEDGER (B10),
+TYPED RELATIONS (B11, lint L6), STALENESS POLICY (B14, lint L7), UNIVERSAL CARRY-OVER
+(Ruling 99-2). NEW knowledge/journal.py: journal/YYYY-MM-DD.md on receipts or --create;
+Plan and Open are human and preserved across re-runs; Executions come from the CSV
+paper receipts (Tax Reserve Agent writer columns; strategy from notes or filename);
+Debrief checks the day's paper notional against the quant lab's $3,500 daily killswitch
+(a guarded dev:parameter) and reports the after-tax hurdle as UNCHECKED because the
+receipt writer records no edge - the honest state, written on the page. Calibration
+ledger: --predict records {event, field, op, value, p, at, by human:operator} BEFORE an
+event; --score resolves against the Event page's dev:payload (written by ingest.clob
+after the print), Brier = (p - outcome)^2, and rebuilds wiki/concepts/calibration.md
+(count, mean Brier vs 0.25, reliability by p-bin). Predictions are never edited. Seventh
+register journal_register, linked from every Desk. LINT L6: dev:relations with
+supersedes (exists + deprecated, acyclic), contradicts (must carry resolved_by -> an
+existing Ruling), measured_by (-> Experiment), enforced_in (-> repo file), depends_on.
+LINT L7: Ruling 180 d / Concept 90 d must carry stale_after unless machine-maintained
+(dev:register_for or dev:history) or deprecated; seeds and ingest.rulings stamp it;
+Market is policed by C2, Reaction Profile/Event/Journal never stale. dev:tests_run: 0 on
+registrations, the running verdict count per tier/scope on verdicts. carry_human_fields
+now in experiments, computations, calendar, markets, clob Event, lead_lag Regime,
+rulings, entities, journal (tested end to end with a forced rewrite of four types).
+REAL VAULT: 375 pages + constitution, lint CLEAN (first quiet-day journal written for
+2026-09-05). Tests: module 23 = 91; master 23 modules 1,027; total 2,666, all green
+offline. Daemons and tonight's tasks untouched.
+
 Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4,
 Ruling 98-1). NEW knowledge/ingest/entities.py: crm/titans, crm/whales (top N by
 account_value), crm/sharps (sharp_traders + tracked_wallets), crm/books (pinnacle as
@@ -944,6 +969,25 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 100 findings
+
+- Paper receipts are CSV, not JSON: latency_sniper, execution_log and amm_rewards all
+  call Tax_Reserve_Agent.interfaces.receipts.log_execution_receipt, so the journal
+  parses the writer's nine columns and takes the strategy tag from `notes` or the
+  fills_<venue>_<strategy>_ filename. The folder is empty today; the journal exists
+  for the quiet days too.
+- The debrief cannot check the after-tax hurdle from a receipt: the writer records
+  no edge, hurdle or breakeven. The page says UNCHECKED with the reason; stamping the
+  hurdle on the receipt at write time is the backlog item that unlocks it.
+- Scoring is mechanical on purpose: a prediction is a rule (field, op, value) over the
+  Event page's recorded payload, the same shape as the sniper's registered rules, so
+  the operator's forecast and the sniper's rule can be compared line for line.
+- L7 exempts machine-maintained Concept pages (registers, history tables) or every
+  register would warn forever; the exemption is structural (dev:register_for or
+  dev:history), not a list of names.
+- No prediction was recorded this round: a forecast is the operator's act, and the
+  agent must not invent one to exercise the ledger. The tests do that with fixtures.
 
 ## Round 99 findings
 

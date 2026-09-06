@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:42Z'
+  at: '2026-09-06T00:28:42Z'
 status: draft
 sources:
 - id: top20-registry
@@ -71,6 +71,7 @@ Perp DEX desk: delta-neutral funding harvester, whale cascade sweeper, L2 order-
 - [[events_register|Events register]]
 - [[markets_register|Markets register]]
 - [[crm_register|CRM register]]
+- [[journal_register|Journal register]]
 
 ## Other desks
 

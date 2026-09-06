@@ -32,7 +32,7 @@ from typing import Any
 
 from . import DEV_ROOT, EXIT_HALT, EXIT_OK, GENERATED_BY, VAULT, halted
 from .frontmatter import parse_iso8601
-from .pages import Page, append_log, iso, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from .pages import Page, append_log, default_stale_after, iso, load_pages, make_meta, now_utc, page_path, write_index, write_page
 
 REGISTRY_NAME = "MASTER_COMMAND_LIST.txt"
 REGISTRY_SOURCE_ID = "top20-registry"
@@ -471,7 +471,8 @@ def build_desk_page(d: DeskSpec, items: list[ItemSpec], vault: Path, dev_root: P
     body += ["", "## Registers (machine-maintained)", "",
              "- [[experiments_register|Experiments register]]", "- [[rulings_register|Rulings register]]",
              "- [[computations_register|Computations register]]", "- [[events_register|Events register]]",
-             "- [[markets_register|Markets register]]", "- [[crm_register|CRM register]]"]
+             "- [[markets_register|Markets register]]", "- [[crm_register|CRM register]]",
+             "- [[journal_register|Journal register]]"]
     if d.number == 3:
         body += ["", "## Compiled pages (Phase 2 adapters)", "",
                  "- [[experiments_register|Experiments register]] - pre-registrations and verdicts",
@@ -525,6 +526,8 @@ def build_ruling_page(r: RulingSpec, desks: dict[int, DeskSpec], items: list[Ite
     extra: dict[str, Any] = {}
     if r.ratified:
         extra["verified"] = [{"by": ANTIGRAVITY, "at": r.ratified_at or iso(at)}]
+    if r.status != "deprecated":
+        extra["stale_after"] = default_stale_after("Ruling", at)  # B14: rulings are reviewed every 180 days
     meta = make_meta("Ruling", r.title, r.description,
                      tags=["ruling", f"desk-{r.desk}", r.rid.lower()], generated_by=by, at=at,
                      status=r.status, sources=sources, dev=dev, **extra)

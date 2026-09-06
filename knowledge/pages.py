@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -397,6 +397,21 @@ def append_log(vault: Path, action: str, text: str, when: datetime | None = None
 
 
 # ---------------------------------------------------------------- constructors
+
+# Round 100 (B14): per-type staleness policy in days. Absent = never stale (historical facts).
+STALENESS_DAYS: dict[str, int] = {"Ruling": 180, "Concept": 90}
+
+
+def default_stale_after(type_: str, at: datetime) -> str | None:
+    days = STALENESS_DAYS.get(type_)
+    return iso(at + timedelta(days=days)) if days else None
+
+
+def is_machine_maintained(meta: dict[str, Any]) -> bool:
+    """Registers and history pages are regenerated wholesale; the staleness policy does not apply to them."""
+    dev = meta.get("dev") or {}
+    return isinstance(dev, dict) and ("register_for" in dev or "history" in dev)
+
 
 def safe_title(text: str) -> str:
     """A title that survives `* [Title](path) - desc` and `[[stem\\|Title]]`: no brackets, pipes or newlines."""

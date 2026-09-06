@@ -55,6 +55,7 @@
 * [Ruling 70-1: start_all_ecosystem_sync.bat and HL_Monarch/scripts/launchers/ start_obsidian_sync.bat start the HL obsidian…](wiki/rulings/Ruling_70-1.md) - start_all_ecosystem_sync.bat and HL_Monarch/scripts/launchers/ start_obsidian_sync.bat start the HL obsidian watcher with --throttle-seconds 60 (Ruling 70-1); the code default stays 0 for on-demand calls.…
 * [Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json (counts only, no…](wiki/rulings/Ruling_74-2.md) - Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json (counts only, no subfamily correlation run) and enforced in code: lead_lag --subfamily fed-rates/crypto reads the `sport` label the fetcher stamped (drops carry no tag_slug), --latency-minutes 5
 * [Ruling 79-3: applied: poll() in both fetchers defaults sleep to a call-time _sleep helper (as log defaults to _emit); a tr…](wiki/rulings/Ruling_79-3.md) - Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a call-time `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside tests finds no `= time.sleep` or `= print` default left.…
+* [Ruling 98-1: Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4](wiki/rulings/Ruling_98-1.md) - Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1).…
 * [R1 - never issued (deprecated placeholder)](wiki/rulings/Ruling_R01.md) - Part of the R1-R6 numbering but never issued: no ruling text exists in AGENTS.md, COMMANDS.txt, any module docstring or any commit message. Confirmed by Antigravity in Round 97; kept so the numbering has a home.
 * [R2 - record the CLOB around a scheduled print](wiki/rulings/Ruling_R02.md) - One read-only GET per token per interval from T-2 to T+5 around a scheduled release, so the seconds a resting book survives after the print can be measured before anything is built on it.
 * [R3 - never issued (deprecated placeholder)](wiki/rulings/Ruling_R03.md) - Part of the R1-R6 numbering but never issued: no ruling text exists anywhere in the repository. Confirmed by Antigravity in Round 97; kept so the numbering has a home.
@@ -178,12 +179,14 @@
 * [Will two people dissent the September Fed decision?](wiki/markets/will-two-people-dissent-the-september-fed-decision-2026.md) - Polymarket market (FED-RATES): Will two people dissent the September Fed decision?
 
 # Concept
-* [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 14 page(s) today.
+* [Calibration](wiki/concepts/calibration.md) - Operator calibration across 0 scored prediction(s); mean Brier -.
+* [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 15 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 183 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 6 page(s) today.
+* [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 1 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
-* [Rulings register](wiki/concepts/rulings_register.md) - Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log. 34 page(s) today.
+* [Rulings register](wiki/concepts/rulings_register.md) - Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log. 35 page(s) today.
 
 # Attested Computation
 * [knowledge.computations](wiki/computations/knowledge_computations.md) - This page's own writer: the Attested Computation catalogue.
@@ -194,6 +197,7 @@
 * [knowledge.ingest.lead_lag](wiki/computations/knowledge_ingest_lead_lag.md) - A lead_lag --json verdict -> Experiment page + Regime history row (latest_verdict, regime_consensus_3).
 * [knowledge.ingest.markets](wiki/computations/knowledge_ingest_markets.md) - Tokens from rules, Experiment pages and the newest macro drop -> Market pages for lint C2.
 * [knowledge.ingest.rulings](wiki/computations/knowledge_ingest_rulings.md) - Directive / Ratification / Ruling N-N citations in AGENTS.md -> draft Ruling pages.
+* [knowledge.journal](wiki/computations/knowledge_journal.md) - The trading-day journal (paper executions, debrief) and the calibration ledger (predictions Brier-scored against Event payloads).
 * [knowledge.lint](wiki/computations/knowledge_lint.md) - L1-L5 structural checks and C1/C2/C3/C5; writes nothing unless --fix-safe (index, log, deprecate a gone Market).
 * [knowledge.ratify](wiki/computations/knowledge_ratify.md) - Records an Antigravity ratification: appends `verified` and sets status on the selected pages; idempotent.
 * [knowledge.raw_manifest](wiki/computations/knowledge_raw_manifest.md) - raw/index.md: every federated raw stream in the OKF index format.
@@ -389,3 +393,6 @@
 * [Sportsbook draftkings](crm/books/book_draftkings.md) - draftkings: soft book in the Sports Desk fair-value engine; 32 edges recorded across 3 sport/market-type cell(s).
 * [Sportsbook fanduel](crm/books/book_fanduel.md) - fanduel: soft book in the Sports Desk fair-value engine; 32 edges recorded across 3 sport/market-type cell(s).
 * [Sportsbook pinnacle](crm/books/book_pinnacle.md) - pinnacle: sharp book in the Sports Desk fair-value engine.
+
+# Journal Entry
+* [Journal 2026-09-05](journal/2026-09-05.md) - Journal 2026-09-05: 0 paper execution(s), $0 notional.

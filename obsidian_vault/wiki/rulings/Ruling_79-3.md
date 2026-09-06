@@ -12,8 +12,9 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:59:52Z'
+  at: '2026-09-06T00:28:46Z'
 status: stable
+stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
   resource: AGENTS.md
@@ -25,7 +26,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 264
+    line: 286
     excerpt: '…Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a
       call-time `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside
       tests finds no `= time.sleep` or `= print` default left.…'
@@ -44,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 264): …Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a call-time `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside tests finds no `= time.sleep` or `= print` default left.…
+- **Status** (line 286): …Ruling 79-3 applied: poll() in both fetchers defaults `sleep` to a call-time `_sleep` helper (as `log` defaults to `_emit`); a tree-wide grep outside tests finds no `= time.sleep` or `= print` default left.…
 
 ## Related
 

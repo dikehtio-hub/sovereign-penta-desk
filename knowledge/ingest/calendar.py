@@ -25,7 +25,8 @@ import yaml
 
 from .. import EXIT_OK, GENERATED_BY
 from ..frontmatter import parse_iso8601
-from ..pages import Page, append_log, iso, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
+                     write_index, write_page)
 from ..registers import update_register
 from . import add_common_args, at_from, guard, rel_to
 
@@ -100,10 +101,14 @@ def compile_calendar(path: Path, vault: Path, dev_root: Path, at: datetime, by: 
         return []
     rel = rel_to(path, dev_root)
     if cal.get("kind") == "fed_rate":
-        return _fomc_pages(cal, rel, vault, at, by)
-    if cal.get("kind") == "estimated_tax":
-        return _tax_pages(cal, rel, vault, at, by, dev_root)
-    return []
+        pages = _fomc_pages(cal, rel, vault, at, by)
+    elif cal.get("kind") == "estimated_tax":
+        pages = _tax_pages(cal, rel, vault, at, by, dev_root)
+    else:
+        return []
+    for p in pages:
+        carry_human_fields(load_page(p.path), p.meta)  # Ruling 99-2
+    return pages
 
 
 @dataclass
