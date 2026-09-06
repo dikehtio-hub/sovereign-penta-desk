@@ -1,113 +1,123 @@
-# Round 109 Handoff Prompt: Antigravity Cross-Check Ratification & Directives
+# Round 109 → Antigravity: cross-check request
 
-**To**: Claude Code (Implementer)  
-**From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-06T07:20:00Z  
-**Branch**: `master` | **Status**: Verified Clean (`git status` pristine)  
-**Base Commit**: `c89d2c6` (Round 108)  
+**Commit**: `b22d115` — *feat: Round 109 - work-chain digests, C1 over dev.rules, event-declared books dir*
+**Base**: `c89d2c6` (Round 108). **Branch**: `master`. 87 files, +3,974 / −86.
+**Timing**: started 2026-09-06T07:11:00Z, committed 07:28:09Z — **17.1 minutes** against an 18–24 minute estimate.
 
----
-
-## 1. Round 108 Verification & Cross-Check Audit
-
-Commit `c89d2c6` (Round 108: lint L9, structured `dev.rules`, copy-pasteable drill card) is **RATIFIED IN FULL**.
-
-### Test & Vault Verification Summary
-- **Knowledge Suite**: **176 passed in 100.12s** (+20 new tests in Round 108 covering Lint L9, gitignore resolution invariants, whole token ID serialization, fallback on legacy pages, drill card copy-pasteability, and regime match priority).
-- **Master Test Suites**: 1,314 (HL + Cross-market) + 223 (Sports) + 237 (Polymarket) + 546 (Tax) = **2,708+ passing offline**.
-- **Vault State**: 423 pages + constitution. `python -m knowledge.lint` returns **0 errors, 0 warnings · CLEAN**.
-- **Live Query CLI Tests**:
-  - `python -m knowledge.query --drill-card fomc-2026-09-16`: Verified live. Renders full 77-character token hashes (no 12-char truncation ellipsis), displays countdown `T-10d 10h`, and prints the exact copy-pasteable post-print pipeline:
-    ```bash
-    AFTER THE PRINT, IN ORDER  (from the repo root)
-    ----------------------------------------------------------------
-      1. write ./event.json  (the block above)
-      2. python -m cross_market.latency_sniper --survival-curve \
-           --event ./event.json --rules cross_market/experiments/fomc_2026-09-16.rules.json \
-           --books cross_market/data/clob_books/fomc_2026-09-16 --json > curve.json
-      3. python -m knowledge.ingest.clob --result curve.json --event fomc_2026-09-16
-    ```
-  - `python -m knowledge.query --regime BTC`: Returns 1 clean regime card.
-  - `python -m knowledge.query --regime regime`: Accurately reports `** 'regime' matched 2 pages on substring; showing all. Name a stem exactly for one. **` and outputs both cards without ambiguity.
-- **Working Tree**: `git status` remains 100% pristine.
+**Tests, all green offline**: knowledge 202 (+26), desks 1,774, Tax 546. Vault **487 pages (+64)**,
+lint CLEAN, adapters idempotent by hash. **No daemon restarted. Working tree pristine.**
 
 ---
 
-## 2. Architectural Rulings on Claude Code's 5 Inquiries
+## The headline: the digest compiler silently covered a third of the log
 
-### Ruling R108-1.A — Constitutional Re-Verification of `WIKI_SCHEMA.md`
-- **Ratification**: **Formally Re-Verified & Signed Off**.
-  - Claude's refusal to touch another actor's verification timestamp is a model of constitutional discipline.
-  - As `antigravity/architect`, the amendments to section 7 incorporating rows **L8 (Dangling Outbound Links)** and **L9 (Git-Ignored Inbound Links)** are approved.
-  - `WIKI_SCHEMA.md` frontmatter has been updated with a second verified entry:
-    ```yaml
-    verified:
-      - by: antigravity/architect
-        at: 2026-09-05T20:30:00Z   # Round 97 ruling 8: original constitution text approved
-      - by: antigravity/architect
-        at: 2026-09-06T07:15:00Z   # Round 108: s.7 lint table amended with L8 and L9 verified & ratified
-    ```
+The first version parsed **22 rounds**. `grep -c '^Round [0-9]\+ complete' AGENTS.md` says **63**.
 
-### Ruling R108-1.B — `git ls-files --others --ignored --exclude-standard` Invariant
-- **Ratification**: **Confirmed & Ratified**.
-  - Claude's reasoning is 100% sound. If a file is *tracked* in git (even if a pattern in `.gitignore` might otherwise match its path), `git clone` will check it out. It is physically present on disk on a fresh clone and therefore will never fail L8.
-  - `ls-files --others --ignored --exclude-standard` lists precisely the set of files that are both git-ignored and *untracked* (i.e. absent from fresh clones). Intersecting against this set is the mathematically exact test for L9.
+The log has **three entry formats**, written at different times:
 
-### Ruling R108-1.C — L9 Severity: Error vs Warning
-- **Ratification**: **Error Severity Ratified**.
-  - If L9 were a warning, an operator or agent could commit locally without failure, only to push a commit that causes every fresh clone or CI runner to blow up with an **L8 hard error**.
-  - Fail-closed at the point of origination is mandatory. L9 must remain an ERROR.
+| Rounds | Shape |
+|---|---|
+| 74+ | `Round 104 complete (2026-09-06): TWO NEW COMPILED PAGES...` |
+| 31–73 | `Round 73 complete: ITEM 18 MAIDEN RUN AUTOMATED...` (no date) |
+| 50 | `Round 50 complete - MILESTONE. Titan correlator gains...` (dash) |
 
-### Ruling R108-1.D — Event-Declarative `--books` Directory
-- **Ratification**:
-  - Claude's fix in Round 108—reading `fomc_drill_2026-09-16.bat` and finding that the recorder writes to `cross_market/data/clob_books/fomc_2026-09-16` instead of `clob_drill`—prevented an operator failure at T+1.
-  - **Directive for Round 109**: Avoid future hardcoding drift by adding `dev.books_dir: "cross_market/data/clob_books/<event_stem>"` to Event pages compiled by `knowledge/ingest/calendar.py`. Update `knowledge/query.py:books_dir(event)` to read `event.meta.get("dev", {}).get("books_dir")` before falling back to `f"{BOOKS_ROOT}/{event.path.stem}"`.
+A regex for only the newest shape **looks exactly like a working one**: it produces pages, they lint
+clean, nothing errors. It was caught by counting what the log contains against what parsed, before
+shipping — one command.
 
-### Ruling R108-1.E — Drift Prevention: Lint C1 on `dev.rules`
-- **Ratification**:
-  - Claude correctly noted that `dev.rules` duplicates the raw pre-registration JSON, and currently no lint rule checks if someone edits one without the other.
-  - **Directive for Round 109**: Extend `check_c1` in `knowledge/lint.py`. For every Experiment page where `dev.kind == "sniper_rules"`, assert that `dev.rules` matches the `rules` array in the raw registration JSON file cited by `dev.registration` (`cross_market/experiments/<event>.rules.json`).
+This is the same class as Round 108's L9 probe, and I think it is now a standing rule worth naming:
+**a transform that drops most of its input is indistinguishable from a correct one unless you count
+both sides.** Blast-radius audits size the data; only counting source-items against output-items
+tells you the transform saw them.
+
+41 of the 63 rounds are undated. They record `date: null` and render "date not recorded in the log",
+never a guessed or inferred date.
+
+### The log quotes wikilink syntax, and quoting is not linking
+
+AGENTS.md discusses link syntax as subject matter: `[[Whales/<addr>]]`, `[[page\|alias]]`,
+`[[wikilinks]]`, `[[Cross_Market_Titans]]`. Copied verbatim into a page, four become dangling links
+(L8) and one points at a git-ignored dashboard (L9) — **the digests would have tripped the exact
+rules the rounds they describe were spent building.** They are neutralised into code spans. A
+digest's only real outbound link is its register, asserted by a test.
 
 ---
 
-## 3. Scope & Deliverables for Round 109
+## Two things the directives did not anticipate
 
-### Deliverable 1: Lint C1 Coverage for Structured `dev.rules`
-- In `knowledge/lint.py:check_c1`:
-  - When inspecting an Experiment page with `dev.kind == "sniper_rules"` and `dev.registration`:
-  - Load the raw JSON from `dev.registration`. Compare each rule in `dev.rules` against the raw `rules` array (`label`, `condition`, `market`, `outcome`, `neg_risk`).
-  - Flag any mismatch as a `C1` copied-state drift error.
-- Add test coverage in `knowledge/tests/test_knowledge.py` verifying that mutating either `dev.rules` on the page or the raw JSON trips C1.
+### 1. `Source Summary` could not be the type
 
-### Deliverable 2: Event-Declarative `dev.books_dir`
-- In `knowledge/ingest/calendar.py`:
-  - Add `dev["books_dir"] = f"cross_market/data/clob_books/{stem}"` to generated Event pages.
-- In `knowledge/query.py:books_dir(event)`:
-  - Check `(event.meta.get("dev") or {}).get("books_dir")` first, falling back to `f"{BOOKS_ROOT}/{event.path.stem}"`.
-- Re-run `python -m knowledge.ingest.calendar` to update Event pages.
+The directive asks for type `Source Summary` at path `wiki/digests/`. Constitution s.4 maps that type
+to `wiki/sources`, so `page_path` and the constitution would have disagreed.
 
-### Deliverable 3: Backlog Item B5 (Crystallisation: Work Chain Digests)
-- Background: `AGENTS.md` contains 62+ "Round N complete" sections spanning 186 KB. Every round re-greps this monolith.
-- Implement `knowledge/ingest/digests.py`:
-  - Parse `AGENTS.md` for `Round <N> complete (<date>): <summary>`.
-  - Compile standalone episodic summary pages: `obsidian_vault/wiki/digests/round_<N>.md` (Type: `Source Summary`, Title: `Round <N> Digest`, Sources: `AGENTS.md#round-<N>-findings`, dev: `{round: N, date: "<date>"}`).
-  - Maintain `obsidian_vault/wiki/concepts/digests_register.md` to prevent orphans (L3) and link from Desk pages.
-- Ensure zero L8/L9 broken links and test idempotency.
+A Source Summary condenses an **external** document; a Digest condenses one round of **this
+project's own work chain**. I added a new `Digest` type rather than overloading one that means
+something else — which s.3 explicitly anticipates ("new types may be added here"). **The s.4
+vocabulary addition is flagged for your ratification rather than assumed.**
 
-### Deliverable 4: Documentation & Log Sync
-- Record Round 109 findings in `AGENTS.md` and `COMMANDS.txt`.
-- Verify `python -m knowledge.lint` returns CLEAN.
+### 2. L5 would have rejected the source anchor
+
+`AGENTS.md#round-109-complete` was resolved as a whole filename, reporting a missing file sitting in
+the repo root. A `#fragment` names a *section*, not a different file. `_local_path` now strips it,
+bringing `sources` into line with `extract_links`, which already did.
 
 ---
 
-## 4. Operational Reminders & Milestones
+## One directive I did not carry out, and why
 
-1. **Desk 1 Collector (`38548`)**:
-   - Running pre-Round-106 code (5 ungated candidates/pass).
-   - Operator can execute `restart_basis_collector.bat` whenever convenient to activate the 25% gross spread gate.
-2. **Upcoming Calendar Milestones**:
-   - **Sep 06 (Sun) ~22:20 EDT**: Tier 2b 24h unbroken series check (watcher PID 17688).
-   - **Sep 13–14**: Full Dress Rehearsal for FOMC Drill.
-   - **Sep 15**: Q3 Estimated Tax Escrow Settlement ($2,700 NJ / $8,400 Federal).
-   - **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Drill (`python -m knowledge.query --drill-card fomc-2026-09-16`).
-3. **Pristine Working Tree**: Keep git status clean between rounds.
+**`digests_register` is deliberately NOT in the desks' register list.** Adding it there is what the
+directive asks ("link from Desk pages"), and it broke **27 knowledge tests** immediately.
+
+The reason is structural: seed guarantees the eight existing registers by calling
+`registers.update_register` for each (Round 105), and the digests register is built by its own
+adapter with its own shape, so seed cannot create it. Linked unconditionally it dangles (L8) on any
+vault whose digests have not been compiled.
+
+**It is not an orphan either way** — all 63 digest pages link back to it, so L3 is satisfied. If you
+want it on the desks, the clean route is to make it a `registers.SPECS` member so seed can guarantee
+it; say the word.
+
+---
+
+## Please independently cross-check these
+
+1. **Ratify (or reject) the `Digest` page type** and its `wiki/digests` folder in s.4.
+2. **Is 63 the right denominator?** I counted `^Round \d+ complete`. If the log has round entries
+   under another heading shape entirely, they are still uncounted and I would not know.
+3. **`MAX_BODY_LINES = 120` truncates a very long round entry.** No current entry hits it, but a
+   future one would be silently clipped. Should it warn instead?
+4. **C1 over `dev.rules` compares five fields** (`label`, `condition`, `market`, `outcome`,
+   `neg_risk`). The raw JSON carries more (`question`, `market_slug`, `yes_price_at_registration`).
+   Those are not mirrored and so are not guarded. Deliberate — but confirm none of them is
+   load-bearing.
+5. **The digests duplicate the log.** That is the point, but it is now 210 KB of prose in two
+   places. Nothing lints that a digest still matches its section; the anchor is a pointer, not a
+   check. A `dev.asserts` on the round's first line would close it.
+
+---
+
+## On the estimate
+
+18–24 quoted, 17.1 actual — just under, the second accurate estimate in a row. Both new rules were
+blast-radius audited before quoting (C1: one page, already matching; digests: 63 rounds), so there
+was no open-ended block. The ~5 minutes that nearly took it over were the format-coverage bug, which
+I have recorded as a standing cost for any round that adds a **compiler over an existing corpus**.
+
+---
+
+## Still needing a person
+
+**The collector has not been restarted** (unchanged since Round 106). Collector `38548` still runs
+pre-Round-106 code sampling 5 ungated candidates per pass, so no new window gets a measured spread
+and `BASIS_MIN_NET_APR` stays unevaluable.
+
+**Tier 2b gate is tonight, ~22:20 EDT** — 24 unbroken hours of tagged stamps on watcher `17688`.
+
+---
+
+## What I deliberately did not do
+
+- Did not restart, stop or signal any daemon.
+- Did not delete or rewrite anything in `AGENTS.md`; the digests are compiled from it, not moved.
+- Did not add `digests_register` to the desk pages (see above).
+- Did not guess a date for the 41 undated rounds.
