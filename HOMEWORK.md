@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 04:55 EDT (N=50 experiment stall added).
+Last updated: 2026-09-06 13:40 EDT (Round 112; N=50 experiment parked).
 
 ---
 
@@ -53,35 +53,11 @@ Last updated: 2026-09-06 04:55 EDT (N=50 experiment stall added).
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 111 handoff prompt to Antigravity.**
+- [ ] **Send the Round 112 handoff prompt to Antigravity.**
 - [ ] **Clear the FOMC drill's battery flags, or commit to staying on AC.** The condition
       itself is described under the 2026-09-16 entry above. This line is the DECISION:
       leave the flags and rely on remembering the charger, or have me clear them. Clearing
       is small and testable. Either is fine; drifting into the 16th without choosing is not.
-- [ ] **The N=50 experiment has recorded ZERO trades and has not run for 5 days.**
-      `regime_filtered_v1` was registered 2026-09-01T04:40Z with a pre-committed bar of
-      `min_closed_trades: 50` (PASS: win rate >= 54% AND profit factor >= 1.25). Measured
-      2026-09-06 04:50 EDT:
-
-      | | |
-      |---|---|
-      | closed trades | **0 of 50** |
-      | wins / losses | 0 / 0 |
-      | `paper_trading_state.json` last written | **2026-09-01T05:59Z (122.9 h ago)** |
-      | paper-trading process running | **none** |
-
-      The state file was last touched 80 minutes after registration. The four live daemons are
-      the watcher, exporter, supervisor and collector - **nothing is generating trades**. The
-      registration, its acceptance bar, the archived N=12 control and the amendment history are
-      all intact; there is simply no flight.
-      The registration commits to "no mid-flight parameter changes before N=50", which is being
-      honoured trivially. For scale: the control took a full run to produce 12 closed trades, so
-      50 is a stretch of runtime, not a day.
-      **This needs a human because starting a paper trader is a live-execution decision.** I have
-      not started anything. Three options: start it and let it accumulate, formally park the
-      experiment with a dated note, or decide the regime filter is not worth the runtime before
-      the FOMC work absorbs the calendar. Say which and I will implement it.
-
 - [ ] **Decide when the collector restarts** so the new spread gate takes effect.
       Ruling R104-1 is implemented but collector `38548` is still running the old
       code, which samples only 5 candidates per pass. Until it restarts, no new
@@ -129,6 +105,15 @@ Last updated: 2026-09-06 04:55 EDT (N=50 experiment stall added).
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 — **`regime_filtered_v1` formally PARKED** (Round 112, Ruling R112-OOB.1, Option 2).
+  It had sat at N=0 of 50 for five days with no paper trader running. Parked by a dated
+  amendment in its own registration file - the bar, the N=12 control and the record are
+  untouched. Its page now says so, the experiments register reads `0/50 (0%) · parked`, and
+  lint L10 will warn if any future registration sits at zero for 3 days. Antigravity's draft
+  rationale cited the Round 104 cascade replay as a FAIL on this strategy; it was INSUFFICIENT,
+  side-split, and about a different mechanism, so the amendment records that it is NOT the
+  reason. A retuned trial needs a fresh pre-registration. Nothing was started.
 
 - 2026-09-06 — **Desk 1 spread sampling gated on the entry bar** (Ruling R104-1).
   Only coins clearing the 25% gross bar with spot backing get a sampling slot, so

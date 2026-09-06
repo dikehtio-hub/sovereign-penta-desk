@@ -18,7 +18,7 @@ from .pages import Page, load_pages, make_meta, md_cell, page_path, safe_title
 SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "Experiment": ("experiments_register", "Experiments register",
                    "Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured.",
-                   ("kind",)),
+                   ("kind", "progress")),
     "Ruling": ("rulings_register", "Rulings register",
                "Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log.",
                ("kind", "round")),
@@ -56,7 +56,16 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "Thesis": ("theses_register", "Theses register",
                "Every module thesis compiled from a desk docstring; each heading is pinned to its source so a silent deletion is a lint C1 finding.",
                ("module", "desk")),
+    # "Register" is the HUB (Ruling R111-1.C): it selects every page that IS a register, so a desk
+    # links this one page instead of ten. Built by the same update_register as the others, on
+    # purpose - Round 110 showed what a bespoke second builder for a register does (two writers,
+    # silently overwriting each other). LAST in this dict because seed writes SPECS in order and
+    # the hub must see the ten it lists.
+    "Register": ("registers_register", "Registers catalogue",
+                 "Every machine-maintained register in the vault, one hop from any Desk page. Each register lists every page of its type; this page lists the registers.",
+                 ("register_for", "count")),
 }
+HUB_STEM = "registers_register"
 
 
 def matches(page_type: str | None, type_: str, dev: dict | None = None) -> bool:
@@ -68,6 +77,10 @@ def matches(page_type: str | None, type_: str, dev: dict | None = None) -> bool:
         return page_type == "Concept" and isinstance(dev, dict) and dev.get("kind") == "thesis"
     if type_ == "Filed Query":
         return page_type == "Concept" and isinstance(dev, dict) and dev.get("kind") == "filed_query"
+    if type_ == "Register":
+        # every register except the hub itself, which would otherwise list itself
+        return page_type == "Concept" and isinstance(dev, dict) and "register_for" in dev \
+            and dev.get("register_for") != "Register"
     return page_type == type_
 
 REGISTER_STEMS = tuple(spec[0] for spec in SPECS.values())
@@ -90,6 +103,16 @@ def _cell(page: Page, col: str) -> str:
     v = page.meta.get(col, dev.get(col, "-"))
     if v in (None, ""):
         return "-"
+    if isinstance(v, dict) and "accumulated" in v:
+        # Ruling R112-OOB.2: a progress block renders as `0/50 (0%) · parked`, not as a dict repr
+        acc, tgt = v.get("accumulated"), v.get("target")
+        if acc is None:
+            head = f"?/{tgt}" if tgt else "?"
+        elif tgt:
+            head = f"{acc:,}/{tgt:,} ({min(100.0, 100.0 * acc / tgt):.0f}%)"
+        else:
+            head = f"{acc:,}"
+        return md_cell(f"{head} · {v.get('status', '-')}")
     return md_cell(v)
 
 

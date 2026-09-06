@@ -5,6 +5,26 @@ the detail.
 
 ## Status
 
+Round 112 complete (2026-09-06): A PRE-REGISTRATION CAN NO LONGER SIT AT N=0 IN SILENCE, AND
+THE ONE THAT DID IS PARKED ON TRUE GROUNDS. R112-OOB.2: registrations carry `dev.progress`
+{accumulated, target, unit, status, measured_at}, measured read-only from the paper state
+or the excursion table; the experiments register renders it as `0/50 (0%) · parked`; lint
+L10 warns on a registration 3+ days old still at zero and still `accumulating`. regime_
+filtered_v1 is PARKED via a dated amendment in its own file (the registration's protocol),
+NOT via `status: parked`, which is outside frontmatter.STATUSES and would have failed L1 -
+the directive's schema block and its status line contradicted each other. THE PARKING
+RATIONALE WAS REWRITTEN: the directive cited the Round 104 cascade replay as a fade-thesis
+FAILURE with Side A's ratio and P; that verdict was INSUFFICIENT (never to be read as FAIL,
+per its own ratified registration), Side A is a side split the registration does not grade,
+and the replay tested a liquidation-cascade sweeper while this is a passive fade with a trend
+gate - three errors, two of them already corrected in Round 104b. The amendment parks on
+what is true: N=0 after 5 days, no process running, the documented 600 s / 1,224 s defect,
+and no calendar before the FOMC drill. R111-1.C: desks link ONE registers hub, itself a
+SPECS entry (no second builder). R111-1.D: filed-query slugs carry a 4-hex digest of the
+whole question. D3: the drill-card contract is one explicit test with a real 76-digit token.
+Tests: knowledge 245 (+12), all green offline. Vault 492 pages, lint CLEAN. NO DAEMON
+RESTARTED; nothing was started either.
+
 Round 111 complete (2026-09-06): THE QUERY LAYER CAN FILE AND COUNT, WITHOUT LOSING THE ONE
 PROPERTY THAT MAKES IT USABLE AT T-2. B16: `--file "<question>"` scaffolds a Concept page
 recording the question and what was open when it was asked - never an invented answer - and
@@ -1194,6 +1214,55 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 112 findings
+
+### The parking rationale as directed would have written three false claims into the vault
+
+- **INSUFFICIENT is not FAIL.** The directive cited Round 104's cascade replay as a "failure
+  on the cascade fade thesis". Its verdict was INSUFFICIENT, and its own registration - which
+  Antigravity ratified - says an insufficient sample is never reported as a weak PASS or a FAIL.
+  Round 104b corrected exactly this misreading in the handoff log.
+- **Side A is not the verdict.** "fade ratio 0.2787, P=0.0103" is the Side A split; the
+  registration grades the POOLED metric only and names the sides as a separate report.
+  Round 104b corrected exactly this too.
+- **Wrong strategy.** `regime_filtered_v1` is a passive fade with an EMA-50/RSI-14 trend gate,
+  ATR-scaled offsets and TP/SL. The cascade replay tested Item 14's liquidation-cascade
+  sweeper. Adjacent, not the same mechanism.
+- The amendment that parks it records these as `not_cited_as_evidence`, so nobody later
+  reaches for the wrong reason. It parks on N=0 after 5 days, no process, the documented
+  600 s force-close vs 1,224 s median-to-target defect, and the FOMC calendar.
+
+### `status: parked` fails L1; the ruling contradicted itself
+
+- `frontmatter.STATUSES` is `draft | stable | deprecated`. The directive's text asked for a
+  top-level `status: parked`; its own schema block put `parked` under `dev.progress.status`.
+  The schema block is right and is what was built. OKF status stays in vocabulary; the
+  experiment's lifecycle lives in `dev.progress`.
+- The park itself is a dated entry in the registration's OWN `amendments` list, at
+  `closed_trades_at_amendment: 0` - the mechanism the file already had for exactly this.
+
+### `passive_fade_rebenchmark` was never evaluated
+
+- The directive asked to mark it `evaluated (Round 104)`. Its meta has no verdict, no
+  evaluated_utc, no result. Round 104 evaluated `whale_sweeper_cascade_replay`, a sibling that
+  INHERITED its gates. It is marked `accumulating` at 19,008 events against a 500 floor, which
+  is what its own status line says it is doing. `whale_sweeper_cascade_replay_meta` is the one
+  marked `evaluated`, because its `_verdict` page exists.
+
+### L10 was probed positively before being trusted
+
+- On the real vault L10 returns zero, because both stalled registrations are disposed of this
+  round. That is what a broken rule looks like too. Un-parking regime_filtered_v1 in memory
+  fires exactly one warning; setting its progress to 7 silences it. Both directions checked.
+
+### Smaller things
+
+- The registers hub is a SPECS entry with a `matches()` branch selecting pages that carry
+  `dev.register_for` (excluding itself), LAST in the dict so seed writes it after the ten it
+  lists. One builder, per the Round 110 double-writer lesson.
+- `_cell` renders a progress dict as `0/50 (0%) · parked`; a dict repr in a register column
+  would have been the phantom-column bug's cousin.
 
 ## Round 111 findings
 

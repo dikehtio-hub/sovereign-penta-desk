@@ -811,9 +811,17 @@ class ExperimentsIngestTests(IngestFixture):
         self.assertEqual(second.written, [])
         self.assertEqual(sorted(second.skipped), sorted(first.written))
         third = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW, force=True)
-        self.assertEqual(len(third.written), 2)
+        # Round 112 (R104-3 reaches this adapter): --force over UNCHANGED registrations writes nothing
+        # and logs nothing - rewriting identical content is not ingesting it. A real edit still counts.
+        self.assertEqual(third.written, [])
+        self.assertEqual(len(third.skipped), 2)
+        rules = json.loads((self.exp_dir / "fomc_2026-09-16.rules.json").read_text(encoding="utf-8"))
+        rules["reading"] = "amended so the page really changes"
+        (self.exp_dir / "fomc_2026-09-16.rules.json").write_text(json.dumps(rules), encoding="utf-8")
+        fourth = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW, force=True)
+        self.assertEqual(fourth.written, ["wiki/experiments/fomc_2026-09-16_rules.md"])
         log = (self.vault / "log.md").read_text(encoding="utf-8")
-        self.assertEqual(log.count("**Ingest**"), 2)  # the no-op run appended nothing
+        self.assertEqual(log.count("**Ingest**"), 2)  # first run + the real edit; the two no-op runs appended nothing
         out = io.StringIO()
         self.assertEqual(ingest_exp.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--dir", str(self.exp_dir),
                                           "--at", "2026-09-05T20:00:00Z"], out=out), EXIT_OK)
@@ -1247,16 +1255,26 @@ class MarketsTests(IngestFixture):
 
 
 class RegistersAndSeedLinksTests(IngestFixture):
-    def test_every_desk_links_every_register(self):
+    def test_every_desk_links_the_hub_and_the_hub_lists_every_register(self):
+        """Ruling R111-1.C: one hop from a desk to any register, through the catalogue."""
         body = (self.vault / "wiki/desks/Desk_04_Quant_Trading_Lab.md").read_text(encoding="utf-8")
+        self.assertIn("[[registers_register|", body)
         for stem in registers.REGISTER_STEMS:
-            self.assertIn(f"[[{stem}|", body)
-        self.assertEqual(len(registers.REGISTER_STEMS), 10)
+            if stem != registers.HUB_STEM:
+                self.assertNotIn(f"[[{stem}|", body)        # the bloat is gone from the desk
+        hub = (self.vault / "wiki/concepts/registers_register.md").read_text(encoding="utf-8")
+        for stem in registers.REGISTER_STEMS:
+            if stem != registers.HUB_STEM:
+                self.assertIn(f"[[{stem}\\|", hub)          # and every one of them is in the hub
+        self.assertNotIn(f"[[{registers.HUB_STEM}\\|", hub)   # which does not list itself
+        self.assertEqual(len(registers.REGISTER_STEMS), 11)
+        self.assertEqual(registers.REGISTER_STEMS[-1], registers.HUB_STEM)   # LAST: seed writes in order
 
     def test_register_columns_and_cells(self):
         ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
         reg = registers.update_register(self.vault, "Experiment", at=NOW)
-        self.assertIn("| [[fomc_2026-09-16_rules\\|Experiment: latency_sniper_fomc_2026-09-16]] | sniper_rules | draft |", reg.body)
+        # Round 112: a `progress` column follows `kind`; a rules registration has no sample bar, so `-`
+        self.assertIn("| [[fomc_2026-09-16_rules\\|Experiment: latency_sniper_fomc_2026-09-16]] | sniper_rules | - | draft |", reg.body)
 
 
 # ---------------------------------------------------------------- Round 99: CRM seeds + ratification
@@ -2832,8 +2850,9 @@ class DigestTests(IngestFixture):
 class DigestRegisterTests(IngestFixture):
     def test_seed_guarantees_the_digests_register_so_desks_can_link_it(self):
         """R109-1.F: Round 109 left it out because seed could not create it. Now seed can."""
-        self.assertIn("Digest", registers.SPECS)
-        self.assertIn(("digests_register", "Digests register"), seed.REGISTER_LINKS)
+        self.assertIn("Digest", registers.SPECS)                       # what makes seed write it
+        # Round 112 (R111-1.C): desks reach every register THROUGH the hub, not by direct link
+        self.assertEqual(seed.REGISTER_LINKS, (("registers_register", "Registers catalogue"),))
         seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW)
         reg = self.vault / "wiki/concepts/digests_register.md"
         self.assertTrue(reg.is_file(), "seed must write an EMPTY register, not skip it")
@@ -2841,7 +2860,9 @@ class DigestRegisterTests(IngestFixture):
         self.assertEqual(meta["dev"]["register_for"], "Digest")
         self.assertEqual(meta["dev"]["count"], 0)
         self.assertIn("0 page(s).", body)
-        # and every desk links it without dangling - the 27-test failure of Round 109
+        # and it is reachable from every desk via the hub without dangling - the Round 109 failure
+        hub = (self.vault / "wiki/concepts/registers_register.md").read_text(encoding="utf-8")
+        self.assertIn("[[digests_register\|", hub)
         self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)
                           if f.code in ("L8", "L3")], [])
 
@@ -3006,8 +3027,10 @@ class QueryFilingTests(QueryCardTests):
         code, text = self.card("--drill-card", self.event, "--file", "Does the 50bps rule fire?")
         self.assertEqual(code, EXIT_OK)
         self.assertIn("[FILE]", text)
-        path = self.vault / "wiki/concepts/query_does_the_50bps_rule_fire.md"
-        self.assertTrue(path.is_file())
+        # Round 112 (R111-1.D): the stem carries a 4-hex digest, so locate by prefix, not fixed name
+        matches = sorted((self.vault / "wiki/concepts").glob("query_does_the_50bps_rule_fire_*.md"))
+        self.assertEqual(len(matches), 1, matches)
+        path = matches[0]
         meta, body = fm.parse(path.read_text(encoding="utf-8"))
         self.assertEqual(meta["dev"]["kind"], "filed_query")
         self.assertEqual(meta["dev"]["question"], "Does the 50bps rule fire?")
@@ -3019,7 +3042,7 @@ class QueryFilingTests(QueryCardTests):
 
     def test_refiling_the_same_question_keeps_a_written_answer(self):
         self.card("--drill-card", self.event, "--file", "Keep my answer?")
-        path = self.vault / "wiki/concepts/query_keep_my_answer.md"
+        path = sorted((self.vault / "wiki/concepts").glob("query_keep_my_answer_*.md"))[0]
         meta, body = fm.parse(path.read_text(encoding="utf-8"))
         pages.write_page(pages.Page(path, meta, body.replace("_(not answered yet)_", "Yes, it does.")),
                          self.vault, now=NOW)
@@ -3063,6 +3086,130 @@ class QueryFilingTests(QueryCardTests):
         self.assertTrue(reg.is_file())
         self.assertIn("query_registered", reg.read_text(encoding="utf-8"))
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 112: slug digest (R111-1.D), registers hub (R111-1.C), the drill-card contract as one
+# explicit test (D3), and dev.progress + lint L10 (R112-OOB.2)
+# --------------------------------------------------------------------------------------
+
+class SlugDigestTests(QueryCardTests):
+    def test_questions_sharing_sixty_characters_file_to_different_pages(self):
+        base = "What is the expected reaction of the fed-rates market when the "
+        q1, q2 = base + "statement holds", base + "statement hikes"
+        self.assertEqual(q1[:60], q2[:60])
+        self.card("--drill-card", self.event, "--file", q1)
+        self.card("--drill-card", self.event, "--file", q2)
+        pages_ = sorted(p.name for p in (self.vault / "wiki/concepts").glob("query_*.md"))
+        self.assertEqual(len(pages_), 2, pages_)
+        for name in pages_:
+            self.assertRegex(name, r"_[0-9a-f]{4}\.md$")        # a 4-hex digest suffix, always
+
+    def test_the_same_question_still_files_to_the_same_page(self):
+        """The digest is of the whole question, so re-filing keeps a written answer."""
+        self.card("--drill-card", self.event, "--file", "Same question twice?")
+        first = sorted(p.name for p in (self.vault / "wiki/concepts").glob("query_*.md"))
+        self.card("--drill-card", self.event, "--file", "Same question twice?")
+        self.assertEqual(sorted(p.name for p in (self.vault / "wiki/concepts").glob("query_*.md")), first)
+        self.assertEqual(len(first), 1)
+
+
+class DrillCardContractTests(QueryCardTests):
+    """D3: the three properties the FOMC drill depends on, asserted together, with a realistic token."""
+
+    REAL_TOKEN = "5615282760875985231868508008056959876238536896643315063916840237042205273721"
+
+    def test_under_sixty_lines_whole_token_ids_and_zero_writes(self):
+        rules = self.vault / "wiki/experiments/fomc_2026-09-16_rules.md"
+        meta, body = fm.parse(rules.read_text(encoding="utf-8"))
+        meta["dev"]["rules"][0]["market"] = self.REAL_TOKEN          # the shape the live drop has
+        pages.write_page(pages.Page(rules, meta, body), self.vault, now=NOW)
+        # C1 guards dev.rules against the raw JSON; keep them in step for this contract test
+        raw = json.loads((self.exp_dir / "fomc_2026-09-16.rules.json").read_text(encoding="utf-8"))
+        raw["rules"][0]["market"] = self.REAL_TOKEN
+        (self.exp_dir / "fomc_2026-09-16.rules.json").write_text(json.dumps(raw), encoding="utf-8")
+        before = {p.as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(self.vault.rglob("*.md"))}
+        code, text = self.card("--drill-card", "fomc-2026-09-16")
+        self.assertEqual(code, EXIT_OK)
+        lines = text.splitlines()
+        self.assertLess(len(lines), 60, f"{len(lines)} lines")
+        self.assertIn(self.REAL_TOKEN, text)                          # all 76 digits, no ellipsis
+        self.assertNotIn(self.REAL_TOKEN[:12] + "\u2026", text)
+        after = {p.as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(self.vault.rglob("*.md"))}
+        self.assertEqual(after, before)                                # zero files written
+
+
+class ProgressAndL10Tests(IngestFixture):
+    """Ruling R112-OOB.2: a pre-registration says on its own page how far it has got."""
+
+    REG = {
+        "experiment": "stall_v1", "registered_utc": None,
+        "control": "data/experiments/nothing.json",
+        "acceptance_bar": {"min_closed_trades": 50, "PASS": "win rate >= 54%"},
+        "commitments": ["No mid-flight parameter changes before N=50."],
+        "amendments": [],
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.hl = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "experiments"
+        self.hl.mkdir(parents=True, exist_ok=True)
+        self.state = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "paper_trading_state.json"
+
+    def _register(self, days_ago: int, closed: int | None = 0, parked: bool = False):
+        reg = json.loads(json.dumps(self.REG))
+        reg["registered_utc"] = pages.iso(NOW - timedelta(days=days_ago))
+        if parked:
+            reg["amendments"].append({"utc": pages.iso(NOW), "closed_trades_at_amendment": 0,
+                                      "action": "parked", "why": "never flown"})
+        (self.hl / "stall_v1.meta.json").write_text(json.dumps(reg), encoding="utf-8")
+        if closed is not None:
+            self.state.write_text(json.dumps({"closed_trades": closed}), encoding="utf-8")
+        elif self.state.exists():
+            self.state.unlink()
+        ingest_exp.ingest_experiments([self.hl], self.vault, self.dev_root, at=NOW, force=True)
+        return fm.parse((self.vault / "wiki/experiments/stall_v1_meta.md").read_text(encoding="utf-8"))
+
+    def _l10(self):
+        return [f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "L10"]
+
+    def test_progress_is_measured_from_the_paper_state(self):
+        meta, _ = self._register(days_ago=5, closed=7)
+        p = meta["dev"]["progress"]
+        self.assertEqual((p["accumulated"], p["target"], p["unit"], p["status"]), (7, 50, "closed_trades", "accumulating"))
+
+    def test_a_stalled_registration_is_an_l10_warning(self):
+        self._register(days_ago=5, closed=0)
+        found = self._l10()
+        self.assertEqual([(f.code, f.severity) for f in found], [("L10", "warning")])
+        self.assertIn("0 recorded progress toward 50 closed_trades", found[0].message)
+
+    def test_a_young_registration_at_zero_is_not_yet_a_warning(self):
+        self._register(days_ago=1, closed=0)
+        self.assertEqual(self._l10(), [])
+
+    def test_progress_silences_the_warning(self):
+        self._register(days_ago=5, closed=1)
+        self.assertEqual(self._l10(), [])
+
+    def test_parking_is_a_decision_and_silences_the_warning(self):
+        meta, body = self._register(days_ago=5, closed=0, parked=True)
+        self.assertEqual(meta["dev"]["progress"]["status"], "parked")
+        self.assertIn("**PARKED", body)                          # the page SAYS so
+        self.assertEqual(meta["status"], "draft")                # OKF status stays in vocabulary (L1)
+        self.assertEqual(self._l10(), [])
+
+    def test_an_unreadable_source_is_unmeasured_not_a_false_alarm(self):
+        meta, _ = self._register(days_ago=5, closed=None)
+        self.assertIsNone(meta["dev"]["progress"]["accumulated"])
+        self.assertEqual(meta["dev"]["progress"]["status"], "unmeasured")
+        self.assertEqual(self._l10(), [])
+
+    def test_the_register_renders_progress_as_a_fraction(self):
+        self._register(days_ago=5, closed=0, parked=True)
+        reg = registers.update_register(self.vault, "Experiment", at=NOW).body
+        self.assertIn("| 0/50 (0%) · parked |", reg)
 
 
 if __name__ == "__main__":  # pragma: no cover

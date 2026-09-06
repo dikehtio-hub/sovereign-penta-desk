@@ -38,7 +38,7 @@ from ..lint import rules_from_raw
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
 from ..registers import update_register as _update_register
-from . import add_common_args, at_from, guard, item_link, rel_to
+from . import add_common_args, at_from, guard, item_link, page_changed, rel_to
 
 DEFAULT_DIRS = (Path("cross_market") / "experiments", Path("HyperLiquid") / "HL_Monarch" / "data" / "experiments")
 WINDOW_BEFORE = timedelta(minutes=2)
@@ -221,6 +221,85 @@ PARAM_BLOCKS = ("acceptance_bar", "sample_requirements", "reopening_bar", "state
 RESULT_KEYS = ("closed_trades", "wins", "losses", "win_rate_pct", "profit_factor", "net_pnl", "gross_pnl", "fees_paid")
 
 
+PAPER_STATE = Path("HyperLiquid") / "HL_Monarch" / "data" / "paper_trading_state.json"
+HL_DB = Path("HyperLiquid") / "HL_Monarch" / "data" / "hyperliquid_data.db"
+STALL_DAYS = 3        # lint L10: a registration with no progress after this long is a warning
+
+
+def parked_note(data: dict[str, Any]) -> dict[str, Any]:
+    """The dated amendment that parked this registration, if any (the file's OWN protocol)."""
+    for a in data.get("amendments") or []:
+        if isinstance(a, dict) and a.get("action") == "parked":
+            return a
+    return {}
+
+
+def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Path, archived: bool,
+                     at) -> dict[str, Any] | None:
+    """How far a registration has got toward its own sample bar (Ruling R112-OOB.2).
+
+    WHY THIS EXISTS. regime_filtered_v1 sat at N=0 for five days with no process running, and the
+    vault rendered it identically to an experiment being carefully respected. A pre-registration
+    that cannot accumulate evidence must SAY so on its own page, or "no mid-flight changes before
+    N=50" is honoured trivially and nobody notices there is no flight.
+
+    Every read here is read-only and every source is optional: a fixture without the paper state
+    file gets `accumulated: None` and `status: unmeasured`, never a guess. Statuses:
+      completed    an archived control - its N is final
+      parked       the registration carries a dated `action: parked` amendment
+      evaluated    a `<stem>_verdict` page exists in the vault
+      unmeasured   the source this unit reads from is not present
+      accumulating everything else
+    """
+    from ..pages import iso
+    bar = data.get("acceptance_bar") or {}
+    reqs = data.get("sample_requirements") or {}
+    unit, target, accumulated = None, None, None
+    if archived:
+        sibling = path.with_name(path.name.replace(".meta.json", ".json"))
+        n = None
+        if sibling.is_file():
+            try:
+                n = json.loads(sibling.read_text(encoding="utf-8")).get("closed_trades")
+            except (OSError, json.JSONDecodeError, AttributeError):
+                n = None
+        return {"accumulated": n, "target": n, "unit": "closed_trades", "status": "completed",
+                "measured_at": iso(at)}
+    if isinstance(bar.get("min_closed_trades"), (int, float)):
+        unit, target = "closed_trades", int(bar["min_closed_trades"])
+        state = dev_root / PAPER_STATE
+        if state.is_file():
+            try:
+                accumulated = int(json.loads(state.read_text(encoding="utf-8")).get("closed_trades", 0))
+            except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                accumulated = None
+    elif isinstance(reqs.get("min_events"), (int, float)):
+        unit, target = "events", int(reqs["min_events"])
+        db = dev_root / HL_DB
+        if db.is_file():
+            try:
+                import sqlite3
+                conn = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, timeout=8)
+                accumulated = int(conn.execute(
+                    "SELECT COUNT(*) FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%'"
+                ).fetchone()[0])
+                conn.close()
+            except Exception:  # noqa: BLE001 - a missing table is "unmeasured", not a crash
+                accumulated = None
+    else:
+        return None
+    if parked_note(data):
+        status = "parked"
+    elif (vault / "wiki" / "experiments" / f"{page_stem(path).removesuffix('_meta')}_verdict.md").is_file():
+        status = "evaluated"
+    elif accumulated is None:
+        status = "unmeasured"
+    else:
+        status = "accumulating"
+    return {"accumulated": accumulated, "target": target, "unit": unit, "status": status,
+            "measured_at": iso(at)}
+
+
 def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, dev_root: Path, at, by: str) -> Page:
     rel = rel_to(path, dev_root)
     name = str(data.get("experiment") or path.stem)
@@ -270,6 +349,22 @@ def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, 
     stamp = data.get("registered_utc") or data.get("archived_utc")
     if stamp:
         dev["registered_utc"] = str(stamp)
+    progress = measure_progress(data, path, vault, dev_root, archived, at)
+    if progress is not None:
+        # measured_at means WHEN THIS MEASUREMENT WAS TAKEN, and an unchanged measurement was not
+        # taken again just because the compiler ran. Left as `at`, every run re-stamped it, which
+        # rewrote every registration page, the experiments register, the hub above it and log.md -
+        # the Ruling R104-3 restamp problem, one field down. The page on disk keeps its stamp
+        # whenever accumulated/target/unit/status are all unchanged.
+        prior = ((load_page(page_path(vault, "Experiment", page_stem(path))) or Page(Path("x"), {}))
+                 .meta.get("dev") or {}).get("progress")
+        if isinstance(prior, dict) and all(prior.get(k) == progress.get(k)
+                                           for k in ("accumulated", "target", "unit", "status")):
+            progress["measured_at"] = prior.get("measured_at", progress["measured_at"])
+        dev["progress"] = progress
+        if progress.get("status") == "parked":
+            note = parked_note(data)
+            body[3:3] = ["> [!NOTE]", f"> **PARKED ({note.get('utc', '')[:10]})**: {note.get('why', '')}", ""]
     if params:
         dev["parameters"] = params
     if requires:
@@ -329,8 +424,12 @@ def ingest_experiments(exp_dirs, vault: Path, dev_root: Path, *, at=None, by: st
             if page.path.exists() and not force:
                 report.skipped.append(rel)
                 continue
+            # Ruling R104-3, finally applied here too: `written` means the page MOVED. Counting every
+            # forced write as written made --force append a log line - and dirty git - on runs that
+            # changed nothing, the last adapter still doing so after Round 105 converted the others.
+            changed = page_changed(page, vault)
             write_page(page, vault, now=at)
-            report.written.append(rel)
+            (report.written if changed else report.skipped).append(rel)
     if report.written:
         write_page(update_register(vault, at=at, by=by), vault, now=at)
         write_index(vault, load_pages(vault))

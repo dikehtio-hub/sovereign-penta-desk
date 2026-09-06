@@ -24,6 +24,7 @@ card - an operator holding a blank sheet two minutes before a print has been act
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 import sys
 from datetime import datetime, timezone
@@ -277,7 +278,13 @@ def file_answer(vault: Path, question: str, opened: list[Page], now: datetime,
     when it was asked, and an empty section for the human to write in. Inventing an answer here
     would be the one thing a knowledge layer must never do: manufacture a claim with no source.
     """
-    stem = re.sub(r"[^a-z0-9]+", "_", question.strip().lower()).strip("_")[:60] or "query"
+    # Ruling R111-1.D: two questions identical for their first 60 characters used to file onto ONE
+    # page, and the second silently inherited the first's Answer section. A 4-hex-char digest of the
+    # WHOLE question keeps the slug readable and makes it deterministic: the same question always
+    # files to the same page (so re-filing keeps a written answer), a different one never does.
+    digest = hashlib.sha256(question.strip().encode("utf-8")).hexdigest()[:4]
+    prefix = re.sub(r"[^a-z0-9]+", "_", question.strip().lower()).strip("_")[:54] or "query"
+    stem = f"{prefix}_{digest}"
     path = page_path(vault, "Concept", f"query_{stem}")
     existing = load_page(path)
     body = [f"# {safe_title(question)}", "",

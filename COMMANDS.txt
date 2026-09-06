@@ -2360,6 +2360,35 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 112 - dev.progress + LINT L10, REGISTERS HUB, SLUG DIGEST, regime_filtered_v1 PARKED
+     python -m knowledge.ingest.experiments --force
+         Registrations now carry dev.progress {accumulated, target, unit, status, measured_at}.
+         closed_trades reads HyperLiquid/HL_Monarch/data/paper_trading_state.json; events reads
+         cascade_excursions treatment rows (mode=ro). Both optional: an unreadable source yields
+         accumulated: None and status: unmeasured, never a guess. Statuses: completed (archived
+         control), parked (a dated `action: parked` amendment in the registration's own file),
+         evaluated (a <stem>_verdict page exists), unmeasured, accumulating. A parked page carries a
+         `> [!NOTE] PARKED (date)` callout quoting the amendment's `why`.
+     python -m knowledge.lint          # now also reports L10
+         L10 (Ruling R112-OOB.2): an Experiment registration 3+ days old whose dev.progress is
+         still 0 and still `accumulating` is a WARNING - the remedy is a decision (park, retire,
+         run it), which is a person's. `unmeasured` does not fire. Probed positively: un-parking
+         regime_filtered_v1 fires exactly one; progress > 0 silences it.
+     regime_filtered_v1 IS PARKED - by amendment, not by status
+         `status: parked` is outside frontmatter.STATUSES and fails L1. The park is a dated entry in
+         the registration's own amendments list at closed_trades_at_amendment: 0. Its `why` cites
+         only what is true (N=0 after 5 days, no process, the 600 s / 1,224 s defect, the FOMC
+         calendar) and carries a `not_cited_as_evidence` field naming the Round 104 cascade replay
+         as ADJACENT and INSUFFICIENT so nobody later cites it as a FAIL on this strategy.
+     python -m knowledge.seed          # now writes ELEVEN registers; desks link ONE
+         Ruling R111-1.C: registers_register is the hub - a SPECS entry whose matches() selects
+         pages carrying dev.register_for (not itself), LAST in SPECS so seed writes it after the ten
+         it lists. Desk pages link only [[registers_register|Registers catalogue]].
+     python -m knowledge.query --file "<question>"
+         Ruling R111-1.D: the slug is `<first 54 chars>_<sha256[:4]>` of the whole question, so two
+         questions sharing an opening file to different pages while the same question still files to
+         the same one (re-filing keeps a written answer).
+
      ROUND 111 - QUERY FILING, OPT-IN USAGE COUNTING, SUMMARY COLUMN
      python -m knowledge.query --file "<question>"
          Scaffolds wiki/concepts/query_<slug>.md with the question, the pages that were open when it

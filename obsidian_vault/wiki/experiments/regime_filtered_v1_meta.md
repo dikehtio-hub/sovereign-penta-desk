@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:49Z'
+  at: '2026-09-06T17:32:28Z'
 status: draft
 sources:
 - id: registration
@@ -23,6 +23,12 @@ dev:
   related_items:
   - 8
   registered_utc: '2026-09-01T04:40:14.107981+00:00'
+  progress:
+    accumulated: 0
+    target: 50
+    unit: closed_trades
+    status: parked
+    measured_at: '2026-09-06T17:32:28Z'
   parameters:
   - name: regime_filtered_v1_acceptance_bar_min_closed_trades
     value: 50
@@ -35,6 +41,9 @@ dev:
 # Experiment: regime_filtered_v1
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
+> [!NOTE]
+> **PARKED (2026-09-06)**: Measured 2026-09-06: paper_trading_state.json holds closed_trades=0 and was last written 2026-09-01T05:59:39Z, 80 minutes after registration; no paper-trading process has run since. The registration's own known_defect_not_fixed stands (targets sized off a 15-minute ATR while positions force-close at 600 s; median time to a 1.0xATR target measured at 1,224 s), and with the FOMC drill occupying the calendar to 2026-09-16 there is no window to accumulate 50 closed trades on a configuration carrying that defect.
+
 
 ## Registered utc
 
@@ -70,6 +79,7 @@ data/experiments/baseline_unfiltered_N12_2026-09-01.json
 ## Amendments
 
 - **utc**: 2026-09-01T05:00:10.535537+00:00; **closed_trades_at_amendment**: 0; **change**: ATR switched from close-to-close proxy to sampled true range (intra-bucket high/low from ~67 samples per 15m bucket).; **why**: Measurement correction, not a tuning change. The close-to-close proxy understated measured true range by a median 1.59x across the watchlist. Antigravity proposed a flat 1.25x multiplier; that was rej; **legitimacy**: Made at N=0 closed trades, so no result could have influenced it. A change after data existed would have required a fresh registration.; **effect**: Targets widen; fee burden falls from ~15% of gross to ~8-11% on volatile markets. Offset floor still binds on 27/35 markets, target floor on 15/35.
+- **utc**: 2026-09-06T17:27:22.768909+00:00; **closed_trades_at_amendment**: 0; **action**: parked; **change**: Formally parked, unflown. The registration, its acceptance bar and the archived N=12 control are unchanged; this amendment records that no trial was ever run against them.; **why**: Measured 2026-09-06: paper_trading_state.json holds closed_trades=0 and was last written 2026-09-01T05:59:39Z, 80 minutes after registration; no paper-trading process has run since. The registration's; **not_cited_as_evidence**: The Round 104 whale-sweeper cascade replay is ADJACENT, not a verdict on this strategy: it tested Item 14's liquidation-cascade fade, this registration is a passive fade with an EMA/RSI trend gate, an; **legitimacy**: Made at N=0 closed trades. Parking changes no bar and reads no result; any retuned trial requires a fresh pre-registration.
 
 ## Known defect not fixed
 

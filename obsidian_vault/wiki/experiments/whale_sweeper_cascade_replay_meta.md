@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T02:05:52Z'
+  at: '2026-09-06T17:32:28Z'
 status: stable
 sources:
 - id: registration
@@ -23,6 +23,12 @@ dev:
   related_items:
   - 8
   registered_utc: '2026-09-06T02:06:00+00:00'
+  progress:
+    accumulated: 19008
+    target: 500
+    unit: events
+    status: evaluated
+    measured_at: '2026-09-06T17:32:28Z'
   parameters:
   - name: whale_sweeper_cascade_replay_sample_requirements_min_events
     value: 500

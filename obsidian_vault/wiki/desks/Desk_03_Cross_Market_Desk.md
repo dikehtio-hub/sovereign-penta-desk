@@ -96,16 +96,7 @@ Cross-venue desk: Polymarket vs sportsbook dutching arb, Titan correlator and le
 
 ## Registers (machine-maintained)
 
-- [[experiments_register|Experiments register]]
-- [[rulings_register|Rulings register]]
-- [[computations_register|Computations register]]
-- [[events_register|Events register]]
-- [[markets_register|Markets register]]
-- [[crm_register|CRM register]]
-- [[journal_register|Journal register]]
-- [[theses_register|Theses register]]
-- [[digests_register|Digests register]]
-- [[queries_register|Filed queries register]]
+- [[registers_register|Registers catalogue]]
 
 ## Compiled pages (Phase 2 adapters)
 

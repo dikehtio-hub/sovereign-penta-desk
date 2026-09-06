@@ -8,7 +8,7 @@ tags:
 - archived-control
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:49Z'
+  at: '2026-09-06T17:32:28Z'
 status: draft
 sources:
 - id: registration
@@ -23,6 +23,12 @@ dev:
   related_items:
   - 8
   registered_utc: '2026-09-01T04:39:40.619907+00:00'
+  progress:
+    accumulated: 12
+    target: 12
+    unit: closed_trades
+    status: completed
+    measured_at: '2026-09-06T17:32:28Z'
   parameters:
   - name: baseline_unfiltered_closed_trades
     value: 12

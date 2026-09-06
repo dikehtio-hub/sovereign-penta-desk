@@ -71,16 +71,7 @@ The accountant every desk asks before sizing: lot engine, IRC 1256 60/40, IRC 16
 
 ## Registers (machine-maintained)
 
-- [[experiments_register|Experiments register]]
-- [[rulings_register|Rulings register]]
-- [[computations_register|Computations register]]
-- [[events_register|Events register]]
-- [[markets_register|Markets register]]
-- [[crm_register|CRM register]]
-- [[journal_register|Journal register]]
-- [[theses_register|Theses register]]
-- [[digests_register|Digests register]]
-- [[queries_register|Filed queries register]]
+- [[registers_register|Registers catalogue]]
 
 ## Other desks
 

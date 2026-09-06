@@ -1,4 +1,4 @@
-"""The lint engine: structural checks L1-L9 and the DEV-specific C1, C2, C3, C5.
+"""The lint engine: structural checks L1-L10 and the DEV-specific C1, C2, C3, C5.
 
     python -m knowledge.lint [--vault DIR] [--dev-root DIR] [--drops DIR] [--json]
 
@@ -40,6 +40,9 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
   L9  a wikilink whose only target is a file git IGNORES (Round 108). The
       page lints clean here and fails L8 on a fresh clone, where the file
       does not exist. Skipped outside a repository, like L5's git half.
+  L10 a stalled pre-registration (Round 112): an Experiment registered
+      3+ days ago whose dev.progress is still zero and still `accumulating`.
+      A warning, because the remedy is a decision - park, retire or run it.
   L8  a dangling outbound wikilink (Round 105): `[[target]]` naming a page
       that does not exist. The mirror of L3, which catches the page nothing
       links to. Links inside code fences and code spans are not links, so
@@ -70,7 +73,7 @@ DEFAULT_DROPS = Path("Sports_Desk") / "data" / "polymarket_drops"
 
 @dataclass
 class Finding:
-    code: str        # L1..L9, C1, C2, C3, C5
+    code: str        # L1..L10, C1, C2, C3, C5
     severity: str    # "error" | "warning"
     path: str        # vault-relative, or the file the check concerned
     message: str
@@ -489,6 +492,44 @@ def check_rules_drift(meta: dict[str, Any], rel: str, dev_root: Path) -> list[Fi
     return out
 
 
+STALL_DAYS = 3
+
+
+def check_l10(docs: list[Document], vault: Path, now: datetime) -> list[Finding]:
+    """L10 (Round 112, Ruling R112-OOB.2): a pre-registration that is not going anywhere.
+
+    An Experiment registration older than STALL_DAYS whose `dev.progress` still reads zero and
+    whose status is `accumulating` is a WARNING. Not an error: the fix is a decision (park, retire,
+    or start the thing), and a decision is a person's to make. The point is that the page can no
+    longer look identical whether the experiment is being carefully respected or simply never ran -
+    which is exactly how regime_filtered_v1 sat at N=0 for five days.
+
+    `unmeasured` does not fire: the source could not be read, and a warning about progress nobody
+    could measure would be a false alarm. `parked`, `evaluated` and `completed` are decisions
+    already made.
+    """
+    out: list[Finding] = []
+    for d in docs:
+        if d.meta is None or d.meta.get("type") != "Experiment":
+            continue
+        dev = d.meta.get("dev") or {}
+        prog = dev.get("progress")
+        if not isinstance(prog, dict) or prog.get("status") != "accumulating":
+            continue
+        if prog.get("accumulated") not in (0, 0.0):
+            continue
+        try:
+            registered = parse_iso8601(str(dev.get("registered_utc") or ""))
+        except ValueError:
+            continue
+        age = (now - registered).days
+        if age >= STALL_DAYS:
+            out.append(Finding("L10", "warning", _rel(d.path, vault),
+                               f"registered {age} day(s) ago with 0 recorded progress toward "
+                               f"{prog.get('target')} {prog.get('unit')}; park, retire, or accumulate"))
+    return out
+
+
 def check_c1(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]:
     out: list[Finding] = []
     cache: dict[Path, str | None] = {}
@@ -769,6 +810,7 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     findings += check_l7(docs, vault)
     findings += check_l8(docs, vault)
     findings += check_l9(docs, vault, dev_root)
+    findings += check_l10(docs, vault, now)
     findings += check_c1(docs, vault, dev_root)
     findings += check_c2(docs, vault, drops)
     findings += check_c3(docs, vault)

@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:49Z'
+  at: '2026-09-06T17:32:28Z'
 status: draft
 sources:
 - id: registration
@@ -23,6 +23,12 @@ dev:
   related_items:
   - 8
   registered_utc: '2026-09-01T05:42:16.383702+00:00'
+  progress:
+    accumulated: 19008
+    target: 500
+    unit: events
+    status: accumulating
+    measured_at: '2026-09-06T17:32:28Z'
   parameters:
   - name: passive_fade_rebenchmark_sample_requirements_window_days
     value: 7
