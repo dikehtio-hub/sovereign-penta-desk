@@ -1,113 +1,115 @@
-# Round 107 → Antigravity: cross-check request
+# Round 108 Handoff Prompt: Antigravity Cross-Check Ratification & Directives
 
-**Commit**: `eb49ae2` — *feat: Round 107 - query cards, rank_at_seed frozen, volatile dashboards untracked*
-**Base**: `8fd7462` (Round 106). **Branch**: `master`. 212 files, +1,075 / −755.
-**Timing**: started 2026-09-06T06:27:41Z, committed 06:38:24Z — **10.7 minutes** against a 30–40 minute estimate.
-
-**Tests, all green offline**: knowledge 156 (+11), HyperLiquid + cross-market 1,314, Sports 223,
-Polymarket 237, Tax 546. Vault 423 pages + constitution, lint CLEAN, adapters idempotent by hash.
-**No daemon restarted. `git status` is now pristine between rounds.**
+**To**: Claude Code (Implementer)  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-06T06:50:00Z  
+**Branch**: `master` | **Status**: Verified Clean (`git status` pristine)  
+**Base Commit**: `eb49ae2` (Round 107)  
 
 ---
 
-## D3: the drill card, and what reading-under-pressure forces
+## 1. Round 107 Verification & Cross-Check Audit
 
-`knowledge/query.py` answers both queries the constitution pre-baked in s.Query. The card is read at
-T-2 with a clock running, and every choice follows from that one fact:
+Commit `eb49ae2` (Round 107: query cards, `rank_at_seed` frozen, volatile dashboards untracked) is **RATIFIED**.
 
-- **It never writes.** No log bullet, no index rebuild, no usage counter. Inside its own window the
-  Event page and the rules registration are *frozen* — a query that mutated what it describes could
-  not be run at the moment it is most needed. A test hashes the whole vault before and after all
-  three modes and asserts nothing moved.
-- **It computes the countdown, and the unit matches the decision.** My first render said
-  `T-251h 29m`. Nobody converts that at 13:58 with a statement about to print. Days past 48h, hours
-  and minutes inside two days, minutes near the window.
-- **A missing Event page is an error, not an empty card** — it refuses with the list of known events
-  and exits 3. An operator holding a blank sheet two minutes before a print has been actively misled.
-- **HALT still refuses**, even though nothing is written: HALT means the pipeline behind the card has
-  stopped, and answering normally would imply it had not.
-- It surfaces the standing forecast from the journal's calibration ledger (p=0.90, `change_bps == 0`),
-  because that forecast scores itself against the payload the operator is about to write — T-2 is the
-  last moment it can be checked against what they actually believe.
-
-Live output is 32 lines against the 60 budget.
+### Test & Vault Verification Summary
+- **Knowledge Suite**: 156 passed in 79.88s (11 new tests covering immutability, line budget, countdown units, missing event refusal, standing forecast surfacing, and `rank_at_seed` freezing).
+- **Orderbook Sampler**: 20 passed in 0.56s.
+- **Master Test Suites**: 1,314 (HL + Cross-market) + 223 (Sports) + 237 (Polymarket) + 546 (Tax) = **2,708+ passing offline**.
+- **Vault State**: 423 pages + constitution. `python -m knowledge.lint` returns **0 errors, 0 warnings, CLEAN**.
+- **Live Query CLI Tests**:
+  - `python -m knowledge.query --drill-card fomc-2026-09-16` ran cleanly in 32 lines (budget < 60), verified immutability (vault SHA unchanged), surfaced standing forecast `p=0.90, change_bps == 0`.
+  - `python -m knowledge.query --regime BTC` verified live, returning Tier 1 macro consensus and history.
+  - `python -m knowledge.query --drill-card nonexistent` cleanly refused with exit 3, naming all 5 registered events.
+- **Working Tree**: `git status` is 100% pristine. The untracking of `Cross_Market_Arb.md`, `Cross_Market_Titans.md`, and `Risk_Sentinel.md` eliminated exporter churn.
 
 ---
 
-## Two things the directives did not mention, which mattered
+## 2. Architectural Rulings on Claude Code's 5 Inquiries
 
-### 1. `rank_at_seed` had to be fixed in two places, not one
+### Ruling R107-1.A — Drill Card Scope & Post-Print Copy-Paste Command
+- **Scope Ratification**: **Approved**. Deliberately omitting live market prices and dynamic L2 depth is strictly compliant with `WIKI_SCHEMA.md` s.6. Dashboards carry live market numbers; rendering stale static quotes in a terminal card at T-2 would induce cognitive confusion during high-pressure execution.
+- **Copy-Paste Ergonomics**:
+  - In Step 2 of "AFTER THE PRINT, IN ORDER", the command contains an ellipsis:
+    `2. python -m cross_market.latency_sniper --survival-curve ... --json > curve.json`
+  - At T+1, an operator with elevated adrenaline should not have to recall flags.
+  - **Directive**: Replace `...` with the exact, copy-pasteable CLI invocation:
+    `python -m cross_market.latency_sniper --survival-curve --event event.json --rules <rules_rel_path> --books cross_market/data/clob_drill/<event_stem> --json > curve.json`
+    (resolved directly from `rules.meta['dev']['registration']` or `cross_market/experiments/<event>.rules.json`).
+  - In Step 1, explicitly state that `event.json` is to be written in the repository root (`./event.json`).
 
-The directive says to preserve it in the frontmatter. **The body prints the same number from the live
-rank.** Preserving only the metadata would have produced a page whose frontmatter said `1` and whose
-text said `12` — worse than either number alone. It is now resolved once, before the body is built,
-and both read from it. A new `rank_now` carries the live figure, and the body renders
-`rank by equity at seed: 1 (now 12)` when they differ.
+### Ruling R107-1.B — `--regime` Match Ambiguity & Exact-Match Priority
+- **Ratification**: For read-only query cards, multi-page returns for exploratory queries are acceptable, but **exact-match priority must be enforced**:
+  - If `want` matches an exact page stem (`p.path.stem == want`) or an unambiguous symbol prefix (e.g. `p.path.stem.startswith(want + "_")`), return **only that specific card**.
+  - Fall back to substring matching across multiple pages only if zero exact matches are found.
+  - If multiple partial matches exist without an exact match, display matches or note ambiguity.
 
-### 2. Untracking a dashboard needed an L8 check first
+### Ruling R107-1.C — Metadata Placement of `dev.rank_now`
+- **Ratification**: **Ratified as standard OKF schema**.
+  - `dev.rank_now` is a current scalar state attribute, completely distinct from `dev.rank_at_seed` (an immutable historical anchor) and `dev.evidence` (a time-series observation list).
+  - Placing `rank_now` directly in `dev` allows `crm_register.md` to cleanly column on ranking drift across all tracked whales without array traversal.
 
-Lint L8 resolves wikilinks against files **on disk**. Untracking a dashboard that something links to
-would make a fresh clone fail L8. Verified before running `git rm --cached`: the three files you
-named have **zero** inbound wikilinks. `Monarch_Hub.md` is also exporter-written and has **five**, so
-it stays tracked.
+### Ruling R107-1.D — Forward Enforcement: Lint L9 (Gitignore Wikilink Invariant)
+- **Problem**: Untracking dashboards that have zero inbound links was safe, but nothing prevented future commits from linking to an ignored dashboard, which would silently break fresh clones during Lint L8.
+- **Directive**: Implement **Lint L9 (Gitignore Wikilink Invariant)** in `knowledge/lint.py`:
+  - Verify that no tracked/owned wiki page contains an inbound wikilink `[[target]]` that resolves exclusively to a file ignored by git (`git check-ignore`).
+  - Flag as error: `[L9] ERROR <page>: [[<target>]] targets git-ignored file '<path>'; fresh clones will fail L8`.
+  - Guard with `is_git_repo(dev_root)` to skip cleanly in non-git test fixtures (mirroring L5).
 
-Your list was exactly right — but the *reason* is worth recording, because the next dashboard added
-to that list has to pass the same test, and nothing enforces it automatically.
-
----
-
-## Please independently cross-check these
-
-1. **Is the drill card missing anything you would want at T-2?** I chose: countdown, frozen-window
-   banner, the one human-only step, the registered rules with token ids, the standing forecast, and
-   the three post-print commands. I deliberately left out market prices (s.6 — the dashboards carry
-   the live number) and any depth/liquidity figure. If the operator needs a liquidity read at T-2,
-   it is absent by choice and that choice may be wrong.
-2. **`--regime BTC` matches on stem or title substring.** `--regime B` would match both regime pages.
-   Should ambiguity be an error rather than a multi-page answer?
-3. **The `rank_now` field is new.** It is not in the OKF vocabulary and I added it to `dev` without a
-   ruling. If `dev.evidence` should carry it instead, say so — I put it in `dev` because it is a
-   scalar the register can column on, not a dated observation.
-4. **Untracking is not enforced going forward.** Nothing stops a future exporter-owned dashboard from
-   being committed, and nothing checks that an ignored file has no inbound links. A lint rule could
-   cover the second half; I did not build one.
-5. **The card reads the rules table by parsing the rendered markdown body**, not the frontmatter.
-   That is fragile if the rules page's table layout changes. The alternative is reading
-   `dev.tokens`/`dev.rules`, which would be sturdier — I took the body because it carries the
-   human-readable labels and thresholds together. Worth a second opinion.
-
----
-
-## On the estimate: third consecutive over-quote
-
-30–40 quoted, 10.7 actual. That is the third in a row (105 was 4× under, 106 was 5× over, 107 is 3×
-over), and the pattern is now clear enough to change my default: **in this codebase a well-specified
-round lands in 10–15 minutes almost regardless of deliverable count** — even one that adds a new
-module from scratch. The two things that actually cost time are a new validation rule run over
-existing data for the first time (Round 105: two hours), and unfamiliar desk code that must be read
-before it can be changed. I have recorded 12–18 minutes as the new default, with an open-ended block
-named separately only when a first-run validation rule is involved.
+### Ruling R107-1.E — Structured `dev.rules` Schema & Token Truncation Fix
+- **Problem**: In Round 107, `query.py` parsed rules from the rendered markdown table. The markdown table truncates token IDs to 12 chars (`561528276087…`), causing `query.py` to display truncated tokens at T-2. Parsing pipe tables is also fragile against future layout edits.
+- **Directive**:
+  1. In `knowledge/ingest/experiments.py:compile_rules_registration`, serialize `dev["rules"]` into frontmatter:
+     ```python
+     dev["rules"] = [
+         {
+             "label": r.get("label"),
+             "condition": f"{r.get('field')} {r.get('op')} {r.get('value')}",
+             "market": str(r.get("market", "")),
+             "outcome": r.get("outcome_if_true"),
+             "neg_risk": r.get("neg_risk", False),
+         }
+         for r in rules if isinstance(r, dict)
+     ]
+     ```
+  2. In `knowledge/query.py:drill_card`, read `dev.get("rules")` directly. Print the full token ID without truncation. Fall back to markdown table parsing only if `dev.rules` is absent on legacy pages.
+  3. Re-ingest experiments (`python -m knowledge.ingest.experiments`) to update `obsidian_vault/wiki/experiments/fomc_2026-09-16_rules.md`.
 
 ---
 
-## Still needing a person
+## 3. Scope & Deliverables for Round 108
 
-**The collector has not been restarted** (unchanged from Round 106). Collector `38548` is still
-running pre-Round-106 code sampling 5 ungated candidates per pass, so no new window gets a measured
-spread and `BASIS_MIN_NET_APR` stays unevaluable. `restart_basis_collector.bat` activates it whenever
-you choose. Nothing breaks while you wait.
+### Deliverable 1: Implement Lint L9 in `knowledge/lint.py` & Test Suite
+- Add `check_l9(docs, vault, dev_root)` to `knowledge/lint.py`.
+- Run `git check-ignore` on resolved link targets; report any git-ignored target linked by a vault page.
+- Add test coverage in `knowledge/tests/test_knowledge.py` verifying that linking to an ignored file fails L9 while untracked unlinked dashboards pass.
 
-**The FOMC drill is 10 days out.** `python -m knowledge.query --drill-card fomc-2026-09-16` now works
-and is safe to run at any time, including inside the window. It is in `HOMEWORK.md` as the first step
-of the drill.
+### Deliverable 2: Structured `dev.rules` Ingest & Token Display in Drill Card
+- Modify `knowledge/ingest/experiments.py` to write `dev.rules` in pre-registration pages.
+- Re-run `knowledge/ingest/experiments.py` so `fomc_2026-09-16_rules.md` receives `dev.rules`.
+- Update `knowledge/query.py:drill_card` to consume `dev.rules` directly, displaying full token IDs.
+
+### Deliverable 3: Polish Drill Card & Regime Query Ergonomics
+- In `knowledge/query.py:drill_card`:
+  - Provide the exact post-print command line for `latency_sniper --survival-curve` with `--event event.json`, `--rules <rules_path>`, and `--books <books_path>`.
+  - Clarify that `event.json` is written to the repo root (`./event.json`).
+- In `knowledge/query.py:regime_card`:
+  - Prioritize exact stem/title matches before falling back to substring search.
+
+### Deliverable 4: Documentation & Invariant Updates
+- Update `WIKI_SCHEMA.md` s.7 to document Lint L9.
+- Record Round 108 in `AGENTS.md` and `COMMANDS.txt`.
+- Keep `HOMEWORK.md` updated.
 
 ---
 
-## What I deliberately did not do
+## 4. Operational Reminders & Milestones
 
-- Did not restart, stop or signal any daemon; watcher `17688`, exporter `62760`, supervisor `46740`,
-  collector `38548` all untouched.
-- Did not untrack `Monarch_Hub.md` or any dashboard with inbound links.
-- Did not add usage counters or query filing (backlog B16 proper) — the directive cited B16 but the
-  spec implemented is the constitution's s.Query, which is a different item.
-- Did not change any acceptance bar, gate, or the vault constitution.
+1. **Desk 1 Collector (`38548`)**:
+   - Running pre-Round-106 code (5 ungated candidates/pass).
+   - Operator can execute `restart_basis_collector.bat` at their leisure to activate the 25% gross spread gate.
+2. **Calendar Milestones**:
+   - **Sep 13–14**: Full Dress Rehearsal for FOMC Drill.
+   - **Sep 15**: Q3 Estimated Tax Escrow Settlement ($2,700 NJ / $8,400 Federal).
+   - **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Drill. First command: `python -m knowledge.query --drill-card fomc-2026-09-16`.
+3. **Pristine Working Tree**: Maintain zero uncommitted/untracked churn between rounds.
