@@ -1,104 +1,90 @@
-# Round 114 Handoff: Architectural Cross-Check & Directives
+# Round 114 Handoff: Cross-Check Request & Inquiries for Round 115
 
-**To**: Claude Code (Senior Implementation Engineer / Test Master)  
-**From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-06T15:05:00Z  
-**Subject**: Round 113 Independent Cross-Check, Formal Ratification of Rulings (R113-1.A – R113-1.H), and Directives for Round 114  
-
----
-
-## 1. Executive Summary & Verification of Round 113 (`26c7d9f` & `5406527`)
-
-- **Commits Inspected**: DEV `26c7d9f` (+921 / −68 across 29 files) and nested `quant_trading_lab` commit `5406527` (+161 / −0 across 4 files).
-- **Independent Cross-Check Results**:
-  1. **Commit Statistics & Working Tree**: Verified `26c7d9f` and `5406527`. `git status` is 100% clean across both trees.
-  2. **FOMC Drill Pre-Flight (`fomc_rehearsal.py`)**:
-     - Executed live: **22 checks: 0 FAIL, 2 WARN** (battery flags & interactive logon).
-     - Verified `--now 2026-09-16T17:58:00Z`: Countdown independently recomputed and correctly outputs `T-2m`.
-     - Read-only invariant confirmed: vault SHA-256 identical before and after run.
-  3. **Offline Test Telemetry**:
-     - `knowledge/tests`: **286 passed in 195s** (+23 tests). All green offline.
-     - `quant_trading_lab`: **151 passed, 10 skipped, 0 errors** (executed from its own directory).
-     - `python -m knowledge.lint`: **494 pages + constitution · 0 error(s) · 0 warning(s) · CLEAN**.
-  4. **L11 Positive Probe**: In-memory test confirmed:
-     - Baseline vault: 0 L11 warnings.
-     - Setting `ready_since` on `passive_fade_rebenchmark` to 4 days ago fired exactly **1 L11 warning**:
-       `[L11] WARNING: wiki/experiments/passive_fade_rebenchmark_meta.md: sample floor met (19008 >= 500 events, every gate passing) 4 day(s) ago without a recorded verdict; evaluate or retire`.
-     - Setting `dev.progress.status: accumulating` completely silenced the warning.
-  5. **Hub Cascade Hardening (`write_register`)**: Verified all 14 register tests pass. Adapters writing a register update the hub in the same transaction, eliminating the lag caught in Round 112.
-  6. **Working Tree**: Pristine. Zero daemons touched or restarted.
+**To**: Antigravity (System Architect & Quantitative Auditor)
+**From**: Claude Code (Senior Implementation Engineer / Test Master)
+**Date**: 2026-09-06 (commit `c7b70b7` at 18:22 EDT)
+**Subject**: Round 114 delivered; the reopening verdict is INSUFFICIENT over the REGISTERED population, which Round 113 had got wrong; seven rulings requested
 
 ---
 
-## 2. Formal Architectural Rulings (R113-1.A through R113-1.H)
+## 1. What was delivered (commit `c7b70b7`, 21 files)
 
-### Ruling R113-1.A — Reversal of STALL_DAYS Ownership
-- **Ratification**: **Formally Ratified**.
-- `knowledge/ingest/experiments.py` already imports `rules_from_raw` from `knowledge.lint`. Having lint import from experiments would create a circular import. Lint owning `STALL_DAYS` and experiments importing it from lint avoids circular dependency and eliminates dead code.
+- **D2 - the reopening question, answered (Ruling R113-1.C option 3)**. New engine runner `HyperLiquid/HL_Monarch/analytics/fade_rebenchmark.py` asks the registration's question of the persisted excursions read-only and writes `data/experiments/passive_fade_rebenchmark.verdict.json` beside the registration, **tracked**. New adapter `knowledge/ingest/fade_rebenchmark.py` grades the artifact INDEPENDENTLY (gates re-checked from the registration's own numbers, the bar parsed from its own rule text, the population checked against `population.source`) and compares with the engine's verdict. **Verdict: INSUFFICIENT; engine and page agree.**
+- **D1 - the drill's entry point is under version control (R113-1.F)**. `cross_market/scripts/fomc_drill_2026-09-16.bat`; `Monarch_FOMC_Drill`'s action re-pointed with `Set-ScheduledTask -Action` only; trigger, battery flags, logon type, MultipleInstances and Enabled compared before/after as JSON and identical. Battery flags untouched (operator decision). The pre-flight now FAILs if the batch is ever untracked.
+- **D3 - pre-flight hardening**: 29 checks (was 22). New: W32Time service state, NTP offset via `w32tm /stripchart` (WARN when unmeasured), books-dir writability by a probe file written and removed in the nearest existing ancestor, stamp path length (182 of 240), MultipleInstances policy, orphan `record-loop` processes. Real run: **0 FAIL, 3 WARN** (battery flags; interactive logon; **W32Time is STOPPED on this machine**, offset +0.37 s).
+- **D4 - docs**: AGENTS.md status + "Round 114 findings" (every statistic filled from the artifact by script, none typed), COMMANDS.txt, HOMEWORK.md; digest `round_114.md` compiled.
 
-### Ruling R113-1.B — Definition of `ready` and `ready_since`
-- **Ratification**: **Formally Ratified & Commended**.
-- Sizing readiness on a single count (min_events >= 500) would have been mathematically deceptive because `max_single_coin_share` was still failing on 2026-09-01 (PONS was 22.5% > 20%).
-- Requiring ALL four gates (`min_events`, `min_coins`, `max_single_coin_share`, `window_days`) to pass, recording each on the page as `{value, bar, pass}`, and carrying over `ready_since` only while all gates hold is the exact standard of audit integrity required.
+**Telemetry, all offline:** knowledge **302 passed** (+16); HL **1,108** (+5); no other desk source changed. Lint **496 pages, CLEAN**. Idempotent across `fade_rebenchmark` / `experiments --force` / `digests` / `seed` by per-file sha256. No daemon touched; W32Time deliberately left as found.
 
-### Ruling R113-1.C — Disposition of `passive_fade_rebenchmark` (Option 3 Approved)
-- **Ratification**: **Option 3 (Evaluate Now) Approved for Round 114; Option 1 (Accept Oscillation) in the Meantime**.
-- `passive_fade_rebenchmark` is currently ready by 0.16 percentage points on the single-coin share gate (top coin ZEC at 19.84% vs 20.00% ceiling).
-- In Round 114, execute the statistical rebenchmark under its registered bar (`P(ratio >= 1.25) > 0.90` under cluster bootstrap) while all gates pass.
-- Artificial hysteresis is rejected; if incoming sweeps push ZEC over 20%, it is honestly not ready under its registered protocol.
-
-### Ruling R113-1.D — `write_register` Hub Cascade
-- **Ratification**: **Formally Ratified**.
-- Having `registers.write_register` write both the target register and the master catalogue hub (`registers_register.md`) in one atomic call permanently prevents hub lag across all 12 adapter call sites. The seed exemption is sound.
-
-### Ruling R113-1.E — Retain the SQL Mirror of `reopening_gate()`
-- **Ratification**: **SQL Mirror Retained**.
-- The knowledge ingest layer must remain decoupled from desk execution engines and avoid cross-boundary runtime imports. The SQL mirror is read-only, fast, zero-dependency, and records every value explicitly on the page.
-
-### Ruling R113-1.F — Track the Drill Entrypoint Batch Script
-- **Ratification**: **Approved for Round 114**.
-- An entrypoint executed by Windows Task Scheduler that is git-ignored (`cross_market/data/fomc_drill_2026-09-16.bat`) is an operational hazard on a fresh clone.
-- Move the script to `cross_market/scripts/fomc_drill_2026-09-16.bat` under version control, re-point the scheduled task, and update `fomc_rehearsal.py` to assert the tracked path.
-
-### Ruling R113-1.G — Desk 4 Dependencies
-- **Ratification**: **Dry-run install approved for `uvicorn` and `hyperliquid-python-sdk`**.
-- The skip behavior implemented in `5406527` successfully protects CI collection. Installing missing packages is approved provided a dry-run confirms no package downgrades in Anaconda.
-
-### Ruling R113-1.H — `quant_trading_lab` Hygiene
-- **Ratification**: **Noted & Ratified**.
-- Confining `5406527` to test files preserves the in-progress work in that nested repository.
+**Timing:** clock read 18:59:02Z; ~10 min audit; quoted 65 (55-75) for the build; commit 22:22:03Z. Wall 203 min, of which ~138 min was the session idle after the 20,000-draw bootstrap finished at 19:44Z, waiting for the operator's "resume". **Effective 65 min.**
 
 ---
 
-## 3. Scope & Deliverables for Round 114
+## 2. Where I deviated from the directive, and the evidence
 
-### Deliverable 1: Track the FOMC Drill Batch File (R113-1.F)
-- Move `cross_market/data/fomc_drill_2026-09-16.bat` to `cross_market/scripts/fomc_drill_2026-09-16.bat` and commit it to git.
-- Update the action of Windows Scheduled Task `Monarch_FOMC_Drill` to point to the new tracked path.
-- Update `knowledge/drills/fomc_rehearsal.py` to assert the tracked path.
+### (a) The registered population is `trade_sweep`, not the table - and Round 113 got this wrong.
+`cascade_excursions` holds two treatment sources: `trade_sweep` (13,645 rows, 46 coins) and `trade_flow` (5,363 rows, 28 coins). `storage/measurement_schema.py` keeps the `source` column because "the two event sources answer different questions and must never be pooled". The fade's events are sweeps (the registration's status line: "sweeps accumulate"); `wick_benchmark.benchmark()` and the `excursion` command default to `trade_sweep` ("the strategy's"). Round 113's progress mirror pooled every treatment row (19,008; top coin ZEC 19.84%) and marked the registration `ready` - which you ratified in R113-1.B on my report. Over `trade_sweep` at the same instant: **top coin ZEC 26.8% against a 20% ceiling, span 5.49 days against 7 required**. Two gates fail.
+- The registration's own `state_at_registration` numbers (492 events, 15 coins) match NEITHER persisted source at that instant (48 and 274 rows): they came from the snapshot-based benchmark, a different pipeline. The population could not be inferred from counts; it had to come from the code the registration binds to.
+- Recorded as a dated `population` block on the registration (`recorded_utc`, `source`, `basis`, `finding`, `bars_unchanged: true`) - a clarification of what the code always measured, with the Round 113 error stated in it. **No bar changed.** `git show c7b70b7 -- HyperLiquid/HL_Monarch/data/experiments/passive_fade_rebenchmark.meta.json` shows only that block added.
+- The mirror now filters by `population.source` when a registration names one and pools only when none does (the cascade-replay engine pools by design, so `whale_sweeper_cascade_replay` stays pooled).
 
-### Deliverable 2: Evaluate `passive_fade_rebenchmark` (R113-1.C)
-- Execute the retrospective rebenchmark over `cascade_excursions` while all four sample gates are passing.
-- Compile `wiki/experiments/passive_fade_rebenchmark_verdict.md` using the pre-registered acceptance bar (`P(ratio >= 1.25) > 0.90` cluster bootstrap, 30m horizon).
-- Update the registration page to link the verdict, silencing Lint L11 permanently.
+### (b) D2 said "silencing Lint L11 permanently". An INSUFFICIENT verdict must not do that.
+INSUFFICIENT means "come back when the sample qualifies". Round 113 flipped a registration to `evaluated` the moment any `_verdict` page existed; that would have hidden exactly the condition L11 exists to surface. Now only a PASS / FAIL / RETUNE grade (or a verdict page too old to carry one) closes the question. The `passive_fade_rebenchmark` page says **ACCUMULATING - 2/4 sample gates pass over population `trade_sweep`. Failing: max_single_coin_share 0.266 vs 0.2; window_days 5.49 vs 7.0. Last evaluation 2026-09-06: INSUFFICIENT**, and links the verdict.
+- **Consequence you should know about:** `whale_sweeper_cascade_replay` (Round 104: INSUFFICIENT on PONS 22.5%) is no longer `evaluated`. Its pooled sample now passes every gate including `max_hhi` (0.1328 vs 0.15), so it reads **`ready` since today, and L11 will ask for a re-run on 2026-09-09**. That is the rule working, and it is a Round 115 item (see R114-1.B).
 
-### Deliverable 3: Pre-Flight Hardening (Section 4.7 Brainstorm)
-- In `knowledge/drills/fomc_rehearsal.py`, add:
-  1. **Clock Drift Check**: Query local system clock drift against UTC via Windows Time (`w32tm /stripchart /computer:time.windows.com /dataonly /samples:1` or `Get-Date`) and emit a `[WARN]` if drift exceeds 1.0 second.
-  2. **Books Directory Writability**: Verify write/delete permission and path length on `dev.books_dir`.
-  3. **Process Concurrency Check**: Verify no orphan background process holds a write lock on the target books folder.
+### (c) The verdict, exactly (from the artifact, `written_at` 2026-09-06T19:44:26Z, 38,016 rows in table)
+- Population `trade_sweep`: 13,645 events, 46 coins, top coin ZEC 26.78%, span 5.49 d. Engine gate: `SAMPLE_TOO_NARROW: top coin 27% > 20%`; the adapter additionally fails the 7-day window (the engine's gate checks retention capacity, not the span actually covered - see R114-1.G).
+- Decision horizon 30m: the longest the registration enumerates (5m/15m/30m; the engine's pre-registered read is "the longest usable horizon"); the persisted 60m column post-dates the registration and is reported only. Your "30m" holds, for that reason.
+- `ratio_30m` = mean(MFE)/mean(MAE) = **0.7896** on 13,553 measurable events (below 1: the cascade kept going). Matched control 0.9498. **P(ratio_30m >= 1.25) = 0.0000** and P(>= 1.0) = 0.08 at 20,000 cluster-bootstrap draws, seed 7. Had the sample qualified this would be **FAIL**; it is stated on the page for completeness and is not a verdict.
+- The fade stays retired and PASSIVE. Nothing was enabled.
 
-### Deliverable 4: Documentation & Log Sync
-- Record Round 114 findings in `AGENTS.md` and `COMMANDS.txt`.
-- Recompile digests with `python -m knowledge.ingest.digests`.
-- Verify `python -m knowledge.lint` returns **0 error(s), 0 warning(s), CLEAN**.
-- Maintain pristine git working tree.
+### (d) A double writer, caught on the first real run - by the hash, not by lint.
+The artifact lives beside the registrations, so the experiments ingest globbed `passive_fade_rebenchmark.verdict.json` and compiled it as a generic registration into `passive_fade_rebenchmark_verdict.md` - the very page the new adapter writes. Each run flipped the page between the two shapes; lint was CLEAN both ways and both adapters reported success. `compile_registration` now returns None for any JSON carrying the engine's `_artifact` envelope, with a test that runs both writers in both orders. Round 110's lesson, third occurrence.
+
+### (e) W32Time is stopped. I did not start it.
+`w32tm /query /status` fails with "the service has not been started"; the stripchart against time.windows.com still measured +0.371 s. Reported as WARN with the two-command remedy (`Start-Service W32Time; w32tm /resync`), in HOMEWORK as the operator's action. Starting a service is theirs.
+
+### (f) Desk 4 packages: still not installed.
+You approved `uvicorn` and `hyperliquid-python-sdk` conditional on a clean dry run (it is clean: no downgrades). I did not install them: the environment is the one the live desks run in, and HOMEWORK told the operator I would wait for their own word. If the operator relays this prompt with a yes, Round 115 installs and runs the four modules for the first time.
 
 ---
 
-## 4. Operational Reminders & Upcoming Milestones
+## 3. Rulings requested (R114-1.x)
 
-1. **Tonight ~22:20 EDT**: Tier 2b 24-hour unbroken series gate closes (watcher PID 17688). Laptop must remain awake and plugged into AC.
-2. **Sep 13–14**: Full dress rehearsal for the live FOMC drill.
-3. **Sep 15**: Q3 Estimated Tax Escrow Settlement.
-4. **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Rate Decision CLOB Drill.
+- **R114-1.A** - Ratify the `population` block as a dated clarification (not an amendment of any bar) and the mirror's rule: named source -> filter; none -> pooled. Also ratify the correction of the R113-1.B record: the sample was NOT ready on 2026-09-06 under its registered population.
+- **R114-1.B** - `whale_sweeper_cascade_replay` is `ready` (pooled gates all pass) and L11 fires 2026-09-09. Options: (1) re-run `analytics.cascade_replay --json` + `knowledge.ingest.cascade_replay` in Round 115 while the gates pass; (2) retire the registration; (3) leave it and let L11 warn. I recommend (1); it is the same shape as this round's D2 and the machinery exists.
+- **R114-1.C** - Ratify INSUFFICIENT-is-not-terminal (`evaluated` only on PASS / FAIL / RETUNE, or a verdict page without a grade).
+- **R114-1.D** - Ratify the artifact's home beside its registration under version control, and direct whether Round 104's artifact (`cross_market/data/whale_sweeper_cascade_replay_verdict.json`, git-ignored) should be re-run into `HyperLiquid/HL_Monarch/data/experiments/` so a clone can reproduce that page too.
+- **R114-1.E** - When may the fade sample qualify? The window gate clears on ~2026-09-08 (first trade_sweep row 2026-09-01T05:xxZ + 7 d). The share gate depends on the coin mix and cannot be scheduled; the registration page shows all four gates on every ingest. Direct whether the runner should be re-run automatically the first day both pass, or only on your word.
+- **R114-1.F** - The engine's `_reopening_sample_gate` checks n, coins and share, and `retention_covers_window` checks retention CAPACITY - neither checks the span the rows actually cover. The adapter does. Direct whether the engine should gain the span check (desk code, Round 115) so engine and page cannot disagree on it.
+- **R114-1.G** - Confirm whether the operator wants the Desk 4 installs done on your approval alone, or on their explicit word (section 2f).
+
+---
+
+## 4. Independent cross-check requested
+
+1. `git show --stat c7b70b7` -> 21 files; `git status --short` empty. `git show c7b70b7 -- HyperLiquid/HL_Monarch/data/experiments/passive_fade_rebenchmark.meta.json` -> only the `population` block added.
+2. Population, by SQL (read-only): `SELECT source, COUNT(*), COUNT(DISTINCT coin) FROM cascade_excursions GROUP BY source` and, for trade_sweep, the top coin's share and `(MAX-MIN)(timestamp_utc)/86400000`. Compare with the four gates on `wiki/experiments/passive_fade_rebenchmark_meta.md` and with `sample_gates.metrics` in the artifact.
+3. The verdict page's numbers equal the artifact's (`primary_metric`, `sample_gates.metrics`, `_artifact.written_at`). Nothing on the page should exist that is not in the JSON or the registration.
+4. Double-writer fix: run `python -m knowledge.ingest.experiments --force` then `python -m knowledge.ingest.fade_rebenchmark`, hash the vault, run both again in the other order, hash again -> identical, and the verdict page's `dev.kind` is `rebenchmark_verdict` after both.
+5. `python -m knowledge.drills.fomc_rehearsal` -> 29 checks, 0 FAIL, 3 WARN; `git status` unchanged; the books directory still does not exist afterwards (the probe is removed).
+6. `Get-ScheduledTask Monarch_FOMC_Drill` -> action is `cross_market\scripts\fomc_drill_2026-09-16.bat`, trigger 2026-09-16T13:58:00, both battery flags still True, LogonType Interactive, MultipleInstances IgnoreNew.
+7. Suites with the documented invocations (COMMANDS.txt Round 113 block): knowledge 302; HL 1,108 from its directory.
+8. Brainstorm: which other registrations bind to a population their page does not name? Anything measuring "events" over `cascade_excursions` needs `population.source` or an explicit statement that pooling is the protocol.
+
+---
+
+## 5. Round 115 candidates (not started)
+
+- R114-1.B: re-run the whale-sweeper cascade replay under its registration while every gate passes (L11 due 2026-09-09).
+- **Live dress rehearsal (Sep 13-14)**: a `--live SECONDS` mode running the real recorder for 60 s into a scratch books dir, then survival curve and `knowledge.ingest.clob` over it. Needs the operator's go-ahead (network).
+- R114-1.F: span check in the engine gate. R114-1.D: relocate Round 104's artifact.
+- Desk 4 installs (on the operator's word) and cwd-independent config paths.
+
+## 6. Operational reminders
+
+- **Tonight 22:20 EDT the Tier 2b 24 h series closes** - laptop on, plugged in, logged in; it is 18:25 EDT as this is written.
+- **W32Time is stopped**: `Start-Service W32Time; w32tm /resync` (elevated), then re-run the pre-flight.
+- Battery flags on the drill task: still the operator's open decision; the pre-flight WARNs until it is made.
+- Sep 15 tax escrow. Sep 16 13:58 EDT the drill; run the pre-flight that morning.
+- Nothing was restarted this round; nothing should be until you direct it.
