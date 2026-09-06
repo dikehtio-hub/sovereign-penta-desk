@@ -2862,7 +2862,7 @@ class DigestRegisterTests(IngestFixture):
         self.assertIn("0 page(s).", body)
         # and it is reachable from every desk via the hub without dangling - the Round 109 failure
         hub = (self.vault / "wiki/concepts/registers_register.md").read_text(encoding="utf-8")
-        self.assertIn("[[digests_register\|", hub)
+        self.assertIn("[[digests_register\\|", hub)
         self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)
                           if f.code in ("L8", "L3")], [])
 
@@ -3210,6 +3210,226 @@ class ProgressAndL10Tests(IngestFixture):
         self._register(days_ago=5, closed=0, parked=True)
         reg = registers.update_register(self.vault, "Experiment", at=NOW).body
         self.assertIn("| 0/50 (0%) · parked |", reg)
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 113: write_register cascades to the hub (Antigravity's b3c4493), `ready` is EVERY gate
+# (Ruling R112-1.C corrected), lint L11, and the FOMC drill rehearsal (D4)
+# --------------------------------------------------------------------------------------
+
+class HubCascadeTests(IngestFixture):
+    """A register write refreshes the hub row in the SAME call, so nothing is one pass behind."""
+
+    REG = {"experiment": "cascade_probe", "registered_utc": None, "control": "data/experiments/nothing.json",
+           "acceptance_bar": {"min_closed_trades": 5}, "commitments": [], "amendments": []}
+
+    def _hub_row(self):
+        hub = (self.vault / "wiki/concepts/registers_register.md").read_text(encoding="utf-8")
+        return next(l for l in hub.splitlines() if "[[experiments_register\\|" in l)
+
+    def _reg_at(self):
+        meta, _ = fm.parse((self.vault / "wiki/concepts/experiments_register.md").read_text(encoding="utf-8"))
+        return meta["generated"]["at"]
+
+    def test_a_register_write_refreshes_the_hub_row_in_the_same_call(self):
+        registers.write_register(self.vault, "Experiment", at=NOW)
+        first = self._reg_at()
+        self.assertIn(first, self._hub_row())
+        # unchanged content: the register keeps its stamp (R104-3), so the hub row does not move either
+        _, changed = registers.write_register(self.vault, "Experiment", at=NOW + timedelta(hours=1))
+        self.assertFalse(changed)
+        self.assertEqual(self._reg_at(), first)
+        self.assertIn(first, self._hub_row())
+        # a real change, written by an ADAPTER (not seed): the register moves and the hub follows at once
+        later = NOW + timedelta(hours=2)
+        hl = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "experiments"
+        hl.mkdir(parents=True, exist_ok=True)
+        reg = dict(self.REG, registered_utc=pages.iso(NOW))
+        (hl / "cascade_probe.meta.json").write_text(json.dumps(reg), encoding="utf-8")
+        ingest_exp.ingest_experiments([hl], self.vault, self.dev_root, at=later, force=True)
+        self.assertEqual(self._reg_at(), pages.iso(later))
+        self.assertIn(pages.iso(later), self._hub_row())
+        self.assertNotIn(first, self._hub_row())
+
+
+class ReadyAndL11Tests(IngestFixture):
+    """Ruling R112-1.C, corrected: `ready` means EVERY sample gate passes, dated from first observation."""
+
+    REG = {"experiment": "fade_v2", "registered_utc": None, "status": "PASSIVE - accumulates, does not trade",
+           "sample_requirements": {"window_days": 7, "min_events": 500, "min_coins": 20, "max_single_coin_share": 0.2}}
+
+    def setUp(self):
+        super().setUp()
+        self.hl = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "experiments"
+        self.hl.mkdir(parents=True, exist_ok=True)
+        self.db = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db"
+
+    def _seed_db(self, rows):
+        import sqlite3
+        if self.db.exists():
+            self.db.unlink()
+        c = sqlite3.connect(self.db)
+        c.execute("CREATE TABLE cascade_excursions (event_id INTEGER, coin TEXT, timestamp_utc INTEGER, source TEXT)")
+        c.executemany("INSERT INTO cascade_excursions VALUES (?,?,?,?)",
+                      [(i + 1, coin, ts, "live") for i, (coin, ts) in enumerate(rows)])
+        c.execute("INSERT INTO cascade_excursions VALUES (0, 'CTRL', 0, 'control:x')")     # excluded by the WHERE
+        c.commit()
+        c.close()
+
+    def _rows(self, n=600, coins=30, span_days=8):
+        start = int((NOW - timedelta(days=span_days)).timestamp() * 1000)
+        step = span_days * 86_400_000 // n
+        return [(f"C{i % coins}", start + i * step) for i in range(n)]
+
+    def _register(self, at, days_registered=6):
+        reg = json.loads(json.dumps(self.REG))
+        reg["registered_utc"] = pages.iso(NOW - timedelta(days=days_registered))
+        (self.hl / "fade_v2.meta.json").write_text(json.dumps(reg), encoding="utf-8")
+        ingest_exp.ingest_experiments([self.hl], self.vault, self.dev_root, at=at, force=True)
+        return fm.parse((self.vault / "wiki/experiments/fade_v2_meta.md").read_text(encoding="utf-8"))
+
+    def _l11(self, now):
+        return [f for f in lint.lint_vault(self.vault, self.dev_root, now=now) if f.code == "L11"]
+
+    def test_every_gate_passing_is_ready_and_the_page_and_register_say_so(self):
+        self._seed_db(self._rows())
+        meta, body = self._register(at=NOW)
+        p = meta["dev"]["progress"]
+        self.assertEqual((p["accumulated"], p["target"], p["unit"], p["status"]), (600, 500, "events", "ready"))
+        self.assertEqual(p["ready_since"], pages.iso(NOW))
+        self.assertEqual({k: g["pass"] for k, g in p["gates"].items()},
+                         {"min_events": True, "min_coins": True, "max_single_coin_share": True, "window_days": True})
+        self.assertIn("**READY (since", body)
+        self.assertIn("| 600/500 (100%) · ready |", registers.update_register(self.vault, "Experiment", at=NOW).body)
+
+    def test_a_count_past_its_floor_with_one_coin_dominating_is_not_ready(self):
+        rows = [("WHALE" if i < 200 else c, ts) for i, (c, ts) in enumerate(self._rows())]      # one coin at 33%
+        self._seed_db(rows)
+        meta, body = self._register(at=NOW)
+        p = meta["dev"]["progress"]
+        self.assertEqual(p["status"], "accumulating")
+        self.assertTrue(p["gates"]["min_events"]["pass"])              # the count ALONE would have said ready
+        self.assertFalse(p["gates"]["max_single_coin_share"]["pass"])
+        self.assertAlmostEqual(p["gates"]["max_single_coin_share"]["value"], 200 / 600, places=3)
+        self.assertNotIn("ready_since", p)
+        self.assertNotIn("**READY", body)
+        self.assertEqual(self._l11(NOW + timedelta(days=30)), [])
+
+    def test_ready_since_is_first_observed_and_carried_over(self):
+        self._seed_db(self._rows())
+        self._register(at=NOW)
+        meta, _ = self._register(at=NOW + timedelta(days=2))
+        self.assertEqual(meta["dev"]["progress"]["ready_since"], pages.iso(NOW))
+
+    def test_l11_fires_after_three_days_ready_and_a_verdict_silences_it(self):
+        self._seed_db(self._rows())
+        self._register(at=NOW)
+        self.assertEqual(self._l11(NOW + timedelta(days=lint.STALL_DAYS - 1)), [])
+        found = self._l11(NOW + timedelta(days=lint.STALL_DAYS))
+        self.assertEqual([(f.code, f.severity) for f in found], [("L11", "warning")])
+        self.assertIn("every gate passing", found[0].message)
+        self.assertIn("600 >= 500 events", found[0].message)
+        verdict = self.vault / "wiki/experiments/fade_v2_verdict.md"
+        pages.write_page(pages.Page(verdict, pages.make_meta("Experiment", "fade_v2 verdict", "a verdict",
+                                                             tags=["experiment"], generated_by="human:test", at=NOW,
+                                                             status="draft"), "# verdict"), self.vault, now=NOW)
+        meta, _ = self._register(at=NOW + timedelta(days=lint.STALL_DAYS))
+        self.assertEqual(meta["dev"]["progress"]["status"], "evaluated")
+        self.assertEqual(self._l11(NOW + timedelta(days=lint.STALL_DAYS)), [])
+
+    def test_an_unreadable_source_is_unmeasured_and_carries_no_gates(self):
+        if self.db.exists():
+            self.db.unlink()
+        meta, _ = self._register(at=NOW)
+        p = meta["dev"]["progress"]
+        self.assertEqual((p["accumulated"], p["status"]), (None, "unmeasured"))
+        self.assertNotIn("gates", p)
+        self.assertEqual(self._l11(NOW + timedelta(days=30)), [])
+
+
+class FomcRehearsalTests(QueryCardTests):
+    """D4: the pre-flight, with its ONE external tool (Task Scheduler) injected. Never touches the scheduler."""
+
+    RECORDER = 'parser.add_argument("--record-loop", action="store_true")'
+
+    def setUp(self):
+        super().setUp()
+        from knowledge.drills import fomc_rehearsal as rehearsal
+        self.rh = rehearsal
+        self.ev = query_mod.find_event(self.vault, self.event)
+        self.release = fm.parse_iso8601(self.ev.meta["dev"]["release_utc"])
+        self.tokens = [str(r["market"]) for r in query_mod.rules_for(self.vault, self.ev).meta["dev"]["rules"]]
+        self.now = self.release - timedelta(days=3)
+        self.bat_path = self.dev_root / rehearsal.BAT
+
+    def task(self, **over):
+        fire = (self.release - self.rh.LEAD).astimezone()
+        t = {"exists": True, "state": "Ready", "enabled": True,
+             "triggers": [fire.replace(tzinfo=None).isoformat()], "actions": [f'"{self.bat_path}"'],
+             "disallow_start_on_batteries": False, "stop_if_going_on_batteries": False, "wake_to_run": False,
+             "logon_type": "Interactive", "next_run": fire.strftime("%m/%d/%Y %H:%M:%S"),
+             "last_result": self.rh.NEVER_RAN, "battery_status": 2, "battery_pct": 100, "free_gb": 50.0}
+        t.update(over)
+        return t
+
+    def bat(self, tokens=None, dur=420):
+        import sys
+        books = query_mod.books_dir(self.ev).replace("/", "\\")
+        return ("@echo off\r\nset DUR=%1\r\nif \"%DUR%\"==\"\" set DUR=" + str(dur)
+                + "\r\nset BOOKS=%2\r\nif \"%BOOKS%\"==\"\" set BOOKS=" + books + "\r\n"
+                + sys.executable + " -m cross_market.latency_sniper --record-loop --tokens "
+                + ",".join(tokens or self.tokens) + " --interval 1 --duration %DUR% --books %BOOKS%\r\n")
+
+    def checks(self, **kw):
+        args = dict(task=self.task(), bat_text=self.bat(), recorder_text=self.RECORDER, bat_path=self.bat_path)
+        args.update(kw)
+        return self.rh.run_checks(self.vault, self.dev_root, self.event, self.now, **args)
+
+    @staticmethod
+    def levels(checks):
+        return {c.name: c.level for c in checks}
+
+    def test_a_consistent_setup_has_no_failures(self):
+        lv = self.levels(self.checks())
+        self.assertEqual([n for n, l in lv.items() if l == "FAIL"], [], lv)
+        for name in ("window is T-2..T+5", "rules.json tokens == page tokens", "rules.json release == event release",
+                     "card wrote nothing", "card carries whole token ids", "batch tokens == registered tokens",
+                     "batch default duration == window length", "batch books dir == event books_dir",
+                     "task fires at T-2 local time", "task action is the drill batch", "recorder has --record-loop"):
+            self.assertEqual(lv[name], "PASS", name)
+        self.assertEqual(lv["logon type"], "WARN")            # interactive-only is always worth a line
+
+    def test_a_trigger_one_minute_off_is_a_failure(self):
+        off = (self.release - timedelta(minutes=1)).astimezone().replace(tzinfo=None).isoformat()
+        self.assertEqual(self.levels(self.checks(task=self.task(triggers=[off])))["task fires at T-2 local time"], "FAIL")
+
+    def test_battery_flags_are_a_warning_not_a_failure(self):
+        lv = self.levels(self.checks(task=self.task(disallow_start_on_batteries=True, stop_if_going_on_batteries=True)))
+        self.assertEqual(lv["battery flags"], "WARN")
+        self.assertEqual([n for n, l in lv.items() if l == "FAIL"], [])
+
+    def test_a_token_that_drifted_in_the_batch_is_a_failure(self):
+        lv = self.levels(self.checks(bat_text=self.bat(tokens=self.tokens[:-1] + ["1" * 76])))
+        self.assertEqual(lv["batch tokens == registered tokens"], "FAIL")
+
+    def test_a_shorter_recording_than_the_window_is_a_failure(self):
+        self.assertEqual(self.levels(self.checks(bat_text=self.bat(dur=300)))["batch default duration == window length"], "FAIL")
+
+    def test_a_missing_batch_and_a_missing_task_fail_closed(self):
+        lv = self.levels(self.checks(bat_text=None, task={"exists": False, "error": "no such task"}))
+        self.assertEqual((lv["drill batch file"], lv["scheduled task"]), ("FAIL", "FAIL"))
+
+    def test_the_cli_is_read_only_and_exits_nonzero_on_a_fresh_clone(self):
+        """The batch is git-ignored, so this fixture IS a fresh clone: the drill file is missing."""
+        before = self.rh.hash_vault(self.vault)
+        out = io.StringIO()
+        code = self.rh.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--event", self.event,
+                             "--now", pages.iso(self.now), "--no-task"], out=out)
+        self.assertEqual(code, self.rh.EXIT_FINDINGS)
+        self.assertIn("git-ignored", out.getvalue())
+        self.assertIn("[WARN] scheduled task: not queried", out.getvalue())
+        self.assertEqual(self.rh.hash_vault(self.vault), before)
 
 
 if __name__ == "__main__":  # pragma: no cover

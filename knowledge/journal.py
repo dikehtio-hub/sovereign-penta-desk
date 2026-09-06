@@ -42,7 +42,7 @@ from . import DEV_ROOT, EXIT_HALT, EXIT_OK, GENERATED_BY, VAULT, halted
 from .frontmatter import parse_iso8601
 from .pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                     write_index, write_page)
-from .registers import update_register
+from .registers import write_register
 
 DEFAULT_RECEIPTS = Path("cross_market") / "data" / "paper_receipts"
 KILLSWITCH_FILE = Path("quant_trading_lab") / "CLAUDE.md"
@@ -241,7 +241,7 @@ def write_day(vault: Path, dev_root: Path, day: date, *, receipts_dir: Path | No
         return None
     page = build_journal(day, execs, preds, vault, dev_root, at, by)
     write_page(page, vault, now=at)
-    write_page(update_register(vault, "Journal Entry", at=at, by=by), vault, now=at)
+    write_register(vault, "Journal Entry", at=at, by=by)
     write_index(vault, load_pages(vault))
     return page
 

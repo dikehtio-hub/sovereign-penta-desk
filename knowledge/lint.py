@@ -43,6 +43,9 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
   L10 a stalled pre-registration (Round 112): an Experiment registered
       3+ days ago whose dev.progress is still zero and still `accumulating`.
       A warning, because the remedy is a decision - park, retire or run it.
+  L11 the mirror of L10 (Round 113): an Experiment whose EVERY sample gate
+      has passed for 3+ days (`dev.progress.ready_since`) with no verdict
+      page. A warning, for the same reason: evaluate or retire is a decision.
   L8  a dangling outbound wikilink (Round 105): `[[target]]` naming a page
       that does not exist. The mirror of L3, which catches the page nothing
       links to. Links inside code fences and code spans are not links, so
@@ -530,6 +533,37 @@ def check_l10(docs: list[Document], vault: Path, now: datetime) -> list[Finding]
     return out
 
 
+def check_l11(docs: list[Document], vault: Path, now: datetime) -> list[Finding]:
+    """L11 (Round 113, Ruling R112-1.C): a registration that is ready and nobody has looked.
+
+    The mirror of L10. A registration whose `dev.progress.status` is `ready` - every sample
+    requirement it wrote down passes and no `<stem>_verdict` page exists - for STALL_DAYS or longer
+    is a WARNING. `ready_since` is the first run that OBSERVED every gate passing, carried over while
+    it stays ready; it is deliberately not the date one count crossed its floor.
+    passive_fade_rebenchmark crossed 500 events on 2026-09-01 while still failing the coin-share
+    gate, and dating readiness from there would have fired this rule on a sample its own registration
+    called inadequate. Warning, not error: evaluating or retiring is a decision.
+    """
+    out: list[Finding] = []
+    for d in docs:
+        if d.meta is None or d.meta.get("type") != "Experiment":
+            continue
+        prog = (d.meta.get("dev") or {}).get("progress")
+        if not isinstance(prog, dict) or prog.get("status") != "ready":
+            continue
+        try:
+            since = parse_iso8601(str(prog.get("ready_since") or ""))
+        except ValueError:
+            continue
+        age = (now - since).days
+        if age >= STALL_DAYS:
+            out.append(Finding("L11", "warning", _rel(d.path, vault),
+                               f"sample floor met ({prog.get('accumulated')} >= {prog.get('target')} "
+                               f"{prog.get('unit')}, every gate passing) {age} day(s) ago without a recorded "
+                               f"verdict; evaluate or retire"))
+    return out
+
+
 def check_c1(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]:
     out: list[Finding] = []
     cache: dict[Path, str | None] = {}
@@ -811,6 +845,7 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     findings += check_l8(docs, vault)
     findings += check_l9(docs, vault, dev_root)
     findings += check_l10(docs, vault, now)
+    findings += check_l11(docs, vault, now)
     findings += check_c1(docs, vault, dev_root)
     findings += check_c2(docs, vault, drops)
     findings += check_c3(docs, vault)

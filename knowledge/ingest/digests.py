@@ -32,7 +32,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
-from ..registers import update_register
+from ..registers import write_register
 from . import add_common_args, at_from, guard, page_changed, rel_to
 
 DEFAULT_AGENTS = Path("AGENTS.md")
@@ -154,9 +154,7 @@ def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, s
     # guarantee the register exists; keeping a bespoke builder here as well meant seed and this
     # adapter produced DIFFERENT content for the same file and silently overwrote each other on
     # every run. The generic register renders round and date from dev, which is what it is for.
-    reg = update_register(vault, "Digest", at=at, by=by)
-    reg_changed = page_changed(reg, vault)
-    write_page(reg, vault, now=at)
+    reg, reg_changed = write_register(vault, "Digest", at=at, by=by)
     # Ruling R110-1.E: a truncation warning on stdout is gone the moment an unattended run ends.
     # log.md is the durable record, and a digest that silently dropped the end of a round is exactly
     # the kind of thing an operator should find later without having to have been watching.

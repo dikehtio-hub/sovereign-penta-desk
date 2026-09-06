@@ -5,6 +5,33 @@ the detail.
 
 ## Status
 
+Round 113 complete (2026-09-06): THE FOMC DRILL HAS A PRE-FLIGHT, THE HUB CAN NO LONGER LAG A
+REGISTER, AND `ready` MEANS EVERY GATE. D4: `python -m knowledge.drills.fomc_rehearsal` checks the
+five things the 2026-09-16 drill needs to agree on (Event page, rules registration + raw JSON, the
+drill card, the git-ignored batch file the task runs, the scheduled task itself via one injectable
+PowerShell query) - 22 checks on the real setup, read-only by construction (vault hashed before and
+after). Real result: 0 FAIL, 2 WARN (battery flags; interactive-only logon), tokens agree three ways,
+trigger 13:58:00 local = T-2. The one FAIL on first run was the module's OWN regex reading `set
+BOOKS=%2` instead of the default line beneath it - fixed, and now a test. Out of band, Antigravity's
+b3c4493 hand-fix showed the registers hub one pass behind whenever an adapter rewrote a register
+without a following seed: `registers.write_register` now writes the register AND the hub in one
+call, wired into all 12 adapter call sites (seed untouched; it writes the hub last anyway). D2:
+`ready` is set only when EVERY sample requirement the registration wrote down passes - for
+passive_fade_rebenchmark that is four gates mirrored read-only from cascade_excursions (19,008 vs
+500 events; 62 vs 20 coins; top coin ZEC 19.84% vs 20% ceiling; 7.49 vs 7 days) - with each gate
+recorded on the page. `ready_since` is the first run that OBSERVED every gate passing, carried over
+like measured_at; lint L11 (warning) fires STALL_DAYS after that with no verdict page. Dating
+readiness from the day the count crossed 500 (2026-09-01) would have fired L11 today on a sample
+the registration itself called inadequate at Round 104 (PONS 22.5%). D1 REVERSED: lint owns
+STALL_DAYS - the adapters already import from lint, so lint importing from experiments would be a
+circular import; the experiments copy was dead code and is gone. D3: the four Desk 4 collection
+errors were THREE different missing packages (hyperliquid-python-sdk x2, uvicorn, fastapi), not one;
+each module now skips on the one it lacks, naming the install; fastapi was installed after a clean
+dry run (no upgrades) but the webhook module still skips because `main` imports the Hyperliquid
+adapter at module level. Desk 4 from its own directory: 151 passed, 10 skipped, 0 errors. Tests:
+knowledge 286 (+23), all green offline. Vault 493 pages, lint CLEAN, idempotent across
+experiments/digests/seed by hash. NO DAEMON RESTARTED.
+
 Round 112 complete (2026-09-06): A PRE-REGISTRATION CAN NO LONGER SIT AT N=0 IN SILENCE, AND
 THE ONE THAT DID IS PARKED ON TRUE GROUNDS. R112-OOB.2: registrations carry `dev.progress`
 {accumulated, target, unit, status, measured_at}, measured read-only from the paper state
@@ -1214,6 +1241,64 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 113 findings
+
+### The directive's premises, checked before quoting (about 12 minutes; changed 3 of 5 deliverables)
+
+- **D1 direction was backwards.** `knowledge/ingest/experiments.py:37` already imports
+  `rules_from_raw` from lint, and markets.py imports `DEFAULT_DROPS`; lint importing `STALL_DAYS` from
+  experiments would have been a circular import. The experiments copy was never read by anything.
+  Lint owns it; experiments imports it for the READY callout text.
+- **D2 would have claimed `ready` on one count.** The registration names four sample requirements and
+  says they are enforced by `wick_benchmark.reopening_gate()`. Round 104's sibling failed the SHARE
+  gate at 38x the count floor. A read-only probe showed all four pass today - narrowly (ZEC 19.84%
+  against a 20% ceiling), so `ready` is true, but it can flip back as events land. Each gate is on
+  the page as {value, bar, pass}; a page past its count floor but failing another gate stays
+  `accumulating` and names the blocker.
+- **D2 would have dated readiness wrong.** The directive offered `registered_utc or floor_met_utc`.
+  The 500th treatment event landed 2026-09-01T08:13Z (from timestamp_utc), 2.5 h after registration,
+  while the share gate was still failing. `ready_since` = first observation of ALL gates passing,
+  carried over while it stays ready and dropped when it does not. L11 fires 2026-09-09 if nobody
+  evaluates or retires passive_fade_rebenchmark - which is the rule doing its job, not a defect.
+- **D3 named the wrong package three times out of four.** `pytest --collect-only` says: hyperliquid
+  (x2), uvicorn, fastapi. Installing fastapi alone would have fixed one module and left the operator
+  believing the webhook path was tested. It still is not: `main.py` imports the Hyperliquid adapter
+  at module level, so the webhook tests need hyperliquid-python-sdk (dry run: eth-utils, msgpack).
+  Not installed - that is a dependency decision, recorded in HOMEWORK.
+- **D5's "0 warnings" and D2's L11 would have contradicted each other** under the directive's own
+  dating; under first-observation dating they do not, for three days.
+
+### The rehearsal found its own bug before it found anyone else's
+
+- First real run: 21 PASS, 1 FAIL - `batch books dir == event books_dir: %2 vs cross_market/...`.
+  The regex `set BOOKS=(\S+)` matched the argument line `set BOOKS=%2`, not the default line under
+  it. `set DUR=(\d+)` had skipped `%1` only because `%` is not a digit. Both now `(?!%)`. The test
+  fixture reproduces the two-line batch shape, so the test would have caught it had it run first.
+- Real findings, all now on the record: the batch file is GIT-IGNORED (.gitignore:137) - a fresh
+  clone has no drill; the task is interactive-only (logged-in session required; screen lock is fine);
+  both battery flags are set (the HOMEWORK decision); NextRunTime shows 13:58:58 against a 13:58:00
+  trigger (scheduler jitter, reported not judged). Tokens agree across rules.json, the vault page
+  and the batch; duration 420 s = window; python path exists; 124.8 GB free; on mains.
+- The Task Scheduler query goes through `-EncodedCommand` (base64 UTF-16LE) so no quoting crosses
+  argv, and was probed live against the real task before the module was written around it.
+
+### Hub staleness (Antigravity's b3c4493)
+
+- Every adapter wrote its register with `write_page(update_register(...))` and nothing but seed ever
+  wrote the hub. A hub row carries the register's `generated.at`, so the Round 112b digest recompile
+  left the hub showing 17:32Z for a register stamped 17:54Z. `write_register` writes both; the test
+  drives a real adapter (ingest_experiments) and asserts the hub row moved in the same call, and
+  that an unchanged register moves neither.
+
+### Test-writing lesson
+
+- A helper named `run(self, **kw)` on a TestCase subclass shadows `unittest.TestCase.run`, so
+  `setUp` never executes and every test in the class - including the inherited ones - fails with
+  AttributeError on the first fixture attribute. Renamed `checks`. Cost: one fix cycle.
+- Desk 4 run from the WORKSPACE root shows 73 failures that are relative-path reads of
+  `config/asset_specs.json`; from its own directory it is 151 passed. Pre-existing, unchanged, and
+  the reason COMMANDS.txt says to run it from the desk directory.
 
 ## Round 112 findings
 

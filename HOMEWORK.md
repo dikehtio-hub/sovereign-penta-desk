@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 13:40 EDT (Round 112; N=50 experiment parked).
+Last updated: 2026-09-06 14:50 EDT (Round 113; drill pre-flight exists, fastapi installed).
 
 ---
 
@@ -53,11 +53,13 @@ Last updated: 2026-09-06 13:40 EDT (Round 112; N=50 experiment parked).
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 112 handoff prompt to Antigravity.**
+- [ ] **Send the Round 113 handoff prompt to Antigravity.**
 - [ ] **Clear the FOMC drill's battery flags, or commit to staying on AC.** The condition
       itself is described under the 2026-09-16 entry above. This line is the DECISION:
       leave the flags and rely on remembering the charger, or have me clear them. Clearing
       is small and testable. Either is fine; drifting into the 16th without choosing is not.
+      `python -m knowledge.drills.fomc_rehearsal` now reports this as a WARN every time you run it,
+      and will report PASS the moment the flags are cleared.
 - [ ] **Decide when the collector restarts** so the new spread gate takes effect.
       Ruling R104-1 is implemented but collector `38548` is still running the old
       code, which samples only 5 candidates per pass. Until it restarts, no new
@@ -70,20 +72,26 @@ Last updated: 2026-09-06 13:40 EDT (Round 112; N=50 experiment parked).
 
 ## 🟡 RECOMMENDED BEFORE 2026-09-16
 
-- [ ] **Authorise a full dress rehearsal of the FOMC drill.** The Round 94 dry run
-      recorded 9 stamps over 3 seconds. The real thing is ~1,260 stamps over 420
-      seconds across three tokens, and the path from stamps → survival curve →
-      Reaction Profile page has only ever run against a test fixture.
-      Round 102/103 alone found two components that looked fine and were not
-      (a `--json` flag documented for four rounds that never worked; a restart
-      script that reports failure on success). Ten days out is the right time to
-      find the third one.
-- [ ] **`pip install fastapi` for Desk 4.** Four test modules in `quant_trading_lab`
-      cannot even be collected without it (`test_webhook_server`,
-      `test_hyperliquid_adapter`, `test_multivenue_execution`,
-      `test_run_paper_trading`). The other 151 pass. This is pre-existing and has
-      nothing to do with recent rounds, but it means Desk 4's webhook path has been
-      untested for some time.
+- [ ] **Authorise the LIVE dress rehearsal of the FOMC drill (Sep 13-14).** The
+      offline pre-flight now exists and passes on the real setup (Round 113:
+      `python -m knowledge.drills.fomc_rehearsal`, 0 FAIL, 2 WARN). What it cannot
+      do is record real order books: the Round 94 dry run recorded 9 stamps over 3
+      seconds; the real thing is ~1,260 stamps over 420 seconds across three tokens,
+      and stamps → survival curve → Reaction Profile page has only ever run against a
+      fixture. A live 60-second recording into a scratch books dir, then the curve and
+      ingest over it, is the step that needs your go-ahead (network, and it exercises
+      the same code the 16th will). Round 102/103 found two components that looked
+      fine and were not; the pre-flight found a third in its own regex on first run.
+- [ ] **Decide on Desk 4's missing packages.** fastapi is installed (Round 113, after a
+      clean dry run). The webhook path is STILL untested: `main.py` imports the
+      Hyperliquid adapter at module level, so `test_webhook_server`,
+      `test_hyperliquid_adapter` and `test_multivenue_execution` all skip until
+      `pip install hyperliquid-python-sdk` (dry run: also eth-utils 5.3.1 and msgpack
+      1.2.2 - new crypto-adjacent packages into the same environment the live desks run
+      in), and `test_run_paper_trading` skips until `pip install uvicorn` (0.52.4, no
+      other deps). I did not install either without your word. Say yes to one or both
+      and I will dry-run again, install, and run the four modules for the first time in
+      a long while - they may fail for real reasons, which is the point.
 
 ---
 
@@ -105,6 +113,15 @@ Last updated: 2026-09-06 13:40 EDT (Round 112; N=50 experiment parked).
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 — **FOMC drill pre-flight built and run** (Round 113). 22 read-only checks
+  across the Event page, rules registration, drill card, the batch file the task runs,
+  and the scheduled task. Everything agrees: tokens three ways, 13:58:00 local = T-2,
+  420 s = the window, python path present, 124.8 GB free, on mains. Two warnings are
+  the two open decisions above (battery flags; interactive logon means logged in).
+- 2026-09-06 — **fastapi installed for Desk 4** after a clean dry run (no upgrades to
+  shared packages). Desk 4 now collects with zero errors: 151 passed, 10 skipped, each
+  skip naming the package it waits on. See the Desk 4 decision above for the rest.
 
 - 2026-09-06 — **`regime_filtered_v1` formally PARKED** (Round 112, Ruling R112-OOB.1, Option 2).
   It had sat at N=0 of 50 for five days with no paper trader running. Parked by a dated

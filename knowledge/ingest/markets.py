@@ -30,7 +30,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..lint import DEFAULT_DROPS, newest_drop
 from ..pages import Page, append_log, carry_human_fields, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
-from ..registers import update_register
+from ..registers import write_register
 from . import add_common_args, at_from, guard, page_changed, rel_to
 
 DEFAULT_EXPERIMENTS = Path("cross_market") / "experiments"
@@ -206,7 +206,7 @@ def ingest_markets(vault: Path, dev_root: Path, *, drops: Path | None = None, ex
         write_page(page, vault, now=at)
         report.written.append(rel)
     if report.written:
-        write_page(update_register(vault, "Market", at=at, by=by), vault, now=at)
+        write_register(vault, "Market", at=at, by=by)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"markets: {len(wanted)} token(s) from rules, Experiment pages and the newest macro drop "
                    f"(families {', '.join(families)}); {len(report.written)} page(s) written, {len(report.skipped)} kept; [index](index.md) rebuilt.",

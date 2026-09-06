@@ -34,10 +34,10 @@ from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
 from ..frontmatter import parse_iso8601
-from ..lint import rules_from_raw
+from ..lint import STALL_DAYS, rules_from_raw
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
-from ..registers import update_register as _update_register
+from ..registers import update_register as _update_register, write_register
 from . import add_common_args, at_from, guard, item_link, page_changed, rel_to
 
 DEFAULT_DIRS = (Path("cross_market") / "experiments", Path("HyperLiquid") / "HL_Monarch" / "data" / "experiments")
@@ -223,7 +223,30 @@ RESULT_KEYS = ("closed_trades", "wins", "losses", "win_rate_pct", "profit_factor
 
 PAPER_STATE = Path("HyperLiquid") / "HL_Monarch" / "data" / "paper_trading_state.json"
 HL_DB = Path("HyperLiquid") / "HL_Monarch" / "data" / "hyperliquid_data.db"
-STALL_DAYS = 3        # lint L10: a registration with no progress after this long is a warning
+
+
+def _gate(value: float, bar: float, op: str) -> dict[str, Any]:
+    return {"value": value, "bar": bar, "pass": bool(value >= bar) if op == ">=" else bool(value <= bar)}
+
+
+def event_gates(reqs: dict[str, Any], *, n: int, coins: int, top_share: float, span_days: float) -> dict[str, Any]:
+    """Ruling R112-1.C, corrected: `ready` means EVERY sample requirement the registration wrote down
+    passes, not that one count crossed its floor.
+
+    passive_fade_rebenchmark binds itself to wick_benchmark.reopening_gate(): >=500 events, >=20
+    coins, no coin over 20% of the sample, a 7-day window. Round 104's sibling verdict was INSUFFICIENT
+    precisely because the share gate failed (PONS 22.5%) while the count was 38x its floor. This is a
+    read-only SQL mirror of that gate over the same rows `accumulated` counts; the authoritative gate
+    runs inside the benchmark, and recording every value here is what makes a disagreement visible.
+    """
+    out = {"min_events": _gate(n, int(reqs["min_events"]), ">=")}
+    if isinstance(reqs.get("min_coins"), (int, float)):
+        out["min_coins"] = _gate(coins, int(reqs["min_coins"]), ">=")
+    if isinstance(reqs.get("max_single_coin_share"), (int, float)):
+        out["max_single_coin_share"] = _gate(round(top_share, 4), float(reqs["max_single_coin_share"]), "<=")
+    if isinstance(reqs.get("window_days"), (int, float)):
+        out["window_days"] = _gate(round(span_days, 2), float(reqs["window_days"]), ">=")
+    return out
 
 
 def parked_note(data: dict[str, Any]) -> dict[str, Any]:
@@ -265,6 +288,7 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
                 n = None
         return {"accumulated": n, "target": n, "unit": "closed_trades", "status": "completed",
                 "measured_at": iso(at)}
+    gates: dict[str, Any] = {}
     if isinstance(bar.get("min_closed_trades"), (int, float)):
         unit, target = "closed_trades", int(bar["min_closed_trades"])
         state = dev_root / PAPER_STATE
@@ -273,6 +297,8 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
                 accumulated = int(json.loads(state.read_text(encoding="utf-8")).get("closed_trades", 0))
             except (OSError, json.JSONDecodeError, TypeError, ValueError):
                 accumulated = None
+        if accumulated is not None:
+            gates = {"min_closed_trades": _gate(accumulated, target, ">=")}
     elif isinstance(reqs.get("min_events"), (int, float)):
         unit, target = "events", int(reqs["min_events"])
         db = dev_root / HL_DB
@@ -280,10 +306,15 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
             try:
                 import sqlite3
                 conn = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, timeout=8)
-                accumulated = int(conn.execute(
-                    "SELECT COUNT(*) FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%'"
-                ).fetchone()[0])
+                where = "FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%'"
+                n, coins, lo, hi = conn.execute(
+                    f"SELECT COUNT(*), COUNT(DISTINCT coin), MIN(timestamp_utc), MAX(timestamp_utc) {where}").fetchone()
+                top = conn.execute(f"SELECT COUNT(*) {where} GROUP BY coin ORDER BY 1 DESC LIMIT 1").fetchone()
                 conn.close()
+                accumulated = int(n)
+                gates = event_gates(reqs, n=int(n), coins=int(coins or 0),
+                                    top_share=(top[0] / n) if (top and n) else 0.0,
+                                    span_days=((hi - lo) / 86_400_000.0) if (lo is not None and hi is not None) else 0.0)
             except Exception:  # noqa: BLE001 - a missing table is "unmeasured", not a crash
                 accumulated = None
     else:
@@ -294,10 +325,15 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
         status = "evaluated"
     elif accumulated is None:
         status = "unmeasured"
+    elif gates and all(g["pass"] for g in gates.values()):
+        status = "ready"          # every gate passes and nobody has evaluated it: the mirror of a stall
     else:
         status = "accumulating"
-    return {"accumulated": accumulated, "target": target, "unit": unit, "status": status,
-            "measured_at": iso(at)}
+    out = {"accumulated": accumulated, "target": target, "unit": unit, "status": status,
+           "measured_at": iso(at)}
+    if gates:
+        out["gates"] = gates
+    return out
 
 
 def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, dev_root: Path, at, by: str) -> Page:
@@ -361,10 +397,19 @@ def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, 
         if isinstance(prior, dict) and all(prior.get(k) == progress.get(k)
                                            for k in ("accumulated", "target", "unit", "status")):
             progress["measured_at"] = prior.get("measured_at", progress["measured_at"])
+        if progress.get("status") == "ready":
+            carried = prior.get("ready_since") if isinstance(prior, dict) and prior.get("status") == "ready" else None
+            progress["ready_since"] = carried or iso(at)
         dev["progress"] = progress
         if progress.get("status") == "parked":
             note = parked_note(data)
             body[3:3] = ["> [!NOTE]", f"> **PARKED ({note.get('utc', '')[:10]})**: {note.get('why', '')}", ""]
+        elif progress.get("status") == "ready":
+            gates_txt = "; ".join(f"{k} {g['value']} vs {g['bar']}" for k, g in (progress.get("gates") or {}).items())
+            body[3:3] = ["> [!NOTE]",
+                         f"> **READY (since {str(progress.get('ready_since', ''))[:10]})**: every sample gate passes "
+                         f"({gates_txt}) and no verdict page exists. Evaluate it under the registered bar or retire "
+                         f"it; lint L11 warns once this has stood for {STALL_DAYS} days.", ""]
     if params:
         dev["parameters"] = params
     if requires:
@@ -431,7 +476,7 @@ def ingest_experiments(exp_dirs, vault: Path, dev_root: Path, *, at=None, by: st
             write_page(page, vault, now=at)
             (report.written if changed else report.skipped).append(rel)
     if report.written:
-        write_page(update_register(vault, at=at, by=by), vault, now=at)
+        write_register(vault, "Experiment", at=at, by=by)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"registrations from {', '.join('`' + rel_to(d, dev_root) + '`' for d in dirs if d.is_dir())}: "
                    f"{len(report.written)} Experiment page(s) written, {len(report.skipped)} kept; [index](index.md) rebuilt.",

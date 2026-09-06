@@ -27,7 +27,7 @@ from .. import EXIT_OK, GENERATED_BY
 from ..frontmatter import parse_iso8601
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
-from ..registers import update_register
+from ..registers import write_register
 from . import add_common_args, at_from, guard, rel_to
 
 DEFAULT_DIR = Path("knowledge") / "calendars"
@@ -138,7 +138,7 @@ def ingest_calendars(cal_dir: Path, vault: Path, dev_root: Path, *, at: datetime
             write_page(page, vault, now=at)
             report.written.append(rel)
     if report.written:
-        write_page(update_register(vault, "Event", at=at, by=by), vault, now=at)
+        write_register(vault, "Event", at=at, by=by)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"calendars from `{rel_to(cal_dir, dev_root)}`: {len(report.written)} Event page(s) written, "
                    f"{len(report.skipped)} kept; [index](index.md) rebuilt.", when=at)

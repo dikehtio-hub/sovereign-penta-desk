@@ -40,7 +40,7 @@ from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc,
                      page_path, write_index, write_page)
 from . import add_common_args, at_from, guard, item_link, link_if_exists, md_cell, page_changed, rel_to
-from .experiments import update_register
+from ..registers import write_register
 
 STEM = "whale_sweeper_cascade_replay_verdict"
 DEFAULT_RESULT = Path("cross_market") / "data" / f"{STEM}.json"
@@ -304,7 +304,7 @@ def ingest_replay(vault: Path, dev_root: Path, *, result: Path | None = None, re
                       observed_from=observed_from)
     changed = page_changed(page, vault)
     write_page(page, vault, now=at)
-    write_page(update_register(vault, at=at, by=by), vault, now=at)
+    write_register(vault, "Experiment", at=at, by=by)
     write_index(vault, load_pages(vault))
     g = page.meta["dev"]
     if changed:

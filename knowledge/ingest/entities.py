@@ -43,7 +43,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
-from ..registers import update_register
+from ..registers import write_register
 from . import add_common_args, at_from, guard, item_link, rel_to, page_changed
 
 TITAN_CACHE = Path("cross_market") / "titan_identities_cache.json"
@@ -430,7 +430,7 @@ def ingest_entities(vault: Path, dev_root: Path, *, at: datetime | None = None, 
     report.counts = {"titans": len(titan_eoas), "whales": len(whales), "sharps": len(sharps), "books": len(books)}
 
     if report.created or report.updated:
-        write_page(update_register(vault, "Entity", at=at, by=by), vault, now=at)
+        write_register(vault, "Entity", at=at, by=by)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"CRM entities: {report.counts['titans']} titan(s) (identities present on both venues, cap {limit_titans}), "
                    f"{report.counts['whales']} whale(s) (top by equity, cap {limit_whales}), {report.counts['sharps']} sharp(s), "

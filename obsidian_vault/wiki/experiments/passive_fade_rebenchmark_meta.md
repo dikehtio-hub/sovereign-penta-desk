@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T17:32:28Z'
+  at: '2026-09-06T18:33:57Z'
 status: draft
 sources:
 - id: registration
@@ -27,8 +27,26 @@ dev:
     accumulated: 19008
     target: 500
     unit: events
-    status: accumulating
-    measured_at: '2026-09-06T17:32:28Z'
+    status: ready
+    measured_at: '2026-09-06T18:33:57Z'
+    gates:
+      min_events:
+        value: 19008
+        bar: 500
+        pass: true
+      min_coins:
+        value: 62
+        bar: 20
+        pass: true
+      max_single_coin_share:
+        value: 0.1984
+        bar: 0.2
+        pass: true
+      window_days:
+        value: 7.49
+        bar: 7.0
+        pass: true
+    ready_since: '2026-09-06T18:33:57Z'
   parameters:
   - name: passive_fade_rebenchmark_sample_requirements_window_days
     value: 7
@@ -87,6 +105,9 @@ dev:
 # Experiment: passive_fade_rebenchmark
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
+> [!NOTE]
+> **READY (since 2026-09-06)**: every sample gate passes (min_events 19008 vs 500; min_coins 62 vs 20; max_single_coin_share 0.1984 vs 0.2; window_days 7.49 vs 7.0) and no verdict page exists. Evaluate it under the registered bar or retire it; lint L11 warns once this has stood for 3 days.
+
 
 ## Registered utc
 

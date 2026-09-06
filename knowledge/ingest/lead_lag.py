@@ -35,7 +35,7 @@ from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
 from . import add_common_args, at_from, guard, item_link, rel_to
-from .experiments import update_register
+from ..registers import write_register
 
 REGIME_FILE = "btc_macro_regime"
 DEFAULT_MIN_ABS_CORR = 0.2
@@ -235,7 +235,7 @@ def ingest_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier:
     annotate_registration(vault, tier, at=at)
     regime = update_regime(vault, verdict, at=at, by=by)
     write_page(regime, vault, now=at)
-    write_page(update_register(vault, at=at, by=by), vault, now=at)
+    write_register(vault, "Experiment", at=at, by=by)
     write_index(vault, load_pages(vault))
     append_log(vault, "Ingest", f"lead-lag Tier {tier} verdict ({scope_of(result)}): **{verdict.meta['dev']['classification']}** -> "
                f"[[{verdict.path.stem}]]; [[{REGIME_FILE}]] history now {len(regime.meta['dev']['history'])} row(s).", when=at)

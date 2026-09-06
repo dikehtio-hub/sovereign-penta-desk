@@ -24,7 +24,7 @@ from pathlib import Path
 from . import DEV_ROOT, EXIT_HALT, EXIT_OK, VAULT, halted
 from .frontmatter import is_actor, parse_iso8601
 from .pages import append_log, iso, load_pages, now_utc, write_index, write_page
-from .registers import SPECS, update_register
+from .registers import SPECS, write_register
 
 DEFAULT_ACTOR = "antigravity/architect"
 
@@ -82,7 +82,7 @@ def ratify(vault: Path, *, type_: str, ruling: str, tag: str | None = None, by: 
         report.ratified.append(rel)
     if report.ratified and not dry_run:
         if type_ in SPECS:
-            write_page(update_register(vault, type_, at=at), vault, now=at)
+            write_register(vault, type_, at=at)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ratify", f"Ruling {ruling}: {len(report.ratified)} {type_} page(s)" + (f" tagged `{tag}`" if tag else "")
                    + f" verified by `{by}` and set `{status}`; {len(report.already)} already carried that verification.", when=at)

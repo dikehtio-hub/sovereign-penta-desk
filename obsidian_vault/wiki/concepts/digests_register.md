@@ -3,18 +3,18 @@ type: Concept
 title: Digests register
 description: Every round of the sovereign work chain as its own page, compiled from
   AGENTS.md. The log stays the record; a digest loses to it wherever they disagree.
-  67 page(s) today.
+  68 page(s) today.
 tags:
 - concept
 - register
 - digest
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T17:54:05Z'
+  at: '2026-09-06T18:39:16Z'
 status: draft
 dev:
   register_for: Digest
-  count: 67
+  count: 68
   pages:
   - round_100
   - round_101
@@ -29,6 +29,7 @@ dev:
   - round_110
   - round_111
   - round_112
+  - round_113
   - round_31
   - round_33
   - round_34
@@ -104,6 +105,7 @@ dev:
 | [[round_110\|Round 110 digest]] | 110 | 2026-09-06 | Round 110 (2026-09-06): THE DIGESTS ARE NOW GUARDED, REGISTERED AND HONEST ABOUT WHAT THEY DROP | draft | 2026-09-06T08:12:49Z |
 | [[round_111\|Round 111 digest]] | 111 | 2026-09-06 | Round 111 (2026-09-06): THE QUERY LAYER CAN FILE AND COUNT, WITHOUT LOSING THE ONE PROPERTY THAT MAKES IT USABLE AT T-2 | draft | 2026-09-06T08:23:35Z |
 | [[round_112\|Round 112 digest]] | 112 | 2026-09-06 | Round 112 (2026-09-06): A PRE-REGISTRATION CAN NO LONGER SIT AT N=0 IN SILENCE, AND THE ONE THAT DID IS PARKED ON TRUE GROUNDS | draft | 2026-09-06T17:54:05Z |
+| [[round_113\|Round 113 digest]] | 113 | 2026-09-06 | Round 113 (2026-09-06): THE FOMC DRILL HAS A PRE-FLIGHT, THE HUB CAN NO LONGER LAG A REGISTER, AND `ready` MEANS EVERY GATE | draft | 2026-09-06T18:39:16Z |
 | [[round_31\|Round 31 digest]] | 31 | - | Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings | draft | 2026-09-06T08:12:49Z |
 | [[round_33\|Round 33 digest]] | 33 | - | Round 33: DATA GROUNDING | draft | 2026-09-06T08:12:49Z |
 | [[round_34\|Round 34 digest]] | 34 | - | Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION | draft | 2026-09-06T08:12:49Z |
@@ -159,7 +161,7 @@ dev:
 | [[round_98\|Round 98 digest]] | 98 | 2026-09-05 | Round 98 (2026-09-05): KNOWLEDGE - COMPILE WHAT EXISTS (backlog B3, B4, B6, B7, B9; Antigravity's Round 97/97b rulings applied) | draft | 2026-09-06T08:12:49Z |
 | [[round_99\|Round 99 digest]] | 99 | 2026-09-05 | Round 99 (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1) | draft | 2026-09-06T08:12:49Z |
 
-67 page(s).
+68 page(s).
 
 ## Related
 

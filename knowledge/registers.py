@@ -10,9 +10,11 @@ means in WIKI_SCHEMA.md s.4.
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from . import GENERATED_BY
-from .pages import Page, load_pages, make_meta, md_cell, page_path, safe_title
+from .pages import (Page, load_page, load_pages, make_meta, md_cell, page_path, safe_title,
+                    unchanged_but_for_stamp, write_page)
 
 # type -> (stem, title, description, columns shown after the page link)
 SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -132,3 +134,25 @@ def update_register(vault, type_: str, *, at: datetime, by: str = GENERATED_BY) 
                      generated_by=by, at=at, status="draft",
                      dev={"register_for": type_, "count": len(pages), "pages": [p.path.stem for p in pages]})
     return Page(page_path(vault, "Concept", stem), meta, "\n".join(lines))
+
+
+def write_register(vault: Path, type_: str, *, at: datetime, by: str = GENERATED_BY) -> tuple[Page, bool]:
+    """Write one register and then the hub that lists it. The one way an adapter writes a register.
+
+    Round 113. Antigravity's cross-check of Round 112 found the hub one pass behind (its b3c4493): the
+    digests recompile rewrote digests_register at 17:54Z while the hub row still said 17:32Z, because
+    seed writes the hub LAST and nothing else wrote it at all. A hub row carries the register's
+    generated.at, so any register write without a hub write leaves a stale row until the next seed.
+    Cascading here makes every path converge in ONE pass. Still idempotent: write_page skips a register
+    whose content is unchanged but for its stamp, so the stamp does not move and the hub does not change.
+
+    Returns (register page, changed) - `changed` is whether the register's CONTENT differed, which is
+    what adapters count as written (Ruling R104-3). seed keeps calling update_register directly: it
+    writes all eleven in SPECS order with the hub last, so the cascade would only repeat its own work.
+    """
+    page = update_register(vault, type_, at=at, by=by)
+    changed = not unchanged_but_for_stamp(load_page(page.path), page)
+    write_page(page, vault, now=at)
+    if type_ != "Register":
+        write_page(update_register(vault, "Register", at=at, by=by), vault, now=at)
+    return page, changed

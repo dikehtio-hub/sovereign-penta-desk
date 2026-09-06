@@ -27,7 +27,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, default_stale_after, load_page, load_pages, make_meta, now_utc,
                      page_path, write_index, write_page)
-from ..registers import update_register
+from ..registers import write_register
 from . import add_common_args, at_from, guard, rel_to
 
 DEFAULT_ROOTS = ("cross_market", "cross_market/ingestors", "cross_market/interfaces",
@@ -168,7 +168,7 @@ def ingest_theses(roots, vault: Path, dev_root: Path, *, at: datetime | None = N
             write_page(page, vault, now=at)
             report.written.append(rel)
     if report.written:
-        write_page(update_register(vault, "Thesis", at=at, by=by), vault, now=at)
+        write_register(vault, "Thesis", at=at, by=by)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"docstring theses: {report.scanned} module(s) scanned, {len(report.written)} Concept page(s) written, "
                    f"{len(report.skipped)} kept; every heading pinned with dev:asserts; [index](index.md) rebuilt.", when=at)

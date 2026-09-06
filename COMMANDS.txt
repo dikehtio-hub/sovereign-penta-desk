@@ -2360,6 +2360,44 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 113 - FOMC DRILL REHEARSAL, write_register HUB CASCADE, `ready` + GATES + LINT L11, DESK 4 SKIPS
+     python -m knowledge.drills.fomc_rehearsal                    (the pre-flight; run it any day before the 16th)
+     python -m knowledge.drills.fomc_rehearsal --no-task          (offline: skips the Task Scheduler query)
+     python -m knowledge.drills.fomc_rehearsal --now 2026-09-16T17:58:00Z   (see the card as it will look at T-2)
+         22 checks, each PASS / WARN / FAIL; exit 0 unless something FAILS. Read-only: the vault is hashed
+         before and after and a difference is itself a FAIL. Checks the Event page (release, T-2..T+5 window),
+         the rules registration against its raw JSON (tokens, release), the drill card (under 60 lines, whole
+         token ids, countdown recomputed, zero writes), the GIT-IGNORED batch file the task runs (tokens ==
+         registered, DUR == window seconds, BOOKS == event books_dir, python path exists, recorder has
+         --record-loop) and the scheduled task (enabled, fires at T-2 LOCAL, action is the batch, battery
+         flags, logon type, on mains now, disk free, next run on the release day). The scheduler query is one
+         PowerShell -EncodedCommand call, injectable with --task-json FILE so tests never touch the scheduler.
+         Real result 2026-09-06: 0 FAIL, 2 WARN (battery flags; interactive logon). The live dress rehearsal
+         (a short real recording, network) is a separate, authorised step - this is the pre-flight for it.
+     python -m knowledge.lint          # now also reports L11
+         L11 (Ruling R112-1.C, corrected): an Experiment whose dev.progress.status is `ready` for 3+ days
+         (`ready_since`) with no <stem>_verdict page is a WARNING: evaluate or retire. `ready` is set by the
+         experiments adapter ONLY when every sample requirement in the registration passes (min_events,
+         min_coins, max_single_coin_share, window_days - mirrored read-only from cascade_excursions and
+         recorded per gate as {value, bar, pass}); a count past its floor with another gate failing stays
+         `accumulating`. ready_since is the FIRST OBSERVATION of all gates passing, carried over like
+         measured_at, never the date one count crossed its floor. STALL_DAYS lives in knowledge/lint.py only.
+     registers.write_register(vault, type_, at=..., by=...)
+         The one way an adapter writes a register: writes it, then the hub, so a hub row can never be one
+         pass behind (Antigravity's b3c4493). Returns (page, changed). seed still writes all eleven directly.
+     cd quant_trading_lab && python -m pytest tests -q            (151 passed, 10 skipped - run it FROM the desk)
+         Four modules skip with the install they need in the reason: hyperliquid-python-sdk (adapter,
+         multivenue, webhook - main.py imports the adapter at module level), uvicorn (run_paper_trading).
+         fastapi IS installed (2026-09-06, dry run clean: fastapi, starlette, annotated-doc, typing-inspection).
+         Dry runs, NOT installed: uvicorn 0.52.4 alone; hyperliquid-python-sdk 0.24.0 + eth-utils + msgpack.
+         From the WORKSPACE root the desk shows 73 relative-path failures (config/asset_specs.json); pre-existing.
+     for m in test_agent test_empty_ledger test_new_features test_sports_tax test_tradovate_receipts; do python -m unittest Tax_Reserve_Agent.tests.$m; done
+         Tax: 546 = 2 + 22 + 373 + 136 + 13, and this per-module unittest form is the ONLY way to get all 546.
+         test_sports_tax.py and one test in test_tradovate_receipts.py use RELATIVE imports, which resolve only
+         when the module is loaded as Tax_Reserve_Agent.tests.<module>. Under pytest the first errors at
+         collection and the second fails at runtime; `unittest discover` refuses because tests/ has no
+         __init__.py. Pre-existing since 2026-09-03; the [ERR]/[WARN] lines it prints are tests exercising error paths.
+
      ROUND 112 - dev.progress + LINT L10, REGISTERS HUB, SLUG DIGEST, regime_filtered_v1 PARKED
      python -m knowledge.ingest.experiments --force
          Registrations now carry dev.progress {accumulated, target, unit, status, measured_at}.

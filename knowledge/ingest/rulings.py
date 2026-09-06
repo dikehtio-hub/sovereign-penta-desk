@@ -28,7 +28,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, default_stale_after, load_page, load_pages, make_meta, now_utc,
                      page_path, write_index, write_page)
-from ..registers import update_register
+from ..registers import write_register
 from . import add_common_args, at_from, guard, rel_to
 
 CITATION_RE = re.compile(r"\b(Directive|Ratification|Ruling)\s+(\d{1,3})-(\d{1,2})\b")
@@ -205,7 +205,7 @@ def ingest_rulings(agents_path: Path, vault: Path, dev_root: Path, *, at=None, b
         write_page(page, vault, now=at)
         report.written.append(prel)
     if report.written:
-        write_page(update_register(vault, "Ruling", at=at, by=by), vault, now=at)
+        write_register(vault, "Ruling", at=at, by=by)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"directives, ratifications and numbered rulings from `{rel}`: {report.found} distinct citation(s), "
                    f"{len(report.written)} page(s) written, {len(report.skipped)} kept; [index](index.md) rebuilt.", when=at)

@@ -23,7 +23,7 @@ from typing import Any
 from . import DEV_ROOT, EXIT_HALT, EXIT_OK, GENERATED_BY, VAULT, halted
 from .frontmatter import parse_iso8601
 from .pages import Page, append_log, carry_human_fields, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
-from .registers import update_register
+from .registers import write_register
 
 KTEST = "knowledge/tests/test_knowledge.py"
 K_EXIT = {"0": "ok", "1": "findings", "3": "refused (HALT.flag, missing input)"}
@@ -165,7 +165,7 @@ def write_computations(vault: Path, dev_root: Path, *, at: datetime | None = Non
         write_page(page, vault, now=at)
         report.written.append(rel)
     if report.written:
-        write_page(update_register(vault, "Attested Computation", at=at, by=by), vault, now=at)
+        write_register(vault, "Attested Computation", at=at, by=by)
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"attested computations: {len(report.written)} page(s) written, {len(report.skipped)} kept "
                    f"({sum(1 for c in COMPUTATIONS if c.kind == 'shell_twin')} shell twins, "

@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T17:32:28Z'
+  at: '2026-09-06T18:33:57Z'
 status: draft
 sources:
 - id: registration
@@ -29,6 +29,11 @@ dev:
     unit: closed_trades
     status: parked
     measured_at: '2026-09-06T17:32:28Z'
+    gates:
+      min_closed_trades:
+        value: 0
+        bar: 50
+        pass: false
   parameters:
   - name: regime_filtered_v1_acceptance_bar_min_closed_trades
     value: 50
