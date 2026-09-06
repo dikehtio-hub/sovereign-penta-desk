@@ -53,6 +53,14 @@ class ExporterBase(unittest.TestCase):
         self._real_verdict_path = _ex.DEFAULT_VERDICT_PATH
         _ex.DEFAULT_VERDICT_PATH = self.root / "lead_lag_latest_verdict.json"
         self.addCleanup(setattr, _ex, "DEFAULT_VERDICT_PATH", self._real_verdict_path)
+        # Round 104: the fixture clock must TRACK the real one. Subclasses used to pin
+        # NOW = 2026-09-06T02:00Z and generate drop stamps relative to it. That is self-consistent for
+        # tests that inject `now=self.NOW`, but two tests drive a CLI (exporter --once, maiden_protocol)
+        # whose code calls datetime.now() itself - so once the wall clock passed 03:00 UTC the stamps
+        # were >60 min old, the readiness gate rejected them, and both failed. Anchoring per test keeps
+        # every stamp fresh at whatever time the suite runs. Any assertion that needs the anchor must
+        # render it from self.NOW rather than hard-coding a date.
+        self.NOW = datetime.now(timezone.utc).replace(microsecond=0)
         conn = sqlite3.connect(self.db)
         conn.execute("""CREATE TABLE fair_odds_measurements (
             id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL,
@@ -271,7 +279,7 @@ class TestLeadLagRefresher(ExporterBase):
     block of the Titans note without touching the sentinel card or user notes.
     """
 
-    NOW = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+    # NOW is set per test in ExporterBase.setUp (Round 104): it tracks the real clock.
 
     def _stamps(self, count, spacing_min=5, ending_min_ago=3, family="macro"):
         from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
@@ -326,6 +334,46 @@ class TestLeadLagRefresher(ExporterBase):
         self.assertEqual(env["writer"], "process:cross_market.interfaces.obsidian_exporter")
         self.assertFalse(artifact.with_suffix(".json.tmp").exists())            # written atomically, temp removed
         self.assertEqual(Path(DEFAULT_VERDICT_PATH).name, "lead_lag_latest_verdict.json")
+
+    def test_stop_exporter_terminates_only_a_live_holder_and_sweeps_the_lock(self):
+        """Ruling R103-F2 (Round 104). The exporter had no --stop while the fetcher has had one since
+        Round 79, and stop_all_ecosystem_sync.bat matches window titles a detached pythonw has not - so
+        the only way to stop this loop was a kill by pid typed by hand."""
+        from cross_market.ingestors import pid_lock
+        from cross_market.interfaces import obsidian_exporter as ex
+        lock = self.root / "exporter.pid"
+
+        # nothing running: nothing to stop, nothing killed
+        killed = []
+        info = ex.stop_exporter(pid_file=lock, terminate=killed.append, alive=lambda p: False)
+        self.assertEqual((info["terminated"], info["holder_pid"], killed), (False, None, []))
+        self.assertIn("nothing to stop", ex.format_stop(info))
+
+        # a LIVE holder: terminated, waited for, lock swept
+        pid_lock.acquire(lock, mark=ex.EXPORTER_MARK)
+        holder = pid_lock.read_pid_file(lock)
+        state = {"alive": True}
+        # probe returns the holder's COMMAND LINE; is_stale checks EXPORTER_MARK appears in it, which is
+        # what stops this ever terminating a process that is not this exporter.
+        probe = lambda p: "pythonw -m cross_market.interfaces.obsidian_exporter --watch"   # noqa: E731
+        info = ex.stop_exporter(pid_file=lock, terminate=lambda p: (killed.append(p), state.__setitem__("alive", False)),
+                                alive=lambda p: state["alive"], probe=probe, sleep=lambda s: None)
+        self.assertEqual((info["terminated"], info["still_alive"], killed), (True, False, [holder]))
+        self.assertTrue(info["swept"])
+        self.assertFalse(lock.exists())
+        self.assertIn("terminated", ex.format_stop(info))
+
+        # a lock held by something that is NOT an exporter is stale: swept, never killed
+        pid_lock.acquire(lock, mark=ex.EXPORTER_MARK)
+        killed.clear()
+        info = ex.stop_exporter(pid_file=lock, terminate=killed.append, alive=lambda p: True,
+                                probe=lambda p: "pythonw -m some.other.daemon --watch")
+        self.assertEqual((info["terminated"], killed), (False, []))
+
+    def test_stop_exporter_cli_exit_codes(self):
+        from cross_market.interfaces import obsidian_exporter as ex
+        lock = self.root / "exporter.pid"
+        self.assertEqual(ex.main(["--stop", "--pid-file", str(lock), "--json"]), ex.STATUS_EXIT_STOPPED)
 
     def test_the_default_artifact_path_is_never_the_real_repo_during_tests(self):
         """Round 103b regression: a refresher built WITHOUT verdict_path must not write into
@@ -383,7 +431,7 @@ class TestLeadLagRefresher(ExporterBase):
         self.assertIn("[!SUCCESS] **Polymarket leads HyperLiquid by 12 min", text)
         self.assertIn("**Best lag**: `+12 min` · **correlation** `+0.410` · **n** `900`", text)
         self.assertIn("`7` markets · `14` probability shifts · `5000` BTC price points", text)
-        self.assertIn("%s 2026-09-06T02:00:00+00:00 -->" % tc.LEADLAG_RUN_TAG, text)
+        self.assertIn("%s %s -->" % (tc.LEADLAG_RUN_TAG, self.NOW.isoformat()), text)   # follows the fixture clock
         self.assertLess(text.index(tc.SENTINEL_END), text.index(tc.LEADLAG_START))         # after the sentinel
         self.assertLess(text.index(tc.LEADLAG_END), text.index("Intelligence Architecture"))
         self.assertIn("sentinel body", text)
@@ -611,7 +659,7 @@ class TestExporterLock(ExporterBase):
 class TestMaidenRunSafety(ExporterBase):
     """Round 75: the maiden run must not be buried by a transient failure or a data hole."""
 
-    NOW = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+    # NOW is set per test in ExporterBase.setUp (Round 104): it tracks the real clock.
 
     def _stamps(self, count, spacing_min=5, ending_min_ago=3):
         from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
@@ -707,7 +755,7 @@ class TestMaidenRunSafety(ExporterBase):
 class TestMaidenProtocol(ExporterBase):
     """Round 75 (Directives 75-1/75-2): the verification protocol as one command, Tier 2 only after Tier 1."""
 
-    NOW = datetime(2026, 9, 6, 2, 0, tzinfo=timezone.utc)
+    # NOW is set per test in ExporterBase.setUp (Round 104): it tracks the real clock.
 
     def _stamps(self, count=300, spacing_min=5, ending_min_ago=3):
         from cross_market.ingestors.polymarket_fetcher import stamped_drop_name

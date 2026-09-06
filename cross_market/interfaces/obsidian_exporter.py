@@ -443,6 +443,67 @@ class RiskRefresher:
         return "risk: next in %d cycle(s)" % max(0, self.every_cycles - (cycle - self.last_cycle))
 
 
+def stop_exporter(pid_file=None, terminate=None, alive=None, probe=None, wait_s: float = 10.0,
+                  sleep=None) -> Dict[str, Any]:
+    """
+    Round 104 (Ruling R103-F2): stop the LIVE exporter holding the lock, then sweep it, so the guarded
+    launcher can start a fresh one running the code on disk.
+
+    WHY THIS EXISTS. Until now the exporter had no stop at all, while the fetcher had one since Round 79.
+    stop_all_ecosystem_sync.bat matches on WINDOW TITLES, and the exporter runs detached under pythonw
+    with no window, so it could not stop this loop either. The only route was a kill by pid typed by hand,
+    which is exactly the operation the daemon-invariance rule exists to discourage.
+
+    Deliberately mirrors polymarket_fetcher.stop_watcher: the liveness test is the lock's OWN
+    (dead pid / corrupt / not an exporter = stale, via mark=EXPORTER_MARK), so this can never terminate
+    a process that is not this exporter. A stale lock is swept and nobody is killed; no lock means
+    nothing to stop.
+    """
+    lock = Path(pid_file or DEFAULT_PID_FILE)
+    is_alive = alive or pid_lock.pid_is_alive
+    holder = pid_lock.read_pid_file(lock)
+    running = holder is not None and not pid_lock.is_stale(lock, probe=probe, mark=EXPORTER_MARK, alive=alive)
+    info: Dict[str, Any] = {"pid_file": str(lock), "holder_pid": holder if running else None,
+                            "terminated": False, "still_alive": False, "swept": False, "waited_s": 0.0}
+    if not running:
+        info["swept"] = pid_lock.remove_stale_pid_file(lock, probe, alive=alive)
+        return info
+    (terminate or _terminate_exporter_pid)(holder)
+    info["terminated"] = True
+    pause = sleep or time.sleep
+    waited = 0.0
+    while is_alive(holder) and waited < wait_s:
+        pause(0.25)
+        waited += 0.25
+    info["waited_s"] = round(waited, 2)
+    info["still_alive"] = bool(is_alive(holder))
+    if not info["still_alive"]:
+        info["swept"] = pid_lock.remove_stale_pid_file(lock, probe, alive=alive) or not lock.exists()
+    return info
+
+
+def _terminate_exporter_pid(pid: int) -> None:
+    """TerminateProcess through psutil (pythonw has no console to signal); SIGTERM elsewhere."""
+    try:
+        import psutil
+        psutil.Process(int(pid)).terminate()
+    except ImportError:
+        import signal
+        os.kill(int(pid), signal.SIGTERM)
+
+
+def format_stop(info: Dict[str, Any]) -> str:
+    if info["terminated"] and not info["still_alive"]:
+        return ("[STOP] exporter pid %s terminated (%.2fs); lock %s - start_cross_market_exporter.bat may "
+                "start a fresh one" % (info["holder_pid"], info["waited_s"],
+                                       "swept" if info["swept"] else "left in place"))
+    if info["terminated"]:
+        return "[STOP] exporter pid %s did NOT exit within the wait - lock left alone" % info["holder_pid"]
+    if info["swept"]:
+        return "[STOP] no live exporter; a stale lock was swept (%s)" % info["pid_file"]
+    return "[STOP] nothing to stop - no exporter holds %s" % info["pid_file"]
+
+
 def exporter_status(pid_file=None, vault: Optional[str] = None, drop_dirs=None, now: Optional[datetime] = None,
                     probe=None, alive=None, family: str = "macro") -> Dict[str, Any]:
     """
@@ -543,7 +604,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="Round 74: report whether an exporter loop holds the lock (pid, start, command), whether a "
                              "stale lock exists, and the Item 18 state (last lead-lag run, series readiness); "
                              "exit 0 = running, %d = stopped" % STATUS_EXIT_STOPPED)
-    parser.add_argument("--json", action="store_true", help="with --status: print JSON instead of lines")
+    parser.add_argument("--stop", action="store_true",
+                        help="Round 104 (Ruling R103-F2): terminate the LIVE exporter holding the lock and sweep it, "
+                             "so start_cross_market_exporter.bat can start a fresh one; exit 0 = stopped, 1 = still "
+                             "alive, %d = nothing was running. Matches the fetcher's --stop; before this the only "
+                             "way to stop a detached loop was a kill by pid." % STATUS_EXIT_STOPPED)
+    parser.add_argument("--json", action="store_true", help="with --status / --stop: print JSON instead of lines")
     parser.add_argument("--pid-file", type=Path, default=None,
                         help="single-instance lock for --watch (default %s); a live loop on it makes this one "
                              "print already_running and exit 0" % DEFAULT_PID_FILE)
@@ -555,6 +621,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     qdir = Path(args.questions or DEFAULT_QUESTIONS_DIR)
 
     sentinel_dirs = [qdir] if args.questions else None    # explicit drops -> the sentinel reads the same
+    if args.stop:                                           # Round 104 (Ruling R103-F2)
+        info = stop_exporter(pid_file=args.pid_file)
+        print(json.dumps(info, indent=2) if args.json else format_stop(info))
+        if info["still_alive"]:
+            return 1
+        return 0 if info["terminated"] else STATUS_EXIT_STOPPED
     if args.status:                                         # Round 74 (Directive 74-1): read-only
         info = exporter_status(args.pid_file, args.vault, sentinel_dirs)
         print(json.dumps(info, indent=2) if args.json else format_exporter_status(info))

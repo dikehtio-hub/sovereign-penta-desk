@@ -14,6 +14,10 @@
 * **Ingest**: lead-lag Tier 1 verdict (macro): **no-lead** -> [[lead_lag_tier1_macro_20260906T0142Z]]; [[btc_macro_regime]] history now 1 row(s).
 * **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 1 Experiment page(s) written, 6 kept; [index](index.md) rebuilt.
 * **Ratify**: Ruling 103-B15: 1 Experiment page(s) verified by `antigravity/architect` and set `stable`; 0 already carried that verification.
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 1 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: basis funding windows: 10,635 row(s) from `HyperLiquid/HL_Monarch/data/hyperliquid_data.db` -> [[hl_funding_regime]]; entry-qualifying median 28.05% vs all-window 6.4%.
+* **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6124, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

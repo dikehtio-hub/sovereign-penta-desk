@@ -5,6 +5,22 @@ the detail.
 
 ## Status
 
+Round 104 complete (2026-09-06): TWO NEW COMPILED PAGES ON DESK 1, AND THREE REAL
+DEFECTS FOUND IN OUR OWN TOOLING WHILE BUILDING THEM. Deliverables 1-2 (the wall-clock
+test fix and the exporter --stop) landed earlier in the round at 25 green exporter tests.
+B2: knowledge/ingest/funding.py compiles wiki/regimes/hl_funding_regime.md from
+basis_realised_windows, read-only. B1/F3: knowledge/ingest/cascade_replay.py compiles
+wiki/experiments/whale_sweeper_cascade_replay_verdict.md from the engine's own --json
+artifact and RE-GRADES it against the pre-registration rather than copying the engine's
+verdict string; the two agree (INSUFFICIENT), and a disagreement would be recorded as a
+finding in both voices. Both pages pin their bars as dev.parameters (settings.py by regex,
+the registration meta.json by json_path), so editing an acceptance bar after the data was
+seen is a lint C1 error. Tests all green offline: module 23 = 119 (+17), HyperLiquid 1,100,
+Sports 223, Polymarket 237, Tax 546, cross-market 211, Desk 4 151 (+6 skipped) = 2,587.
+Desk 4 leaves 4 modules uncollectable for a missing `fastapi` - PRE-EXISTING, unrelated to
+this round and unchanged by it. Vault 420 pages + constitution, lint CLEAN. No daemon was
+touched and no desk module edited.
+
 Round 103 complete (2026-09-06): MAIDEN NIGHT CLOSED, ALL FOUR ENTRIES GREEN; THE
 LEAD-LAG TOOLING DEFECT IS FIXED. Committed in two halves on purpose: 103a (dbe37df)
 before the scheduled tasks, 103b after them, because maiden_protocol imports FOUR desk
@@ -46,6 +62,16 @@ ceiling), which is the pre-registration doing exactly its job - Side B's eye-cat
 ratio is NOT a finding, and at P=0.5020 it would have been RETUNE at best even had the
 sample qualified. Side A is a clean FAIL (ratio 0.2784, P=0.0090): fading forced selling
 does not work, momentum persists.
+[CORRECTED IN ROUND 104, TWICE OVER. Those two P-values were transcribed from a handoff
+message rather than read from an artifact, and both the number and the reasoning were wrong.
+(1) The artifact now puts side B at P=0.4808 and side A at P=0.0103, not 0.5020 and 0.0090.
+Nobody mistyped: cascade_excursions is written by a live collector and grew from 28,544 to
+29,350 rows between the two runs. 0.5020 and 0.4808 are on OPPOSITE SIDES of the registered
+0.50 band edge, so the transcription changed the stated band. (2) Worse, the sentence applied
+the POOLED primary-metric bands to a SIDE SPLIT, which the registration does not authorise at
+all - the bands govern fade_ratio_30m pooled, and the sides are a required separate report
+(commitment 5), not separately graded. Either error alone invalidates 'RETUNE at best'. The
+verdict page now compiles from the JSON and re-grades from the registration; see Round 104.]
 
 Round 102 complete (2026-09-06): THE ITEM 18 MAIDEN RUN HAPPENED AND THE VERDICT IS IN
 THE WIKI. The 24 h gate opened at 01:40:33Z (21:40:33 EDT); the exporter's own cycle ran
@@ -1055,6 +1081,79 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 104 findings
+
+### The measurements themselves
+
+- **The basis book's entry rule is doing real work, and the headline number nobody should
+  quote is the pooled one.** Across 10,635 recorded windows on 441 assets, median realised
+  APR is 6.40%. Across the 473 windows whose QUOTED apr cleared the 25% entry bar - the only
+  ones the harvester would have taken - median realised is 28.05%. Reporting the first as
+  'what the strategy earns' understates it by a factor of four; reporting only the second
+  hides that just 1 window in 22 qualifies. The page carries both, labelled.
+- **But entering on a quoted rate is not the same as earning it.** Of those 473 qualifying
+  windows only 53.5% actually realised at or above 25%, and 12.3% went NEGATIVE. p10 to p90
+  is -3.52% to +96.65%. This is a wide, fat-tailed distribution, not an annuity.
+- **BASIS_MIN_NET_APR = 20.0 CANNOT BE EVALUATED ON THIS DATA.** net_apr_after_fees is
+  measured on 197 of 10,635 rows (1.9%); the other 10,438 have fee_basis = 'unmeasured'
+  because spreads were not recorded when the window closed. The page says UNMEASURABLE and
+  does NOT substitute the gross figure. If the net hurdle is meant to govern anything, the
+  window writer has to start recording both legs' spreads; a ruling is requested.
+- Two stale counts corrected against live reads: basis_realised_windows is 10,635 rows, not
+  the 9,312 the Round 104 directive cites; cascade_excursions is 29,350, not 28,544.
+- **The cascade replay verdict is INSUFFICIENT and every horizon says the same thing.**
+  fade_ratio_30m 0.6124 with cluster P(>=1.25) = 0.0000. 5m 0.5576, 15m 0.5990, 30m 0.6124,
+  60m 0.7520; all four below 1.0, all four dollar expectancies negative. Fading cascades did
+  not pay at any horizon, so the pre-committed choice of 30m is not carrying the result.
+  One gate fails (PONS 22.48% > the 20% ceiling) so NO verdict is issued; the FAIL band the
+  probability would have landed in is stated as explicitly not a verdict. Item 14 stays gated.
+- The sample is narrow on two axes, not one: HHI is 0.14299 against a 0.15 ceiling. A single
+  active microcap would fail that gate too.
+
+### Three defects found in our own tooling
+
+1. **`seed --force` restamped 30 unchanged pages, because generated.at comes from the
+   REGISTRY FILE'S MTIME.** MASTER_COMMAND_LIST.txt was touched (not edited - content is
+   byte-identical at HEAD) during the maiden night, so its mtime moved from 00:57:06Z to
+   01:10:25Z, and the first --force this round wrote 'freshly generated' onto 30 pages whose
+   content had not moved at all. Caught in git diff before committing. seed now compares the
+   built page against the one on disk field by field and keeps the earned stamp when only
+   generated.at would differ; the re-run wrote exactly 1 page (Desk 1, which really did gain
+   a section) and reported 31 unchanged.
+2. **`seed` was the only writer in the package that did NOT carry human fields.** Every
+   ingest adapter calls pages.carry_human_fields; seed never did, so a --force would have
+   silently stripped a `verified` block, a status past draft, or a dev.ratified_by from any
+   Desk or Ruling page the architect had signed. Nothing had been ratified on a seeded page
+   yet, so NOTHING WAS LOST - verified against the diff. The guard is now in, with a test
+   that ratifies a desk page and forces a reseed three days later.
+3. **A raw `|` in a regime tag split a markdown table.** regime_tag values are literally
+   'VOL_MID|FUND_FLAT', and the verdict page's regime table rendered them as an extra phantom
+   column. pages.safe_title exists but SUBSTITUTES a pipe with '/', which would have silently
+   changed a database key into something that does not exist. New ingest.md_cell ESCAPES
+   instead, so the reader sees the real tag.
+
+### Smaller things worth knowing
+
+- **The replay is deterministic; its INPUT is not.** Two back-to-back runs are byte-identical
+  (seed 7 is honoured). The drift from Round 103's numbers is entirely the live collector
+  adding ~800 rows. Any figure from this engine is meaningless without the row count beside it.
+- **The artifact carries NO run timestamp**, though the registration's must_report list asks
+  for rows_at_run. Two runs over a growing table therefore cannot be ordered from their
+  contents alone. The ingest records the file mtime as an OBSERVATION and says so. The clean
+  fix is an `_artifact` envelope like the one Ruling R102-2 put on the lead-lag exporter;
+  NOT done here because cascade_replay.py is Antigravity's module and shipped this round.
+  A ruling is requested.
+- The registration page's stem is `whale_sweeper_cascade_replay_meta`, not the raw filename
+  minus '_verdict'. Guessing it produced a dangling link that lint L3 does not catch (L3 is
+  orphans, i.e. no INBOUND link; nothing checks that an outbound link resolves). Worth a lint
+  code for unresolved wiki links - proposed, not built.
+- A crash between write_page and append_log left a phantom history row on the verdict page.
+  The adapter now treats THE ARTIFACT, not the ingest run, as the unit of observation:
+  re-ingesting an unchanged file replaces the row instead of appending a second one.
+- seed's per-desk 'Compiled pages' block was an `if d.number == 3` branch; it is now a
+  COMPILED_PAGES table, so the next adapter adds a row instead of a branch. Desk 3's page is
+  byte-identical after the refactor, which is how we know it changed nothing.
 
 ## Round 103 findings
 

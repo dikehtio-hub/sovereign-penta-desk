@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-05 22:30 EDT (Round 103).
+Last updated: 2026-09-05 23:55 EDT (Round 104).
 
 ---
 
@@ -42,15 +42,23 @@ Last updated: 2026-09-05 22:30 EDT (Round 103).
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the latest handoff prompt to Antigravity.** Two things are blocked:
-      (a) the whale-sweeper acceptance bar is registered but *unverified*, and the
-      replay must not run until it is ratified; (b) three checklist corrections
-      need a ruling — chiefly whether Items 10, 12 and 13 count as complete when
-      the registry says they do not.
-- [ ] **Decide when the exporter (PID 56412) restarts.** Deferred in Round 101.
-      Until it restarts: the Round 101 desk links and shell-twin lines never appear
-      on the dashboards, and the verdict artifact the new ingest expects is never
-      written. Recommendation: tonight after Entry C, verified rather than trusted.
+- [ ] **Send the Round 104 handoff prompt to Antigravity.** Three rulings are
+      requested and one of them decides whether a live hurdle means anything:
+      see the net-hurdle item directly below.
+- [ ] **Rule on the net funding hurdle, which currently cannot be enforced.**
+      `BASIS_MIN_NET_APR = 20.0` is the bar that is supposed to govern the basis
+      book after paying spread on both legs. It can be evaluated on **197 of
+      10,635 recorded windows (1.9%)** — every other row has `fee_basis` set to
+      `'unmeasured'`, because spreads were not recorded when the window closed.
+      So the stricter of the two hurdles is, on this data, decorative. Either the
+      window writer starts recording both legs' spreads, or the bar should stop
+      being described as governing anything. This is a decision, not a bug fix.
+- [ ] **Rule on stamping the cascade replay artifact.** Its `--json` output carries
+      no run timestamp, so two runs over a table that grows continuously cannot be
+      ordered from their contents. Round 103 already recorded two figures from it
+      that had silently moved. The fix is the `_artifact` envelope Ruling R102-2 put
+      on the lead-lag exporter. **Not done here on purpose** — `cascade_replay.py`
+      is Antigravity's module and shipped this round.
 
 ---
 
@@ -64,6 +72,12 @@ Last updated: 2026-09-05 22:30 EDT (Round 103).
       (a `--json` flag documented for four rounds that never worked; a restart
       script that reports failure on success). Ten days out is the right time to
       find the third one.
+- [ ] **`pip install fastapi` for Desk 4.** Four test modules in `quant_trading_lab`
+      cannot even be collected without it (`test_webhook_server`,
+      `test_hyperliquid_adapter`, `test_multivenue_execution`,
+      `test_run_paper_trading`). The other 151 pass. This is pre-existing and has
+      nothing to do with recent rounds, but it means Desk 4's webhook path has been
+      untested for some time.
 
 ---
 
@@ -73,8 +87,9 @@ Last updated: 2026-09-05 22:30 EDT (Round 103).
   60 minutes breaks the run and restarts the clock at zero.
 - **Shut down cleanly** — normal Windows shutdown, never the power button.
   `hyperliquid_data.db` is 4.9 GB with an open write-ahead log.
-- **Never kill the daemons by hand.** Current: watcher 17688 (restarted 22:20
-  tonight, tags live), exporter 56412, supervisor 46740, collector 38548.
+- **Never kill the daemons by hand.** Current: watcher 17688 (tags live, stamping
+  every ~5 min), exporter 62760 (restarted 2026-09-06T02:44Z), supervisor 46740,
+  collector 38548. Both were verified healthy read-only at 03:41Z.
 - **Never seed the live tax ledger.** `seed-bankroll` is paper-only.
 - **`DEV/HALT.flag`** is the kill switch: create it and every execution engine
   refuses with exit 3. Delete it to resume.
@@ -82,6 +97,15 @@ Last updated: 2026-09-05 22:30 EDT (Round 103).
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-05 22:44 — **Exporter restarted** (56412 → 62760), verified by waiting
+  for the pid lock rather than trusting the launch. The Round 101 desk links now
+  reach the dashboards. Closes the item deferred since Round 101.
+- 2026-09-06 — **Whale-sweeper bar ratified and the replay run.** The bar was
+  verified by antigravity/architect before any replay, and the replay's verdict
+  is **INSUFFICIENT**: one sample gate fails (PONS supplies 22.5% of events against
+  a 20% ceiling), so no verdict is issued. Item 14 stays gated off. It is now a
+  wiki page compiled from the engine's own JSON, not from transcribed numbers.
 
 - 2026-09-05 21:40 — **Item 18 maiden run executed.** Tier 1 verdict:
   *no measurable lead-lag* (peak |corr| 0.070 vs the 0.20 bar). All six protocol

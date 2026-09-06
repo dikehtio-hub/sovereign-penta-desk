@@ -32,7 +32,8 @@ from typing import Any
 
 from . import DEV_ROOT, EXIT_HALT, EXIT_OK, GENERATED_BY, VAULT, halted
 from .frontmatter import parse_iso8601
-from .pages import Page, append_log, default_stale_after, iso, load_pages, make_meta, now_utc, page_path, write_index, write_page
+from .pages import (Page, append_log, carry_human_fields, default_stale_after, iso, load_page,
+                    load_pages, make_meta, now_utc, page_path, write_index, write_page)
 
 REGISTRY_NAME = "MASTER_COMMAND_LIST.txt"
 REGISTRY_SOURCE_ID = "top20-registry"
@@ -454,6 +455,21 @@ def build_item_page(item: ItemSpec, desks: dict[int, DeskSpec], vault: Path, dev
     return Page(page_path(vault, "Item", item_filename(item)), meta, "\n".join(body))
 
 
+# Compiled pages a desk links, so lint L3 sees no orphan: desk number -> (stem, label, note).
+# Round 104: was an `if d.number == 3` block; a table because Desk 1 now compiles pages too and the
+# next adapter should add a row here rather than another branch. A stem listed before its adapter has
+# ever run is a DANGLING LINK, not an error - the page appears on the desk the first time it compiles.
+COMPILED_PAGES: dict[int, list[tuple[str, str, str]]] = {
+    1: [("experiments_register", "Experiments register", "pre-registrations and verdicts"),
+        ("hl_funding_regime", "HyperLiquid funding regime", "realised basis APR against the harvester's entry bars"),
+        ("whale_sweeper_cascade_replay_verdict", "Whale sweeper cascade replay",
+         "the Item 14 retrospective replay, graded against its pre-registered bar")],
+    3: [("experiments_register", "Experiments register", "pre-registrations and verdicts"),
+        ("btc_macro_regime", "BTC macro regime", "lead-lag classification history"),
+        ("latency_decay", "Latency decay across events", "post-print depth survival per event")],
+}
+
+
 def build_desk_page(d: DeskSpec, items: list[ItemSpec], vault: Path, dev_root: Path,
                     registry: Path, at: datetime, by: str) -> Page:
     mine = sorted((i for i in items if desk_for_item(i) == d.number), key=lambda i: i.number)
@@ -473,11 +489,9 @@ def build_desk_page(d: DeskSpec, items: list[ItemSpec], vault: Path, dev_root: P
              "- [[computations_register|Computations register]]", "- [[events_register|Events register]]",
              "- [[markets_register|Markets register]]", "- [[crm_register|CRM register]]",
              "- [[journal_register|Journal register]]", "- [[theses_register|Theses register]]"]
-    if d.number == 3:
-        body += ["", "## Compiled pages (Phase 2 adapters)", "",
-                 "- [[experiments_register|Experiments register]] - pre-registrations and verdicts",
-                 "- [[btc_macro_regime|BTC macro regime]] - lead-lag classification history",
-                 "- [[latency_decay|Latency decay across events]] - post-print depth survival per event"]
+    if d.number in COMPILED_PAGES:
+        body += ["", "## Compiled pages (Phase 2 adapters)", ""]
+        body += [f"- [[{stem}|{label}]] - {note}" for stem, label, note in COMPILED_PAGES[d.number]]
     body += ["", "## Other desks", ""]
     body += [f"- [[{desk_filename(o)[:-3]}|Desk {o.number}: {o.name}]]" for o in DESKS if o.number != d.number]
     body += ["", "## Related", "", "- [[Monarch_Hub|Monarch Hub]] (exporter-owned dashboard index)", ""]
@@ -540,13 +554,31 @@ def build_ruling_page(r: RulingSpec, desks: dict[int, DeskSpec], items: list[Ite
 class SeedReport:
     written: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
+    unchanged: list[str] = field(default_factory=list)
     index: str | None = None
     log: str | None = None
 
     def summary(self) -> str:
-        return (f"seed: {len(self.written)} page(s) written, {len(self.skipped)} skipped"
+        return (f"seed: {len(self.written)} page(s) written, {len(self.skipped)} skipped, "
+                f"{len(self.unchanged)} unchanged"
                 + (f"; index -> {self.index}" if self.index else "")
                 + (f"; log -> {self.log}" if self.log else ""))
+
+
+def unchanged_but_for_stamp(existing: Page, page: Page) -> bool:
+    """True when the page on disk differs from the freshly built one ONLY in `generated.at`.
+
+    Compared field by field rather than by rendered text, and called AFTER carry_human_fields has run
+    on the built page, so `verified`, a status past draft and dev.ratified_by are already present on
+    both sides: a ratified page compares equal to its regeneration and keeps its original stamp.
+    """
+    if existing.body != page.body:
+        return False
+    a, b = dict(existing.meta), dict(page.meta)
+    ga, gb = dict(a.pop("generated", {}) or {}), dict(b.pop("generated", {}) or {})
+    ga.pop("at", None)
+    gb.pop("at", None)
+    return a == b and ga == gb
 
 
 def build_all(items: list[ItemSpec], vault: Path, dev_root: Path, registry: Path,
@@ -567,6 +599,20 @@ def seed(vault: Path, dev_root: Path, registry: Path, *, at: datetime | None = N
         rel = page.path.relative_to(vault).as_posix()
         if page.path.exists() and not force:
             report.skipped.append(rel)
+            continue
+        existing = load_page(page.path) if page.path.exists() else None
+        # Round 104: seed was the ONLY writer in this package that did not carry human fields, so a
+        # --force would have silently stripped a `verified` block or a dev.ratified_by from a Desk or
+        # Ruling page the architect had signed. Nothing had been ratified on a seeded page yet, so
+        # nothing was lost; the guard goes in before that stops being true.
+        carry_human_fields(existing, page.meta)
+        if existing is not None and unchanged_but_for_stamp(existing, page):
+            # `generated.at` comes from the REGISTRY FILE'S MTIME, so merely touching
+            # MASTER_COMMAND_LIST.txt - which happened during the maiden night - made --force restamp
+            # all 32 pages with no content change. Thirty pages claiming to be freshly generated when
+            # nothing about them moved is a lie the git history then carries forever. A page whose
+            # body and metadata are identical keeps the stamp it earned.
+            report.unchanged.append(rel)
             continue
         if not dry_run:
             write_page(page, vault, now=at)

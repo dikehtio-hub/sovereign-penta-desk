@@ -47,6 +47,17 @@ def rel_to(path: Path, dev_root: Path) -> str:
         return path.as_posix()
 
 
+def md_cell(v) -> str:
+    """A value safe inside a markdown table cell (Round 104).
+
+    Distinct from pages.safe_title, which SUBSTITUTES `|` with `/` because a wiki link's own grammar
+    cannot carry a pipe at all. Here the value is data, not a title - `VOL_HIGH|FUND_FLAT` is a literal
+    regime_tag in hyperliquid_data.db - so the pipe is ESCAPED and the reader sees the real key. The
+    unescaped version silently split the regime table into a phantom extra column.
+    """
+    return str(v).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
 def fmt_s(v) -> str:
     return "-" if v is None else f"{float(v):g} s"
 

@@ -2360,6 +2360,45 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 104 - KNOWLEDGE: FUNDING REGIME + CASCADE REPLAY VERDICT, EXPORTER --stop, IDEMPOTENT SEED
+     python -m knowledge.ingest.funding [--db PATH] [--at ISO]
+         basis_realised_windows (file:...?mode=ro) -> wiki/regimes/hl_funding_regime.md. Reports TWO populations
+         separately: all recorded windows, and the entry-qualifying subset (quote_apr_entry >= BASIS_MIN_FUNDING_APR),
+         which is the only one the hurdle is about. Both bars pinned as dev:parameters against
+         HyperLiquid/HL_Monarch/config/settings.py, so editing a constant without recompiling is a lint C1 error.
+         Says UNMEASURABLE for the net bar rather than substituting gross when fee coverage is thin. Exit 3 if the
+         table is unreadable - it never writes an empty page.
+     python -m knowledge.ingest.cascade_replay [--result PATH] [--registration PATH]
+         The engine's --json artifact -> wiki/experiments/whale_sweeper_cascade_replay_verdict.md. RE-GRADES against
+         whale_sweeper_cascade_replay.meta.json instead of copying the engine's verdict string; a disagreement is
+         written on the page in both voices, not reconciled. Every sample gate re-checked here, and a failed gate
+         beats a passing probability (INSUFFICIENT, never a weak PASS). The registration's own thresholds are pinned
+         by dev:parameters json_path, so moving an acceptance bar after the data was seen is a lint C1 error.
+         Re-ingesting an unchanged artifact replaces its history row rather than fabricating a second observation.
+         Produce the artifact first:
+           python -m HyperLiquid.HL_Monarch.analytics.cascade_replay --json --out cross_market/data/whale_sweeper_cascade_replay_verdict.json
+     python -m cross_market.interfaces.obsidian_exporter --stop
+         Stops the detached exporter daemon by its pid lock, mirroring polymarket_fetcher --stop. Exit 0 stopped,
+         1 still alive, 3 nothing was running. Until this existed the only route was a kill by pid:
+         stop_all_ecosystem_sync.bat matches WINDOW TITLES, which a pythonw daemon does not have.
+     python -m knowledge.seed --force
+         Now IDEMPOTENT: rewrites only pages whose content actually changed, and keeps the generated.at a page
+         already earned. Also carries human fields (verified / status / dev.ratified_by) like every ingest adapter,
+         which it previously did not - a --force would have silently stripped a ratification.
+
+     ROUND 103 - KNOWLEDGE: LEAD-LAG --json ON THE ANALYSIS BRANCH, ATTESTED EXPORTER ARTIFACT, --stem RATIFICATION
+     python -m cross_market.lead_lag --coin BTC --family macro --json
+         Ruling R102-1: --json now covers the ANALYSIS branch, not only --check-data. The pipeline this repo had
+         published since Round 97 could not actually work before this; the analysis branch always printed the human
+         report regardless of the flag.
+     python -m knowledge.ratify --stem PAGE_STEM --ruling N-M [--max-round N]
+         Ratifies exactly one page instead of a whole tag group. --max-round (default: the ruling's own round) stops
+         a re-run from verifying pages written by LATER rounds, which it once did.
+     cross_market/data/lead_lag_latest_verdict.json
+         Ruling R102-2: LeadLagRefresher serialises the run that wrote Cross_Market_Titans.md, atomically, with an
+         _artifact envelope naming the writer and instant, so the dashboard and the wiki describe the SAME run.
+         knowledge.ingest.lead_lag reads it by default.
+
      ROUND 101 - KNOWLEDGE PHASE 4: BASES VIEWS + TEMPLATES, SHELL TWINS + DESK BACKLINKS, DOCSTRING THESES, RECEIPT EDGE/HURDLE
      python -m knowledge.views [--force] [--dry-run]
          wiki/_views/{rulings,experiments,markets,profiles,crm,journal,events}.base - Obsidian Bases YAML (filters file.inFolder(...),

@@ -603,8 +603,29 @@ class SeedTests(TempVault):
         self.assertEqual(sorted(second.skipped), sorted(first.written))
         self.assertIn("human edit", target.read_text(encoding="utf-8"))
         third = seed.seed(self.vault, self.dev_root, self.registry(), at=NOW, force=True)
-        self.assertEqual(len(third.written), 15)
+        # Round 104: --force still clobbers the hand edit (machine-maintained means machine-maintained),
+        # but it now rewrites ONLY that page. The other 14 are byte-identical and keep the stamp they
+        # earned, so touching MASTER_COMMAND_LIST.txt no longer restamps the whole vault.
+        self.assertEqual(third.written, ["wiki/rulings/Ruling_R04.md"])
+        self.assertEqual(len(third.unchanged), 14)
         self.assertNotIn("human edit", target.read_text(encoding="utf-8"))
+
+    def test_force_keeps_the_original_stamp_and_any_ratification_on_an_unchanged_page(self):
+        seed.seed(self.vault, self.dev_root, self.registry(), at=NOW)
+        desk = self.vault / "wiki/desks/Desk_01_HyperLiquid_Monarch.md"
+        meta, body = fm.parse(desk.read_text(encoding="utf-8"))
+        meta["verified"] = [{"by": "antigravity/architect", "at": pages.iso(NOW)}]
+        meta["status"] = "stable"
+        meta.setdefault("dev", {})["ratified_by"] = "104-1"
+        pages.write_page(pages.Page(desk, meta, body), self.vault, now=NOW)
+        later = NOW + timedelta(days=3)                      # as if the registry file had been touched
+        report = seed.seed(self.vault, self.dev_root, self.registry(), at=later, force=True)
+        self.assertIn("wiki/desks/Desk_01_HyperLiquid_Monarch.md", report.unchanged)
+        after, _ = fm.parse(desk.read_text(encoding="utf-8"))
+        self.assertEqual(after["generated"]["at"], pages.iso(NOW))     # not restamped to `later`
+        self.assertEqual(after["verified"][0]["by"], "antigravity/architect")
+        self.assertEqual(after["status"], "stable")
+        self.assertEqual(after["dev"]["ratified_by"], "104-1")
 
     def test_seed_dry_run_writes_nothing(self):
         report = seed.seed(self.vault, self.dev_root, self.registry(), at=NOW, dry_run=True)
@@ -1790,6 +1811,243 @@ class BackAnnotationTests(IngestFixture):
         # the raw meta file is untouched
         self.assertEqual(json.loads((self.exp_dir / "lead_lag_tier2.meta.json").read_text(encoding="utf-8")), META_JSON)
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(hours=4)), [])
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 104: the funding regime and cascade replay adapters
+# --------------------------------------------------------------------------------------
+from knowledge.ingest import cascade_replay as ingest_cr  # noqa: E402
+from knowledge.ingest import funding as ingest_fund  # noqa: E402
+from knowledge.ingest import md_cell  # noqa: E402
+
+BARS_PY = "BASIS_MIN_FUNDING_APR = 25.0   # gross bar\nBASIS_MIN_NET_APR = 20.0       # after spread\n"
+
+REPLAY_REG = {
+    "experiment": "whale_sweeper_cascade_replay",
+    "registered_utc": "2026-09-06T02:06:00+00:00",
+    "grade_of_evidence": {"kind": "RETROSPECTIVE REPLAY, NOT A FORWARD TEST",
+                          "consequence": "A PASS IS NOT AN UN-GATING."},
+    "data": {"state_at_registration": {"rows": 28544}},
+    "sample_requirements": {"min_events": 500, "min_coins": 20,
+                            "max_single_coin_share": 0.2, "max_hhi": 0.15},
+    "acceptance_bar": {"PASS": "P >= 1.25 > 0.90", "RETUNE": "0.50 <= P <= 0.90",
+                       "FAIL": "P < 0.50", "INSUFFICIENT": "any sample requirement unmet"},
+}
+
+REPLAY_ART = {
+    "experiment": "whale_sweeper_cascade_replay", "verdict": "INSUFFICIENT",
+    "primary_metric": {"name": "fade_ratio_30m", "value": 0.6124, "cluster_p_ge_1_25": 0.0,
+                       "acceptance_threshold": 1.25},
+    "sample_gates": {"passed": False, "metrics": {"events": 14336, "coins": 58, "top_coin": "PONS",
+                                                  "top_coin_share": 0.2248, "hhi": 0.14299}},
+    "data_audit": {"total_in_table": 29350, "raw_loaded": 14675, "truncated_count": 226,
+                   "qualifying_count": 14336},
+    "horizons": {h: {"n": 14336, "median_mfe": 0.37, "median_mae": 0.60, "median_fade_ratio": 0.61,
+                     "win_share": 43.8, "dollar_expectancy": -0.04} for h in ("5m", "15m", "30m", "60m")},
+    "asymmetry": {"side_A_sell_fade_buys": {"n": 6835, "median_fade_ratio_30m": 0.2784,
+                                            "dollar_expectancy": -0.061, "cluster_p_ge_1_25": 0.0103},
+                  "side_B_buy_fade_sells": {"n": 7501, "median_fade_ratio_30m": 1.7378,
+                                            "dollar_expectancy": -0.025, "cluster_p_ge_1_25": 0.4808}},
+    "regime_breakdown": {"VOL_MID|FUND_FLAT": {"n": 4788, "median_fade_ratio": 0.4291,
+                                               "dollar_expectancy": -0.0468}},
+    "bootstrap_config": {"resamples": 10000, "seed": 7, "threshold": 1.25},
+}
+
+WINDOW_COLS = ("asset", "realised_apr", "quote_apr_entry", "net_apr_after_fees", "fee_basis",
+               "coverage", "regime_tag")
+
+
+class Round104Fixture(IngestFixture):
+    def setUp(self):
+        super().setUp()
+        cfg = self.dev_root / "HyperLiquid" / "HL_Monarch" / "config"
+        cfg.mkdir(parents=True)
+        (cfg / "settings.py").write_text(BARS_PY, encoding="utf-8")
+        self.db = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db"
+        self.db.parent.mkdir(parents=True, exist_ok=True)
+        self.write_windows(self.default_windows())
+        self.exp_dir_hl = self.db.parent / "experiments"
+        self.exp_dir_hl.mkdir(exist_ok=True)
+        self.registration = self.exp_dir_hl / "whale_sweeper_cascade_replay.meta.json"
+        self.registration.write_text(json.dumps(REPLAY_REG), encoding="utf-8")
+        self.artifact = self.dev_root / "cross_market" / "data" / "whale_sweeper_cascade_replay_verdict.json"
+        self.artifact.parent.mkdir(parents=True, exist_ok=True)
+        self.artifact.write_text(json.dumps(REPLAY_ART), encoding="utf-8")
+
+    def default_windows(self):
+        # 4 entry-qualifying (quote_apr_entry >= 25): realised 30, 28, 24, -5
+        #   -> median 26.0, two at or above the 25 bar, one negative
+        # 4 non-qualifying: realised 5, 6, 7, 8. Pooled median is therefore 7.5, not 26.
+        rows = [("BTC", 30.0, 40.0, 21.0, "measured", 0.9, "VOL_MID|FUND_FLAT"),
+                ("ETH", 28.0, 30.0, None, "unmeasured", 0.8, "VOL_MID|FUND_FLAT"),
+                ("SOL", 24.0, 26.0, None, "unmeasured", 0.8, "VOL_LOW|FUND_FLAT"),
+                ("ARB", -5.0, 25.0, None, "unmeasured", 0.7, "VOL_LOW|FUND_FLAT")]
+        rows += [("DOGE", 5.0, 10.0, None, "unmeasured", 0.8, "UNKNOWN"),
+                 ("PONS", 6.0, 11.0, None, "unmeasured", 0.8, "UNKNOWN"),
+                 ("XRP", 7.0, 12.0, None, "unmeasured", 0.9, "UNKNOWN"),
+                 ("LTC", 8.0, 13.0, None, "unmeasured", 0.9, "UNKNOWN")]
+        return rows
+
+    def write_windows(self, rows):
+        conn = sqlite3.connect(self.db)
+        conn.execute("DROP TABLE IF EXISTS basis_realised_windows")
+        conn.execute("CREATE TABLE basis_realised_windows (%s)" % ", ".join(WINDOW_COLS))
+        conn.executemany("INSERT INTO basis_realised_windows VALUES (?,?,?,?,?,?,?)", rows)
+        conn.commit()
+        conn.close()
+
+
+class FundingIngestTests(Round104Fixture):
+    def test_bars_are_read_from_settings_not_invented(self):
+        self.assertEqual(ingest_fund.read_bars(self.dev_root),
+                         {"BASIS_MIN_FUNDING_APR": 25.0, "BASIS_MIN_NET_APR": 20.0})
+
+    def test_the_two_populations_are_measured_separately(self):
+        m = ingest_fund.measure(ingest_fund.load_windows(self.db), ingest_fund.read_bars(self.dev_root))
+        self.assertEqual(m["rows"], 8)
+        self.assertEqual(m["assets"], 8)
+        self.assertEqual(m["all_windows"]["n"], 8)
+        self.assertEqual(m["all_windows"]["median"], 7.5)
+        # only the four whose QUOTED apr cleared the entry bar
+        self.assertEqual(m["entry_qualifying_n"], 4)
+        self.assertEqual(m["entry_qualifying"]["median"], 26.0)
+        self.assertEqual(m["entry_qualifying"]["at_or_above_bar"], 2)          # 30 and 28, not 24
+        self.assertEqual(m["entry_qualifying"]["negative_pct"], 25.0)          # the -5 window
+
+    def test_net_bar_is_declared_unmeasurable_on_thin_fee_coverage(self):
+        m = ingest_fund.measure(ingest_fund.load_windows(self.db), ingest_fund.read_bars(self.dev_root))
+        self.assertEqual(m["net"]["measured_rows"], 1)
+        self.assertEqual(m["net"]["measured_pct"], 12.5)
+        self.assertTrue(m["net"]["verdict"].startswith("UNMEASURABLE"))
+
+    def test_page_pins_both_bars_to_settings_and_lints_clean(self):
+        report, page = ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW)
+        self.assertTrue(report.written)
+        meta, body = fm.parse((self.vault / "wiki/regimes/hl_funding_regime.md").read_text(encoding="utf-8"))
+        names = {p["name"]: p["value"] for p in meta["dev"]["parameters"]}
+        self.assertEqual(names, {"basis_min_funding_apr": 25.0, "basis_min_net_apr": 20.0})
+        self.assertIn("UNMEASURABLE", body)
+        self.assertIn("Entry-qualifying", body)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_c1_fires_when_a_bar_is_edited_and_the_page_is_not_recompiled(self):
+        ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW)
+        (self.dev_root / "HyperLiquid" / "HL_Monarch" / "config" / "settings.py").write_text(
+            BARS_PY.replace("25.0", "15.0"), encoding="utf-8")
+        codes = [(f.code, f.message) for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)]
+        self.assertTrue(any(c == "C1" and "basis_min_funding_apr" in msg for c, msg in codes), codes)
+
+    def test_history_accumulates_one_row_per_run(self):
+        ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW)
+        ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW + timedelta(hours=1))
+        meta, _ = fm.parse((self.vault / "wiki/regimes/hl_funding_regime.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(meta["dev"]["history"]), 2)
+
+    def test_missing_table_refuses_rather_than_writing_an_empty_page(self):
+        out = io.StringIO()
+        code = ingest_fund.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root),
+                                 "--db", str(self.dev_root / "nope.db")], out=out)
+        self.assertEqual(code, 3)
+        self.assertIn("[REFUSE]", out.getvalue())
+        self.assertFalse((self.vault / "wiki/regimes/hl_funding_regime.md").exists())
+
+
+class CascadeReplayIngestTests(Round104Fixture):
+    def test_bands_follow_the_registration_including_the_boundaries(self):
+        self.assertEqual(ingest_cr.band_of(0.95, REPLAY_REG), "PASS")
+        self.assertEqual(ingest_cr.band_of(0.90, REPLAY_REG), "RETUNE")    # PASS is strictly > 0.90
+        self.assertEqual(ingest_cr.band_of(0.50, REPLAY_REG), "RETUNE")    # RETUNE is inclusive at 0.50
+        self.assertEqual(ingest_cr.band_of(0.4808, REPLAY_REG), "FAIL")    # the artifact's real side-B value
+        self.assertEqual(ingest_cr.band_of(0.5020, REPLAY_REG), "RETUNE")  # the transcribed one: another band
+        self.assertEqual(ingest_cr.band_of(None, REPLAY_REG), "INSUFFICIENT")
+
+    def test_every_sample_gate_is_rechecked_here(self):
+        ok = {"events": 14336, "coins": 58, "top_coin_share": 0.19, "hhi": 0.14}
+        self.assertEqual(ingest_cr.gate_failures(ok, REPLAY_REG), [])
+        self.assertEqual(len(ingest_cr.gate_failures(dict(ok, events=499), REPLAY_REG)), 1)
+        self.assertEqual(len(ingest_cr.gate_failures(dict(ok, coins=19), REPLAY_REG)), 1)
+        self.assertEqual(len(ingest_cr.gate_failures(dict(ok, top_coin_share=0.2248), REPLAY_REG)), 1)
+        self.assertEqual(len(ingest_cr.gate_failures(dict(ok, hhi=0.16), REPLAY_REG)), 1)
+        self.assertEqual(len(ingest_cr.gate_failures({}, REPLAY_REG)), 4)   # nothing reported: all unmet
+
+    def test_a_failed_gate_beats_a_passing_probability(self):
+        """The registration's whole point: a narrow sample produces NO verdict, not a strong one."""
+        art = json.loads(json.dumps(REPLAY_ART))
+        art["primary_metric"]["cluster_p_ge_1_25"] = 0.99           # would be a PASS on the bands alone
+        g = ingest_cr.grade(art, REPLAY_REG)
+        self.assertEqual(g["band_if_sample_qualified"], "PASS")
+        self.assertEqual(g["grade"], "INSUFFICIENT")
+
+    def test_disagreement_with_the_engine_is_recorded_not_reconciled(self):
+        art = json.loads(json.dumps(REPLAY_ART))
+        art["verdict"] = "RETUNE"                                   # engine drifted from the registration
+        g = ingest_cr.grade(art, REPLAY_REG)
+        self.assertEqual((g["grade"], g["engine_verdict"], g["agrees"]), ("INSUFFICIENT", "RETUNE", False))
+        self.artifact.write_text(json.dumps(art), encoding="utf-8")
+        page = ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                       registration=self.registration, at=NOW)
+        self.assertIn("THEY DISAGREE", page.body)
+        self.assertFalse(page.meta["dev"]["grades_agree"])
+
+    def test_verdict_page_pins_the_registration_and_lints_clean(self):
+        ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                registration=self.registration, at=NOW)
+        meta, body = fm.parse((self.vault / "wiki/experiments/whale_sweeper_cascade_replay_verdict.md")
+                              .read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["grade"], "INSUFFICIENT")
+        self.assertEqual({p["name"] for p in meta["dev"]["parameters"]},
+                         {"cascade_replay_min_events", "cascade_replay_min_coins",
+                          "cascade_replay_max_single_coin_share", "cascade_replay_max_hhi"})
+        self.assertIn("RETROSPECTIVE REPLAY, NOT A FORWARD TEST", body)
+        self.assertIn("is not a verdict", body)
+        self.assertIn("[[%s|" % ingest_cr.REGISTRATION_STEM, body)   # the link a guessed stem got wrong
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_c1_fires_if_the_acceptance_bar_is_edited_after_the_data_was_seen(self):
+        ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                registration=self.registration, at=NOW)
+        moved = json.loads(json.dumps(REPLAY_REG))
+        moved["sample_requirements"]["max_single_coin_share"] = 0.25   # would make this very run "qualify"
+        self.registration.write_text(json.dumps(moved), encoding="utf-8")
+        codes = [(f.code, f.message) for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)]
+        self.assertTrue(any(c == "C1" and "max_single_coin_share" in m for c, m in codes), codes)
+
+    def test_reingesting_an_unchanged_artifact_does_not_fabricate_an_observation(self):
+        ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                registration=self.registration, at=NOW)
+        ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                registration=self.registration, at=NOW + timedelta(hours=1))
+        meta, _ = fm.parse((self.vault / "wiki/experiments/whale_sweeper_cascade_replay_verdict.md")
+                           .read_text(encoding="utf-8"))
+        self.assertEqual(len(meta["dev"]["history"]), 1)
+        self.assertEqual(meta["dev"]["history"][0]["at"], pages.iso(NOW + timedelta(hours=1)))
+        # a genuinely new run (new mtime, new numbers) does append
+        art = json.loads(json.dumps(REPLAY_ART))
+        art["data_audit"]["total_in_table"] = 30000
+        self.artifact.write_text(json.dumps(art), encoding="utf-8")
+        os.utime(self.artifact, (1, 1))
+        ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                registration=self.registration, at=NOW + timedelta(hours=2))
+        meta, _ = fm.parse((self.vault / "wiki/experiments/whale_sweeper_cascade_replay_verdict.md")
+                           .read_text(encoding="utf-8"))
+        self.assertEqual(len(meta["dev"]["history"]), 2)
+
+    def test_regime_tags_containing_a_pipe_do_not_split_the_table(self):
+        page = ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                       registration=self.registration, at=NOW)
+        row = [ln for ln in page.body.splitlines() if "VOL_MID" in ln and ln.startswith("|")]
+        self.assertEqual(len(row), 1, page.body)
+        self.assertIn(chr(92) + "|FUND_FLAT", row[0])
+        self.assertEqual(row[0].count("|") - row[0].count(chr(92) + "|"), 5)   # 4 cells -> 5 real bars
+        self.assertEqual(md_cell("A|B"), "A" + chr(92) + "|B")
+
+    def test_missing_artifact_refuses_and_names_the_command(self):
+        out = io.StringIO()
+        self.artifact.unlink()
+        code = ingest_cr.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out)
+        self.assertEqual(code, 3)
+        self.assertIn("cascade_replay --json", out.getvalue())
 
 
 if __name__ == "__main__":  # pragma: no cover

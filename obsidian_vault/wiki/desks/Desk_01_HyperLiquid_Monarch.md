@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:06Z'
+  at: '2026-09-06T01:10:25Z'
 status: draft
 sources:
 - id: top20-registry
@@ -73,6 +73,12 @@ Perp DEX desk: delta-neutral funding harvester, whale cascade sweeper, L2 order-
 - [[crm_register|CRM register]]
 - [[journal_register|Journal register]]
 - [[theses_register|Theses register]]
+
+## Compiled pages (Phase 2 adapters)
+
+- [[experiments_register|Experiments register]] - pre-registrations and verdicts
+- [[hl_funding_regime|HyperLiquid funding regime]] - realised basis APR against the harvester's entry bars
+- [[whale_sweeper_cascade_replay_verdict|Whale sweeper cascade replay]] - the Item 14 retrospective replay, graded against its pre-registered bar
 
 ## Other desks
 
