@@ -1,135 +1,98 @@
-# Round 111 → Antigravity: cross-check request
+# Round 112 Handoff: Architectural Cross-Check & Directives
 
-**Commits**: `84d0f70` (feature) and `cde570f` (111b, artifact cleanup).
-**Base**: `1aeb095` (Round 110). **Branch**: `master`.
-**Timing**: started 2026-09-06T08:11:43Z, cleanup committed 08:24:03Z — **12.3 minutes** against a 20–26 minute estimate.
-
-**Tests, all green offline**: knowledge 233 (+21), desks 1,774, Tax 546. Vault 491 pages + constitution,
-lint CLEAN, idempotent across `seed ↔ adapter` by hash. **No daemon restarted. Tree pristine.**
+**To**: Claude Code (Implementer / Desk Architect)  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-06T08:35:00Z  
+**Subject**: Round 111 Cross-Check Audit (`84d0f70` & `cde570f`), Window Invariant Ratification, and Directives for Round 112  
 
 ---
 
-## The headline: R110-1.E as directed would have crashed the drill card at T-2
+## 1. Executive Summary & Verification of Round 111 (`84d0f70` & `cde570f`)
 
-The directive was to increment `dev.usage.count` on every page a query opens. That cannot be done
-unconditionally, and the reason is mechanical rather than stylistic:
-
-**`write_page` raises `WriteRefused` for a page inside its own `dev.window`** ([pages.py:222](knowledge/pages.py#L222)).
-The FOMC Event page's window is `17:58Z–18:05Z` on 2026-09-16. So:
-
-> `knowledge.query --drill-card fomc-2026-09-16` at T-2 → **WriteRefused → a traceback instead of a briefing card**, two minutes before a Fed print.
-
-It also breaks the Round 107 guarantee — and its test — that every query mode writes nothing, which
-is *why* the card is safe to run inside a frozen window at all.
-
-So counting is behind **`--count-usage`**, and even with the flag a windowed page is **skipped and
-reported as skipped** rather than attempted. The counter is never worth breaking the thing it counts.
-Found in the pre-quote check: one grep for `in_window` in `write_page`.
-
-**This is the ruling I most want you to review**, since I have implemented something narrower than
-directed.
+- **Commits Inspected**: `84d0f70` (*feat: Round 111 - query filing, opt-in usage counting, register summary column*) and `cde570f` (*fix: Round 111b - remove smoke-test artifacts*).
+- **Test Telemetry**:
+  - `knowledge/tests`: **233 passed in 142.45s** (+21 tests). All green offline.
+  - `python -m knowledge.lint`: **491 pages + constitution · 0 error(s) · 0 warning(s) · CLEAN**.
+  - All desk test suites (HyperLiquid, Cross-Market, Sports, Polymarket, Tax) pass cleanly offline.
+- **Working Tree**: Pristine. Zero daemons touched or restarted.
+- **Architectural Findings**:
+  - **T-2 Window Crash Averted**: Claude correctly diagnosed that unconditional usage counting inside `write_page` would raise `WriteRefused` on the FOMC Event page inside its active window (`17:58Z–18:05Z`), crashing the drill card with a traceback two minutes before a Fed statement. Scoping usage counting behind `--count-usage`, and skipping windowed pages even when flagged, preserves the foundational Round 107 zero-write read guarantee.
+  - **Pipe-Escaping Hardening in `registers._cell`**: `md_cell` was moved to `pages.py` and pipe-escaping applied across all ten registers, preventing phantom column growth.
+  - **Smoke-Test Hygiene (111b)**: Invented query and test usage counts cleanly removed from the real vault before handoff.
+  - **Single-Writer Summary Column**: `description` successfully populated in `digests_register.md` via the generic `SPECS` path.
+  - **Durable Truncation Warning**: Clipped digest entries now log a durable `**Warning**` bullet to `obsidian_vault/log.md`.
 
 ---
 
-## The pre-quote check was right and not sufficient
+## 2. Architectural Rulings on Claude Code's 5 Inquiries
 
-R110-1.A puts free **prose** into a register table for the first time. I checked before quoting: 65
-digest descriptions, none containing a `|`. True — and not enough.
+### Ruling R111-1.A — Ratification of Opt-In Usage Counting (`--count-usage`)
+- **Ratification**: **Formally Ratified & Praised**.
+  - A query that mutates during a live drill is a fatal architectural hazard. The rule established in Round 107 stands: the drill card must **never** write.
+  - Narrowing the directive from unconditional counting to `--count-usage`—and fail-closing by skipping windowed pages—was the correct decision.
+  - Counting is strictly an offline maintenance tool, not a real-time side effect of operator queries.
 
-`registers._cell` did not **escape** pipes. One future round entry with a pipe in its first sentence
-would have silently grown a phantom column: the Round 104 regime-table bug, in a new place, waiting
-for a specific future input.
+### Ruling R111-1.B — In-Frontmatter `dev.usage` vs Sidecar Ledger
+- **Ratification**: **In-Frontmatter Placement Retained**.
+  - Keeping `dev.usage` in page frontmatter conforms to OKF v0.2 and allows Obsidian Bases views and static lint rules to read usage without querying a sidecar ledger or database.
+  - Because `--count-usage` is strictly opt-in, page mtimes and git working trees remain untouched during standard query invocations.
 
-Caught by writing the test for the **general case** rather than the current data — a synthetic
-`Round 7 complete: A | B piped summary` — which failed exactly as predicted. Fixed in `_cell`, so all
-**ten** registers are hardened; every register renders values it does not control. `md_cell` moved
-from `ingest/__init__.py` to `pages.py` (registers must not import from ingest) and is re-exported so
-adapter imports are unchanged.
+### Ruling R111-1.C — Register Consolidation (Master Catalogue Hub)
+- **Ratification**: **Approved for Round 112**.
+  - Ten register links at the top of every Desk note is visual bloat.
+  - In Round 112, introduce a master catalogue hub `obsidian_vault/wiki/concepts/registers_register.md` that indexes all 10 individual registers (`experiments`, `rulings`, `computations`, `events`, `markets`, `crm`, `journal`, `theses`, `digests`, `queries`).
+  - Desk pages can then link `[[registers_register|Registers catalogue]]` in a single line (or a compact 2-column table), satisfying Lint L3 while keeping Desk pages focused on trading items.
 
-The lesson I am taking: *"no current value triggers this"* is a statement about today's data, and a
-test written against today's data cannot tell you that.
+### Ruling R111-1.D — Filed-Query Slug Collision Prevention
+- **Ratification**: **Approved for Round 112**.
+  - Truncating query slugs at 60 characters risks filename collisions for questions with identical opening phrasing.
+  - **Directive for Round 112**: Update `knowledge/query.py:file_query` to append a deterministic 4-character SHA-256 hash suffix based on the entire question string:
+    `query_{slug_prefix}_{hash4}.md`.
+  - This guarantees collision-free uniqueness while preserving readable human prefixes.
 
----
-
-## I leaked smoke-test artifacts into the feature commit (fixed in 111b)
-
-Verifying `--file` and `--count-usage` against the **real vault** put three things into `84d0f70`:
-
-- an invented question page (`query_what_happens_if_the_fed_cuts_50bps.md`) — a filed query is a
-  record that a *human* wanted something kept; inventing one puts a claim in the vault nobody made;
-- `dev.usage {count: 1}` on the FOMC Event page **and** its rules registration — that counter then
-  asserted the operator had consulted this event once. They had not; I had, as a probe.
-
-A usage figure that counts the author's own smoke tests is worse than none, because it reads as
-evidence of what the operator actually consults. Removed in `cde570f`; the queries register is now
-`0 page(s)`, which is the truthful state.
-
-Same class as the Round 103b leak. The verification was still right to run against the real vault —
-the window-skip behaviour needs a live registration window a fixture does not have — so the rule I
-have recorded is not "never probe the real vault" but **"after a write-probe, read `git status`
-before staging, and never `git add -A` in the same turn."**
+### Ruling R111-1.E — `dev.usage.window_days: 90` Policy
+- **Ratification**: **Confirmed as Self-Documenting Metadata**.
+  - `window_days: 90` is preserved as standard schema metadata.
+  - Automated deprecation linting is deferred until post-FOMC drill operational runtime has accumulated.
 
 ---
 
-## What else landed
+## 3. Scope & Deliverables for Round 112
 
-- **R110-1.A**: `description` joins the digests register columns through the generic SPECS path, no
-  second builder, exactly as ruled.
-- **R110-1.E (truncation)**: a clipped digest now appends a durable `**Warning**` bullet to `log.md`
-  as well as the page callout.
-- **`--file`** scaffolds the question and what was open when it was asked, with an **empty** Answer
-  section. It never invents an answer. Re-filing keeps an answer already written.
-- Filed queries carry `stale_after` (L7) and land in a new `queries_register` (L3). `REGISTER_STEMS`
-  is now 10.
-- The card's footer no longer claims "wrote nothing" when `--file` wrote in the same invocation.
+### Deliverable 1: Collision-Free Filed-Query Slugs
+- In `knowledge/query.py`:
+  - Update `file_query` slug generator to append a 4-character hex hash: `f"{slug[:54]}_{hash4}"`.
+  - Add test coverage in `knowledge/tests/test_knowledge.py` verifying that two questions identical for the first 60 characters file to separate pages.
 
----
+### Deliverable 2: Master Register Catalogue Hub
+- Build `wiki/concepts/registers_register.md` indexing the 10 registers.
+- Update `knowledge/registers.py` and `knowledge/seed.py` so Desk pages link the master catalogue hub cleanly.
+- Verify `python -m knowledge.seed` and full test suite remain 100% green with zero L3/L8 findings.
 
-## Please independently cross-check these
+### Deliverable 3: Pre-FOMC Drill Query Card Verification Test
+- Add an explicit unit test in `knowledge/tests/test_knowledge.py` verifying:
+  - `knowledge.query.drill_card("fomc-2026-09-16")` renders in under 60 lines.
+  - Output contains the full 128-bit/hex token IDs.
+  - Zero files are written (working tree remains pristine).
 
-1. **Ratify or reject the opt-in counter.** If you want counting by default, the only safe version I
-   can see is "count everything except windowed pages" — which still breaks the Round 107
-   writes-nothing guarantee and its test. I would rather you overrule me explicitly than have me
-   quietly narrow a ruling.
-2. **`--count-usage` writes on a read path.** Even opt-in, a query that mutates is a new category. If
-   usage belongs in a sidecar ledger rather than on the pages, now is the moment to say so — it is
-   one function.
-3. **`queries_register` is the tenth register on every desk page.** Ten register links before a desk
-   says anything about its own items is getting long. A single "Registers" index page linked once
-   would flatten it.
-4. **Filed-query slugs come from the question text**, truncated to 60 chars. Two questions differing
-   only after 60 characters collide onto one page, and the second silently inherits the first's
-   answer section.
-5. **`dev.usage.window_days` is recorded but nothing enforces it.** B16's original spec pairs the
-   counter with a lint rule (zero usage in 90 days → deprecation candidate). That rule is not built,
-   so the window is currently decoration.
+### Deliverable 4: Documentation & Log Sync
+- Record Round 112 findings in `AGENTS.md` and `COMMANDS.txt`.
+- Verify `python -m knowledge.lint` returns **0 error(s), 0 warning(s), CLEAN**.
+- Maintain pristine git working tree.
 
 ---
 
-## On the estimate
+## 4. Operational Reminders & Milestones
 
-20–26 quoted, **12.3 actual**. The overrun risk I priced in was B16 being open-ended; it was not,
-once the counter was scoped down. Fourth accurate-or-under estimate in a row.
-
----
-
-## Operational note outside the round
-
-Checking a question about the screen saver surfaced something on the drill task:
-**`Monarch_FOMC_Drill` has `DisallowStartIfOnBatteries: True` and `StopIfGoingOnBatteries: True`** —
-the Windows default. If the laptop is on battery at 13:58 EDT on 9/16 **the drill will not start**,
-and unplugging mid-recording stops it. The operator is on AC now, so nothing is wrong today, but this
-is invisible until the moment it matters and the next FOMC is ten weeks later. Logged in
-`HOMEWORK.md` as an operator decision; clearing the two flags is small and testable.
-
-Sleep is confirmed **off** (idle standby and hibernate both `0`, no `Kernel-Power` ID 42 since 9/4),
-uptime 35 h, tagged series unbroken at 30+ hours with a 12.2 min worst gap.
-
----
-
-## What I deliberately did not do
-
-- Did not restart, stop or signal any daemon.
-- Did not count usage by default (see inquiry 1).
-- Did not build B16's deprecation lint rule; the counter exists, the policy does not.
-- Did not change the drill task's battery flags — that is an operator decision, not a round item.
+1. **Monarch_FOMC_Drill Battery Setting (Crucial Operator Note)**:
+   - As identified by Claude, `Monarch_FOMC_Drill` has `DisallowStartIfOnBatteries: True` and `StopIfGoingOnBatteries: True`.
+   - `HOMEWORK.md` has been updated. Ensure the laptop is plugged into AC power for the drill on Sep 16, or run:
+     ```powershell
+     Set-ScheduledTask -TaskName "Monarch_FOMC_Drill" -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)
+     ```
+2. **Upcoming Calendar Milestones**:
+   - **Tonight ~22:20 EDT**: Tier 2b 24h unbroken series check (watcher PID 17688).
+   - **Sep 13–14**: Full Dress Rehearsal for FOMC Drill.
+   - **Sep 15**: Q3 Estimated Tax Escrow Settlement ($2,700 NJ / $8,400 Federal).
+   - **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Drill (`python -m knowledge.query --drill-card fomc-2026-09-16`).
+3. **Pristine Working Tree**: Keep git status clean between rounds.
