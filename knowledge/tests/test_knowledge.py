@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import subprocess
 import os
 import tempfile
 import unittest
@@ -2530,6 +2531,126 @@ class QueryCardTests(IngestFixture):
         code, text = self.card("--drill-card", self.event)
         self.assertEqual(code, EXIT_HALT)
         self.assertIn("[HALT]", text)
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 108: lint L9, structured dev.rules, drill-card ergonomics, regime match priority
+# --------------------------------------------------------------------------------------
+
+class LintL9Tests(TempVault):
+    """Ruling R107-1.D: a link to a git-ignored file lints clean here and fails L8 on a fresh clone."""
+
+    def _repo(self):
+        """A real git repo in the temp dir, with one ignored dashboard."""
+        run = lambda *a: subprocess.run(["git"] + list(a), cwd=str(self.dev_root),
+                                        capture_output=True, text=True)
+        if run("init", "-q").returncode != 0:                       # pragma: no cover - no git
+            self.skipTest("git unavailable")
+        (self.dev_root / ".gitignore").write_text("obsidian_vault/Volatile_Dashboard.md\n", encoding="utf-8")
+        (self.vault / "Volatile_Dashboard.md").write_text("# dashboard\n", encoding="utf-8")
+        (self.vault / "Tracked_Dashboard.md").write_text("# tracked\n", encoding="utf-8")
+        run("add", "-A")
+        run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init")
+        return run
+
+    def _page(self, stem, body):
+        self.write(f"wiki/concepts/{stem}.md", page_text(body=body))
+
+    def test_an_untracked_dashboard_nothing_links_is_fine(self):
+        self._repo()
+        self._page("a", "# a\n\n- [[Tracked_Dashboard]]\n")
+        self.assertEqual(lint.check_l9(pages.load_documents(self.vault), self.vault, self.dev_root), [])
+
+    def test_linking_a_git_ignored_file_is_an_error(self):
+        self._repo()
+        self._page("a", "# a\n\n- [[Volatile_Dashboard]]\n")
+        found = lint.check_l9(pages.load_documents(self.vault), self.vault, self.dev_root)
+        self.assertEqual([(f.code, f.severity) for f in found], [("L9", "error")])
+        self.assertIn("Volatile_Dashboard.md", found[0].message)
+        self.assertIn("fresh clones will fail L8", found[0].message)
+
+    def test_every_linking_page_is_named_not_just_the_first(self):
+        self._repo()
+        self._page("a", "# a\n\n- [[Volatile_Dashboard]]\n")
+        self._page("b", "# b\n\n- [[Volatile_Dashboard|dash]]\n")
+        found = lint.check_l9(pages.load_documents(self.vault), self.vault, self.dev_root)
+        self.assertEqual(len(found), 2)
+        self.assertEqual({f.path for f in found}, {"wiki/concepts/a.md", "wiki/concepts/b.md"})
+
+    def test_outside_a_repository_l9_is_skipped_not_passed(self):
+        self._page("a", "# a\n\n- [[Volatile_Dashboard]]\n")
+        (self.vault / "Volatile_Dashboard.md").write_text("# d\n", encoding="utf-8")
+        self.assertFalse(lint.is_git_repo(self.dev_root))
+        self.assertEqual(lint.check_l9(pages.load_documents(self.vault), self.vault, self.dev_root), [])
+
+    def test_the_ignore_listing_is_complete_not_just_the_first_match(self):
+        """git check-ignore returned ONE match per batch here; this is the regression that caught it."""
+        self._repo()
+        (self.dev_root / ".gitignore").write_text(
+            "obsidian_vault/Volatile_Dashboard.md\nobsidian_vault/Second_Dashboard.md\n", encoding="utf-8")
+        (self.vault / "Second_Dashboard.md").write_text("# two\n", encoding="utf-8")
+        found = lint.ignored_under(self.vault, self.dev_root)
+        self.assertIn("obsidian_vault/Volatile_Dashboard.md", found)
+        self.assertIn("obsidian_vault/Second_Dashboard.md", found)   # the SECOND one, not just the first
+
+
+class StructuredRulesTests(IngestFixture):
+    def test_rules_are_serialised_into_frontmatter_with_whole_token_ids(self):
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        meta, body = fm.parse((self.vault / "wiki/experiments/fomc_2026-09-16_rules.md")
+                              .read_text(encoding="utf-8"))
+        rules = meta["dev"]["rules"]
+        self.assertEqual(len(rules), 2)
+        self.assertEqual(rules[0]["label"], "FOMC 2026-09-16: no change")
+        self.assertEqual(rules[0]["condition"], "change_bps == 0")
+        self.assertEqual(rules[0]["outcome"], "YES")
+        self.assertEqual(rules[0]["market"], "TOK_NOCHANGE")         # whole id, not truncated
+        # the rendered table still truncates for readability - that is why the card stopped using it
+        self.assertIn("|", body)
+
+
+class CardErgonomicsTests(QueryCardTests):
+    def test_the_card_shows_whole_token_ids_from_dev_rules(self):
+        _, text = self.card("--drill-card", self.event)
+        self.assertIn("token TOK_NOCHANGE", text)
+        self.assertNotIn("TOK_NOCHANGE\u2026", text)                    # never the truncated form
+        self.assertNotIn("legacy page", text)
+
+    def test_a_legacy_page_without_dev_rules_still_renders(self):
+        path = self.vault / "wiki/experiments/fomc_2026-09-16_rules.md"
+        meta, body = fm.parse(path.read_text(encoding="utf-8"))
+        meta["dev"].pop("rules")
+        pages.write_page(pages.Page(path, meta, body), self.vault, now=NOW)
+        _, text = self.card("--drill-card", self.event)
+        self.assertIn("REGISTERED RULES", text)
+        self.assertIn("legacy page", text)                           # and says why the id is short
+
+    def test_the_post_print_command_is_copy_pasteable(self):
+        """At T+1 nobody should be recalling flags, and no path may be a guess."""
+        _, text = self.card("--drill-card", self.event)
+        self.assertIn("./event.json", text)
+        self.assertIn("--survival-curve", text)
+        self.assertIn("--event ./event.json", text)
+        self.assertIn("--rules cross_market/experiments/fomc_2026-09-16.rules.json", text)
+        # the books path the DRILL actually records into, not latency_sniper's bare default
+        self.assertIn("--books cross_market/data/clob_books/fomc_2026-09-16", text)
+        self.assertNotIn("...", text)
+        self.assertLess(len(text.splitlines()), query_mod.MAX_LINES)
+
+    def test_regime_exact_and_prefix_match_beat_substring(self):
+        ingest_ll.ingest_verdict(VERDICT_JSON, self.vault, self.dev_root, tier="1",
+                                 source="verdict.json", at=NOW)
+        other = pages.page_path(self.vault, "Regime", "btc_macro_regime_archive")
+        pages.write_page(pages.Page(other, pages.make_meta("Regime", "Archive", "Old rows.", at=NOW,
+                                                           dev={"history": []}),
+                                    "# archive\n\n- [[btc_macro_regime]]\n"), self.vault, now=NOW)
+        _, exact = self.card("--regime", "btc_macro_regime")
+        self.assertIn("btc_macro_regime]]", exact)
+        self.assertNotIn("btc_macro_regime_archive]]", exact)         # exact wins outright
+        self.assertNotIn("matched", exact)
+        _, sub = self.card("--regime", "macro")                       # substring: both, and it says so
+        self.assertIn("matched 2 pages on substring", sub)
 
 
 if __name__ == "__main__":  # pragma: no cover

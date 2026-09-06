@@ -193,6 +193,16 @@ def compile_rules_registration(data: dict[str, Any], path: Path, vault: Path, de
     if release:
         dev["release_utc"] = iso(release)
         dev["window"] = {"start": iso(release - WINDOW_BEFORE), "end": iso(release + WINDOW_AFTER)}
+    # Ruling R107-1.E: the rules go into the FRONTMATTER, structured. The drill card used to parse
+    # them back out of the rendered markdown table, which truncates token ids to 12 characters for
+    # readability - so at T-2 the card showed `561528276087…`, a token nobody can paste. Reading
+    # structured data is also proof against a future edit to the table's column layout.
+    dev["rules"] = [{"label": r.get("label"),
+                     "condition": f"{r.get('field')} {r.get('op')} {r.get('value')}".strip(),
+                     "market": str(r.get("market", "")),
+                     "outcome": r.get("outcome_if_true"),
+                     "neg_risk": bool(r.get("neg_risk", False))}
+                    for r in rules if isinstance(r, dict)]
     tokens = [str(r["market"]) for r in rules if isinstance(r, dict) and r.get("market")]
     if tokens:
         dev["tokens"] = tokens

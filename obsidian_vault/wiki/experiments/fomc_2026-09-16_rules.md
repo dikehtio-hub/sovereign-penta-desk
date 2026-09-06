@@ -10,7 +10,7 @@ tags:
 - pre-registered
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:49Z'
+  at: '2026-09-06T06:48:45Z'
 status: draft
 sources:
 - id: registration
@@ -27,6 +27,22 @@ dev:
   window:
     start: '2026-09-16T17:58:00Z'
     end: '2026-09-16T18:05:00Z'
+  rules:
+  - label: 'FOMC 2026-09-16: no change'
+    condition: change_bps == 0
+    market: '5615282760875985231868508008056959876238536896643315063916840237042205273721'
+    outcome: 'YES'
+    neg_risk: true
+  - label: 'FOMC 2026-09-16: hike 25 bps'
+    condition: change_bps == 25
+    market: '63842529068710005716169325380315470359047749786610778647370693404952498013178'
+    outcome: 'YES'
+    neg_risk: true
+  - label: 'FOMC 2026-09-16: hike 50+ bps'
+    condition: change_bps >= 50
+    market: '88912926533493988427719291698947688154042720958310632316541141466409683822293'
+    outcome: 'YES'
+    neg_risk: true
   tokens:
   - '5615282760875985231868508008056959876238536896643315063916840237042205273721'
   - '63842529068710005716169325380315470359047749786610778647370693404952498013178'

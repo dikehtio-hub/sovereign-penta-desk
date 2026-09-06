@@ -103,6 +103,46 @@ def _win(dev: dict[str, Any]) -> tuple[datetime | None, datetime | None]:
     return at("start"), at("end")
 
 
+BOOKS_ROOT = "cross_market/data/clob_books"
+
+
+def books_dir(event: Page) -> str:
+    """Where the drill's recorder actually put the stamps.
+
+    Read off fomc_drill_2026-09-16.bat, which runs `--record-loop ... --books
+    cross_market\\data\\clob_books\\fomc_2026-09-16`. Worth stating because the obvious guess is
+    wrong twice over: latency_sniper's own default is the clob_books ROOT (no event subdirectory),
+    and the Round 108 directive proposed `clob_drill/<event>`, which does not exist. Either would
+    send the operator's survival curve at a directory with no stamps in it, one minute after the
+    print, and report an empty result rather than an error.
+    """
+    return f"{BOOKS_ROOT}/{event.path.stem}"
+
+
+def rule_lines(rules: Page) -> list[str]:
+    """The registered rules, from `dev.rules` where it exists (Ruling R107-1.E).
+
+    The markdown table truncates token ids to 12 characters so the page reads well; the card needs
+    the WHOLE id, because the operator may have to paste it. Legacy pages compiled before Round 108
+    have no `dev.rules`, so the table is still parsed as a fallback rather than showing nothing.
+    """
+    structured = (rules.meta.get("dev") or {}).get("rules")
+    out: list[str] = []
+    if isinstance(structured, list) and structured:
+        for r in structured[:6]:
+            if not isinstance(r, dict):
+                continue
+            out.append(f"  {str(r.get('label', '-'))[:38]:<38} {str(r.get('condition', '-')):<18} "
+                       f"-> {r.get('outcome', '-')}")
+            out.append(f"      token {r.get('market', '-')}")
+        return out
+    for ln in [l for l in rules.body.splitlines() if l.startswith("| ") and "`" in l][:6]:
+        cells = [c.strip() for c in ln.strip("|").split("|")]
+        if len(cells) >= 6:
+            out.append(f"  {cells[0]:<34} {cells[1]:<18} tok {cells[5]}  (legacy page: id truncated)")
+    return out
+
+
 def drill_card(vault: Path, event: Page, now: datetime) -> list[str]:
     dev = event.meta.get("dev") or {}
     try:
@@ -131,11 +171,7 @@ def drill_card(vault: Path, event: Page, now: datetime) -> list[str]:
 
     if rules is not None:
         out += [f"REGISTERED RULES  [[{rules.path.stem}]]", "-" * 64]
-        rows = [ln for ln in rules.body.splitlines() if ln.startswith("| ") and "`" in ln]
-        for ln in rows[:6]:
-            cells = [c.strip() for c in ln.strip("|").split("|")]
-            if len(cells) >= 6:
-                out.append(f"  {cells[0]:<34} {cells[1]:<18} tok {cells[5]}")
+        out += rule_lines(rules)
         out += ["  neg_risk: Ruling R4 - only the winning YES is lifted, NO sides deferred.", ""]
     else:
         out += ["REGISTERED RULES", "-" * 64, "  ** NO RULES REGISTRATION FOUND FOR THIS EVENT **", ""]
@@ -148,9 +184,12 @@ def drill_card(vault: Path, event: Page, now: datetime) -> list[str]:
             out.append(f"  p={p.get('p', '-')}  {claim or '-'}{scored}   [[{p.get('journal')}]]")
         out.append("")
 
-    out += ["AFTER THE PRINT, IN ORDER", "-" * 64,
-            "  1. write event.json (above)",
-            "  2. python -m cross_market.latency_sniper --survival-curve ... --json > curve.json",
+    reg = (rules.meta.get("dev") or {}).get("registration") if rules is not None else None
+    out += ["AFTER THE PRINT, IN ORDER  (from the repo root)", "-" * 64,
+            "  1. write ./event.json  (the block above)",
+            "  2. python -m cross_market.latency_sniper --survival-curve \\",
+            f"       --event ./event.json --rules {reg or '<rules.json>'} \\",
+            f"       --books {books_dir(event)} --json > curve.json",
             f"  3. python -m knowledge.ingest.clob --result curve.json --event {event.path.stem}",
             "", f"source: [[{event.path.stem}]] - this card is read-only and wrote nothing."]
     return out
@@ -159,11 +198,21 @@ def drill_card(vault: Path, event: Page, now: datetime) -> list[str]:
 def regime_card(vault: Path, name: str, now: datetime) -> list[str]:
     want = normalise(name)
     regimes = [p for p in load_pages(vault) if p.type == "Regime"]
-    hits = [p for p in regimes if want in normalise(p.path.stem) or want in normalise(p.title)]
+    # Ruling R107-1.B: an exact stem or an unambiguous `<want>_` prefix answers with ONE card.
+    # Substring matching is the fallback, not the rule - `--regime BTC` should not also hand back
+    # the funding regime just because some other page's text happens to contain the letters.
+    exact = [p for p in regimes if normalise(p.path.stem) == want or normalise(p.title) == want]
+    prefix = [p for p in regimes if normalise(p.path.stem).startswith(want + "_")]
+    hits = exact or prefix or [p for p in regimes
+                               if want in normalise(p.path.stem) or want in normalise(p.title)]
+    ambiguous = not exact and not prefix and len(hits) > 1
     if not hits:
         return [f"no Regime page matches {name!r}.",
                 "known: " + ", ".join(sorted(p.path.stem for p in regimes)) or "(none compiled)"]
     out = [f"REGIME - {name.upper()}    as of {now.strftime('%Y-%m-%dT%H:%M:%SZ')}", "=" * 64]
+    if ambiguous:
+        out.append(f"** {name!r} matched {len(hits)} pages on substring; showing all. "
+                   "Name a stem exactly for one. **")
     for p in hits:
         dev = p.meta.get("dev") or {}
         out += [f"[[{p.path.stem}]]  {p.title}", "-" * 64]

@@ -1,4 +1,4 @@
-"""The lint engine: structural checks L1-L8 and the DEV-specific C1, C2, C3, C5.
+"""The lint engine: structural checks L1-L9 and the DEV-specific C1, C2, C3, C5.
 
     python -m knowledge.lint [--vault DIR] [--dev-root DIR] [--drops DIR] [--json]
 
@@ -37,6 +37,9 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
       name an Experiment page; `enforced_in` must name a file in the repo.
   L7  staleness policy (Round 100): a Ruling (180 d) or Concept (90 d) page
       without `stale_after` is a warning unless it is machine-maintained.
+  L9  a wikilink whose only target is a file git IGNORES (Round 108). The
+      page lints clean here and fails L8 on a fresh clone, where the file
+      does not exist. Skipped outside a repository, like L5's git half.
   L8  a dangling outbound wikilink (Round 105): `[[target]]` naming a page
       that does not exist. The mirror of L3, which catches the page nothing
       links to. Links inside code fences and code spans are not links, so
@@ -67,7 +70,7 @@ DEFAULT_DROPS = Path("Sports_Desk") / "data" / "polymarket_drops"
 
 @dataclass
 class Finding:
-    code: str        # L1..L8, C1, C2, C3, C5
+    code: str        # L1..L9, C1, C2, C3, C5
     severity: str    # "error" | "warning"
     path: str        # vault-relative, or the file the check concerned
     message: str
@@ -340,6 +343,89 @@ def check_l8(docs: list[Document], vault: Path) -> list[Finding]:
             if target in names or target.split("/")[-1] in names:
                 continue
             out.append(Finding("L8", "error", rel, f"dangling wikilink: [[{target}]] resolves to no page"))
+    return out
+
+
+def _repo_rel(path: Path, dev_root: Path) -> str:
+    """`path` as git would name it: relative to the repository root, forward slashes."""
+    try:
+        return path.resolve().relative_to(dev_root.resolve()).as_posix()
+    except (ValueError, OSError):
+        return path.as_posix().replace("\\", "/")
+
+
+def ignored_under(root: Path, dev_root: Path) -> set[str]:
+    """Every git-ignored file under `root`, repo-relative, in ONE call.
+
+    WHY NOT `git check-ignore`, WHICH IS THE OBVIOUS TOOL. Three ways it failed here, each found
+    against the real vault and none of which announces itself:
+
+      * on argv it blows the Windows command-line limit outright (WinError 206 at 519 paths);
+      * `--stdin` SILENTLY TRUNCATES: at 568 paths the tail was dropped and git reported nothing
+        ignored, with an empty stderr and a clean exit;
+      * and even inside a 100-path batch it emitted only the FIRST match - so all three ignored
+        dashboards went in and exactly one came back.
+
+    A linter that answers "all clear" because it never saw the question is worse than no linter, so
+    the question is asked the other way round: `ls-files --others --ignored --exclude-standard`
+    enumerates what git ignores, completely, in a single call with no per-path plumbing to get
+    wrong. The caller intersects.
+    """
+    # git speaks REPO-RELATIVE paths and knows nothing about our absolute ones; a comparison across
+    # the two silently matches nothing, which for a linter reads as "all clear".
+    spec = _repo_rel(root, dev_root)
+    try:
+        r = subprocess.run(["git", "ls-files", "--others", "--ignored", "--exclude-standard",
+                            "--", spec], cwd=str(dev_root),
+                           capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    return {ln.strip().replace("\\", "/") for ln in r.stdout.splitlines() if ln.strip()}
+
+
+def check_l9(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]:
+    """L9 (Round 108, Ruling R107-1.D): a wikilink whose only target is a git-ignored file.
+
+    The mirror of the hole Round 107 opened. Untracking the three volatile dashboards was safe
+    BECAUSE they had no inbound links - a fact verified by hand, once, and then not enforced by
+    anything. A page committed tomorrow linking an ignored file would lint CLEAN here and fail L8
+    on a FRESH CLONE, where the file does not exist. That is the worst shape of bug: invisible to
+    the person who introduced it, and only reproducible somewhere else.
+
+    Skipped outside a git repository, like L5's provenance half: `git check-ignore` cannot answer
+    there, and a guess in either direction is worse than silence.
+    """
+    if not is_git_repo(dev_root):
+        return []
+    # every name a link may resolve to -> the file it resolves to
+    resolved: dict[str, Path] = {}
+    for f in vault.rglob("*.md"):
+        parts = f.relative_to(vault).parts
+        if any(p.startswith(".") or p.startswith("_") for p in parts):
+            continue
+        rel = f.relative_to(vault).as_posix()
+        for name in (rel, rel[:-3], f.stem, f.name):
+            resolved.setdefault(name, f)
+
+    linked: dict[Path, list[tuple[str, str]]] = {}
+    for d in docs:
+        if d.meta is None:
+            continue
+        page = _rel(d.path, vault)
+        for target in sorted(wikilink_targets(d.body)):
+            f = resolved.get(target) or resolved.get(target.split("/")[-1])
+            if f is not None:
+                linked.setdefault(f, []).append((page, target))
+
+    ignored = ignored_under(vault, dev_root)
+    out: list[Finding] = []
+    for f, refs in sorted(linked.items()):
+        if _repo_rel(f, dev_root) not in ignored:
+            continue
+        rel = f.relative_to(vault).as_posix()
+        for page, target in refs:
+            out.append(Finding("L9", "error", page,
+                               f"[[{target}]] targets git-ignored file '{rel}'; fresh clones will fail L8"))
     return out
 
 
@@ -621,6 +707,7 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     findings += check_l6(docs, vault, dev_root)
     findings += check_l7(docs, vault)
     findings += check_l8(docs, vault)
+    findings += check_l9(docs, vault, dev_root)
     findings += check_c1(docs, vault, dev_root)
     findings += check_c2(docs, vault, drops)
     findings += check_c3(docs, vault)

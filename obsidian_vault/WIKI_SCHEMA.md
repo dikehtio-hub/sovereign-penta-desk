@@ -9,6 +9,10 @@ generated:
 verified:
   - by: antigravity/architect
     at: 2026-09-05T20:30:00Z   # Round 97 ruling 8: the constitution TEXT was read and approved
+  # AMENDED 2026-09-06 (Round 108, directed by Ruling R107-1.D): the s.7 lint table gained rows
+  # for L8 (Round 105) and L9 (Round 108). The table had drifted a full round behind the engine.
+  # The verification above predates those two rows and does not cover them; re-verification of
+  # the amended table is requested rather than assumed.
 status: stable
 sources:
   - id: round-95-blueprint
@@ -308,6 +312,8 @@ agent writes a `verified` entry, and the entry names a ruling.
 | C5 | `generated.at` inside the page's own `dev.window` is an error; only the file mtime inside it is a warning, because a checkout can do that (ruling 3) |
 | L6 | typed relations: `supersedes` target exists and is deprecated, chains acyclic; `contradicts` carries `resolved_by` -> an existing Ruling; `measured_by` -> an Experiment page; `enforced_in` -> a file in the repo |
 | L7 | a Ruling or Concept page without `stale_after` (policy above), unless machine-maintained or deprecated |
+| L8 | a dangling outbound wikilink: `[[target]]` naming a page that does not exist (Round 105). Links inside code fences and code spans are not links, so this document can describe the syntax |
+| L9 | a wikilink whose only target is a file git IGNORES (Round 108, Ruling R107-1.D). The page lints clean here and fails L8 on a fresh clone, where the file was never committed. L5's git half and L9 are both SKIPPED, not passed, outside a repository |
 | C4 C6 | Phase 3+: unhedged tax liability; the weekly LLM contradiction pass |
 
 Lint writes nothing without `--fix-safe`, and with it may only set

@@ -2360,6 +2360,38 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 108 - LINT L9, STRUCTURED dev.rules, COPY-PASTEABLE DRILL CARD
+     python -m knowledge.lint          # now also reports L9
+         L9 (Ruling R107-1.D): a wikilink whose ONLY target is a file git ignores. The page lints
+         clean locally and fails L8 on a FRESH CLONE, where the file was never committed - invisible
+         to whoever introduces it and reproducible only somewhere else. Skipped (not passed) outside
+         a repository, like L5's git half.
+         IMPLEMENTATION NOTE, because the obvious approach is wrong three ways: `git check-ignore`
+         blows the Windows command-line limit on argv (WinError 206 at 519 paths), SILENTLY
+         TRUNCATES on --stdin (568 paths in, "nothing ignored" out, empty stderr), and returns only
+         the FIRST match even inside a 100-path batch. L9 instead asks
+         `git ls-files --others --ignored --exclude-standard` once and intersects. Paths are
+         compared REPO-RELATIVE; comparing absolute paths against git's output matches nothing,
+         which for a linter reads as "all clear".
+     python -m knowledge.ingest.experiments [--force]
+         Ruling R107-1.E: the registration's rules are serialised into `dev.rules`
+         ({label, condition, market, outcome, neg_risk}). The drill card used to parse them out of
+         the rendered markdown table, which truncates token ids to 12 characters for readability -
+         an operator cannot paste `561528276087`. Structured data is also proof against a future
+         edit to the table's columns. Use --force to add dev.rules to pages compiled earlier.
+     python -m knowledge.query --drill-card fomc-2026-09-16
+         Now prints WHOLE token ids and an exact, copy-pasteable post-print command:
+           python -m cross_market.latency_sniper --survival-curve \
+             --event ./event.json --rules cross_market/experiments/<event>.rules.json \
+             --books cross_market/data/clob_books/<event_stem> --json > curve.json
+         THE BOOKS PATH IS THE ONE THE DRILL ACTUALLY RECORDS INTO, read off the drill batch file.
+         latency_sniper's own default is the clob_books ROOT (no event subdirectory), and the Round
+         108 directive proposed `clob_drill/<event>`, which does not exist - either would point the
+         survival curve at a directory with no stamps and report an empty result, not an error.
+     python -m knowledge.query --regime NAME
+         Ruling R107-1.B: an exact stem/title or an unambiguous `<name>_` prefix answers with ONE
+         card. Substring is the fallback and says so ("matched N pages on substring").
+
      ROUND 107 - QUERY CARDS, rank_at_seed FROZEN, DASHBOARDS UNTRACKED
      python -m knowledge.query --drill-card fomc-2026-09-16
          The T-2 briefing card the constitution pre-baked (s.Query): computed countdown, the frozen

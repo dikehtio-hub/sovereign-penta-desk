@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 108 complete (2026-09-06): LINT L9 CLOSES THE HOLE ROUND 107 OPENED, AND THE DRILL CARD
+IS NOW COPY-PASTEABLE. L9 (Ruling R107-1.D): a wikilink whose only target is a git-ignored file
+is an error - it lints clean locally and fails L8 on a FRESH CLONE, the worst shape of bug
+because it is invisible to whoever introduces it. Blast radius audited read-only first: zero,
+as expected, since Round 107 verified those three dashboards had no inbound links before
+untracking them. R107-1.E: `dev.rules` is serialised into the registration's frontmatter and
+the card reads it, so token ids print WHOLE - the card used to parse the rendered table, which
+truncates them to 12 characters for readability, and an operator cannot paste `561528276087`.
+R107-1.A: the post-print command is now exact and copy-pasteable. R107-1.B: an exact stem or
+unambiguous prefix answers with one regime card; substring is the fallback and says when it is
+ambiguous. Tests: knowledge 176 (+20), all green offline. Vault 423 pages, lint CLEAN.
+NO DAEMON RESTARTED.
+
 Round 107 complete (2026-09-06): THE OPERATOR CAN NOW ASK THE VAULT A QUESTION.
 knowledge/query.py answers the two queries the constitution pre-baked in s.Query:
 `--drill-card <event>` and `--regime BTC`. The drill card is read at T-2 with a clock running,
@@ -1145,6 +1158,55 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 108 findings
+
+### `git check-ignore` lied three different ways, and a linter that is lied to says "all clear"
+
+The obvious tool for L9 is `git check-ignore`. It failed three times at this vault's size, and
+not one of the failures announced itself:
+
+1. **On argv it blows the Windows command-line limit** - `WinError 206` at 519 paths. Found by
+   running the blast-radius audit BEFORE writing the check, which is the only reason it was a
+   two-minute detour instead of a confusing failure late in the round.
+2. **`--stdin` SILENTLY TRUNCATES.** At 568 paths the tail was simply dropped: git reported
+   nothing ignored, with an empty stderr and a clean exit. A check that answers "all clear"
+   because it never saw the question is worse than no check at all.
+3. **Even inside a 100-path batch it emitted only the FIRST match.** All three ignored
+   dashboards went in; exactly one came back. Chunking did not fix this and could not.
+
+The question is now asked the other way round: `git ls-files --others --ignored
+--exclude-standard` enumerates what git ignores, completely, in ONE call, and the caller
+intersects. **The only reason any of this surfaced is that the rule was probed against a
+known-ignored file before being trusted.** A new lint rule that returns zero findings on its
+first run looks identical whether it is correct or broken; the probe is what tells them apart,
+and it should be standard practice for every future check.
+
+### And then it compared the wrong kind of path
+
+- L9 passed my manual probe on the real vault and FAILED in the test fixture, because git speaks
+  repo-relative paths while the fixture's vault is an absolute temp path. My probe happened to
+  pass relative paths, so it hid the bug. Comparison now goes through `_repo_rel`. The lesson is
+  the same one: the probe was necessary but a probe that shares an assumption with the code
+  cannot test that assumption - the fixture, which differed, is what caught it.
+
+### The directive's command would have sent the operator to an empty directory
+
+- Ruling R107-1.A specifies `--books cross_market/data/clob_drill/<event_stem>`. That path does
+  not exist. The drill's own recorder (`fomc_drill_2026-09-16.bat`) writes to
+  `cross_market\\data\\clob_books\\fomc_2026-09-16`, and latency_sniper's bare default is the
+  clob_books ROOT with no event subdirectory - so the obvious guess is wrong twice over. A
+  survival curve pointed at an empty directory reports an empty result rather than an error,
+  one minute after the print. The card now emits the path the recorder actually uses, and every
+  flag was checked against `latency_sniper --help` before being printed.
+
+### Smaller things
+
+- The constitution's s.7 lint table was a full round behind: it documented L1-L7 and C1-C5 with
+  no L8. Both L8 and L9 are now in it. The `verified` block predates those rows, so the
+  amendment is dated and scoped in a comment rather than left to imply coverage it does not have.
+- `--regime macro` now says "matched 2 pages on substring" instead of silently answering with
+  two cards as though that were the question.
 
 ## Round 107 findings
 
