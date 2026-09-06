@@ -22,7 +22,7 @@ what is true: N=0 after 5 days, no process running, the documented 600 s / 1,224
 and no calendar before the FOMC drill. R111-1.C: desks link ONE registers hub, itself a
 SPECS entry (no second builder). R111-1.D: filed-query slugs carry a 4-hex digest of the
 whole question. D3: the drill-card contract is one explicit test with a real 76-digit token.
-Tests: knowledge 245 (+12), all green offline. Vault 492 pages, lint CLEAN. NO DAEMON
+Tests: knowledge 263 (+30), all green offline. Vault 493 pages, lint CLEAN. NO DAEMON
 RESTARTED; nothing was started either.
 
 Round 111 complete (2026-09-06): THE QUERY LAYER CAN FILE AND COUNT, WITHOUT LOSING THE ONE
