@@ -92,6 +92,63 @@ def test_top_funding_candidates_rank_positive_funding_deterministically():
     assert top_funding_candidates(snapshots, n=0) == []
 
 
+def test_the_entry_bar_gates_which_coins_are_sampled():
+    """Ruling R104-1: only a coin the harvester could actually ENTER is worth a sampling slot.
+
+    Before this, 5 candidate slots across ~440 assets meant 98.1% of recorded basis windows carried
+    fee_basis='unmeasured', so BASIS_MIN_NET_APR could not be judged retrospectively at all.
+    """
+    from analytics.market_intelligence import MarketIntelligence
+
+    hot, warm, cold = snap("HOT", 0.0002), snap("WARM", 0.00002), snap("COLD", 0.000001)
+    aprs = {c["coin"]: MarketIntelligence.calculate_annualized_funding_apr(c["funding_rate"])
+            for c in (hot, warm, cold)}
+    assert aprs["HOT"] > 25.0 > aprs["WARM"] > aprs["COLD"]
+
+    snapshots = [hot, warm, cold]
+    # ungated: the pre-Round-106 behaviour, every positive-funding coin ranked
+    assert top_funding_candidates(snapshots, n=5) == ["HOT", "WARM", "COLD"]
+    # gated on the harvester's own gross bar
+    assert top_funding_candidates(snapshots, n=5, min_funding_apr=25.0) == ["HOT"]
+    # the gate can empty the candidate list entirely, and that is a correct answer:
+    # nothing quoted enough to be worth a slot, so the slots go to the rotated/core watchlist
+    assert top_funding_candidates(snapshots, n=5, min_funding_apr=10_000.0) == []
+    # None restores the old behaviour exactly - the flag is opt-in
+    assert top_funding_candidates(snapshots, n=5, min_funding_apr=None) == \
+        top_funding_candidates(snapshots, n=5)
+
+
+def test_the_gate_reads_gross_apr_even_when_ranking_reads_net():
+    """The harvester tests the GROSS bar first and the net bar second; the sampler mirrors that.
+
+    A wide market whose measured spread drags its NET apr under the bar must still be sampled: its
+    gross rate clears the gross bar, and its spread is exactly what the next measurement needs.
+    """
+    wide = snap("WIDE", 0.0002)              # ~175% gross, far above the bar
+    spreads = {"WIDE": 900.0}                # a spread wide enough to sink the net figure
+    ranked_net = top_funding_candidates([wide], n=5, spreads=spreads)
+    assert ranked_net == ["WIDE"]
+    assert top_funding_candidates([wide], n=5, spreads=spreads, min_funding_apr=25.0) == ["WIDE"]
+
+
+def test_gating_spends_no_extra_rest_budget():
+    """The total per pass is capped by select_sample_coins, not by the candidate count.
+
+    This is why R104-1 costs zero additional weight: raising the candidate slots reallocates the
+    fixed budget toward tradeable coins, it does not enlarge it.
+    """
+    candidates = [f"C{i}" for i in range(12)]
+    picked = select_sample_coins(["BTC", "ETH"], rotated=["SOL"], cap=24,
+                                 extra=["HELD"], candidates=candidates)
+    assert len(picked) <= 24
+    assert picked[0] == "HELD"                      # held positions keep their series first
+    assert picked[1:13] == candidates               # then every candidate
+    assert set(["BTC", "ETH", "SOL"]) <= set(picked)
+    # and the cap really binds, whatever the candidate count
+    assert len(select_sample_coins(["BTC"], rotated=[], cap=4,
+                                   extra=[], candidates=[f"C{i}" for i in range(40)])) == 4
+
+
 def test_candidates_are_grounded_on_the_spot_universe_not_the_prefix():
     """
     Round 38 (cross-check 3.2): the live sample under the prefix rule was CHIP,

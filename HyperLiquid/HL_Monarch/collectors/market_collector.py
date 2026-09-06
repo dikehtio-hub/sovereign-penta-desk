@@ -13,6 +13,7 @@ from typing import Callable, Dict, Any, List, Optional, Sequence, Set, Tuple
 from config.settings import (
     ACTIVE_DEXES, REST_POLL_INTERVAL, ALL_CORE_WATCHLIST, COLLECTOR_LOCK_PATH, COLLECTOR_STATUS_PATH,
     ORDERBOOK_SAMPLE_INTERVAL, ORDERBOOK_SAMPLE_MAX_COINS, ORDERBOOK_SAMPLE_CANDIDATES,
+    ORDERBOOK_SAMPLE_MIN_APR,
     SPOT_UNIVERSE_REFRESH_SECONDS, ARB_MAX_SPREAD_BPS,
     DB_FLUSH_INTERVAL, DB_MAINTENANCE_INTERVAL,
     ROTATION_INTERVAL, ROTATION_MAX_COINS,
@@ -472,7 +473,8 @@ class MarketCollector:
                                                 spot_universe=self._spot_universe_cached(),
                                                 spreads=spreads,
                                                 spot_volumes=getattr(self, "_spot_volumes_map", None),
-                                                exclude=held)
+                                                exclude=held,
+                                                min_funding_apr=ORDERBOOK_SAMPLE_MIN_APR)
         self._current_candidates = list(candidates)
         return select_sample_coins(ALL_CORE_WATCHLIST, self._rotated_coins,
                                    cap=ORDERBOOK_SAMPLE_MAX_COINS, extra=held, candidates=candidates)

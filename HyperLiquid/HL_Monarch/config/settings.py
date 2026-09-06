@@ -107,7 +107,7 @@ ORDERBOOK_POLL_INTERVAL = 5.0  # Order book snapshot interval (dashboard live vi
 # not raise the cap or shorten the interval without redoing that arithmetic.
 ORDERBOOK_SAMPLE_INTERVAL = 120.0   # seconds between sampling passes
 ORDERBOOK_SAMPLE_MAX_COINS = 24     # held positions > funding candidates > rotated > core watchlist
-ORDERBOOK_SAMPLE_CANDIDATES = 5     # top positive-funding spot-backed perps sampled ahead of their entry (Round 37/38)
+ORDERBOOK_SAMPLE_CANDIDATES = 12    # candidate slots inside the 24 cap (Round 106, was 5)
 # Round 38: candidate eligibility is decided by spot_symbol_for() against the
 # live spot token universe, never by the coin's dex prefix. The universe changes
 # rarely (new listings), so the sampler refreshes its copy on this cadence.
@@ -559,6 +559,17 @@ MAINTENANCE_MARGIN_FRACTIONS = {
 # negative-funding row is therefore a directional idea, never a basis trade.
 BASIS_MIN_FUNDING_APR = 25.0   # gross bar, per the Round 15 directive
 BASIS_MIN_NET_APR = 20.0       # after spread on BOTH legs, amortised over the hold
+
+# Round 106, Ruling R104-1. A window is only worth a spread if the harvester could have ENTERED it,
+# and its gross entry bar is BASIS_MIN_FUNDING_APR. Gating candidates on that bar is what makes the
+# net hurdle evaluable retrospectively: before this, 5 slots out of ~440 assets meant 98.1% of
+# recorded basis windows carried fee_basis='unmeasured' and BASIS_MIN_NET_APR could not be judged.
+#
+# THIS COSTS ZERO EXTRA REST WEIGHT. ORDERBOOK_SAMPLE_MAX_COINS caps the TOTAL coins per pass and is
+# unchanged, so raising the candidate slots reallocates budget within the same 24 - taking slots from
+# the rotated/core watchlist and giving them to coins that could actually be traded. The arithmetic
+# in the comment above still holds exactly. Set to None to restore pre-Round-106 ranking behaviour.
+ORDERBOOK_SAMPLE_MIN_APR = BASIS_MIN_FUNDING_APR
 BASIS_HOLDING_DAYS = 7.0       # matches the funding backtester's realised-APR window
 BASIS_NOTIONAL_USD = 10_000.0  # per leg; the position is 1:1 by construction
 

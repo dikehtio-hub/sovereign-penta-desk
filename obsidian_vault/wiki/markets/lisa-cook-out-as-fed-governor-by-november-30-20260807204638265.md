@@ -9,12 +9,12 @@ tags:
 - fed-rates
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:24Z'
+  at: '2026-09-06T05:54:30Z'
 status: draft
 resource: polymarket:token:32394634675365782504298715739589399646577144604214949163194488396262093756590
 sources:
 - id: drop
-  resource: Sports_Desk/data/polymarket_drops/polymarket_macro_20260905T212715_501583Z.json
+  resource: Sports_Desk/data/polymarket_drops/polymarket_macro_20260906T055238_875025Z.json
   title: newest macro drop
   author: process:cross_market.ingestors.polymarket_fetcher
 dev:

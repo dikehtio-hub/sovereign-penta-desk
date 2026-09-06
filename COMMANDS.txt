@@ -2360,6 +2360,33 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 106 - ADAPTER LIFECYCLE INVARIANT, DESK 1 SPREAD GATE, GIT PROVENANCE IN L5
+     python -m knowledge.ingest.entities [--limit-whales N] [--limit-titans N]
+         Ruling R105-2: titans below the cap are RE-ADMITTED so a page never freezes outside the
+         query window, and any page whose source row has gone (a sharp pruned from sharp_traders)
+         is named in the report as unmaintained rather than silently abandoned.
+     python -m knowledge.ingest.markets
+         Every token that already has a page is re-admitted. An aged-out market recovers its
+         identity (question, family, slug, first_seen) from the page's own dev block, because
+         compile_market with no drop record would otherwise write a PLACEHOLDER page at a
+         TOKEN-DERIVED SLUG - a degraded duplicate at a new path, orphaning the good page.
+         `first_seen` is the EARLIEST sighting and is preserved across refreshes.
+     python -m knowledge.lint          # L5 now also checks git provenance
+         A `sources[].resource` of the form `git:<sha>`, or a `dev.citations` entry, is resolved
+         with `git cat-file -e <sha>^{commit}`. A ruling that says "implemented in commit da48cf3"
+         is making a checkable claim. SKIPPED (not passed) outside a git repository, where the
+         question cannot be answered either way. Read-only; never fetches.
+     ORDERBOOK SPREAD SAMPLING GATE (Ruling R104-1), settings.py
+         ORDERBOOK_SAMPLE_MIN_APR = BASIS_MIN_FUNDING_APR gates which coins get a sampling slot:
+         only ones the harvester could actually ENTER. Gated on the GROSS apr (the gross bar comes
+         first, as in the harvester), while ranking still uses the net figure where a spread is
+         known. ORDERBOOK_SAMPLE_CANDIDATES 5 -> 12. COSTS ZERO EXTRA REST WEIGHT:
+         ORDERBOOK_SAMPLE_MAX_COINS = 24 caps the TOTAL per pass and is unchanged, so this
+         reallocates budget from the rotated/core watchlist rather than enlarging it. Set
+         ORDERBOOK_SAMPLE_MIN_APR = None to restore pre-Round-106 behaviour.
+         NOTE: the gate is in collectors/orderbook_sampler.py, NOT storage/incremental_persistence.py
+         - the latter is a retrospective grid over past instants and can only READ spreads.
+
      ROUND 105 - KNOWLEDGE: LINT L8, ARTIFACT ENVELOPE, ADAPTER IDEMPOTENCE, CASCADE ANATOMY
      python -m knowledge.lint          # now also reports L8
          L8 (Ruling R104-4): a DANGLING outbound wikilink - `[[target]]` naming a page that does not

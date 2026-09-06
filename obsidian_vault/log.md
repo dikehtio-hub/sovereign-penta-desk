@@ -44,6 +44,10 @@
 * **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 2 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
 * **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6169, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
 * **Ingest**: cascade anatomy: 29,612 row(s), treatment share 0.5 (1-to-1 control identity holds) -> [[cascade_anatomy]].
+* **Lint**: --fix-safe deprecated 1 Market page(s) whose token left the newest drops: [[will-the-fed-pausepausecut-in-the-next-three-decisions-junjulsep]]; [index](index.md) rebuilt.
+* **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

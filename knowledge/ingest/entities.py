@@ -337,6 +337,8 @@ class EntitiesReport:
     updated: list[str] = field(default_factory=list)
     missing_sources: list[str] = field(default_factory=list)
     counts: dict[str, int] = field(default_factory=dict)
+    # pages this adapter owns but can no longer rebuild: the source row is gone (Ruling R105-2)
+    unmaintained: list[str] = field(default_factory=list)
 
 
 def ingest_entities(vault: Path, dev_root: Path, *, at: datetime | None = None, by: str = GENERATED_BY,
@@ -376,7 +378,15 @@ def ingest_entities(vault: Path, dev_root: Path, *, at: datetime | None = None, 
         if eoa in whale_addrs and eoa not in titan_map:
             titan_map[eoa] = {"proxy_wallet": str(s.get("proxy_wallet") or s.get("wallet")).lower(), "pseudonym": s.get("pseudonym"),
                               "in_whales": True, "source": "sharp_traders.eoa_address -> whale_wallets"}
-    titan_eoas = sorted(titan_map, key=lambda e: (-whale_equity.get(e, 0.0), e))[:limit_titans]
+    # Ruling R105-2, the Adapter Lifecycle Maintenance Invariant: an adapter maintains every page it
+    # has emitted, or explicitly says it no longer can. `[:limit_titans]` is a moving window, so a
+    # titan that slips below the cap would never be rebuilt again and would freeze at whatever the
+    # code emitted the last time it was selected. Re-admit any EOA that already has a page and is
+    # still a titan; the ones that are no longer titans at all are reported, not silently frozen.
+    ranked = sorted(titan_map, key=lambda e: (-whale_equity.get(e, 0.0), e))
+    existing_titans = {p.stem[len("titan_"):].lower() for p in (vault / "crm" / "titans").glob("titan_*.md")}
+    titan_eoas = ranked[:limit_titans] + [e for e in ranked[limit_titans:] if e in existing_titans]
+    report.unmaintained = sorted(existing_titans - set(titan_eoas))
     titans = set(titan_eoas)
     titan_by_proxy = {str(titan_map[e].get("proxy_wallet")): e for e in titan_eoas if titan_map[e].get("proxy_wallet")}
 
@@ -400,6 +410,10 @@ def ingest_entities(vault: Path, dev_root: Path, *, at: datetime | None = None, 
         emit(*build_whale(w, rank, {k: titan_map[k] for k in titans}, vault, dev_root, at, by))
     for s in sharps:
         emit(*build_sharp(s, tracked, titans, vault, dev_root, at, by, titan_by_proxy))
+    # A sharp pruned from sharp_traders has no live row to rebuild from, so it CANNOT be refreshed -
+    # the honest move is to name it rather than let it sit silently frozen (Ruling R105-2).
+    existing_sharps = {p.stem[len("sharp_"):].lower() for p in (vault / "crm" / "sharps").glob("sharp_*.md")}
+    report.unmaintained += sorted(existing_sharps - set(sharp_by_wallet))
     for name in sorted(books):
         emit(*build_book(name, books[name], vault, dev_root, at, by))
     report.counts = {"titans": len(titan_eoas), "whales": len(whales), "sharps": len(sharps), "books": len(books)}

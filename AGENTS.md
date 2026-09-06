@@ -5,6 +5,22 @@ the detail.
 
 ## Status
 
+Round 106 complete (2026-09-06): THE ADAPTER LIFECYCLE INVARIANT ENFORCED, DESK 1 SPREAD
+SAMPLING GATED ON THE ENTRY BAR, AND GIT PROVENANCE NOW CHECKED. R105-2: titans are
+re-admitted when they fall below the cap, and pages whose SOURCE ROW is gone (a pruned sharp)
+are NAMED in report.unmaintained rather than silently frozen - an adapter that cannot rebuild
+a page should say so, not pretend. Markets re-admit every token that already has a page, but
+NOT the way the ruling sketched it: a naive union would have written a degraded duplicate,
+because with no drop record compile_market falls back to a placeholder question AND a
+token-derived slug, so an aged-out market would get a second page at a new path while the good
+one was orphaned. Identity is recovered from the page's own dev block instead. R104-1: the
+spread gate went into collectors/orderbook_sampler.py, NOT incremental_persistence.py as
+directed - the latter is a RETROSPECTIVE grid over historical instants and cannot sample L2 for
+a window that opened days ago; it only reads orderbook_snapshots. B19/B20: lint L5 now resolves
+`git:<sha>` sources and dev.citations with `git cat-file`, SKIPPING (not passing) outside a
+repository. Tests: knowledge 145 (+8), HyperLiquid + cross-market 1,314 (+3), all green
+offline. Vault 423 pages, lint CLEAN, adapters idempotent by hash. NO DAEMON RESTARTED.
+
 Round 105 complete (2026-09-06): ALL FOUR R104 RULINGS IMPLEMENTED, AND LINT L8 FOUND 86
 BROKEN LINKS THE MOMENT IT WAS SWITCHED ON. R104-4: lint L8 flags a dangling outbound
 wikilink - the mirror of L3, which only ever caught the opposite failure. Links inside code
@@ -1114,6 +1130,56 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 106 findings
+
+### Two directives that were right in intent and wrong in target
+
+- **R104-1 named the wrong file, and the difference matters.** The directive says to implement
+  gated L2 spread recording in `storage/incremental_persistence.py`. That module is the
+  RETROSPECTIVE measurement grid: it walks a grid of PAST entry instants and reads spreads via
+  `spread_bps_at`, which is a pure reader of `orderbook_snapshots`. Polling L2 now cannot tell
+  you the spread at a window that opened three days ago, so no amount of sampling there would
+  ever measure a historical window. The gate belongs in `collectors/orderbook_sampler.py`, the
+  LIVE caller, which is where it went. The gate condition itself was exactly right.
+- **THE FIX COSTS ZERO EXTRA REST WEIGHT, which is the part worth knowing.**
+  `ORDERBOOK_SAMPLE_MAX_COINS = 24` caps the TOTAL coins per pass and carries explicit budget
+  arithmetic in its comment; `select_sample_coins` enforces it with the priority held >
+  candidates > rotated > core. So raising the candidate slots from 5 to 12 does not enlarge the
+  budget - it REALLOCATES it away from the rotated/core watchlist toward coins the harvester
+  could actually enter. The guardrail "zero unconditional polling across 440 coins" is
+  satisfied structurally, not by promise.
+- **The markets re-admission sketch would have been destructive.** With no drop record,
+  `compile_market` degrades the question to "Polymarket token abc123…", the family to
+  "unknown", and - critically - computes a TOKEN-DERIVED SLUG instead of the market slug. A
+  naive `wanted |= existing tokens` therefore writes a placeholder page at a NEW path and
+  leaves the real page orphaned. Verified before shipping: 97 tokens, 0 new pages.
+
+### A regression I introduced and caught in the same round
+
+- Removing the `skipped` guard so market pages could be refreshed meant `first_seen` was
+  overwritten with the newest drop's `fetched_at` on EVERY run. That field was accidentally
+  correct before only because the page was written once and then skipped forever. It is now
+  explicitly preserved as the EARLIEST sighting. Caught by reading the diff of the first live
+  run - 97 pages showing a changed `first_seen` is not a plausible refresh.
+
+### The provenance audit came back empty, and that is the finding
+
+- Lint L5 now resolves git citations, and the read-only audit BEFORE building found 5 commit
+  hashes cited across the vault, all 5 resolving. Blast radius zero - the opposite of L8 last
+  round, which found 86 broken links on first run. Running the audit first (the lesson recorded
+  after Round 105) turned an open-ended estimate into a known-small one within two minutes.
+- The check SKIPS rather than passes outside a git repository. Reporting "valid" where
+  `git cat-file` cannot answer would be a lie, and reporting "missing" would be a false alarm.
+
+### Smaller things
+
+- `typing.Any` was used in lint.py without being imported; it only worked because
+  `from __future__ import annotations` defers evaluation. Anything calling `get_type_hints`
+  would have broken. Imported properly.
+- A sharp pruned from `sharp_traders` has NO live row to rebuild from, so it genuinely cannot be
+  maintained. Rather than freeze it silently or invent a deprecation (Ruling 99-2 makes
+  counterparty judgement human), the adapter reports it in `report.unmaintained`.
 
 ## Round 105 findings
 

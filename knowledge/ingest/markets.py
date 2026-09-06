@@ -31,7 +31,7 @@ from .. import EXIT_OK, GENERATED_BY
 from ..lint import DEFAULT_DROPS, newest_drop
 from ..pages import Page, append_log, carry_human_fields, load_page, load_pages, make_meta, now_utc, page_path, write_index, write_page
 from ..registers import update_register
-from . import add_common_args, at_from, guard, rel_to
+from . import add_common_args, at_from, guard, page_changed, rel_to
 
 DEFAULT_EXPERIMENTS = Path("cross_market") / "experiments"
 DEFAULT_FAMILIES = ("FED-RATES",)
@@ -72,6 +72,12 @@ def experiment_tokens(vault: Path) -> set[str]:
     return toks
 
 
+def path_for(vault: Path, token: str, record: dict[str, Any] | None, extra: dict[str, Any] | None) -> Path:
+    """Where this market's page lives - the same slug compile_market will use."""
+    record, extra = record or {}, extra or {}
+    return page_path(vault, "Market", slug_for(record if record else {"market_slug": extra.get("market_slug")}, token))
+
+
 def compile_market(token: str, record: dict[str, Any] | None, extra: dict[str, Any] | None, drop_rel: str | None,
                    vault: Path, at: datetime, by: str = GENERATED_BY) -> Page:
     record = record or {}
@@ -104,6 +110,13 @@ def compile_market(token: str, record: dict[str, Any] | None, extra: dict[str, A
         dev["market_slug"] = extra["market_slug"]
     if record.get("fetched_at"):
         dev["first_seen"] = record["fetched_at"]
+    # FIRST seen, not last. Round 106: until R105-2 these pages were written once and then skipped
+    # forever, so this field was accidentally correct. Now that every page is re-admitted on every
+    # run, each fresh drop would overwrite it with the LATEST sighting and quietly destroy the only
+    # record of when the market appeared. The existing page wins whenever it is earlier.
+    prior = ((load_page(path_for(vault, token, record, extra)) or Page(Path("x"), {})).meta.get("dev") or {}).get("first_seen")
+    if prior and (not dev.get("first_seen") or str(prior) < str(dev["first_seen"])):
+        dev["first_seen"] = prior
     if extra.get("neg_risk") is not None:
         dev["neg_risk"] = bool(extra["neg_risk"])
     if extra.get("rule_label"):
@@ -139,6 +152,7 @@ def ingest_markets(vault: Path, dev_root: Path, *, drops: Path | None = None, ex
     extras = rules_tokens(exp_dir, dev_root)
     wanted: set[str] = set(extras) | experiment_tokens(vault)
     records: dict[str, dict[str, Any]] = {}
+    in_drop: set[str] = set()          # tokens the NEWEST drop actually carries, vs ones recovered below
     drop_rel: str | None = None
     newest = newest_drop(drops, "polymarket_macro") if drops.is_dir() else None
     if newest is not None:
@@ -153,13 +167,40 @@ def ingest_markets(vault: Path, dev_root: Path, *, drops: Path | None = None, ex
                 continue
             tok = str(r["token_id"])
             records[tok] = r
+            in_drop.add(tok)
             if str(r.get("sport", "")).upper() in fams:
                 wanted.add(tok)
+
+    # Ruling R105-2: every token that already has a page is re-admitted, so a market ageing out of
+    # the drop is refreshed rather than frozen. BUT a naive union would be destructive here, which
+    # the ruling's sketch does not anticipate: with no drop record compile_market falls back to the
+    # placeholder question "Polymarket token abc123…", family "unknown", AND a token-derived slug -
+    # so it would write a DEGRADED DUPLICATE at a new path and leave the good page orphaned. The
+    # page's own dev block is the record of record for an aged-out market, so recover identity from
+    # it and let the compile refresh only what the code derives.
+    for page in load_pages(vault):
+        if page.type != "Market":
+            continue
+        d = page.meta.get("dev") or {}
+        tok = str(d.get("token_id") or "")
+        if not tok:
+            continue
+        wanted.add(tok)
+        if tok not in records:
+            records[tok] = {k: v for k, v in {
+                "question": page.meta.get("title"), "sport": d.get("family"),
+                "market_slug": d.get("market_slug"), "condition_id": d.get("condition_id"),
+                "event_slug": d.get("event_slug"), "event_title": d.get("event_title"),
+                "start_time": d.get("start_time"), "fetched_at": d.get("first_seen"),
+            }.items() if v is not None}
     report = MarketsReport(tokens=len(wanted))
     for tok in sorted(wanted):
-        page = compile_market(tok, records.get(tok), extras.get(tok), drop_rel if tok in records else None, vault, at, by)
+        page = compile_market(tok, records.get(tok), extras.get(tok), drop_rel if tok in in_drop else None, vault, at, by)
         rel = page.path.relative_to(vault).as_posix()
-        if page.path.exists() and not force:
+        # Ruling R105-2 + R104-3: an existing page is no longer skipped, because skipping is exactly
+        # what froze it. write_page declines to rewrite identical content, so re-admitting every page
+        # costs nothing and `--force` is no longer the only way a market page ever gets refreshed.
+        if not page_changed(page, vault):
             report.skipped.append(rel)
             continue
         write_page(page, vault, now=at)

@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 01:55 EDT (Round 105).
+Last updated: 2026-09-06 02:45 EDT (Round 106).
 
 ---
 
@@ -42,18 +42,14 @@ Last updated: 2026-09-06 01:55 EDT (Round 105).
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 105 handoff prompt to Antigravity.** The four R104 rulings
-      are implemented; the open question below is the one that still needs a person.
-- [ ] **Rule on whether the basis measurement grid should record spreads.**
-      `BASIS_MIN_NET_APR = 20.0` **is** enforced on every live entry — the live
-      scanner refuses any trade whose spread it could not measure. What cannot be
-      done is judging it *retrospectively*: only **197 of 10,635 recorded windows
-      (1.9%)** carry a measured spread, because the measurement grid opens a window
-      on a stride whether or not a spread was captured. The consequence is that we
-      cannot say what the harvester would actually have earned, only an upper bound
-      that has not paid a spread. Either the window writer starts recording both
-      legs' spreads, or every retrospective funding number stays an upper bound and
-      must be labelled one. This is a decision, not a bug fix.
+- [ ] **Send the Round 106 handoff prompt to Antigravity.**
+- [ ] **Decide when the collector restarts** so the new spread gate takes effect.
+      Ruling R104-1 is implemented but collector `38548` is still running the old
+      code, which samples only 5 candidates per pass. Until it restarts, no new
+      window gets a measured spread and the net hurdle stays unevaluable. Per the
+      ruling's own daemon policy I did **not** restart it — the change takes effect
+      on the next maintenance restart, whenever you choose that. Nothing breaks if
+      you wait; the backlog of unmeasured windows simply keeps growing.
 
 ---
 
@@ -92,6 +88,13 @@ Last updated: 2026-09-06 01:55 EDT (Round 105).
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 — **Desk 1 spread sampling gated on the entry bar** (Ruling R104-1).
+  Only coins clearing the 25% gross bar with spot backing get a sampling slot, so
+  future basis windows can carry a measured spread and `BASIS_MIN_NET_APR` becomes
+  judgeable. **Costs zero extra REST weight** — the 24-coin per-pass cap is
+  unchanged, so this reallocates budget rather than enlarging it. Takes effect on
+  the collector's next restart (see above).
 
 - 2026-09-06 — **All four R104 rulings implemented** (Round 105). Lint L8 catches
   dangling wikilinks and found **86 real broken links** on its first run — 85 CRM

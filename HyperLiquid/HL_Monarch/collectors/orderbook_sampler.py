@@ -38,7 +38,8 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
                            spreads: Optional[Dict[str, float]] = None,
                            holding_days: float = BASIS_HOLDING_DAYS,
                            spot_volumes: Optional[Dict[str, float]] = None,
-                           exclude: Iterable[str] = ()) -> List[str]:
+                           exclude: Iterable[str] = (),
+                           min_funding_apr: Optional[float] = None) -> List[str]:
     """
     The coins quoting the highest POSITIVE funding right now that the
     spot-backed harvester could actually open next (Round 37, cross-check 3.3).
@@ -106,6 +107,13 @@ def top_funding_candidates(snapshots: Iterable[Dict[str, Any]], n: int = 5,
         if rate <= 0.0 or notional_oi < min_notional_oi or day_volume < min_day_volume:
             continue
         apr = MarketIntelligence.calculate_annualized_funding_apr(rate)
+        # ROUND 106 - THE ENTRY BAR DECIDES WHO IS SAMPLED (Ruling R104-1). Gated on the GROSS apr,
+        # deliberately: BASIS_MIN_FUNDING_APR is the harvester's gross bar, and a coin must clear it
+        # before its net rate is even considered. Ranking below still uses the net figure where one
+        # is known, so the gate and the ordering ask the two questions the harvester asks, in the
+        # same order. `None` keeps the pre-Round-106 behaviour of ranking every positive-funding coin.
+        if min_funding_apr is not None and apr < float(min_funding_apr):
+            continue
         spread = (spreads or {}).get(coin)
         if spread is not None:
             apr = FundingArbitrageEngine.net_apr_after_spread(

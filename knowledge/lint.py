@@ -14,7 +14,11 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
   L3  an orphan: a page no other page links to. index.md does not count,
       and the constitution is exempt (Round 97 ruling 5).
   L4  `stale_after` in the past on a page that is not `deprecated`.
-  L5  a `sources[].resource` that names a local path which no longer exists.
+  L5  a cited source that is no longer there: a `sources[].resource`
+      naming a local path that does not exist, or (Round 106) a git
+      provenance reference - `sources[].resource: git:<sha>` or a
+      `dev.citations` entry - naming a commit this repository does not
+      contain. The git half is SKIPPED, not passed, outside a repository.
   C1  copied-state drift: a `dev.asserts` pattern no longer matches its
       file; a `dev.parameters` value no longer equals what the owning file
       says (compared as floats when both sides parse, else as normalised
@@ -45,9 +49,11 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from typing import Any
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -199,18 +205,88 @@ def check_l4(docs: list[Document], vault: Path, now: datetime) -> list[Finding]:
     return out
 
 
+GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
+
+
+def is_git_repo(dev_root: Path) -> bool:
+    try:
+        r = subprocess.run(["git", "rev-parse", "--git-dir"], cwd=str(dev_root),
+                           capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0
+
+
+def commit_exists(sha: str, dev_root: Path) -> bool:
+    """Whether `sha` names a commit object in this repository. Read-only; never fetches."""
+    if not GIT_SHA_RE.match(sha):
+        return False
+    try:
+        r = subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=str(dev_root),
+                           capture_output=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0
+
+
+def git_citations(meta: dict[str, Any]) -> list[tuple[str, str]]:
+    """Every git provenance reference on a page, as (where, sha).
+
+    Two spellings, both already in use: a `sources[].resource` of the form `git:<sha>` (which
+    seed.py has written on every ruling that cites a commit since Round 96), and an explicit
+    `dev.citations` list for pages that reference a commit without calling it a source.
+    """
+    out: list[tuple[str, str]] = []
+    for i, s in enumerate(meta.get("sources") or []):
+        if isinstance(s, dict) and isinstance(s.get("resource"), str) and s["resource"].startswith("git:"):
+            out.append((f"sources[{i}].resource", s["resource"][4:].strip()))
+    dev = meta.get("dev")
+    if isinstance(dev, dict):
+        for i, c in enumerate(dev.get("citations") or []):
+            if isinstance(c, str):
+                out.append((f"dev.citations[{i}]", c.strip()))
+            elif isinstance(c, dict) and isinstance(c.get("commit"), str):
+                out.append((f"dev.citations[{i}].commit", c["commit"].strip()))
+    return out
+
+
 def check_l5(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]:
+    """L5: a cited source that is no longer there.
+
+    Round 106 (backlog B19/B20) widens this from local paths to GIT PROVENANCE. A ruling that says
+    "implemented in commit da48cf3" is making a checkable claim, and an unresolvable hash means
+    either the commit was rewritten out of history or the number was typed from memory - the same
+    class of failure as a `sources[].resource` naming a file that has been deleted, which is why it
+    belongs here rather than in a rule of its own.
+
+    THE CHECK IS SKIPPED, NOT PASSED, WHEN IT CANNOT RUN. Outside a git repository (a test fixture,
+    an exported copy of the vault) `git cat-file` cannot answer, and reporting "valid" would be a
+    lie while reporting "missing" would be a false alarm. Verification is only attempted when
+    `dev_root` is actually a repository. Nothing here writes, fetches or touches the network.
+    """
     out: list[Finding] = []
+    repo = is_git_repo(dev_root)
     for d in docs:
-        if d.meta is None or not isinstance(d.meta.get("sources"), list):
+        if d.meta is None:
             continue
-        for i, s in enumerate(d.meta["sources"]):
-            if not isinstance(s, dict) or not isinstance(s.get("resource"), str):
-                continue
-            p = _local_path(s["resource"], dev_root)
-            if p is not None and not p.exists():
-                out.append(Finding("L5", "error", _rel(d.path, vault),
-                                   f"sources[{i}].resource not on disk: {s['resource']}"))
+        rel = _rel(d.path, vault)
+        if isinstance(d.meta.get("sources"), list):
+            for i, s in enumerate(d.meta["sources"]):
+                if not isinstance(s, dict) or not isinstance(s.get("resource"), str):
+                    continue
+                p = _local_path(s["resource"], dev_root)
+                if p is not None and not p.exists():
+                    out.append(Finding("L5", "error", rel,
+                                       f"sources[{i}].resource not on disk: {s['resource']}"))
+        if not repo:
+            continue
+        for where, sha in git_citations(d.meta):
+            if not GIT_SHA_RE.match(sha):
+                out.append(Finding("L5", "error", rel,
+                                   f"{where}: {sha!r} is not a commit hash"))
+            elif not commit_exists(sha, dev_root):
+                out.append(Finding("L5", "error", rel,
+                                   f"{where}: commit {sha} is not in this repository"))
     return out
 
 

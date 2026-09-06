@@ -2289,5 +2289,117 @@ class CascadeAnatomyTests(Round104Fixture):
         self.assertIn("cascade_replay --json", out.getvalue())
 
 
+
+# --------------------------------------------------------------------------------------
+# Round 106: the Adapter Lifecycle Maintenance Invariant (R105-2) and git provenance (B19/B20)
+# --------------------------------------------------------------------------------------
+
+class WindowInvarianceTests(CRMFixture):
+    """Ruling R105-2: an adapter maintains every page it emitted, or says it no longer can."""
+
+    def test_a_titan_below_the_cap_is_re_admitted_not_frozen(self):
+        first = ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW, limit_titans=2)
+        titans = sorted(p.stem for p in (self.vault / "crm" / "titans").glob("titan_*.md"))
+        self.assertGreaterEqual(len(titans), 1, titans)
+        # squeeze the window to nothing: without re-admission these pages would never be rebuilt
+        report = ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW + timedelta(hours=1),
+                                            limit_titans=0)
+        still = sorted(p.stem for p in (self.vault / "crm" / "titans").glob("titan_*.md"))
+        self.assertEqual(still, titans)                       # nothing deleted
+        self.assertEqual(report.unmaintained, [])             # and nothing abandoned: all re-admitted
+
+    def test_a_page_whose_source_row_is_gone_is_named_not_silently_frozen(self):
+        ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW)
+        orphan = self.vault / "crm" / "sharps" / "sharp_0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef.md"
+        pages.write_page(pages.Page(orphan, pages.make_meta("Entity/Sharp Trader", "Sharp gone",
+                                                            "A sharp pruned from the source table.", at=NOW),
+                                    "# gone\n\n- [[crm_register|CRM register]]\n"), self.vault, now=NOW)
+        report = ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW + timedelta(hours=1))
+        self.assertIn("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", report.unmaintained)
+
+
+class MarketWindowTests(IngestFixture):
+    def _ingest(self, at, drops=None):
+        return ingest_mk.ingest_markets(self.vault, self.dev_root, exp_dir=self.exp_dir, at=at,
+                                        drops=drops if drops is not None else None)
+
+    def test_a_market_that_ages_out_of_the_drop_keeps_its_identity_and_its_path(self):
+        """The naive union writes a placeholder page at a NEW slug and orphans the good one."""
+        self._ingest(NOW)
+        page = next(p for p in pages.load_pages(self.vault) if p.type == "Market"
+                    and (p.meta.get("dev") or {}).get("token_id") == "TOK_NOCHANGE")
+        before_path, before_title = page.path, page.meta["title"]
+        self.assertNotIn("Polymarket token", before_title)
+        # every drop replaced by one that no longer carries this token
+        drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
+        for f in drops.glob("*.json"):
+            f.unlink()
+        (drops / "polymarket_macro_20260907T000000_000000Z.json").write_text(json.dumps([]), encoding="utf-8")
+        self._ingest(NOW + timedelta(days=1))
+        after = pages.load_page(before_path)
+        self.assertIsNotNone(after, "the page was orphaned at its old path")
+        self.assertEqual(after.meta["title"], before_title)          # not degraded to a placeholder
+        self.assertEqual(len([p for p in pages.load_pages(self.vault) if p.type == "Market"
+                              and (p.meta.get("dev") or {}).get("token_id") == "TOK_NOCHANGE"]), 1)
+
+    def test_first_seen_is_the_first_sighting_not_the_latest(self):
+        self._ingest(NOW)
+        path = next(p.path for p in pages.load_pages(self.vault) if p.type == "Market"
+                    and (p.meta.get("dev") or {}).get("token_id") == "TOK_NOCHANGE")
+        first = pages.load_page(path).meta["dev"]["first_seen"]
+        drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
+        newest = json.loads(sorted(drops.glob("*.json"))[-1].read_text(encoding="utf-8"))
+        for r in newest:
+            r["fetched_at"] = "2026-09-09T00:00:00Z"          # a much later sighting
+        (drops / "polymarket_macro_20260909T000000_000000Z.json").write_text(json.dumps(newest), encoding="utf-8")
+        self._ingest(NOW + timedelta(days=3))
+        self.assertEqual(pages.load_page(path).meta["dev"]["first_seen"], first)
+
+
+class GitProvenanceTests(TempVault):
+    """Backlog B19/B20: a ruling that cites a commit is making a checkable claim."""
+
+    def test_citations_are_read_from_both_spellings(self):
+        meta = {"sources": [{"resource": "git:da48cf3"}, {"resource": "AGENTS.md"}],
+                "dev": {"citations": ["deadbee", {"commit": "ec98342"}]}}
+        self.assertEqual(lint.git_citations(meta),
+                         [("sources[0].resource", "da48cf3"),
+                          ("dev.citations[0]", "deadbee"),
+                          ("dev.citations[1].commit", "ec98342")])
+
+    def test_outside_a_repository_the_check_is_skipped_not_passed(self):
+        """A temp dir is not a repo; reporting either verdict there would be a lie."""
+        self.assertFalse(lint.is_git_repo(self.dev_root))
+        self.write("wiki/concepts/a.md", page_text(body="# a\n", sources=[{"id": "c", "resource": "git:deadbee",
+                                                                           "title": "commit deadbee"}]))
+        self.assertEqual([f for f in lint.check_l5(pages.load_documents(self.vault), self.vault, self.dev_root)
+                          if "commit" in f.message], [])
+
+    def test_inside_a_repository_an_unresolvable_hash_is_an_error(self):
+        real = Path(__file__).resolve().parents[2]          # the DEV repo this test file lives in
+        if not lint.is_git_repo(real):                      # pragma: no cover - CI without git history
+            self.skipTest("not a git repository")
+        self.assertTrue(lint.commit_exists("da48cf3", real))      # a commit this repo really has
+        self.assertFalse(lint.commit_exists("deadbee", real))     # well-formed but not a commit
+        self.assertFalse(lint.commit_exists("nothex!", real))     # not even a hash
+        self.write("wiki/concepts/a.md", page_text(body="# a\n", sources=[{"id": "c", "resource": "git:deadbee",
+                                                                           "title": "commit deadbee"}]))
+        found = [f for f in lint.check_l5(pages.load_documents(self.vault), self.vault, real)
+                 if "not in this repository" in f.message]
+        self.assertEqual([(f.code, f.severity) for f in found], [("L5", "error")])
+
+    def test_the_seeded_rulings_cite_commits_that_exist(self):
+        """The real vault's rulings pass; this is the check earning its place rather than passing empty."""
+        real = Path(__file__).resolve().parents[2]
+        if not lint.is_git_repo(real):                      # pragma: no cover
+            self.skipTest("not a git repository")
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW)
+        cited = [(d.path.stem, sha) for d in pages.load_documents(self.vault) if d.meta
+                 for _, sha in lint.git_citations(d.meta)]
+        self.assertTrue(cited, "no ruling cited a commit; the check would be vacuous")
+        for stem, sha in cited:
+            self.assertTrue(lint.commit_exists(sha, real), f"{stem} cites missing commit {sha}")
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
