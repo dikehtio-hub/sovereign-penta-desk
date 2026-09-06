@@ -2360,6 +2360,30 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 111 - QUERY FILING, OPT-IN USAGE COUNTING, SUMMARY COLUMN
+     python -m knowledge.query --file "<question>"
+         Scaffolds wiki/concepts/query_<slug>.md with the question, the pages that were open when it
+         was asked, and an EMPTY Answer section. It never invents an answer - manufacturing a claim
+         with no source is the one thing a knowledge layer must not do. Re-filing the same question
+         keeps an answer already written. Carries stale_after (L7) and lands in queries_register (L3).
+         Combines with --drill-card / --regime to record what was on screen.
+     python -m knowledge.query --drill-card <event> --count-usage
+         Records dev.usage {count, last, window_days} on the pages the query opened.
+         OPT-IN, AND THAT IS A CORRECTNESS REQUIREMENT. write_page REFUSES a page inside its own
+         dev.window, so counting on every query would raise WriteRefused at T-2 on the FOMC Event
+         page - a traceback instead of a briefing card, in the one window the card exists for. It
+         also breaks the Round 107 guarantee that every query mode writes nothing. Even WITH the
+         flag a windowed page is skipped and reported as skipped.
+     python -m knowledge.ingest.digests
+         Ruling R110-1.E: a truncated digest now appends a durable `**Warning**` bullet to log.md as
+         well as the page callout. stdout is gone the moment an unattended run ends.
+     REGISTER CELLS NOW ESCAPE PIPES (knowledge/registers.py:_cell)
+         Ruling R110-1.A put free PROSE (`description`) into a register table for the first time.
+         None of today's 65 digest descriptions contains a `|`, but one future round entry would
+         have grown a phantom column - the Round 104 regime-table bug in a new place. Fixed in
+         `_cell`, so all TEN registers are hardened. `md_cell` moved to pages.py (registers must not
+         import from ingest) and is re-exported for the adapters.
+
      ROUND 110 - DIGESTS REGISTERED, PINNED AND HONEST ABOUT TRUNCATION
      python -m knowledge.seed        # now writes NINE registers, not eight
          Ruling R109-1.F: `Digest` is a registers.SPECS type, so an empty digests_register exists

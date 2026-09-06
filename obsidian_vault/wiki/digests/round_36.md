@@ -8,7 +8,7 @@ tags:
 - round-36
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T07:43:40Z'
+  at: '2026-09-06T08:12:49Z'
 status: draft
 sources:
 - id: agents-log
@@ -20,6 +20,7 @@ dev:
   date: null
   kind: round_digest
   truncated: false
+  dropped_lines: 0
   asserts:
   - file: AGENTS.md
     pattern: ^Round 36 complete

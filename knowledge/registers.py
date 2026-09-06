@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from . import GENERATED_BY
-from .pages import Page, load_pages, make_meta, page_path, safe_title
+from .pages import Page, load_pages, make_meta, md_cell, page_path, safe_title
 
 # type -> (stem, title, description, columns shown after the page link)
 SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -40,7 +40,18 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                       ("date", "receipts", "predictions_n")),
     "Digest": ("digests_register", "Digests register",
                "Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree.",
-               ("round", "date")),
+               # Ruling R110-1.A: `description` comes from page.meta, which _cell already prefers over
+               # dev, so the summary lands in the generic table with no second builder. Checked first
+               # that no digest description contains a `|` or a `[[link]]` - 65 of them, none does -
+               # because an unescaped pipe in a cell splits the column, which is how the Round 104
+               # regime table grew a phantom column.
+               ("round", "date", "description")),
+    # "Filed Query" selects Concept pages scaffolded by knowledge.query --file (dev.kind ==
+    # filed_query). Without a register they are orphans (L3), and an unfindable filed question is
+    # the same as an unfiled one.
+    "Filed Query": ("queries_register", "Filed queries register",
+                    "Every question filed with `knowledge.query --file`. The scaffold records the question and what was open when it was asked; the ANSWER is the operator's to write.",
+                    ("question",)),
     # "Thesis" selects Concept pages compiled from module docstrings (dev.kind == thesis).
     "Thesis": ("theses_register", "Theses register",
                "Every module thesis compiled from a desk docstring; each heading is pinned to its source so a silent deletion is a lint C1 finding.",
@@ -55,6 +66,8 @@ def matches(page_type: str | None, type_: str, dev: dict | None = None) -> bool:
         return page_type.startswith("Entity/")
     if type_ == "Thesis":
         return page_type == "Concept" and isinstance(dev, dict) and dev.get("kind") == "thesis"
+    if type_ == "Filed Query":
+        return page_type == "Concept" and isinstance(dev, dict) and dev.get("kind") == "filed_query"
     return page_type == type_
 
 REGISTER_STEMS = tuple(spec[0] for spec in SPECS.values())
@@ -65,9 +78,19 @@ def register_stem(type_: str) -> str:
 
 
 def _cell(page: Page, col: str) -> str:
+    """One table cell, with pipes ESCAPED so a value can never split the column.
+
+    Round 111: adding `description` to the digests register put free PROSE into a table cell for the
+    first time. None of today's 65 descriptions contains a `|`, so the register looked fine - but one
+    future round entry with a pipe in it would silently grow a phantom column, which is precisely the
+    Round 104 regime-table bug in a new place. Escaped here rather than at the one call site, because
+    every register renders values it does not control.
+    """
     dev = page.meta.get("dev") or {}
     v = page.meta.get(col, dev.get(col, "-"))
-    return "-" if v in (None, "") else str(v)
+    if v in (None, ""):
+        return "-"
+    return md_cell(v)
 
 
 def update_register(vault, type_: str, *, at: datetime, by: str = GENERATED_BY) -> Page:

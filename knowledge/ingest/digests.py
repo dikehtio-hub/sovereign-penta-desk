@@ -115,6 +115,7 @@ def build_digest(entry: dict[str, Any], vault: Path, dev_root: Path, agents: Pat
                                "title": f"{rel} - Round {n} complete", "author": "claude-code/fable-5.1"}],
                      dev={"round": n, "date": entry["date"], "kind": "round_digest",
                           "truncated": len(all_lines) > MAX_BODY_LINES,
+                          "dropped_lines": max(0, len(all_lines) - MAX_BODY_LINES),
                           # Ruling R109-1.E: pin the heading this page was compiled from. Renaming or
                           # deleting a round entry in the log now trips C1 on the digest that quotes
                           # it, instead of leaving 210 KB of prose pointing at a section that is gone.
@@ -141,11 +142,13 @@ def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, s
         entries = [e for e in entries if e["round"] >= since]
     if not entries:
         return 0, 0
-    written = 0
+    written, truncated = 0, []
     for e in entries:
         page = build_digest(e, vault, dev_root, agents, at, by)
         if page_changed(page, vault):
             written += 1
+        if (page.meta.get("dev") or {}).get("truncated"):
+            truncated.append((e["round"], (page.meta.get("dev") or {}).get("dropped_lines", 0)))
         write_page(page, vault, now=at)
     # ONE writer for this page. Ruling R109-1.F made Digest a registers.SPECS type so seed can
     # guarantee the register exists; keeping a bespoke builder here as well meant seed and this
@@ -154,6 +157,13 @@ def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, s
     reg = update_register(vault, "Digest", at=at, by=by)
     reg_changed = page_changed(reg, vault)
     write_page(reg, vault, now=at)
+    # Ruling R110-1.E: a truncation warning on stdout is gone the moment an unattended run ends.
+    # log.md is the durable record, and a digest that silently dropped the end of a round is exactly
+    # the kind of thing an operator should find later without having to have been watching.
+    for n, dropped in truncated:
+        append_log(vault, "Warning", f"Round {n} digest truncated at {MAX_BODY_LINES} lines "
+                   f"({dropped} line(s) omitted); the full text is in `{rel_to(agents, dev_root)}` "
+                   f"under `Round {n} complete`.", when=at)
     if written or reg_changed:
         write_index(vault, load_pages(vault))
         append_log(vault, "Ingest", f"work-chain digests: {len(entries)} round(s) from "

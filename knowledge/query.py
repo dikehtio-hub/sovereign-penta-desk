@@ -30,9 +30,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from . import DEV_ROOT, EXIT_HALT, EXIT_OK, VAULT, halted
+from . import DEV_ROOT, EXIT_HALT, EXIT_OK, GENERATED_BY, VAULT, halted
 from .frontmatter import parse_iso8601
-from .pages import Page, load_pages, now_utc, page_path
+from .pages import (Page, append_log, default_stale_after, in_window, iso, load_page, load_pages, make_meta,
+                    now_utc, page_path, safe_title, write_index, write_page)
 
 MAX_LINES = 60          # WIKI_SCHEMA.md s.Query: "one page under 60 lines at T-2"
 
@@ -195,7 +196,7 @@ def drill_card(vault: Path, event: Page, now: datetime) -> list[str]:
             f"       --event ./event.json --rules {reg or '<rules.json>'} \\",
             f"       --books {books_dir(event)} --json > curve.json",
             f"  3. python -m knowledge.ingest.clob --result curve.json --event {event.path.stem}",
-            "", f"source: [[{event.path.stem}]] - this card is read-only and wrote nothing."]
+            "", f"source: [[{event.path.stem}]] - the CARD is read-only; nothing above was written."]
     return out
 
 
@@ -231,7 +232,79 @@ def regime_card(vault: Path, name: str, now: datetime) -> list[str]:
             out.append("  latest row: " + ", ".join(f"{k}={last[k]}" for k in list(last)[:6] if k in last))
         out.append(f"  {len(hist)} history row(s); the page carries the full series.")
         out.append("")
-    return out + ["read-only; nothing was written."]
+    return out + ["the CARD is read-only; nothing above was written."]
+
+
+USAGE_WINDOW_DAYS = 90     # OKF usage_window: the span the count is meaningful over
+
+
+def record_usage(vault: Path, pages: list[Page], now: datetime) -> list[str]:
+    """Increment `dev.usage.count` on the pages a query actually opened (backlog B16).
+
+    OPT-IN, NOT AUTOMATIC, and that is a correctness requirement rather than a preference. Ruling
+    R110-1.E's directive was to count on every query, but `write_page` REFUSES a page inside its own
+    `dev.window` - so a drill card counting usage on the FOMC Event page would raise WriteRefused at
+    T-2, in the one window the card exists for, and hand the operator a traceback instead of a
+    briefing. Round 107 also guarantees, and tests, that every query mode writes nothing; that
+    guarantee is what makes the card safe to run inside a frozen window at all.
+
+    So counting happens only when the caller asks for it, and even then a windowed page is skipped
+    rather than attempted: the counter is never worth breaking the thing it is counting.
+    """
+    touched: list[str] = []
+    for page in pages:
+        if in_window(page.meta, now):
+            continue                     # a registration inside its window is frozen; never amend it
+        fresh = load_page(page.path)
+        if fresh is None:
+            continue
+        dev = fresh.meta.setdefault("dev", {})
+        usage = dev.get("usage") if isinstance(dev.get("usage"), dict) else {}
+        usage = {"count": int(usage.get("count", 0)) + 1, "last": iso(now),
+                 "window_days": USAGE_WINDOW_DAYS}
+        dev["usage"] = usage
+        write_page(fresh, vault, now=now)
+        touched.append(fresh.path.stem)
+    return touched
+
+
+def file_answer(vault: Path, question: str, opened: list[Page], now: datetime,
+                by: str = GENERATED_BY) -> Page:
+    """Scaffold a Concept page for a question the operator wants kept (backlog B16).
+
+    A SCAFFOLD, not an answer. The constitution's Query section says to file the answer as a Concept
+    page "when the operator says keep that" - so this writes the question, the pages that were open
+    when it was asked, and an empty section for the human to write in. Inventing an answer here
+    would be the one thing a knowledge layer must never do: manufacture a claim with no source.
+    """
+    stem = re.sub(r"[^a-z0-9]+", "_", question.strip().lower()).strip("_")[:60] or "query"
+    path = page_path(vault, "Concept", f"query_{stem}")
+    existing = load_page(path)
+    body = [f"# {safe_title(question)}", "",
+            f"> Filed {iso(now)} from `knowledge.query`. The answer below is the OPERATOR's to write;",
+            "> this page records the question and what was open when it was asked, nothing more.", "",
+            "## Question", "", question.strip(), "",
+            "## Answer", "",
+            (existing.body.split("## Answer", 1)[1].split("##", 1)[0].strip()
+             if existing and "## Answer" in existing.body else "_(not answered yet)_"), "",
+            "## Open when asked", ""]
+    body += [f"- [[{p.path.stem}|{safe_title(p.title)}]]" for p in opened] or ["- (nothing)"]
+    body += ["", "## Related", "", "- [[WIKI_SCHEMA|Constitution]] s.Query", ""]
+    meta = make_meta("Concept", safe_title(question)[:120], f"Filed query: {safe_title(question)[:150]}",
+                     tags=["concept", "query", "filed"], generated_by=by, at=now, status="draft",
+                     # L7: a Concept page carries a review clock. A filed question especially - it is
+                     # a scaffold awaiting a human answer, and one nobody returns to in 90 days is
+                     # precisely what the staleness policy exists to surface.
+                     stale_after=default_stale_after("Concept", now),
+                     sources=[{"id": f"page-{p.path.stem}", "resource": f"obsidian_vault/{p.rel(vault)}",
+                               "title": safe_title(p.title), "author": by} for p in opened]
+                     or [{"id": "query", "resource": "obsidian_vault/index.md", "title": "the vault index",
+                          "author": by}],
+                     dev={"kind": "filed_query", "question": question.strip(),
+                          "opened": [p.path.stem for p in opened]})
+    from .pages import carry_human_fields
+    carry_human_fields(existing, meta)
+    return Page(path, meta, "\n".join(body))
 
 
 def main(argv: list[str] | None = None, out=None) -> int:
@@ -242,6 +315,12 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap.add_argument("--drill-card", metavar="EVENT", default=None)
     ap.add_argument("--regime", metavar="NAME", default=None)
     ap.add_argument("--list", action="store_true", help="the events and regimes a card can be built for")
+    ap.add_argument("--file", metavar="QUESTION", default=None,
+                    help="file this question as a Concept page scaffold (the ANSWER stays the operator's)")
+    ap.add_argument("--count-usage", action="store_true",
+                    help="also record dev.usage on the pages this query opened. OFF by default: a query "
+                         "that writes cannot be run inside a frozen registration window, which is exactly "
+                         "when the drill card is needed")
     ap.add_argument("--now", default=None, help="ISO 8601 instant to compute the countdown from (tests)")
     args = ap.parse_args(argv)
 
@@ -255,12 +334,13 @@ def main(argv: list[str] | None = None, out=None) -> int:
         return EXIT_HALT
     now = parse_iso8601(args.now) if args.now else now_utc()
 
-    if args.list or not (args.drill_card or args.regime):
+    if args.list or not (args.drill_card or args.regime or args.file):
         pages = load_pages(args.vault)
         print("events:  " + ", ".join(sorted(p.path.stem for p in pages if p.type == "Event")), file=out)
         print("regimes: " + ", ".join(sorted(p.path.stem for p in pages if p.type == "Regime")), file=out)
         return EXIT_OK if args.list else EXIT_HALT
 
+    opened: list[Page] = []
     if args.drill_card:
         event = find_event(args.vault, args.drill_card)
         if event is None:
@@ -269,11 +349,31 @@ def main(argv: list[str] | None = None, out=None) -> int:
                   f"A blank card two minutes before a print is worse than no card (exit {EXIT_HALT})", file=out)
             return EXIT_HALT
         lines = drill_card(args.vault, event, now)
-    else:
+        opened = [p for p in (event, rules_for(args.vault, event)) if p is not None]
+    elif args.regime:
         lines = regime_card(args.vault, args.regime, now)
+        want = normalise(args.regime)
+        opened = [p for p in load_pages(args.vault) if p.type == "Regime"
+                  and (want in normalise(p.path.stem) or want in normalise(p.title))]
+    else:
+        lines = []
 
     for line in lines:
         print(line, file=out)
+
+    if args.file:
+        page = file_answer(args.vault, args.file, opened, now)
+        write_page(page, args.vault, now=now)
+        write_index(args.vault, load_pages(args.vault))
+        append_log(args.vault, "Query", f"filed **{safe_title(args.file)[:120]}** -> "
+                   f"[[{page.path.stem}]]; {len(opened)} page(s) open when asked.", when=now)
+        print(f"[FILE] {page.path.relative_to(args.vault).as_posix()} - the Answer section is yours to write",
+              file=out)
+    if args.count_usage:
+        touched = record_usage(args.vault, opened, now)
+        skipped = len(opened) - len(touched)
+        print(f"[USAGE] recorded on {len(touched)} page(s)"
+              + (f"; {skipped} skipped (inside their own registration window)" if skipped else ""), file=out)
     return EXIT_OK
 
 

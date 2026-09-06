@@ -468,7 +468,7 @@ REGISTER_LINKS: tuple[tuple[str, str], ...] = (
     ("computations_register", "Computations register"), ("events_register", "Events register"),
     ("markets_register", "Markets register"), ("crm_register", "CRM register"),
     ("journal_register", "Journal register"), ("theses_register", "Theses register"),
-    ("digests_register", "Digests register"),
+    ("digests_register", "Digests register"), ("queries_register", "Filed queries register"),
 )
 
 # Folders a desk-linked stem may live in. Concept covers registers and theses; the other two carry

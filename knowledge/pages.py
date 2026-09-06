@@ -476,6 +476,17 @@ def is_machine_maintained(meta: dict[str, Any]) -> bool:
     return isinstance(dev, dict) and ("register_for" in dev or "history" in dev)
 
 
+def md_cell(v) -> str:
+    """A value safe inside a markdown table cell (Round 104).
+
+    Distinct from pages.safe_title, which SUBSTITUTES `|` with `/` because a wiki link's own grammar
+    cannot carry a pipe at all. Here the value is data, not a title - `VOL_HIGH|FUND_FLAT` is a literal
+    regime_tag in hyperliquid_data.db - so the pipe is ESCAPED and the reader sees the real key. The
+    unescaped version silently split the regime table into a phantom extra column.
+    """
+    return str(v).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
 def safe_title(text: str) -> str:
     """A title that survives `* [Title](path) - desc` and `[[stem\\|Title]]`: no brackets, pipes or newlines."""
     return re.sub(r"\s+", " ", str(text).replace("[", "(").replace("]", ")").replace("|", "/")).strip()

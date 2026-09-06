@@ -70,6 +70,7 @@ CME futures desk: nine strategy stacks, ICT session clocks, Risk Sentinel invari
 - [[journal_register|Journal register]]
 - [[theses_register|Theses register]]
 - [[digests_register|Digests register]]
+- [[queries_register|Filed queries register]]
 
 ## Other desks
 

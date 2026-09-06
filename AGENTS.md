@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+Round 111 complete (2026-09-06): THE QUERY LAYER CAN FILE AND COUNT, WITHOUT LOSING THE ONE
+PROPERTY THAT MAKES IT USABLE AT T-2. B16: `--file "<question>"` scaffolds a Concept page
+recording the question and what was open when it was asked - never an invented answer - and
+`--count-usage` records dev.usage on the pages a query opened. USAGE COUNTING IS OPT-IN, and
+that is a correctness requirement, not a preference: write_page REFUSES a page inside its own
+dev.window, so counting on every query would raise WriteRefused at T-2 on the FOMC Event page
+and hand the operator a traceback instead of a briefing card. Even with the flag a windowed
+page is skipped rather than attempted. R110-1.A: `description` joins the digests register
+columns. R110-1.E: a truncated digest now warns durably in log.md, not only on stdout.
+Tests: knowledge 233 (+21), all green offline. Vault 491 pages, lint CLEAN. NO DAEMON
+RESTARTED.
+
 Round 110 complete (2026-09-06): THE DIGESTS ARE NOW GUARDED, REGISTERED AND HONEST ABOUT
 WHAT THEY DROP. R109-1.F: `Digest` is a registers.SPECS type, so seed writes an EMPTY digests
 register from the first run and every desk can link it - fixing the CAUSE of the 27 test
@@ -1182,6 +1194,43 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 111 findings
+
+### The usage counter as directed would have broken the drill card at T-2
+
+- R110-1.E's directive was to increment `dev.usage.count` on pages a query opens. But
+  `write_page` RAISES WriteRefused for a page inside its own `dev.window` (pages.py), and the
+  FOMC Event page's window is 17:58Z-18:05Z on 2026-09-16. A drill card counting usage would
+  therefore have crashed in the ONE window it exists for, handing the operator a traceback two
+  minutes before a Fed print.
+- It also breaks the Round 107 guarantee - and its test - that every query mode writes nothing,
+  which is precisely what makes the card safe to run inside a frozen window.
+- Counting is therefore OPT-IN (`--count-usage`), and even then a windowed page is SKIPPED
+  rather than attempted and reported as skipped. The counter is never worth breaking the thing
+  it is counting. Flagged for ratification rather than assumed.
+- Found in the pre-quote check, not in testing: one grep for `in_window` in write_page.
+
+### The summary column put free prose in a table cell for the first time
+
+- The pre-quote check said it was safe: 65 digest descriptions, none containing a `|`. That was
+  true and not sufficient. `registers._cell` did not ESCAPE pipes, so one future round entry
+  with a pipe in its first sentence would silently grow a phantom column - the Round 104
+  regime-table bug, in a new place, waiting.
+- Caught by a test written for the general case rather than the current data. The fix is in
+  `_cell`, so all TEN registers are hardened, not just the digests one: every register renders
+  values it does not control.
+- `md_cell` moved from `ingest/__init__.py` to `pages.py` for this - registers should not import
+  from ingest - and is re-exported so the adapters' imports are unchanged.
+
+### Two smaller honesty fixes
+
+- The card's footer said "this card is read-only and wrote nothing". With `--file` in the same
+  run that is false. It now says "the CARD is read-only; nothing above was written", which is
+  true in both cases.
+- A filed query is a Concept page, so L7 wants a review clock and L3 wants an inbound link. It
+  carries `stale_after` (90 d) and lands in a new `queries_register` - a question nobody can
+  find is the same as an unfiled one. Tenth register; REGISTER_STEMS is now 10.
 
 ## Round 110 findings
 

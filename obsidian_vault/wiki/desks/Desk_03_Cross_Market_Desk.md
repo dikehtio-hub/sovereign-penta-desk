@@ -105,6 +105,7 @@ Cross-venue desk: Polymarket vs sportsbook dutching arb, Titan correlator and le
 - [[journal_register|Journal register]]
 - [[theses_register|Theses register]]
 - [[digests_register|Digests register]]
+- [[queries_register|Filed queries register]]
 
 ## Compiled pages (Phase 2 adapters)
 

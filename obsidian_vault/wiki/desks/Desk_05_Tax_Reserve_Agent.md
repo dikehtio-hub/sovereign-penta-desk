@@ -80,6 +80,7 @@ The accountant every desk asks before sizing: lot engine, IRC 1256 60/40, IRC 16
 - [[journal_register|Journal register]]
 - [[theses_register|Theses register]]
 - [[digests_register|Digests register]]
+- [[queries_register|Filed queries register]]
 
 ## Other desks
 

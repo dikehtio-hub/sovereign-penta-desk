@@ -79,6 +79,7 @@ Sportsbook desk: multi-book odds ingestion, Shin/Power devigging to fair value, 
 - [[journal_register|Journal register]]
 - [[theses_register|Theses register]]
 - [[digests_register|Digests register]]
+- [[queries_register|Filed queries register]]
 
 ## Other desks
 

@@ -1251,7 +1251,7 @@ class RegistersAndSeedLinksTests(IngestFixture):
         body = (self.vault / "wiki/desks/Desk_04_Quant_Trading_Lab.md").read_text(encoding="utf-8")
         for stem in registers.REGISTER_STEMS:
             self.assertIn(f"[[{stem}|", body)
-        self.assertEqual(len(registers.REGISTER_STEMS), 9)
+        self.assertEqual(len(registers.REGISTER_STEMS), 10)
 
     def test_register_columns_and_cells(self):
         ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
@@ -2933,6 +2933,136 @@ class DigestTruncationTests(IngestFixture):
         self.assertEqual(pages.wikilink_targets(body), {"digests_register"})
         self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)
                           if f.code in ("L8", "L9")], [])
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 111: summary column (R110-1.A), durable truncation warning (R110-1.E),
+# query filing and OPT-IN usage counting (B16)
+# --------------------------------------------------------------------------------------
+
+class DigestSummaryColumnTests(IngestFixture):
+    def test_the_register_carries_the_summary_without_a_second_builder(self):
+        """R110-1.A: _cell prefers page.meta, so `description` lands in the generic table."""
+        self.assertEqual(registers.SPECS["Digest"][3], ("round", "date", "description"))
+        agents = self.dev_root / "AGENTS.md"
+        agents.write_text(AGENTS_DIGEST_FIXTURE, encoding="utf-8")
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=agents, at=NOW)
+        body = fm.parse((self.vault / "wiki/concepts/digests_register.md").read_text(encoding="utf-8"))[1]
+        self.assertIn("| Page | round | date | description | Status | Generated |", body)
+        self.assertIn("THE NEWEST FORMAT", body)          # the summary itself, in the table
+
+    def test_no_description_can_split_the_table(self):
+        """An unescaped pipe in a cell grows a phantom column - the Round 104 regime-table bug."""
+        agents = self.dev_root / "AGENTS.md"
+        agents.write_text("# DEV\n\n## Status\n\nRound 7 complete (2026-09-06): A | B piped summary.\n",
+                          encoding="utf-8")
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=agents, at=NOW)
+        body = fm.parse((self.vault / "wiki/concepts/digests_register.md").read_text(encoding="utf-8"))[1]
+        row = [l for l in body.splitlines() if "round_7" in l][0]
+        header = [l for l in body.splitlines() if l.startswith("| Page |")][0]
+        self.assertEqual(row.count("|") - row.count(r"\|"), header.count("|"),
+                         f"row splits into a different column count than the header:\n{row}")
+
+
+class DigestWarningTests(IngestFixture):
+    def _log(self, n_lines: int) -> Path:
+        body = "\n".join(f"line {i}." for i in range(n_lines))
+        agents = self.dev_root / "AGENTS.md"
+        agents.write_text(f"# DEV\n\n## Status\n\nRound 42 complete (2026-09-06): LONG.\n{body}\n",
+                          encoding="utf-8")
+        return agents
+
+    def test_a_truncated_digest_warns_durably_in_the_log(self):
+        """R110-1.E: stdout is gone the moment an unattended run ends; log.md is not."""
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self._log(400), at=NOW)
+        log = (self.vault / "log.md").read_text(encoding="utf-8")
+        self.assertIn("**Warning**", log)
+        self.assertIn("Round 42 digest truncated at 250 lines", log)
+        self.assertIn("line(s) omitted", log)
+        meta, body = fm.parse((self.vault / "wiki/digests/round_42.md").read_text(encoding="utf-8"))
+        self.assertTrue(meta["dev"]["truncated"])
+        self.assertGreater(meta["dev"]["dropped_lines"], 0)
+        self.assertIn("> [!NOTE]", body)                   # BOTH the page callout and the log bullet
+
+    def test_a_short_digest_writes_no_warning(self):
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self._log(10), at=NOW)
+        self.assertNotIn("**Warning**", (self.vault / "log.md").read_text(encoding="utf-8"))
+
+
+class QueryFilingTests(QueryCardTests):
+    def _snap(self):
+        return {p.as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in sorted(self.vault.rglob("*.md"))}
+
+    def test_the_card_still_writes_nothing_by_default(self):
+        """Round 107's guarantee must survive B16. It is why the card is safe inside a window."""
+        before = self._snap()
+        self.card("--drill-card", self.event)
+        self.card("--regime", "BTC")
+        self.assertEqual(self._snap(), before)
+
+    def test_file_scaffolds_a_question_and_never_invents_an_answer(self):
+        code, text = self.card("--drill-card", self.event, "--file", "Does the 50bps rule fire?")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("[FILE]", text)
+        path = self.vault / "wiki/concepts/query_does_the_50bps_rule_fire.md"
+        self.assertTrue(path.is_file())
+        meta, body = fm.parse(path.read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["kind"], "filed_query")
+        self.assertEqual(meta["dev"]["question"], "Does the 50bps rule fire?")
+        self.assertIn("_(not answered yet)_", body)          # a scaffold, never a manufactured answer
+        self.assertIn("## Open when asked", body)
+        self.assertIn(f"[[{self.event}", body)               # what was open when it was asked
+        self.assertIn("stale_after", meta)                   # L7: a Concept page carries a review clock
+        self.assertIn("**Query**", (self.vault / "log.md").read_text(encoding="utf-8"))
+
+    def test_refiling_the_same_question_keeps_a_written_answer(self):
+        self.card("--drill-card", self.event, "--file", "Keep my answer?")
+        path = self.vault / "wiki/concepts/query_keep_my_answer.md"
+        meta, body = fm.parse(path.read_text(encoding="utf-8"))
+        pages.write_page(pages.Page(path, meta, body.replace("_(not answered yet)_", "Yes, it does.")),
+                         self.vault, now=NOW)
+        self.card("--drill-card", self.event, "--file", "Keep my answer?")
+        self.assertIn("Yes, it does.", path.read_text(encoding="utf-8"))
+
+    def test_usage_counting_is_opt_in(self):
+        before = self._snap()
+        self.card("--drill-card", self.event)
+        self.assertEqual(self._snap(), before, "the card counted usage without being asked")
+        code, text = self.card("--drill-card", self.event, "--count-usage")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("[USAGE] recorded on", text)
+        meta, _ = fm.parse((self.vault / f"wiki/events/{self.event}.md").read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["usage"]["count"], 1)
+        self.assertEqual(meta["dev"]["usage"]["window_days"], query_mod.USAGE_WINDOW_DAYS)
+        self.card("--drill-card", self.event, "--count-usage")
+        meta, _ = fm.parse((self.vault / f"wiki/events/{self.event}.md").read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["usage"]["count"], 2)
+
+    def test_inside_the_window_usage_is_skipped_not_attempted(self):
+        """write_page REFUSES a page inside its own window. Counting there would raise WriteRefused
+        at T-2 and hand the operator a traceback instead of a briefing card."""
+        inside = datetime(2026, 9, 16, 18, 0, tzinfo=timezone.utc)
+        code, text = self.card("--drill-card", self.event, "--count-usage", now=inside)
+        self.assertEqual(code, EXIT_OK)                      # no WriteRefused, no traceback
+        self.assertIn("INSIDE THE WINDOW", text)             # the card still renders
+        self.assertIn("skipped (inside their own registration window)", text)
+        meta, _ = fm.parse((self.vault / f"wiki/events/{self.event}.md").read_text(encoding="utf-8"))
+        self.assertNotIn("usage", meta.get("dev", {}))
+
+    def test_the_footer_no_longer_claims_nothing_was_written(self):
+        _, text = self.card("--drill-card", self.event, "--file", "A question.")
+        self.assertIn("the CARD is read-only", text)
+        self.assertNotIn("wrote nothing", text)              # --file DID write; do not claim otherwise
+
+    def test_filed_queries_are_registered_and_lint_clean(self):
+        self.card("--drill-card", self.event, "--file", "Registered?")
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW, force=True)
+        reg = self.vault / "wiki/concepts/queries_register.md"
+        self.assertTrue(reg.is_file())
+        self.assertIn("query_registered", reg.read_text(encoding="utf-8"))
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
 
 
 if __name__ == "__main__":  # pragma: no cover
