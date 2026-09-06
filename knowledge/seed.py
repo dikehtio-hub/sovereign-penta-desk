@@ -458,15 +458,17 @@ def build_item_page(item: ItemSpec, desks: dict[int, DeskSpec], vault: Path, dev
 
 # The eight registers a desk links. Each page appears only once its own adapter has run, so the
 # list is FILTERED to what exists (lint L8) rather than asserted - see page_exists below.
-# NOT digests_register: seed guarantees these eight exist by calling registers.update_register for
-# each (Round 105), and the digests register is built by its own adapter with its own shape, so
-# seed cannot create it. Linked here it would dangle (L8) on every vault whose digests have not
-# been compiled. It is not an orphan either way - all 63 digest pages link back to it.
+# All NINE are guaranteed by seed, which calls registers.update_register for every SPECS entry
+# (Round 105). Round 109 left digests_register out because it was built by its own adapter and seed
+# could not create it - linked unconditionally it dangled (L8) on any vault whose digests had not
+# been compiled, and said so in 27 tests. Ruling R109-1.F fixed the cause instead of the symptom by
+# making Digest a SPECS type, so an empty digests register now exists from the first seed.
 REGISTER_LINKS: tuple[tuple[str, str], ...] = (
     ("experiments_register", "Experiments register"), ("rulings_register", "Rulings register"),
     ("computations_register", "Computations register"), ("events_register", "Events register"),
     ("markets_register", "Markets register"), ("crm_register", "CRM register"),
     ("journal_register", "Journal register"), ("theses_register", "Theses register"),
+    ("digests_register", "Digests register"),
 )
 
 # Folders a desk-linked stem may live in. Concept covers registers and theses; the other two carry

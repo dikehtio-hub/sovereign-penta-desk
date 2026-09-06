@@ -9,7 +9,7 @@ tags:
 - round-109
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T07:26:24Z'
+  at: '2026-09-06T07:43:40Z'
 status: draft
 sources:
 - id: agents-log
@@ -20,6 +20,11 @@ dev:
   round: 109
   date: '2026-09-06'
   kind: round_digest
+  truncated: false
+  asserts:
+  - file: AGENTS.md
+    pattern: ^Round 109 complete
+    claim: the round heading this digest was compiled from is still in the log
 ---
 # Round 109 digest
 

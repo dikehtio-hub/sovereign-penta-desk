@@ -32,6 +32,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
+from ..registers import update_register
 from . import add_common_args, at_from, guard, page_changed, rel_to
 
 DEFAULT_AGENTS = Path("AGENTS.md")
@@ -44,7 +45,11 @@ REGISTER_STEM = "digests_register"
 # undated round records date=None rather than a guessed one.
 ROUND_RE = re.compile(r"^Round (\d+) complete(?:\s*\(([^)]*)\))?\s*[:\-]\s*(.*)$", re.M)
 WIKILINK_RE = re.compile(r"(?<!`)\[\[([^\]]*)\]\](?!`)")
-MAX_BODY_LINES = 120
+# Ruling R109-1.C: 250, not 120. The longest entry today (Round 85) is 110 lines - ten from the old
+# ceiling - so the next long round would have been clipped without a word. Truncation is now also
+# ANNOUNCED on the page and warned about at compile time, because a digest that quietly drops the
+# end of a round is worse than one that is obviously incomplete.
+MAX_BODY_LINES = 250
 
 
 def neutralise(text: str) -> str:
@@ -89,7 +94,16 @@ def build_digest(entry: dict[str, Any], vault: Path, dev_root: Path, agents: Pat
                  by: str = GENERATED_BY) -> Page:
     n = entry["round"]
     rel = rel_to(agents, dev_root)
-    lines = neutralise(entry["summary"]).splitlines()[:MAX_BODY_LINES]
+    all_lines = neutralise(entry["summary"]).splitlines()
+    lines = all_lines[:MAX_BODY_LINES]
+    if len(all_lines) > MAX_BODY_LINES:
+        # NOT a wikilink. The directive spelled this `[[AGENTS.md#round-N-complete]]`, but AGENTS.md
+        # lives at the REPO ROOT and lint L8 resolves wikilinks against files in the VAULT - so every
+        # truncated digest would have failed lint on the very line telling the reader where the rest
+        # of the text is. A code span says the same thing and resolves for a human either way.
+        lines += ["", "> [!NOTE]",
+                  f"> Entry truncated at {MAX_BODY_LINES} of {len(all_lines)} lines. "
+                  f"The full text is in `{rel}` under `Round {n} complete`."]
     body = [f"# Round {n} digest", "",
             f"> {entry['date'] or 'date not recorded in the log'} · compiled from `{rel}`. **The log is the record**; this page is an "
             "index into it, and loses to it wherever they disagree.", "",
@@ -99,7 +113,13 @@ def build_digest(entry: dict[str, Any], vault: Path, dev_root: Path, agents: Pat
                      tags=["digest", "work-chain", f"round-{n}"], generated_by=by, at=at, status="draft",
                      sources=[{"id": "agents-log", "resource": f"{rel}#round-{n}-complete",
                                "title": f"{rel} - Round {n} complete", "author": "claude-code/fable-5.1"}],
-                     dev={"round": n, "date": entry["date"], "kind": "round_digest"})
+                     dev={"round": n, "date": entry["date"], "kind": "round_digest",
+                          "truncated": len(all_lines) > MAX_BODY_LINES,
+                          # Ruling R109-1.E: pin the heading this page was compiled from. Renaming or
+                          # deleting a round entry in the log now trips C1 on the digest that quotes
+                          # it, instead of leaving 210 KB of prose pointing at a section that is gone.
+                          "asserts": [{"file": rel, "pattern": rf"^Round {n} complete",
+                                       "claim": "the round heading this digest was compiled from is still in the log"}]})
     path = page_path(vault, "Digest", f"round_{n}")
     carry_human_fields(load_page_safe(path), meta)
     return Page(path, meta, "\n".join(body))
@@ -108,24 +128,6 @@ def build_digest(entry: dict[str, Any], vault: Path, dev_root: Path, agents: Pat
 def load_page_safe(path: Path):
     from ..pages import load_page
     return load_page(path) if path.is_file() else None
-
-
-def build_register(entries: list[dict[str, Any]], vault: Path, at: datetime, by: str = GENERATED_BY) -> Page:
-    lines = ["# Digests register", "",
-             "> One page per round of the work chain, compiled from `AGENTS.md`. Newest first.",
-             "> Maintained by the knowledge layer; hand edits are overwritten.", "",
-             "| Round | Date | Summary |", "|---|---|---|"]
-    for e in sorted(entries, key=lambda r: -r["round"]):
-        lines.append(f"| [[round_{e['round']}\\|Round {e['round']}]] | {e['date'] or '-'} | "
-                     f"{neutralise(first_sentence(e['summary'], 150))} |")
-    lines += ["", f"{len(entries)} round(s).", "", "## Related", "",
-              "- [[WIKI_SCHEMA|Constitution]] s.4 (registers)", ""]
-    meta = make_meta("Concept", "Digests register",
-                     f"Every round of the work chain as its own page: {len(entries)} compiled from AGENTS.md.",
-                     tags=["concept", "register", "digest"], generated_by=by, at=at, status="draft",
-                     dev={"register_for": "Digest", "count": len(entries),
-                          "pages": [f"round_{e['round']}" for e in sorted(entries, key=lambda r: r["round"])]})
-    return Page(page_path(vault, "Concept", REGISTER_STEM), meta, "\n".join(lines))
 
 
 def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, since: int | None = None,
@@ -145,7 +147,11 @@ def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, s
         if page_changed(page, vault):
             written += 1
         write_page(page, vault, now=at)
-    reg = build_register(entries, vault, at, by)
+    # ONE writer for this page. Ruling R109-1.F made Digest a registers.SPECS type so seed can
+    # guarantee the register exists; keeping a bespoke builder here as well meant seed and this
+    # adapter produced DIFFERENT content for the same file and silently overwrote each other on
+    # every run. The generic register renders round and date from dev, which is what it is for.
+    reg = update_register(vault, "Digest", at=at, by=by)
     reg_changed = page_changed(reg, vault)
     write_page(reg, vault, now=at)
     if written or reg_changed:

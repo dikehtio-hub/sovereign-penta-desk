@@ -8,7 +8,7 @@ tags:
 - round-65
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T07:15:30Z'
+  at: '2026-09-06T07:43:40Z'
 status: draft
 sources:
 - id: agents-log
@@ -19,6 +19,11 @@ dev:
   round: 65
   date: null
   kind: round_digest
+  truncated: false
+  asserts:
+  - file: AGENTS.md
+    pattern: ^Round 65 complete
+    claim: the round heading this digest was compiled from is still in the log
 ---
 # Round 65 digest
 

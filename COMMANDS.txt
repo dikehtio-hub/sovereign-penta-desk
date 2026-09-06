@@ -2360,6 +2360,25 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 110 - DIGESTS REGISTERED, PINNED AND HONEST ABOUT TRUNCATION
+     python -m knowledge.seed        # now writes NINE registers, not eight
+         Ruling R109-1.F: `Digest` is a registers.SPECS type, so an empty digests_register exists
+         from the first seed and every desk links it. Round 109 had left it out because seed could
+         not create it and the link dangled (L8) in 27 tests; this fixes the cause.
+         WATCH FOR THE DOUBLE WRITER THIS CREATED: registers.update_register and the digests adapter
+         were both building that page with different content, silently overwriting each other every
+         run. The adapter's bespoke builder is gone - one writer, stable across any command order.
+     python -m knowledge.ingest.digests
+         Ruling R109-1.E: each digest carries dev.asserts pinning `^Round <N> complete` in AGENTS.md,
+         so renaming or deleting a round heading trips lint C1 on the digest that quotes it rather
+         than leaving prose pointing at a section that is gone. The pattern matches all three log
+         formats, because they differ only in what FOLLOWS the word `complete`.
+         Ruling R109-1.C: MAX_BODY_LINES is 250 (was 120; the longest entry, Round 85, is 110). A
+         clipped entry now carries a `> [!NOTE]` saying how much was dropped and where the full text
+         is, and the ingest warns at compile time. THE CALLOUT IS NOT A WIKILINK: AGENTS.md lives at
+         the repo root, not in the vault, so `[[AGENTS.md#...]]` would fail L8 on the very line
+         telling the reader where the rest of the text is.
+
      ROUND 109 - WORK-CHAIN DIGESTS, C1 OVER dev.rules, EVENT-DECLARED BOOKS DIR
      python -m knowledge.ingest.digests [--agents AGENTS.md] [--since N]
          AGENTS.md -> one Digest page per round under wiki/digests/, plus digests_register. 63

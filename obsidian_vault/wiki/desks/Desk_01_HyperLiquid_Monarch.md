@@ -73,6 +73,7 @@ Perp DEX desk: delta-neutral funding harvester, whale cascade sweeper, L2 order-
 - [[crm_register|CRM register]]
 - [[journal_register|Journal register]]
 - [[theses_register|Theses register]]
+- [[digests_register|Digests register]]
 
 ## Compiled pages (Phase 2 adapters)
 

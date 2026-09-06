@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+Round 110 complete (2026-09-06): THE DIGESTS ARE NOW GUARDED, REGISTERED AND HONEST ABOUT
+WHAT THEY DROP. R109-1.F: `Digest` is a registers.SPECS type, so seed writes an EMPTY digests
+register from the first run and every desk can link it - fixing the CAUSE of the 27 test
+failures Round 109 worked around rather than the symptom. That exposed a real conflict the
+directive did not anticipate: seed and the digests adapter were BOTH building that page, with
+different content, silently overwriting each other every run. There is now one writer.
+R109-1.E: every digest pins `^Round <N> complete` in AGENTS.md with dev.asserts, so renaming
+or deleting a round heading trips C1 on the page that quotes it instead of leaving 210 KB of
+prose pointing at a section that is gone. R109-1.C: MAX_BODY_LINES 120 -> 250, and a clipped
+entry now SAYS it was clipped and warns at compile time. Tests: knowledge 212 (+10), all green
+offline. Vault 488 pages, lint CLEAN. NO DAEMON RESTARTED.
+
 Round 109 complete (2026-09-06): THE WORK CHAIN IS ADDRESSABLE, AND THE PRE-REGISTERED RULES
 NOW HAVE A GUARD ON BOTH COPIES. B5: knowledge/ingest/digests.py compiles one Digest page per
 round from this log - 63 of them - so answering "what happened in Round 97?" is a lookup
@@ -1170,6 +1182,38 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 110 findings
+
+### Making Digest a SPECS type exposed a double writer
+
+- Ruling R109-1.F is right that the fix belongs in `registers.SPECS` rather than in a link
+  filter. But adding it there gave `digests_register.md` TWO builders: `registers.update_register`
+  (generic, columns from dev) and the digests adapter's own bespoke table. Both wrote the same
+  path with different content, so seed and the adapter silently overwrote each other on every
+  run - the page's contents depended on which command happened to run last.
+- Caught by hashing the file across seed -> adapter -> seed. Neither run errored, neither
+  reported a write, and lint was clean throughout: the only symptom was a hash that moved.
+- The bespoke builder is gone; the generic register renders `round` and `date` from `dev`,
+  which is what the SPECS columns are for. One writer, stable across any command order.
+
+### The directive's truncation callout would have failed lint
+
+- R109-1.C specifies the callout as `[[AGENTS.md#round-<N>-complete]]`. **AGENTS.md is at the
+  repository root, not in the vault**, and lint L8 resolves wikilinks against vault files - so
+  every truncated digest would have failed lint on the exact line telling the reader where the
+  rest of the text is. Rendered as a code span instead, which resolves for a human either way.
+- Caught before writing it, by checking whether `obsidian_vault/AGENTS.md` exists. It does not.
+- No entry truncates today - Round 85 is the longest at 110 lines against the new 250 - so the
+  path is exercised only by a synthetic 400-line test. A branch that never runs in production
+  is exactly the one that has to be tested.
+
+### Smaller things
+
+- C1 already memoises file reads, so 64 digests asserting against the same 210 KB log cost one
+  read rather than 64. Checked before adding the asserts rather than assumed.
+- The assert pattern `^Round <N> complete` matches all three log formats (dated, undated and
+  the dash form), because the difference between them is what follows the word `complete`.
 
 ## Round 109 findings
 

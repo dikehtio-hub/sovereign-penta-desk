@@ -191,7 +191,7 @@
 * [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
-* [Digests register](wiki/concepts/digests_register.md) - Every round of the work chain as its own page: 64 compiled from AGENTS.md.
+* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 65 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 9 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
@@ -245,6 +245,7 @@
 * [Round 107 digest](wiki/digests/round_107.md) - Round 107 (2026-09-06): THE OPERATOR CAN NOW ASK THE VAULT A QUESTION
 * [Round 108 digest](wiki/digests/round_108.md) - Round 108 (2026-09-06): LINT L9 CLOSES THE HOLE ROUND 107 OPENED, AND THE DRILL CARD IS NOW COPY-PASTEABLE
 * [Round 109 digest](wiki/digests/round_109.md) - Round 109 (2026-09-06): THE WORK CHAIN IS ADDRESSABLE, AND THE PRE-REGISTERED RULES NOW HAVE A GUARD ON BOTH COPIES
+* [Round 110 digest](wiki/digests/round_110.md) - Round 110 (2026-09-06): THE DIGESTS ARE NOW GUARDED, REGISTERED AND HONEST ABOUT WHAT THEY DROP
 * [Round 31 digest](wiki/digests/round_31.md) - Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings
 * [Round 33 digest](wiki/digests/round_33.md) - Round 33: DATA GROUNDING
 * [Round 34 digest](wiki/digests/round_34.md) - Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION

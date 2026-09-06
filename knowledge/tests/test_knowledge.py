@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import re
 import subprocess
 import os
 import tempfile
@@ -1250,7 +1251,7 @@ class RegistersAndSeedLinksTests(IngestFixture):
         body = (self.vault / "wiki/desks/Desk_04_Quant_Trading_Lab.md").read_text(encoding="utf-8")
         for stem in registers.REGISTER_STEMS:
             self.assertIn(f"[[{stem}|", body)
-        self.assertEqual(len(registers.REGISTER_STEMS), 8)
+        self.assertEqual(len(registers.REGISTER_STEMS), 9)
 
     def test_register_columns_and_cells(self):
         ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
@@ -2820,6 +2821,118 @@ class DigestTests(IngestFixture):
         code = ingest_dg.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out)
         self.assertEqual(code, 3)
         self.assertIn("[REFUSE]", out.getvalue())
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 110: the digests register via SPECS (R109-1.F), the assert drift guard (R109-1.E),
+# and announced truncation (R109-1.C)
+# --------------------------------------------------------------------------------------
+
+class DigestRegisterTests(IngestFixture):
+    def test_seed_guarantees_the_digests_register_so_desks_can_link_it(self):
+        """R109-1.F: Round 109 left it out because seed could not create it. Now seed can."""
+        self.assertIn("Digest", registers.SPECS)
+        self.assertIn(("digests_register", "Digests register"), seed.REGISTER_LINKS)
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW)
+        reg = self.vault / "wiki/concepts/digests_register.md"
+        self.assertTrue(reg.is_file(), "seed must write an EMPTY register, not skip it")
+        meta, body = fm.parse(reg.read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["register_for"], "Digest")
+        self.assertEqual(meta["dev"]["count"], 0)
+        self.assertIn("0 page(s).", body)
+        # and every desk links it without dangling - the 27-test failure of Round 109
+        self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)
+                          if f.code in ("L8", "L3")], [])
+
+    def test_one_writer_only_so_seed_and_the_adapter_agree(self):
+        """Both used to build this page with different content and overwrite each other silently."""
+        agents = self.dev_root / "AGENTS.md"
+        agents.write_text(AGENTS_DIGEST_FIXTURE, encoding="utf-8")
+        reg = self.vault / "wiki/concepts/digests_register.md"
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW)
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=agents, at=NOW)
+        after_adapter = reg.read_bytes()
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW, force=True)
+        self.assertEqual(reg.read_bytes(), after_adapter, "seed and the adapter disagree about the register")
+        meta, _ = fm.parse(reg.read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["count"], 3)
+
+
+class DigestGuardTests(IngestFixture):
+    def setUp(self):
+        super().setUp()
+        self.agents = self.dev_root / "AGENTS.md"
+        self.agents.write_text(AGENTS_DIGEST_FIXTURE, encoding="utf-8")
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW)
+
+    def _c1(self):
+        return [f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "C1"]
+
+    def test_a_faithful_log_is_clean(self):
+        self.assertEqual(self._c1(), [])
+
+    def test_the_digest_pins_the_heading_it_was_compiled_from(self):
+        meta, _ = fm.parse((self.vault / "wiki/digests/round_109.md").read_text(encoding="utf-8"))
+        a = meta["dev"]["asserts"][0]
+        self.assertEqual(a["file"], "AGENTS.md")
+        self.assertEqual(a["pattern"], "^Round 109 complete")
+
+    def test_renaming_a_round_heading_trips_c1_on_that_digest(self):
+        self.agents.write_text(
+            AGENTS_DIGEST_FIXTURE.replace("Round 73 complete:", "Round 73 finished:"), encoding="utf-8")
+        found = self._c1()
+        self.assertTrue(found)
+        self.assertEqual(found[0].path, "wiki/digests/round_73.md")
+        self.assertIn("^Round 73 complete", found[0].message)
+
+    def test_deleting_a_round_entry_trips_c1_rather_than_leaving_a_stale_page(self):
+        keep = AGENTS_DIGEST_FIXTURE.split("Round 50 complete")[0]
+        self.agents.write_text(keep, encoding="utf-8")
+        found = self._c1()
+        self.assertTrue(any(f.path == "wiki/digests/round_50.md" for f in found), found)
+
+
+class DigestTruncationTests(IngestFixture):
+    """R109-1.C: 250 lines, and a digest that drops the end of a round must SAY so."""
+
+    def _log(self, n_lines: int) -> Path:
+        body = "\n".join(f"line {i} of the round entry." for i in range(n_lines))
+        agents = self.dev_root / "AGENTS.md"
+        agents.write_text(f"# DEV\n\n## Status\n\nRound 42 complete (2026-09-06): A LONG ONE.\n{body}\n",
+                          encoding="utf-8")
+        return agents
+
+    def test_the_ceiling_is_250(self):
+        self.assertEqual(ingest_dg.MAX_BODY_LINES, 250)
+
+    def test_a_short_entry_is_not_marked_truncated(self):
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self._log(10), at=NOW)
+        meta, body = fm.parse((self.vault / "wiki/digests/round_42.md").read_text(encoding="utf-8"))
+        self.assertFalse(meta["dev"]["truncated"])
+        self.assertNotIn("[!NOTE]", body)
+
+    def test_a_long_entry_is_clipped_and_says_so(self):
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self._log(400), at=NOW)
+        meta, body = fm.parse((self.vault / "wiki/digests/round_42.md").read_text(encoding="utf-8"))
+        self.assertTrue(meta["dev"]["truncated"])
+        self.assertIn("> [!NOTE]", body)
+        self.assertIn("truncated at 250 of ", body)
+        self.assertRegex(body, r"truncated at 250 of (\d+) lines")
+        self.assertGreater(int(re.search(r"truncated at 250 of (\d+) lines", body).group(1)), 250)
+        self.assertIn("`AGENTS.md`", body)
+        self.assertIn("Round 42 complete", body)
+        self.assertNotIn("line 399 of the round entry", body)     # the tail really is gone
+
+    def test_the_callout_is_not_a_wikilink(self):
+        """AGENTS.md is at the REPO ROOT, not in the vault: a wikilink to it fails L8, so every
+        truncated digest would break lint on the line telling the reader where the rest is."""
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self._log(400), at=NOW)
+        body = fm.parse((self.vault / "wiki/digests/round_42.md").read_text(encoding="utf-8"))[1]
+        self.assertNotIn("[[AGENTS", body)
+        self.assertEqual(pages.wikilink_targets(body), {"digests_register"})
+        self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)
+                          if f.code in ("L8", "L9")], [])
 
 
 if __name__ == "__main__":  # pragma: no cover

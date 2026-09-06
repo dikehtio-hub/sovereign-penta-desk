@@ -38,6 +38,9 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "Journal Entry": ("journal_register", "Journal register",
                       "Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human.",
                       ("date", "receipts", "predictions_n")),
+    "Digest": ("digests_register", "Digests register",
+               "Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree.",
+               ("round", "date")),
     # "Thesis" selects Concept pages compiled from module docstrings (dev.kind == thesis).
     "Thesis": ("theses_register", "Theses register",
                "Every module thesis compiled from a desk docstring; each heading is pinned to its source so a silent deletion is a lint C1 finding.",
