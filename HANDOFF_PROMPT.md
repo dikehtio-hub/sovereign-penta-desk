@@ -3,7 +3,7 @@
 **To**: Antigravity (System Architect & Quantitative Auditor)
 **From**: Claude Code (Senior Implementation Engineer / Test Master)
 **Date**: 2026-09-06 (commit `596cee0` at 19:23 EDT)
-**Subject**: Round 116 was run WITHOUT a prompt from you - the operator said "proceed on your own". It took the top Round 116 candidate from the Round 115 handoff: the live dress rehearsal of the FOMC drill. Please cross-check it as you would any round, and rule on the choices made without you.
+**Subject**: Rounds 116-117 were run WITHOUT a prompt from you - the operator said "proceed on your own", then "do as much as possible until you need authorization". Section 0b is THE CHECKLIST: every open item, dated, with its owner. Please acknowledge it explicitly in your Round 118 prompt, carry it as a standing section in every handoff from now on, and mark each line you resolve. Then cross-check the two rounds as you would any other and rule on the choices made without you.
 
 ---
 
@@ -24,7 +24,51 @@ for the 16th (HOMEWORK). Tests: knowledge 319.
 - pruning rehearsal scratch dirs (R116-1.E): deletes files; your ruling;
 - W32Time, battery flags, collector restart, Desk 4 installs: the operator's list, unchanged.
 
-Everything below is the Round 116 handoff as written; its rulings and cross-check requests stand.
+Everything below section 0b is the Round 116 handoff as written; its rulings and cross-check requests stand.
+
+---
+
+## 0b. THE CHECKLIST (authoritative as of 2026-09-06 19:40 EDT; mirrors HOMEWORK.md)
+
+Antigravity: this is the single list of everything open. Please (1) acknowledge it by name in the Round 118 prompt, (2) keep it as a standing section in every handoff you write, (3) mark each line you resolve or rule on, and (4) tell the operator which lines are theirs in your own words too, so they hear it from both of us.
+
+### Dated - the operator, in order
+- [ ] **2026-09-06 ~22:20 EDT (tonight)** - Tier 2b 24 h unbroken-series gate closes. Laptop on, plugged in, logged in. Nothing to run.
+- [ ] **2026-09-13 or 14** - dress rehearsal: `python -m knowledge.drills.fomc_live_rehearsal` (60 s of real books into scratch, then the whole post-print path into a scratch vault copy; nothing real written). Send the output to Claude if any line says FAIL.
+- [ ] **2026-09-15** - Q3 estimated tax payment: `python -m Tax_Reserve_Agent.main calendar` for the amount and the escrow release. Penalty accrues from this date if missed.
+- [ ] **2026-09-16 morning** - `python -m knowledge.drills.fomc_rehearsal --online` (30 checks, incl. a live fetch of each token), then `python -m knowledge.drills.fomc_live_rehearsal` once more.
+- [ ] **2026-09-16 13:58 EDT** - laptop on, logged in, ON AC (or flags cleared - see below). At T-2: `python -m knowledge.query --drill-card fomc-2026-09-16`. At 14:00 a HUMAN reads the statement and writes `./event.json` (confidence >= 0.99 only from the statement). Then the survival curve, then `knowledge.ingest.clob`, per the card.
+
+### Operator decisions - each is one line back to Claude, or two commands
+- [ ] **Start the Windows Time service** (found STOPPED by the pre-flight; clock +0.37 s today): `Start-Service W32Time; w32tm /resync` in an elevated shell. The pre-flight WARNs until this is done.
+- [ ] **Battery flags on `Monarch_FOMC_Drill`**: clear them (Claude can, on your word), or commit to AC at 13:58. The pre-flight WARNs until one is chosen.
+- [ ] **Collector restart window** - Ruling R104-1's spread gate takes effect only on the next restart; Claude will not restart a daemon without your word.
+- [ ] **Desk 4 packages** - `uvicorn` and/or `hyperliquid-python-sdk` into the live Anaconda env. Dry runs are clean; Antigravity approved on that condition (R113-1.G); the environment is yours. Yes to one, both, or neither.
+- [ ] **One-off scheduled task** to prove scheduler -> batch -> recorder end to end (the only link no rehearsal can exercise): a task registration, so yours to authorise; Claude drafts and runs it on your word.
+- [ ] **Send this handoff to Antigravity** (Rounds 116-117 are self-directed; Antigravity has seen neither).
+
+### Antigravity - rulings outstanding
+- [ ] **R115-1.A-E** (Round 115 handoff, unanswered): row-filter requirements are part of the population; `population: pooled` on the whale registration; the span gate declined in `cascade_replay.py` (no window registered); whale re-run cadence with the share gate at 20.08%; nested-repo hygiene (6 modified + 7 untracked files not Claude's).
+- [ ] **R116-1.A-E** (this handoff): the reading of "proceed on your own"; the synthetic event at confidence 0.995 in scratch; lint scoping on a relocated vault copy; token-shape check at registration time (a test refactor - `TOK_*` appears in ~10 assertions); pruning of rehearsal scratch dirs.
+- [ ] **Independent cross-check of commits `596cee0`, `c1657cb`, `34d6e75`** per section 4 below, plus the Round 115 requests.
+
+### Engineering queue - blocked on a line above
+- [ ] Token-shape check at registration time (after R116-1.D).
+- [ ] Scratch-dir pruning (after R116-1.E).
+- [ ] One-off scheduler proof (after the operator's word).
+- [ ] Desk 4 installs and the four skipped test modules (after the operator's word).
+- [ ] Watching, no action: passive_fade's window gate clears ~2026-09-08 (share gate ZEC 26.8% still fails); whale share gate 20.08% vs 20% - both registration pages show every gate on every ingest; L11 fires only when a page is `ready` for 3 days.
+
+### Standing rules (unchanged)
+- Keep the laptop awake while a 24 h series accumulates; shut down cleanly, never the power button; never kill the daemons by hand; never seed the live tax ledger; `DEV/HALT.flag` is the kill switch.
+
+### Done this session, for the record (Rounds 112-117, all committed, all tests green, no daemon restarted)
+- 112 `9c87c5c` dev.progress + L10, registers hub, slug digest, regime_filtered_v1 parked on true grounds.
+- 113 `26c7d9f` FOMC pre-flight (22 checks), write_register hub cascade, `ready` = every gate + L11, Desk 4 skips.
+- 114 `c7b70b7` reopening verdict INSUFFICIENT over the registered population (trade_sweep), drill batch tracked, pre-flight clock/writability/concurrency (29 checks).
+- 115 `6438b4b` whale replay re-run INSUFFICIENT by 0.20 pts on the rows the engine counts; engine span gate; Desk 4 from any directory.
+- 116 `596cee0` live dress rehearsal end to end into scratch (180/180 stamps, 1 live + 2 deferred markets, pages lint clean).
+- 117 `34d6e75` pre-flight `--online` (30 checks, all three tokens resolve live).
 
 ---
 
