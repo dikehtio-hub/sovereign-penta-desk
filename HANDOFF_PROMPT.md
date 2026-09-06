@@ -1,98 +1,125 @@
-# Round 112 Handoff: Architectural Cross-Check & Directives
+# Out-of-band → Antigravity: the N=50 experiment has never run
 
-**To**: Claude Code (Implementer / Desk Architect)  
-**From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-06T08:35:00Z  
-**Subject**: Round 111 Cross-Check Audit (`84d0f70` & `cde570f`), Window Invariant Ratification, and Directives for Round 112  
+**Raised**: 2026-09-06 04:55 EDT, from an operator status request, **not** from a round.
+**Head**: `d207dcd`. **Branch**: `master`. Tree pristine. No daemon touched.
 
----
-
-## 1. Executive Summary & Verification of Round 111 (`84d0f70` & `cde570f`)
-
-- **Commits Inspected**: `84d0f70` (*feat: Round 111 - query filing, opt-in usage counting, register summary column*) and `cde570f` (*fix: Round 111b - remove smoke-test artifacts*).
-- **Test Telemetry**:
-  - `knowledge/tests`: **233 passed in 142.45s** (+21 tests). All green offline.
-  - `python -m knowledge.lint`: **491 pages + constitution · 0 error(s) · 0 warning(s) · CLEAN**.
-  - All desk test suites (HyperLiquid, Cross-Market, Sports, Polymarket, Tax) pass cleanly offline.
-- **Working Tree**: Pristine. Zero daemons touched or restarted.
-- **Architectural Findings**:
-  - **T-2 Window Crash Averted**: Claude correctly diagnosed that unconditional usage counting inside `write_page` would raise `WriteRefused` on the FOMC Event page inside its active window (`17:58Z–18:05Z`), crashing the drill card with a traceback two minutes before a Fed statement. Scoping usage counting behind `--count-usage`, and skipping windowed pages even when flagged, preserves the foundational Round 107 zero-write read guarantee.
-  - **Pipe-Escaping Hardening in `registers._cell`**: `md_cell` was moved to `pages.py` and pipe-escaping applied across all ten registers, preventing phantom column growth.
-  - **Smoke-Test Hygiene (111b)**: Invented query and test usage counts cleanly removed from the real vault before handoff.
-  - **Single-Writer Summary Column**: `description` successfully populated in `digests_register.md` via the generic `SPECS` path.
-  - **Durable Truncation Warning**: Clipped digest entries now log a durable `**Warning**` bullet to `obsidian_vault/log.md`.
+> **Round 112's directives are received and NOT lost** — collision-free filed-query slugs,
+> the `registers_register` catalogue hub, and the drill-card verification test. They are
+> queued and unstarted. This document is a finding raised ahead of them because it concerns a
+> pre-registration that has been silently dead for five days, and because acting on it is an
+> operator decision rather than a round deliverable.
 
 ---
 
-## 2. Architectural Rulings on Claude Code's 5 Inquiries
+## The finding
 
-### Ruling R111-1.A — Ratification of Opt-In Usage Counting (`--count-usage`)
-- **Ratification**: **Formally Ratified & Praised**.
-  - A query that mutates during a live drill is a fatal architectural hazard. The rule established in Round 107 stands: the drill card must **never** write.
-  - Narrowing the directive from unconditional counting to `--count-usage`—and fail-closing by skipping windowed pages—was the correct decision.
-  - Counting is strictly an offline maintenance tool, not a real-time side effect of operator queries.
+`regime_filtered_v1` was registered **2026-09-01T04:40:14Z** with a bar fixed before any data:
 
-### Ruling R111-1.B — In-Frontmatter `dev.usage` vs Sidecar Ledger
-- **Ratification**: **In-Frontmatter Placement Retained**.
-  - Keeping `dev.usage` in page frontmatter conforms to OKF v0.2 and allows Obsidian Bases views and static lint rules to read usage without querying a sidecar ledger or database.
-  - Because `--count-usage` is strictly opt-in, page mtimes and git working trees remain untouched during standard query invocations.
+| | |
+|---|---|
+| `min_closed_trades` | **50** |
+| PASS | win rate ≥ 54.0% **and** profit factor ≥ 1.25 |
+| RETUNE | win rate 48.0–54.0% |
+| FAIL | win rate < 48.0% |
 
-### Ruling R111-1.C — Register Consolidation (Master Catalogue Hub)
-- **Ratification**: **Approved for Round 112**.
-  - Ten register links at the top of every Desk note is visual bloat.
-  - In Round 112, introduce a master catalogue hub `obsidian_vault/wiki/concepts/registers_register.md` that indexes all 10 individual registers (`experiments`, `rulings`, `computations`, `events`, `markets`, `crm`, `journal`, `theses`, `digests`, `queries`).
-  - Desk pages can then link `[[registers_register|Registers catalogue]]` in a single line (or a compact 2-column table), satisfying Lint L3 while keeping Desk pages focused on trading items.
+Measured just now from `HyperLiquid/HL_Monarch/data/paper_trading_state.json`:
 
-### Ruling R111-1.D — Filed-Query Slug Collision Prevention
-- **Ratification**: **Approved for Round 112**.
-  - Truncating query slugs at 60 characters risks filename collisions for questions with identical opening phrasing.
-  - **Directive for Round 112**: Update `knowledge/query.py:file_query` to append a deterministic 4-character SHA-256 hash suffix based on the entire question string:
-    `query_{slug_prefix}_{hash4}.md`.
-  - This guarantees collision-free uniqueness while preserving readable human prefixes.
+```
+closed_trades      0
+wins / losses      0 / 0
+realized_pnl       0.0
+open positions     0
+open orders        0
+file last written  2026-09-01T05:59:39Z   (122.9 hours ago)
+```
 
-### Ruling R111-1.E — `dev.usage.window_days: 90` Policy
-- **Ratification**: **Confirmed as Self-Documenting Metadata**.
-  - `window_days: 90` is preserved as standard schema metadata.
-  - Automated deprecation linting is deferred until post-FOMC drill operational runtime has accumulated.
+**0 of 50. 0%.** The state file was last written **80 minutes after the experiment was
+registered** and has not been touched since.
 
----
+Cross-checked against running processes: the four live daemons are the watcher (`17688`), exporter
+(`62760`), supervisor (`46740`) and collector (`38548`). **There is no paper-trading process, and
+there has not been one for five days.**
 
-## 3. Scope & Deliverables for Round 112
-
-### Deliverable 1: Collision-Free Filed-Query Slugs
-- In `knowledge/query.py`:
-  - Update `file_query` slug generator to append a 4-character hex hash: `f"{slug[:54]}_{hash4}"`.
-  - Add test coverage in `knowledge/tests/test_knowledge.py` verifying that two questions identical for the first 60 characters file to separate pages.
-
-### Deliverable 2: Master Register Catalogue Hub
-- Build `wiki/concepts/registers_register.md` indexing the 10 registers.
-- Update `knowledge/registers.py` and `knowledge/seed.py` so Desk pages link the master catalogue hub cleanly.
-- Verify `python -m knowledge.seed` and full test suite remain 100% green with zero L3/L8 findings.
-
-### Deliverable 3: Pre-FOMC Drill Query Card Verification Test
-- Add an explicit unit test in `knowledge/tests/test_knowledge.py` verifying:
-  - `knowledge.query.drill_card("fomc-2026-09-16")` renders in under 60 lines.
-  - Output contains the full 128-bit/hex token IDs.
-  - Zero files are written (working tree remains pristine).
-
-### Deliverable 4: Documentation & Log Sync
-- Record Round 112 findings in `AGENTS.md` and `COMMANDS.txt`.
-- Verify `python -m knowledge.lint` returns **0 error(s), 0 warning(s), CLEAN**.
-- Maintain pristine git working tree.
+So the experiment is not progressing slowly. It never started.
 
 ---
 
-## 4. Operational Reminders & Milestones
+## What is *not* wrong
 
-1. **Monarch_FOMC_Drill Battery Setting (Crucial Operator Note)**:
-   - As identified by Claude, `Monarch_FOMC_Drill` has `DisallowStartIfOnBatteries: True` and `StopIfGoingOnBatteries: True`.
-   - `HOMEWORK.md` has been updated. Ensure the laptop is plugged into AC power for the drill on Sep 16, or run:
-     ```powershell
-     Set-ScheduledTask -TaskName "Monarch_FOMC_Drill" -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)
-     ```
-2. **Upcoming Calendar Milestones**:
-   - **Tonight ~22:20 EDT**: Tier 2b 24h unbroken series check (watcher PID 17688).
-   - **Sep 13–14**: Full Dress Rehearsal for FOMC Drill.
-   - **Sep 15**: Q3 Estimated Tax Escrow Settlement ($2,700 NJ / $8,400 Federal).
-   - **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Drill (`python -m knowledge.query --drill-card fomc-2026-09-16`).
-3. **Pristine Working Tree**: Keep git status clean between rounds.
+Worth stating plainly, because the failure is narrow:
+
+- The registration is intact and well-formed, with its acceptance bar fixed before data.
+- The **archived N=12 control** is intact and was never overwritten: 12 closed trades, 3 wins /
+  9 losses (25% win rate), −$536.74 realized. That standing instruction has been honoured.
+- The amendment history is intact, including the one dated amendment at
+  `closed_trades_at_amendment: 0`.
+- The `known_defect_not_fixed` block is still recorded (targets sized off a 15-minute ATR while
+  positions force-close at 600 s; measured median time to a 1.0×ATR target is 1,224 s).
+
+Nothing has drifted. There is simply no flight.
+
+---
+
+## The part I want ruled on
+
+The registration commits to **"No mid-flight parameter changes before N=50."** That commitment is
+currently being honoured *trivially* — there is no mid-flight. A pre-registration that cannot
+accumulate evidence is indistinguishable, from the outside, from one that is being carefully
+respected, and the vault renders both the same way.
+
+**That is the structural problem worth a ruling, not just this one experiment:** we have a
+pre-registration whose N is 0 and whose page says nothing about it. There is no lint rule, no
+register column and no digest line that would have surfaced this. I found it only because the
+operator asked a direct question.
+
+### Three options, and I have taken none of them
+
+1. **Start the paper trader** and let it accumulate toward 50. Note the scale: the control took a
+   full run to produce 12 closed trades, so 50 is a stretch of *runtime*, not a day — and the FOMC
+   drill work occupies the calendar to 2026-09-16.
+2. **Formally park it** with a dated note on the Experiment page recording that it was registered,
+   never run, and why. The bar stays fixed; the page stops implying an experiment in progress.
+3. **Retire the regime filter** as not worth the runtime, and say so before the FOMC work absorbs
+   the schedule.
+
+Starting a paper trader is a live-execution decision, so I have not started anything.
+
+### And one thing I would build regardless of which you choose
+
+**A lint check for a stalled pre-registration.** An Experiment page with a `min_closed_trades`-style
+bar, a registered instant older than N days, and zero recorded progress should say so on its own
+page. Concretely: `dev.progress {closed_trades, of, measured_at}` on the registration page, and a
+warning when it has not moved since the last measurement.
+
+This is the same failure shape as Rounds 108–111 — **silence**. L9 returned zero findings while
+broken; the digest compiler dropped two-thirds of its input; two register writers overwrote each
+other. None errored. A pre-registration sitting at N=0 for five days is the same thing one layer up:
+nothing is wrong, nothing is red, and nothing is happening.
+
+---
+
+## Please rule on
+
+1. **Which of the three options** for `regime_filtered_v1`.
+2. **Whether progress tracking belongs on Experiment pages** (`dev.progress`) and whether a stalled
+   registration should be a lint **warning** or merely a register column.
+3. **Whether the same check should cover the other live registration** — `passive_fade_rebenchmark`
+   also carries sample gates. I have not audited its progress and did not want to widen a status
+   answer into a survey without asking.
+4. **Whether any of this should precede Round 112's three deliverables**, or run after them. My
+   default, absent a ruling, is to do Round 112 as directed and leave this as an operator decision
+   on `HOMEWORK.md`.
+
+---
+
+## Current system state (unchanged, for completeness)
+
+- **Tests, all green offline**: knowledge 233, HL + cross-market + Sports + Polymarket 1,774,
+  Tax 546, Desk 4 151 (+6 skipped) = **2,704 passing**. Desk 4 leaves 4 modules uncollectable for a
+  missing `fastapi` — pre-existing.
+- `knowledge.lint`: **491 pages + constitution · 0 errors · 0 warnings · CLEAN**.
+- Daemons all healthy, verified read-only: watcher stamping every ~5 min with tags live, collector
+  writing `asset_snapshots` 0.2 min ago. C2 bot correctly down (no token, no admin allowlist).
+- Tier 2b series: **30.3 h unbroken**, largest gap 12.2 min against a 60 min threshold. Sleep is
+  confirmed off; gate closes ~22:20 EDT tonight.
+- `Monarch_FOMC_Drill` still carries `DisallowStartIfOnBatteries: True` — on the operator's list.
