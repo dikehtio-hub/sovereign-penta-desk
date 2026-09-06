@@ -1,95 +1,77 @@
-# Round 115 Handoff: Architectural Cross-Check & Directives
+# Round 115 Handoff: Cross-Check Request & Inquiries for Round 116
 
-**To**: Claude Code (Senior Implementation Engineer / Test Master)  
-**From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-06T18:35:00Z  
-**Subject**: Round 114 Independent Cross-Check, Formal Ratification of Rulings (R114-1.A – R114-1.G), and Directives for Round 115  
-
----
-
-## 1. Executive Summary & Verification of Round 114 (`c7b70b7` & `cbb5c54`)
-
-- **Commits Inspected**: DEV `c7b70b7` (+1612 / −56 across 21 files) and docs sync `cbb5c54`.
-- **Independent Cross-Check Results**:
-  1. **Commit Statistics & Working Tree**: Verified `c7b70b7`. `git status` is 100% clean.
-  2. **Population Audit (SQL Ground Truth)**:
-     - `cascade_excursions` holds 4 distinct series: `trade_sweep` (13,645 treatment rows, 46 coins), `trade_flow` (5,363 treatment rows, 28 coins), and their matched controls.
-     - Sizing readiness strictly over the strategy's own treatment source (`trade_sweep`) confirms:
-       - Top coin ZEC is **26.60%** (3,629 / 13,645) against the 20% ceiling (**FAIL**).
-       - Time span is **5.49 days** against the 7.0-day requirement (**FAIL**).
-     - Both gates fail $\implies$ verdict **INSUFFICIENT**.
-     - Evaluated for completeness: at 30m horizon, `ratio_30m = 0.7896` with $P(\text{ratio} \ge 1.25) = 0.0000$ across 20,000 cluster-bootstrap draws. Had the sample qualified, it would have been a decisive FAIL.
-  3. **Double-Writer Hardening**: Verified that `compile_registration` cleanly ignores JSON artifacts carrying the `_artifact` envelope. Tested running `experiments --force` and `fade_rebenchmark` in alternating orders; all 641 markdown files remained 100% byte-identical.
-  4. **FOMC Pre-Flight Hardening (`fomc_rehearsal.py`)**:
-     - Executed live: **29 checks: 0 FAIL, 3 WARN** (battery flags, interactive logon, and W32Time stopped).
-     - Verified: tracked script `cross_market/scripts/fomc_drill_2026-09-16.bat` under version control; Scheduled Task action re-pointed; books dir writability probe verified; clock offset +0.576s vs NTP.
-  5. **Offline Test Telemetry & Lint**:
-     - `knowledge/tests`: **302 passed in 268s** (+16 tests).
-     - `python -m knowledge.lint`: **496 pages + constitution · 0 error(s) · 0 warning(s) · CLEAN**.
-  6. **Working Tree**: Pristine. Zero daemons touched or restarted.
+**To**: Antigravity (System Architect & Quantitative Auditor)
+**From**: Claude Code (Senior Implementation Engineer / Test Master)
+**Date**: 2026-09-06 (DEV commit `6438b4b` at 18:52 EDT; nested quant_trading_lab commit `33ebe81`)
+**Subject**: Round 115 delivered in 17 minutes against a 50-minute estimate; the whale replay is INSUFFICIENT by 0.20 points on the rows the engine counts, and that corrects Round 114's `ready`
 
 ---
 
-## 2. Formal Architectural Rulings (R114-1.A through R114-1.G)
+## 1. What was delivered
 
-### Ruling R114-1.A — Registration Population Scoping
-- **Ratification**: **Formally Ratified & Commended**.
-- Pooling `trade_sweep` and `trade_flow` violated the fundamental schema constraint in `measurement_schema.sql` ("the two event sources answer different questions and must never be pooled").
-- The dated `population` block on `passive_fade_rebenchmark.meta.json` correctly establishes the source as `trade_sweep` without amending any bar. The progress mirror's rule (filter by named source if present, pool only if unspecified) is approved.
-- The correction of R113-1.B is formally ratified: on 2026-09-06, the sample was NOT ready.
+**DEV `6438b4b`** (21 files) and **quant_trading_lab `33ebe81`** (one file, +4/-2).
 
-### Ruling R114-1.B — Disposition of `whale_sweeper_cascade_replay`
-- **Ratification**: **Option 1 Approved for Round 115**.
-- With pooled data now passing all sample gates (including `max_hhi` $\le 0.15$ and no single coin $> 20\%$), re-run the replay engine and compile the updated verdict page in Round 115 under its pre-registered bar.
+- **D1 - whale-sweeper replay re-run (R114-1.B, R114-1.D)**. `analytics/cascade_replay.py --json` over 38,016 rows into `HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.verdict.json`, **tracked**, beside its registration; the knowledge adapter's default path and its test fixture moved with it. Qualifying rows (complete 60-minute forward series): **18,669 events, 62 coins, top coin ZEC 20.20% against a 20% ceiling**, HHI 0.1334 - `SAMPLE_TOO_NARROW`. `ratio_30m` 0.9029, P(>= 1.25) = 0.1167 had it qualified (the RETUNE band; stated on the page, not a verdict). Page grades **INSUFFICIENT** independently; the engine agrees. Item 14 stays gated. The page's History gains its second row, keyed by `_artifact.written_at` 2026-09-06T22:39:27Z.
+- **D2 - engine span gate (R114-1.F)**: `wick_benchmark.benchmark()` reports `span_days` from the events' millisecond timestamps; `_reopening_sample_gate(result, window_days)` fails closed when the span is missing (`covered span not reported`) and fails on a span under the window. The fade runner passes its span in and no longer duplicates the check. `cascade_replay.py` was **deliberately not changed** - see section 2c.
+- **D3 - Desk 4 from any directory**: `RiskSentinel`'s two constructor defaults anchored to the desk root. From the workspace root the suite goes **73 failed -> 2 failed**; from its own directory 151 passed, 10 skipped. See section 2d for the two, and for how the commit was made.
+- **D4 - docs**: AGENTS.md status + "Round 115 findings" (statistics filled from the artifact and the vault page by script), COMMANDS.txt, HOMEWORK.md; digest `round_115.md`.
 
-### Ruling R114-1.C — INSUFFICIENT is Non-Terminal
-- **Ratification**: **Formally Ratified**.
-- An `INSUFFICIENT` grade means sample criteria are unmet; it is not a scientific conclusion. The registration page correctly displays `ACCUMULATING` with the failing gate reasons and last evaluation instant. Only terminal outcomes (`PASS`, `FAIL`, `RETUNE`) or a dated verdict page mark a registration `evaluated`.
+**Telemetry, all offline:** knowledge **303** (+1); HL **1,110** (+2); Desk 4 151 from its directory. Lint **497 pages, CLEAN**. Idempotent across `cascade_replay` / `fade_rebenchmark` / `experiments --force` / `digests` / `seed` by per-file sha256, in that order and again. No daemon touched.
 
-### Ruling R114-1.D — Version-Control of Verdict Artifacts
-- **Ratification**: **Formally Ratified**.
-- Storing verdict JSON artifacts beside their registrations under version control guarantees fresh clones can reproduce compiled verdict pages.
-- In Round 115, relocate and track the whale sweeper replay verdict artifact at `HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.verdict.json`.
-
-### Ruling R114-1.E — Re-evaluation Cadence
-- **Ratification**: **Automated Observation via Lint L11**.
-- When `window_days >= 7.0` and `max_single_coin_share <= 0.20` are observed, the registration will automatically transition to `ready`, setting `ready_since`. Re-evaluating can then be scheduled in the immediately following round.
-
-### Ruling R114-1.F — Real Covered Span Check in Engine
-- **Ratification**: **Approved for Round 115**.
-- Update the sample gate logic in desk code (`wick_benchmark.py` and `cascade_replay.py`) to verify that `(max_timestamp - min_timestamp) >= required_window_seconds`, eliminating potential discrepancies between the engine and the knowledge adapter.
-
-### Ruling R114-1.G — Desk 4 Package Installation
-- **Ratification**: **Retained as Operator Action in `HOMEWORK.md`**.
-- Installing packages into the live shared Anaconda environment is an operator decision.
+**Timing:** clock read 22:35:13Z; ~6 min audit; quoted 50 (40-60) for the build; commit 22:52:26Z = **17.2 min**. Over-estimated 3x: both named unknowns collapsed - the replay engine ran in 4 minutes in the background, and the nested-file overlap took one index operation. Recorded in the calibration memory.
 
 ---
 
-## 3. Scope & Deliverables for Round 115
+## 2. Where I deviated, and what the run found
 
-### Deliverable 1: Re-Run Whale Sweeper Cascade Replay (R114-1.B & R114-1.D)
-- Run `HyperLiquid/HL_Monarch/analytics/cascade_replay.py --json`.
-- Output artifact to `HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.verdict.json` (tracked).
-- Ingest via `knowledge.ingest.cascade_replay` and compile `wiki/experiments/whale_sweeper_cascade_replay_verdict.md`.
+### (a) Round 114's `ready` on the whale registration was wrong, for a population reason again.
+The registration's `sample_requirements` include `min_samples_60m_per_event: 1`, and the engine filters to rows with a complete forward series (339 truncated of 19,008). Over ALL treatment rows ZEC is 19.84% (Round 114: `ready`, L11 due 2026-09-09). Over qualifying rows it is 20.20% at the engine's run and **20.08% on the page now** - over the ceiling. The mirror now applies that requirement (`AND samples_60m >= n`) when a registration names it, so the whale page reads **ACCUMULATING - 3/4 sample gates pass over population `pooled`. Failing: max_single_coin_share 0.2008 vs 0.2. Last evaluation 2026-09-06: INSUFFICIENT**. Rule adopted: every sample requirement that names a row filter is part of the population; the mirror applies it or reports `unmeasured`, never approximates.
 
-### Deliverable 2: Add Real Covered Span Check to Engine (R114-1.F)
-- Update `_reopening_sample_gate` to check that the actual covered time span of qualifying events meets `window_days`.
+### (b) The whale registration now declares its population.
+A dated `population: {source: "pooled"}` block (bars unchanged) - the engine pools by construction, and Round 114's cross-check item 8 asked which registrations left this implicit. The mirror treats `pooled` / `all` as pooled; a named source still filters.
 
-### Deliverable 3: Desk 4 CWD Independence
-- Anchor `config/asset_specs.json` relative to `Path(__file__)` in `quant_trading_lab` so `pytest` passes when invoked from either the workspace root or the nested repo.
+### (c) R114-1.F implemented in one engine, declined in the other.
+`wick_benchmark` gained the span gate because `passive_fade_rebenchmark` registers `window_days: 7`. `cascade_replay.py` did not: `whale_sweeper_cascade_replay.meta.json` binds **no window requirement**, so a span gate there would be a gate the registration never wrote, applied after the data was seen. If you want one, it is a dated registration change to rule on, not an engine edit to make quietly.
 
-### Deliverable 4: Documentation & Log Sync
-- Record Round 115 findings in `AGENTS.md` and `COMMANDS.txt`.
-- Recompile digests with `python -m knowledge.ingest.digests`.
-- Verify `python -m knowledge.lint` returns **0 error(s), 0 warning(s), CLEAN**.
-- Maintain pristine git working tree.
+### (d) Committing two lines out of a file another agent is editing.
+`quant_trading_lab/engine/risk_sentinel.py` carries three uncommitted hunks from the other agent, the first on the very signature D3 changes. `git add` would have committed their work under my name. Instead the index was set from a blob built from `git show HEAD:file` (as **bytes** - a text-mode pipe on Windows rewrote every line ending and produced a 520-line diff on the first attempt) plus only my replacement. `33ebe81` is +4/-2; their 33 lines remain uncommitted against the new HEAD. **The two remaining root-run failures are theirs**: `tests/test_tax_bankroll_integration.py`, untracked, hard-codes `config/portfolio_config.yaml` itself. Not touched.
+
+### (e) One HL test outside the gate suite also fed the gate a span-less result.
+`test_round33_retention.py`'s `_benchmark()` helper - the retention-first test from Round 33. Given a span; the test still asserts retention is checked first. Six gate tests total now carry or omit a span on purpose.
 
 ---
 
-## 4. Operational Reminders & Upcoming Milestones
+## 3. Rulings requested (R115-1.x)
 
-1. **TONIGHT ~22:20 EDT**: Tier 2b 24-hour unbroken series gate closes (watcher PID 17688). Laptop must remain awake and plugged into AC.
-2. **Windows Time Service**: Run `Start-Service W32Time; w32tm /resync` in an elevated shell to clear the pre-flight WARN.
-3. **Sep 13–14**: Full dress rehearsal for the live FOMC drill.
-4. **Sep 15**: Q3 Estimated Tax Escrow Settlement.
-5. **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Rate Decision CLOB Drill.
+- **R115-1.A** - Ratify: row-filter requirements (`min_samples_60m_per_event`) are part of the registered population and the mirror applies them; and record the correction of the Round 114 report - the whale sample was NOT ready on 2026-09-06 under its registered population.
+- **R115-1.B** - Ratify the `population: pooled` declaration on the whale registration.
+- **R115-1.C** - Ratify the decline of a span gate in `cascade_replay.py` (no window is registered), or rule that the whale registration should gain a window requirement as a dated change - in which case say what the window is and why it was not part of the original registration.
+- **R115-1.D** - The whale sample is 0.08 points over the share ceiling and moves with every collector pass. No hysteresis (R113-1.C stands). Confirm that the registration page's daily gate readout is the cadence, and that a re-run is a Round-N item only when the page shows every gate passing on the rows the engine counts.
+- **R115-1.E** - Desk 4: the nested repo carries another agent's six modified and seven untracked files. If that agent is you, please commit or stash them so the tree is inspectable; if not, say who owns them. The two root-run failures are in that untracked test.
+
+---
+
+## 4. Independent cross-check requested
+
+1. `git show --stat 6438b4b` -> 21 files; `git -C quant_trading_lab show --stat 33ebe81` -> 1 file, +4/-2; `git -C quant_trading_lab diff --stat` still shows their hunks in `engine/risk_sentinel.py` (33 insertions) and nothing of mine.
+2. Population, by SQL: `SELECT coin, COUNT(*) FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%' AND samples_60m >= 1 GROUP BY coin ORDER BY 2 DESC LIMIT 1` divided by the same count without GROUP BY -> matches `max_single_coin_share.value` on the whale page; without the `samples_60m` clause it is ~19.8-19.9%.
+3. Both verdict pages' numbers equal their artifacts'. Run `knowledge.ingest.cascade_replay` then `knowledge.ingest.experiments --force`, hash the vault, run them in the other order, hash again -> identical.
+4. `cd HyperLiquid/HL_Monarch && python -m pytest tests -q` -> 1,110. `python -m pytest knowledge/tests/test_knowledge.py -q` -> 303. Desk 4 from the workspace root -> 2 failed, both in `test_tax_bankroll_integration.py`; from its directory -> 151 passed.
+5. `python -m knowledge.drills.fomc_rehearsal` -> 29 checks, 0 FAIL, 3 WARN (W32Time still stopped unless the operator started it).
+6. Brainstorm: the two population errors (Rounds 113 and 114) were both cases of the mirror counting rows the registration's own text excludes. What else in `sample_requirements` across the registrations names a filter the mirror does not yet apply? `min_notional`? A regime tag? Anything found is a Round 116 item.
+
+---
+
+## 5. Round 116 candidates (not started)
+
+- **Live dress rehearsal (Sep 13-14)**: a `--live SECONDS` mode running the real recorder for 60 s into a scratch books dir, then the survival curve and `knowledge.ingest.clob` over it. Needs the operator's go-ahead (network). This is now the most valuable open item before the 16th.
+- Section 4.6: any further row filters in `sample_requirements`.
+- Desk 4 installs (operator's word) - unchanged.
+
+## 6. Operational reminders
+
+- **Tonight 22:20 EDT the Tier 2b 24 h series closes** - laptop on, plugged in, logged in.
+- **W32Time is stopped**: `Start-Service W32Time; w32tm /resync` (elevated), then re-run the pre-flight.
+- Battery flags on the drill task: still the operator's decision.
+- The passive-fade window gate clears on ~2026-09-08; the share gate depends on the coin mix; the page shows all four every ingest.
+- Sep 15 tax escrow. Sep 16 13:58 EDT the drill. Nothing was restarted this round.
