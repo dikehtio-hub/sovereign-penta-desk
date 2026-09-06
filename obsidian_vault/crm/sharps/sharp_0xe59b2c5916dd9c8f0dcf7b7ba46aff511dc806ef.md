@@ -8,7 +8,7 @@ tags:
 - desk-3
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:50Z'
+  at: '2026-09-06T04:51:55Z'
 status: draft
 sources:
 - id: sharp_traders
@@ -41,7 +41,7 @@ dev:
 - profile: https://polymarket.com/profile/0xe59b2c5916dd9c8f0dcf7b7ba46aff511dc806ef
 - proxy wallet: `0xe59b2c5916dd9c8f0dcf7b7ba46aff511dc806ef` · EOA: `unresolved` (resolved `2026-08-31T04:08:09Z`)
 - first seen: `1970-01-21T16:41:00Z`
-- live note (exporter-owned): [[Wallets/0xe59b2c5916dd9c8f0dcf7b7ba46aff511dc806ef|trader note]]
+- live note (exporter-owned): none written for `0xe59b2c5916dd9c8f0dcf7b7ba46aff511dc806ef` (the exporter tracks a different set)
 
 ## Judgement
 

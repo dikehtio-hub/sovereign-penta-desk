@@ -205,7 +205,12 @@ def build_journal(day: date, executions: list[Execution], predictions: list[dict
         debrief["drawdown_check"] = debrief["hurdle_check"] = "N/A"
         body.append("- nothing to check: no paper executions today")
     body += ["", OPEN_HEADING, "", _section(existing, OPEN_HEADING, OPEN_PLACEHOLDER), "",
-             "## Related", "", f"- [[{CALIBRATION_FILE}|Calibration]]", "- [[journal_register|Journal register]]", ""]
+             "## Related", ""]
+    # Round 105 (lint L8): the calibration ledger is written by --score, so a day page compiled
+    # before any prediction has been scored would link a page that is not there.
+    body += [f"- [[{CALIBRATION_FILE}|Calibration]]" if page_path(vault, "Concept", CALIBRATION_FILE).is_file()
+             else "- Calibration ledger - not written yet (no scored predictions)"]
+    body += ["- [[journal_register|Journal register]]", ""]
     dev: dict[str, Any] = {"date": day.isoformat(), "receipts": len(executions), "turnover_total": total, "predictions_n": len(predictions),
                            "predictions": predictions, "debrief": debrief}
     if param:

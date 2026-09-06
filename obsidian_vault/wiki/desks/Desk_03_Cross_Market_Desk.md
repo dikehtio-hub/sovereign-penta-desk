@@ -9,7 +9,7 @@ tags:
 - desk-3
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:06Z'
+  at: '2026-09-06T01:10:25Z'
 status: draft
 sources:
 - id: top20-registry
@@ -107,9 +107,7 @@ Cross-venue desk: Polymarket vs sportsbook dutching arb, Titan correlator and le
 
 ## Compiled pages (Phase 2 adapters)
 
-- [[experiments_register|Experiments register]] - pre-registrations and verdicts
 - [[btc_macro_regime|BTC macro regime]] - lead-lag classification history
-- [[latency_decay|Latency decay across events]] - post-print depth survival per event
 
 ## Other desks
 

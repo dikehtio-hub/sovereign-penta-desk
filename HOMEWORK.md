@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-05 23:55 EDT (Round 104).
+Last updated: 2026-09-06 01:55 EDT (Round 105).
 
 ---
 
@@ -42,9 +42,8 @@ Last updated: 2026-09-05 23:55 EDT (Round 104).
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 104 handoff prompt to Antigravity.** Three rulings are
-      requested and one of them decides whether a live hurdle means anything:
-      see the net-hurdle item directly below.
+- [ ] **Send the Round 105 handoff prompt to Antigravity.** The four R104 rulings
+      are implemented; the open question below is the one that still needs a person.
 - [ ] **Rule on whether the basis measurement grid should record spreads.**
       `BASIS_MIN_NET_APR = 20.0` **is** enforced on every live entry — the live
       scanner refuses any trade whose spread it could not measure. What cannot be
@@ -55,12 +54,6 @@ Last updated: 2026-09-05 23:55 EDT (Round 104).
       that has not paid a spread. Either the window writer starts recording both
       legs' spreads, or every retrospective funding number stays an upper bound and
       must be labelled one. This is a decision, not a bug fix.
-- [ ] **Rule on stamping the cascade replay artifact.** Its `--json` output carries
-      no run timestamp, so two runs over a table that grows continuously cannot be
-      ordered from their contents. Round 103 already recorded two figures from it
-      that had silently moved. The fix is the `_artifact` envelope Ruling R102-2 put
-      on the lead-lag exporter. **Not done here on purpose** — `cascade_replay.py`
-      is Antigravity's module and shipped this round.
 
 ---
 
@@ -99,6 +92,13 @@ Last updated: 2026-09-05 23:55 EDT (Round 104).
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 — **All four R104 rulings implemented** (Round 105). Lint L8 catches
+  dangling wikilinks and found **86 real broken links** on its first run — 85 CRM
+  pages pointing at exporter notes that were never written, and a desk pointing at a
+  page the FOMC drill has not produced yet. All fixed at their cause. The cascade
+  replay artifact now stamps itself, and re-running any adapter over unchanged data
+  changes zero files.
 
 - 2026-09-05 22:44 — **Exporter restarted** (56412 → 62760), verified by waiting
   for the pid lock rather than trusting the launch. The Round 101 desk links now

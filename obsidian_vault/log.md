@@ -21,6 +21,29 @@
 * **Ingest**: basis funding windows: 10,635 row(s) from `HyperLiquid/HL_Monarch/data/hyperliquid_data.db` -> [[hl_funding_regime]]; gross-bar-only median 28.05% (upper bound) vs all-window 6.4%.
 * **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6124, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
 * **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: CRM entities: 0 titan(s) (identities present on both venues, cap 100), 100 whale(s) (top by equity, cap 100), 79 sharp(s), 4 book(s); 1 created, 182 updated (judgement kept, evidence appended); [index](index.md) rebuilt.
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 1 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: CRM entities: 0 titan(s) (identities present on both venues, cap 100), 101 whale(s) (top by equity, cap 100), 79 sharp(s), 4 book(s); 0 created, 184 updated (judgement kept, evidence appended); [index](index.md) rebuilt.
+* **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6169, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6169, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
+* **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6169, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
+* **Ingest**: CRM entities: 0 titan(s) (identities present on both venues, cap 100), 102 whale(s) (top by equity, cap 100), 79 sharp(s), 4 book(s); 1 created, 184 updated (judgement kept, evidence appended); [index](index.md) rebuilt.
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6169, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
+* **Ingest**: basis funding windows: 10,635 row(s) from `HyperLiquid/HL_Monarch/data/hyperliquid_data.db` -> [[hl_funding_regime]]; gross-bar-only median 28.05% (upper bound) vs all-window 6.4%.
+* **Ingest**: CRM entities: 0 titan(s) (identities present on both venues, cap 100), 102 whale(s) (top by equity, cap 100), 79 sharp(s), 4 book(s); 0 created, 185 updated (judgement kept, evidence appended); [index](index.md) rebuilt.
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: CRM entities: 0 titan(s) (identities present on both venues, cap 100), 102 whale(s) (top by equity, cap 100), 79 sharp(s), 4 book(s); 0 created, 185 updated (judgement kept, evidence appended); [index](index.md) rebuilt.
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: CRM entities: 0 titan(s) (identities present on both venues, cap 100), 102 whale(s) (top by equity, cap 100), 79 sharp(s), 4 book(s); 0 created, 185 updated (judgement kept, evidence appended); [index](index.md) rebuilt.
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: cascade anatomy: 29,612 row(s), treatment share 0.5 (1-to-1 control identity holds) -> [[cascade_anatomy]].
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 1 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: cascade anatomy: 29,612 row(s), treatment share 0.5 (1-to-1 control identity holds) -> [[cascade_anatomy]].
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 2 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6169, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
+* **Ingest**: cascade anatomy: 29,612 row(s), treatment share 0.5 (1-to-1 control identity holds) -> [[cascade_anatomy]].
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

@@ -44,7 +44,7 @@ from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
 from ..registers import update_register
-from . import add_common_args, at_from, guard, rel_to
+from . import add_common_args, at_from, guard, item_link, rel_to, page_changed
 
 TITAN_CACHE = Path("cross_market") / "titan_identities_cache.json"
 HL_DB = Path("HyperLiquid") / "HL_Monarch" / "data" / "hyperliquid_data.db"
@@ -99,14 +99,31 @@ def load_titan_cache(path: Path) -> dict[str, dict[str, Any]]:
     return {str(k).lower(): v for k, v in data.items() if isinstance(v, dict)} if isinstance(data, dict) else {}
 
 
-def load_whales(db: Path, limit: int) -> tuple[list[dict[str, Any]], dict[str, float]]:
-    """The top-N rows for pages, and address -> account_value for EVERY whale (titan ranking is uncapped)."""
+WHALE_COLS = ("address, discovered_at, first_coin, first_notional, total_position_value, account_value, "
+              "is_liquidator, last_scanned_at")
+
+
+def load_whales(db: Path, limit: int, keep: set[str] | None = None) -> tuple[list[dict[str, Any]], dict[str, float]]:
+    """The top-N rows for pages, and address -> account_value for EVERY whale (titan ranking is uncapped).
+
+    `keep` re-admits addresses that ALREADY have a page. Round 105: the top-N is a moving window,
+    so a whale that drops out of it was never rebuilt again - and a page the adapter stops
+    maintaining freezes at whatever the code emitted the last time it was selected. That is how one
+    page kept a dangling exporter-note link through a fix that reached the other 182. An adapter
+    maintains every page it has created, or it does not own them.
+    """
     conn = ro(db)
     if conn is None:
         return [], {}
-    top = _rows(conn, "SELECT address, discovered_at, first_coin, first_notional, total_position_value, account_value, "
-                      "is_liquidator, last_scanned_at FROM whale_wallets WHERE account_value IS NOT NULL "
+    top = _rows(conn, f"SELECT {WHALE_COLS} FROM whale_wallets WHERE account_value IS NOT NULL "
                       "ORDER BY account_value DESC LIMIT ?", (int(limit),))
+    if keep:
+        have = {str(r["address"]).lower() for r in top}
+        wanted = sorted(keep - have)
+        if wanted:
+            marks = ",".join("?" * len(wanted))
+            top += _rows(conn, f"SELECT {WHALE_COLS} FROM whale_wallets WHERE lower(address) IN ({marks})",
+                         tuple(wanted))
     every = {str(r["address"]).lower(): float(r["account_value"] or 0.0)
              for r in _rows(conn, "SELECT address, account_value FROM whale_wallets")}
     conn.close()
@@ -201,6 +218,21 @@ def _assemble(vault: Path, type_: str, stem: str, title: str, description: str, 
 
 # ---------------------------------------------------------------- builders
 
+def exporter_note_line(vault: Path, folder: str, key: str, label: str) -> str:
+    """Link the exporter-owned note for this counterparty, but only if it actually exists.
+
+    Round 105 (lint L8): these lines linked `Whales/<addr>` and `Wallets/<wallet>` unconditionally,
+    and 85 of them pointed at nothing. The two sets never matched - the CRM seeds the top 100 by
+    equity while the exporter writes notes for a different, live-changing set, and they overlapped
+    by 53. A link that resolves for some rows and not others is worse than no link, because the
+    reader cannot tell which. Where the note is absent the page now SAYS so, which is also the
+    honest statement: this counterparty has no live exporter note.
+    """
+    if (vault / folder / f"{key}.md").is_file():
+        return f"- live note (exporter-owned): [[{folder}/{key}|{label}]]"
+    return f"- live note (exporter-owned): none written for `{key}` (the exporter tracks a different set)"
+
+
 def build_whale(r: dict[str, Any], rank: int, cache: dict[str, dict[str, Any]], vault: Path, dev_root: Path, at: datetime, by: str) -> tuple[Page, bool]:
     addr = str(r["address"]).lower()
     equity = float(r.get("account_value") or 0.0)
@@ -208,7 +240,7 @@ def build_whale(r: dict[str, Any], rank: int, cache: dict[str, dict[str, Any]], 
     lev = round(position / equity, 2) if equity > 0 else None
     identity = [f"- address: `{addr}`", f"- discovered: `{_ts(r.get('discovered_at'))}` via `{r.get('first_coin')}` (${float(r.get('first_notional') or 0):,.0f})",
                 f"- system liquidator: {bool(r.get('is_liquidator'))}", f"- rank by equity at seed: {rank}",
-                f"- live note (exporter-owned): [[Whales/{addr}|whale note]]"]
+                exporter_note_line(vault, "Whales", addr, "whale note")]
     related = ["- [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]"]
     dev: dict[str, Any] = {"desk": 1, "address": addr, "first_coin": r.get("first_coin"), "discovered_at": _ts(r.get("discovered_at")),
                            "is_liquidator": bool(r.get("is_liquidator")), "rank_at_seed": rank}
@@ -236,7 +268,7 @@ def build_sharp(r: dict[str, Any], tracked: dict[str, dict[str, Any]], titans: s
                 f"- proxy wallet: `{r.get('proxy_wallet') or '-'}` · EOA: `{eoa or 'unresolved'}`"
                 + (f" (resolved `{_ts(r.get('identity_resolved_at'))}`)" if r.get("identity_resolved_at") else ""),
                 f"- first seen: `{_ts(t.get('first_seen'))}`" if t else "- first seen: -",
-                f"- live note (exporter-owned): [[Wallets/{wallet}|trader note]]"]
+                exporter_note_line(vault, "Wallets", wallet, "trader note")]
     related = ["- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]"]
     dev: dict[str, Any] = {"desk": 3, "wallet": wallet, "pseudonym": name, "proxy_wallet": r.get("proxy_wallet"), "eoa_address": eoa,
                            "identity_resolved_at": _ts(r.get("identity_resolved_at")), "first_seen": _ts(t.get("first_seen")) if t else None}
@@ -261,7 +293,7 @@ def build_titan(eoa: str, entry: dict[str, Any], whale: dict[str, Any] | None, s
                 f"- Polymarket proxy: `{proxy or '-'}`" + (f" -> [[sharp_{str(sharp['wallet']).lower()}|sharp page]]" if sharp else ""),
                 f"- pseudonym: **{name}**", f"- resolution: {entry.get('source', 'titan_identities_cache.json (Gamma EOA -> proxy)')}"]
     related = ["- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]", "- [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]",
-               "- [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]"]
+               item_link(vault, "Item_18_Cross_Market_Titan_Correlator_Macro_Crypto", "Item 18: Cross-Market Titan Correlator")]
     dev: dict[str, Any] = {"desk": 3, "item": 18, "eoa": eoa, "proxy_wallet": proxy or None, "pseudonym": name,
                            "in_whales": bool(entry.get("in_whales", whale is not None)), "in_polymarket": True,
                            "resolution": str(entry.get("source", "titan_identities_cache.json"))}
@@ -292,7 +324,7 @@ def build_book(name: str, info: dict[str, Any], vault: Path, dev_root: Path, at:
                      f"{len(rows)} sport/market-type cell(s)." if rows else "."),
                      ["crm", "sportsbook", "desk-2", role], identity, rows,
                      ["at", "sport", "market_type", "edges", "cleared", "mean_gross_edge", "max_gross_edge", "first"],
-                     ["- [[Desk_02_Sports_Desk|Desk 2: Sports Desk]]", "- [[Item_15_Closing_Line_Value_CLV_Tracker_Soft|Item 15: CLV tracker & soft-book health]]"],
+                     ["- [[Desk_02_Sports_Desk|Desk 2: Sports Desk]]", item_link(vault, "Item_15_Closing_Line_Value_CLV_Tracker_Soft", "Item 15: CLV tracker & soft-book health")],
                      dev, [{"id": "sports_market", "resource": rel_to(dev_root / SPORTS_DB, dev_root), "title": "sports_market.db edge_opportunities (mode=ro)",
                             "author": "process:Sports_Desk.odds_watcher"}], at, by)
 
@@ -314,7 +346,8 @@ def ingest_entities(vault: Path, dev_root: Path, *, at: datetime | None = None, 
     cache = load_titan_cache(dev_root / TITAN_CACHE)
     if not cache:
         report.missing_sources.append(TITAN_CACHE.as_posix())
-    whales, whale_equity = load_whales(dev_root / HL_DB, limit_whales)
+    existing_whales = {p.stem[len("whale_"):].lower() for p in (vault / "crm" / "whales").glob("whale_*.md")}
+    whales, whale_equity = load_whales(dev_root / HL_DB, limit_whales, keep=existing_whales)
     whale_addrs = set(whale_equity)
     if not whale_addrs and not (dev_root / HL_DB).is_file():
         report.missing_sources.append(HL_DB.as_posix())
@@ -353,8 +386,13 @@ def ingest_entities(vault: Path, dev_root: Path, *, at: datetime | None = None, 
             or next((s for s in sharps if proxy and str(s.get("proxy_wallet") or "").lower() == proxy), None)
 
     def emit(page: Page, created: bool) -> None:
+        # Ruling R104-3: "updated" must mean the page actually moved. write_page already declines to
+        # rewrite identical content, so counting every call as an update reported 184 updates on a
+        # run that changed nothing, and appended a log line saying so.
+        changed = page_changed(page, vault)
         write_page(page, vault, now=at)
-        (report.created if created else report.updated).append(page.path.relative_to(vault).as_posix())
+        if changed:
+            (report.created if created else report.updated).append(page.path.relative_to(vault).as_posix())
 
     for eoa in titan_eoas:
         emit(*build_titan(eoa, titan_map[eoa], whale_by_addr.get(eoa), sharp_for(eoa), vault, dev_root, at, by))

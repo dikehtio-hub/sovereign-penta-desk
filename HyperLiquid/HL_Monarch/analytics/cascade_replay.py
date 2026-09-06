@@ -19,7 +19,9 @@ Guarantees & Constraints:
 """
 
 from collections import Counter
+from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import random
 import sqlite3
@@ -413,6 +415,17 @@ def run_replay(
     }
 
     return {
+        # Ruling R104-2 (Round 105). Without this the artifact could not be ordered against another
+        # run: cascade_excursions is written by a live collector and grows continuously, so two
+        # results with different numbers and no instants are indistinguishable from a bug. Round 103
+        # recorded two figures from this engine that had silently moved for exactly that reason.
+        # Same shape as the R102-2 envelope on the lead-lag exporter, deliberately.
+        "_artifact": {
+            "written_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "writer": "HyperLiquid.HL_Monarch.analytics.cascade_replay",
+            "rows_in_table": data_load["total_in_table"],
+            "seed": seed,
+        },
         "experiment": "whale_sweeper_cascade_replay",
         "verdict": verdict,
         "primary_metric": {
@@ -556,10 +569,13 @@ def main() -> None:
     )
 
     if args.out:
+        # Atomic, matching the R102-2 exporter artifact: a reader must never see a partial verdict.
         out_file = Path(args.out)
         out_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_file, "w", encoding="utf-8") as f:
+        tmp = out_file.with_suffix(out_file.suffix + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2)
+        os.replace(tmp, out_file)
 
     if args.json:
         print(json.dumps(result, indent=2))

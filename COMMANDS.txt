@@ -2360,6 +2360,34 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 105 - KNOWLEDGE: LINT L8, ARTIFACT ENVELOPE, ADAPTER IDEMPOTENCE, CASCADE ANATOMY
+     python -m knowledge.lint          # now also reports L8
+         L8 (Ruling R104-4): a DANGLING outbound wikilink - `[[target]]` naming a page that does not
+         exist. The mirror of L3, which only caught the opposite failure (a page nothing links to).
+         Links inside code fences and inline code spans are excluded, so the constitution can document
+         `[[wikilinks]]` without tripping it. Resolution is by FILENAME, path or frontmatter alias -
+         never by title, since Obsidian would render a title-only match broken. The namespace is the
+         WHOLE vault, not just knowledge-owned pages: desks link the exporter-owned Monarch_Hub and CRM
+         pages link Whales/<addr> notes. On its first run it found 86 real broken links.
+     python -m knowledge.ingest.cascade_anatomy [--result PATH]
+         The replay artifact -> wiki/concepts/cascade_anatomy.md. Side A vs side B microstructure, the
+         median/mean divergence that explains a median above the threshold with a negative expectancy,
+         and the 1-to-1 synthetic control matching CHECKED arithmetically (treatment share vs
+         1/(1+EXCURSION_CONTROL_MULTIPLE)) rather than asserted. The constant is pinned by
+         dev:parameters, so changing it without recompiling is a lint C1 error.
+     python -m HyperLiquid.HL_Monarch.analytics.cascade_replay --json --out PATH
+         Ruling R104-2: the result now carries an `_artifact` envelope (written_at, writer,
+         rows_in_table, seed) and --out is written atomically. cascade_excursions grows continuously,
+         so without the envelope two runs with different numbers could not be ordered from their own
+         contents. knowledge.ingest.cascade_replay reads written_at from it, falling back to the file
+         mtime only for artifacts written before this round - and says on the page which it used.
+     ADAPTER IDEMPOTENCE (Ruling R104-3), no new command
+         pages.write_page no longer rewrites a page whose content has not moved, and keeps the
+         generated.at it earned. The guard is at the single writer rather than in the eight named
+         adapters, because 31 call sites already funnel through it. Log lines and the entities
+         "updated" count are conditional on a real change too. Verified by hash: running every adapter
+         twice over unchanged data changes zero files.
+
      ROUND 104 - KNOWLEDGE: FUNDING REGIME + CASCADE REPLAY VERDICT, EXPORTER --stop, IDEMPOTENT SEED
      python -m knowledge.ingest.funding [--db PATH] [--at ISO]
          basis_realised_windows (file:...?mode=ro) -> wiki/regimes/hl_funding_regime.md. Reports TWO populations

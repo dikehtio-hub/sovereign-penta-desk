@@ -1,7 +1,7 @@
 ---
 type: Entity/Whale
 title: Whale 0xeac8…1ede
-description: 'Hyperliquid whale 0xeac8…1ede: rank 59 by account equity at seed; first
+description: 'Hyperliquid whale 0xeac8…1ede: rank 61 by account equity at seed; first
   seen on NEAR.'
 tags:
 - crm
@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:50Z'
+  at: '2026-09-06T04:55:31Z'
 status: draft
 sources:
 - id: whale_wallets
@@ -22,7 +22,7 @@ dev:
   first_coin: NEAR
   discovered_at: '2026-09-05T06:23:59Z'
   is_liquidator: false
-  rank_at_seed: 59
+  rank_at_seed: 61
   evidence:
   - at: '2026-09-05T06:24:00Z'
     account_value: 2394381.34
@@ -36,8 +36,8 @@ dev:
 - address: `0xeac842b2214cfece3f0d288293da19f408d91ede`
 - discovered: `2026-09-05T06:23:59Z` via `NEAR` ($18,182)
 - system liquidator: False
-- rank by equity at seed: 59
-- live note (exporter-owned): [[Whales/0xeac842b2214cfece3f0d288293da19f408d91ede|whale note]]
+- rank by equity at seed: 61
+- live note (exporter-owned): none written for `0xeac842b2214cfece3f0d288293da19f408d91ede` (the exporter tracks a different set)
 
 ## Judgement
 

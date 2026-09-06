@@ -34,7 +34,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
-from . import add_common_args, at_from, guard, rel_to
+from . import add_common_args, at_from, guard, item_link, rel_to
 from .experiments import update_register
 
 REGIME_FILE = "btc_macro_regime"
@@ -104,7 +104,7 @@ def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier
         body.append("")
     body += ["## Related", "", f"- [[{REGIME_FILE}|BTC macro regime]]",
              "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
-             "- [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]", ""]
+             item_link(vault, "Item_18_Cross_Market_Titan_Correlator_Macro_Crypto", "Item 18: Cross-Market Titan Correlator"), ""]
     # B14: tests_run = how many verdicts this tier/scope has now been evaluated for (multiple-testing counter)
     prior = sum(1 for p in load_pages(vault) if p.type == "Experiment" and (p.meta.get("dev") or {}).get("kind") == "lead_lag_verdict"
                 and str((p.meta.get("dev") or {}).get("tier")) == str(tier) and scope_of(p.meta.get("dev") or {}) == scope)
@@ -156,7 +156,7 @@ def current_state(history: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _render_regime(history: list[dict[str, Any]]) -> str:
+def _render_regime(history: list[dict[str, Any]], vault: Path) -> str:
     latest: dict[str, dict[str, Any]] = {}
     for row in history:  # history is chronological; the last row per (tier, scope) wins
         latest[f"{row.get('tier')}|{row.get('scope')}"] = row
@@ -183,7 +183,7 @@ def _render_regime(history: list[dict[str, Any]]) -> str:
         lines.append(f"| {r.get('at')} | {r.get('tier')} | {r.get('scope')} | {r.get('membership')} | {r.get('class')} | "
                      f"{_lag(r.get('lag'))} | {_corr(r.get('corr'))} | {r.get('n')} | [[{r.get('page')}]] |")
     lines += ["", "## Related", "", "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
-              "- [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]", ""]
+              item_link(vault, "Item_18_Cross_Market_Titan_Correlator_Macro_Crypto", "Item 18: Cross-Market Titan Correlator"), ""]
     return "\n".join(lines)
 
 
@@ -206,7 +206,7 @@ def update_regime(vault: Path, verdict: Page, *, at: datetime, by: str = GENERAT
                                "title": "lead-lag verdict pages", "author": by}],
                      dev={"desk": 3, "item": 18, "current": current, "classes": list(CLASSES), "history": history})
     carry_human_fields(existing, meta)  # Ruling 99-2
-    return Page(path, meta, _render_regime(history))
+    return Page(path, meta, _render_regime(history, vault))
 
 
 REGISTRATION_FOR_TIER = {"2": "lead_lag_tier2_meta", "2b": "lead_lag_tier2b_meta"}  # Tier 1 has no meta file (the maiden run)

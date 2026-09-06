@@ -1,4 +1,4 @@
-"""The lint engine: structural checks L1-L5 and the DEV-specific C1, C2, C3, C5.
+"""The lint engine: structural checks L1-L8 and the DEV-specific C1, C2, C3, C5.
 
     python -m knowledge.lint [--vault DIR] [--dev-root DIR] [--drops DIR] [--json]
 
@@ -33,6 +33,10 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
       name an Experiment page; `enforced_in` must name a file in the repo.
   L7  staleness policy (Round 100): a Ruling (180 d) or Concept (90 d) page
       without `stale_after` is a warning unless it is machine-maintained.
+  L8  a dangling outbound wikilink (Round 105): `[[target]]` naming a page
+      that does not exist. The mirror of L3, which catches the page nothing
+      links to. Links inside code fences and code spans are not links, so
+      the constitution can document the syntax without tripping the check.
 
 C4 (unhedged tax liability) and C6 (the LLM contradiction pass) are Phase 3.
 """
@@ -49,14 +53,15 @@ from urllib.parse import unquote, urlparse
 
 from . import DEV_ROOT, EXIT_FINDINGS, EXIT_HALT, EXIT_OK, VAULT, halted
 from .frontmatter import parse_iso8601, validate
-from .pages import Document, iter_index_files, load_documents, parse_index, parse_log
+from .pages import (Document, iter_index_files, load_documents, parse_index, parse_log,
+                    wikilink_targets)
 
 DEFAULT_DROPS = Path("Sports_Desk") / "data" / "polymarket_drops"
 
 
 @dataclass
 class Finding:
-    code: str        # L1..L5, C1, C2, C3, C5
+    code: str        # L1..L8, C1, C2, C3, C5
     severity: str    # "error" | "warning"
     path: str        # vault-relative, or the file the check concerned
     message: str
@@ -206,6 +211,59 @@ def check_l5(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]
             if p is not None and not p.exists():
                 out.append(Finding("L5", "error", _rel(d.path, vault),
                                    f"sources[{i}].resource not on disk: {s['resource']}"))
+    return out
+
+
+def link_namespace(docs: list[Document], vault: Path) -> set[str]:
+    """Every name a [[wikilink]] may legitimately resolve to.
+
+    Obsidian resolves a wikilink by FILENAME, not by title, so a page's title is deliberately NOT
+    in here: letting a title resolve would quietly pass a link that Obsidian itself renders broken.
+    Frontmatter `aliases` are honoured because Obsidian honours them.
+    """
+    names: set[str] = set()
+    for d in docs:
+        rel = _rel(d.path, vault)
+        names |= {rel, rel[:-3] if rel.endswith(".md") else rel, d.path.stem, d.path.name}
+        aliases = (d.meta or {}).get("aliases")
+        if isinstance(aliases, str):
+            names.add(aliases)
+        elif isinstance(aliases, list):
+            names |= {a for a in aliases if isinstance(a, str)}
+    # EVERY note in the vault, not only the ones this package owns. A reader opens the vault in
+    # Obsidian, which resolves against all of it: the desks link the exporter-owned Monarch_Hub,
+    # and each CRM whale page links its exporter-owned Whales/<address> note. Those are real,
+    # resolvable links; scoping the namespace to owned documents would report 183 false ones.
+    # Tooling folders (`_views`, `_templates`) and dot-folders are not linkable content.
+    for f in vault.rglob("*.md"):
+        parts = f.relative_to(vault).parts
+        if any(part.startswith(".") or part.startswith("_") for part in parts):
+            continue
+        rel = f.relative_to(vault).as_posix()
+        names |= {rel, rel[:-3], f.stem, f.name}
+    return {n for n in names if n}
+
+
+def check_l8(docs: list[Document], vault: Path) -> list[Finding]:
+    """L8 (Round 105, Ruling R104-4): an outbound wikilink naming a page that does not exist.
+
+    L3 catches the opposite failure - a page nothing links TO. Nothing caught a link pointing at
+    nothing, and in Round 104 a guessed page stem produced a broken link that linted perfectly
+    clean; it was found by reading the rendered page, which is not a control.
+
+    An error, not a warning: unlike an orphan, a dangling link is never a transitional state that
+    resolves itself. It is either a typo or a page renamed out from under a reference.
+    """
+    names = link_namespace(docs, vault)
+    out: list[Finding] = []
+    for d in docs:
+        if d.meta is None:
+            continue
+        rel = _rel(d.path, vault)
+        for target in sorted(wikilink_targets(d.body)):
+            if target in names or target.split("/")[-1] in names:
+                continue
+            out.append(Finding("L8", "error", rel, f"dangling wikilink: [[{target}]] resolves to no page"))
     return out
 
 
@@ -486,6 +544,7 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     findings += check_l5(docs, vault, dev_root)
     findings += check_l6(docs, vault, dev_root)
     findings += check_l7(docs, vault)
+    findings += check_l8(docs, vault)
     findings += check_c1(docs, vault, dev_root)
     findings += check_c2(docs, vault, drops)
     findings += check_c3(docs, vault)

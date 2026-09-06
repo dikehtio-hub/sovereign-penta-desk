@@ -1,8 +1,8 @@
 ---
 type: Entity/Whale
-title: Whale 0x63d4…0522
-description: 'Hyperliquid whale 0x63d4…0522: rank 102 by account equity at seed; first
-  seen on PONS.'
+title: Whale 0x258a…ff03
+description: 'Hyperliquid whale 0x258a…ff03: rank 36 by account equity at seed; first
+  seen on ARB.'
 tags:
 - crm
 - whale
@@ -18,26 +18,26 @@ sources:
   author: process:HL_Monarch.collector
 dev:
   desk: 1
-  address: '0x63d417a577b50c96f4f09148d4e4d70950db0522'
-  first_coin: PONS
-  discovered_at: '2026-09-02T05:46:52Z'
+  address: '0x258a4b8a8447c61aabf1bef9bb14ee4d69efff03'
+  first_coin: ARB
+  discovered_at: '2026-09-06T04:54:12Z'
   is_liquidator: true
-  rank_at_seed: 102
+  rank_at_seed: 36
   evidence:
-  - at: '2026-09-02T05:46:53Z'
-    account_value: 1613334.59
-    position_value: 3951741.14
-    leverage: 2.45
+  - at: '2026-09-06T04:54:13Z'
+    account_value: 4216329.25
+    position_value: 9944350.38
+    leverage: 2.36
 ---
-# Whale 0x63d4…0522
+# Whale 0x258a…ff03
 
 ## Identity
 
-- address: `0x63d417a577b50c96f4f09148d4e4d70950db0522`
-- discovered: `2026-09-02T05:46:52Z` via `PONS` ($9,023)
+- address: `0x258a4b8a8447c61aabf1bef9bb14ee4d69efff03`
+- discovered: `2026-09-06T04:54:12Z` via `ARB` ($24,498)
 - system liquidator: True
-- rank by equity at seed: 102
-- live note (exporter-owned): none written for `0x63d417a577b50c96f4f09148d4e4d70950db0522` (the exporter tracks a different set)
+- rank by equity at seed: 36
+- live note (exporter-owned): none written for `0x258a4b8a8447c61aabf1bef9bb14ee4d69efff03` (the exporter tracks a different set)
 
 ## Judgement
 
@@ -47,7 +47,7 @@ _(none yet: write the compiled judgement here; re-ingest keeps this section and 
 
 | at | account_value | position_value | leverage |
 |---|---|---|---|
-| 2026-09-02T05:46:53Z | 1613334.59 | 3951741.14 | 2.45 |
+| 2026-09-06T04:54:13Z | 4216329.25 | 9944350.38 | 2.36 |
 
 ## Related
 

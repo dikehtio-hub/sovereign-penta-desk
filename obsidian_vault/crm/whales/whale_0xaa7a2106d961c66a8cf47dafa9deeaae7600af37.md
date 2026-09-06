@@ -1,7 +1,7 @@
 ---
 type: Entity/Whale
 title: Whale 0xaa7a…af37
-description: 'Hyperliquid whale 0xaa7a…af37: rank 68 by account equity at seed; first
+description: 'Hyperliquid whale 0xaa7a…af37: rank 70 by account equity at seed; first
   seen on BTC.'
 tags:
 - crm
@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:50Z'
+  at: '2026-09-06T04:55:31Z'
 status: draft
 sources:
 - id: whale_wallets
@@ -22,7 +22,7 @@ dev:
   first_coin: BTC
   discovered_at: '2026-08-31T05:18:55Z'
   is_liquidator: false
-  rank_at_seed: 68
+  rank_at_seed: 70
   evidence:
   - at: '2026-08-31T05:18:57Z'
     account_value: 2200075.3
@@ -36,7 +36,7 @@ dev:
 - address: `0xaa7a2106d961c66a8cf47dafa9deeaae7600af37`
 - discovered: `2026-08-31T05:18:55Z` via `BTC` ($113,903)
 - system liquidator: False
-- rank by equity at seed: 68
+- rank by equity at seed: 70
 - live note (exporter-owned): [[Whales/0xaa7a2106d961c66a8cf47dafa9deeaae7600af37|whale note]]
 
 ## Judgement

@@ -12,7 +12,7 @@ tags:
 - basis
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T03:47:00Z'
+  at: '2026-09-06T04:55:49Z'
 status: draft
 sources:
 - id: basis-windows
@@ -119,6 +119,14 @@ dev:
     gross_median: 28.05
     gross_at_bar_pct: 53.5
     net_measured_pct: 1.9
+  - at: '2026-09-06T04:55:49Z'
+    rows: 10635
+    assets: 441
+    all_median: 6.4
+    gross_n: 473
+    gross_median: 28.05
+    gross_at_bar_pct: 53.5
+    net_measured_pct: 1.9
 ---
 # HyperLiquid funding regime (Desk 1, Item 8)
 
@@ -162,6 +170,7 @@ Of the 10,635 windows, **6,796 carry a `realised_apr`**; the rest are NULL becau
 | 2026-09-06T03:28:03Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
 | 2026-09-06T03:35:59Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
 | 2026-09-06T03:47:00Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
+| 2026-09-06T04:55:49Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
 
 ## Related
 

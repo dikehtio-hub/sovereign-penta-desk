@@ -1,7 +1,7 @@
 ---
 type: Entity/Whale
 title: Whale 0xffc0…af0b
-description: 'Hyperliquid whale 0xffc0…af0b: rank 73 by account equity at seed; first
+description: 'Hyperliquid whale 0xffc0…af0b: rank 75 by account equity at seed; first
   seen on SOL.'
 tags:
 - crm
@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:50Z'
+  at: '2026-09-06T04:55:31Z'
 status: draft
 sources:
 - id: whale_wallets
@@ -22,7 +22,7 @@ dev:
   first_coin: SOL
   discovered_at: '2026-08-31T18:37:02Z'
   is_liquidator: false
-  rank_at_seed: 73
+  rank_at_seed: 75
   evidence:
   - at: '2026-08-31T18:37:03Z'
     account_value: 2079647.49
@@ -36,8 +36,8 @@ dev:
 - address: `0xffc03f2cfbc0b2dc47e84003800ad296eb6caf0b`
 - discovered: `2026-08-31T18:37:02Z` via `SOL` ($41,044)
 - system liquidator: False
-- rank by equity at seed: 73
-- live note (exporter-owned): [[Whales/0xffc03f2cfbc0b2dc47e84003800ad296eb6caf0b|whale note]]
+- rank by equity at seed: 75
+- live note (exporter-owned): none written for `0xffc03f2cfbc0b2dc47e84003800ad296eb6caf0b` (the exporter tracks a different set)
 
 ## Judgement
 

@@ -53,7 +53,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc,
                      page_path, write_index, write_page)
-from . import add_common_args, at_from, guard, rel_to
+from . import add_common_args, at_from, guard, item_link, page_changed, rel_to
 
 DEFAULT_DB = Path("HyperLiquid") / "HL_Monarch" / "data" / "hyperliquid_data.db"
 SETTINGS_FILE = Path("HyperLiquid") / "HL_Monarch" / "config" / "settings.py"
@@ -159,11 +159,21 @@ def build_page(m: dict[str, Any], bars: dict[str, float], vault: Path, dev_root:
     path = page_path(vault, "Regime", REGIME_FILE)
     existing = load_page(path)
     history = [dict(r) for r in ((existing.meta.get("dev") or {}).get("history") or [])] if existing else []
-    history.append({"at": iso(at), "rows": m["rows"], "assets": m["assets"],
-                    "all_median": m["all_windows"].get("median"), "gross_n": m["gross_bar_only_n"],
-                    "gross_median": m["gross_bar_only"].get("median"),
-                    "gross_at_bar_pct": m["gross_bar_only"].get("at_or_above_bar_pct"),
-                    "net_measured_pct": m["net"]["measured_pct"]})
+    row = {"at": iso(at), "rows": m["rows"], "assets": m["assets"],
+           "all_median": m["all_windows"].get("median"), "gross_n": m["gross_bar_only_n"],
+           "gross_median": m["gross_bar_only"].get("median"),
+           "gross_at_bar_pct": m["gross_bar_only"].get("at_or_above_bar_pct"),
+           "net_measured_pct": m["net"]["measured_pct"]}
+    # THE MEASUREMENT IS THE UNIT OF OBSERVATION, not the ingest run (the rule Round 104 applied to
+    # the cascade verdict, applied here too). The database is live, so most runs really are new
+    # observations - but two runs seconds apart over an unmoved table are ONE observation, and
+    # appending a second row would manufacture a history that never happened.
+    if history and all(history[-1].get(k) == row[k] for k in
+                       ("rows", "assets", "all_median", "gross_n", "gross_median", "net_measured_pct")):
+        row["at"] = history[-1].get("at", row["at"])
+        history[-1] = row
+    else:
+        history.append(row)
     aw, eq = m["all_windows"], m["gross_bar_only"]
     body = [
         "# HyperLiquid funding regime (Desk 1, Item 8)", "",
@@ -218,7 +228,7 @@ def build_page(m: dict[str, Any], bars: dict[str, float], vault: Path, dev_root:
     body += [f"| {h['at']} | {h['rows']:,} | {h['assets']} | {h['all_median']} | {_h(h, 'n')} | "
              f"{_h(h, 'median')} | {_h(h, 'at_bar_pct')}% | {h['net_measured_pct']}% |" for h in history]
     body += ["", "## Related", "", "- [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]",
-             "- [[Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester|Item 8: Delta-Neutral Funding Rate Harvester]]", ""]
+             item_link(vault, "Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester", "Item 8: Delta-Neutral Funding Rate Harvester"), ""]
 
     settings_rel = SETTINGS_FILE.as_posix()
     params = [{"name": "basis_min_funding_apr", "value": gross_bar, "file": settings_rel,
@@ -259,14 +269,16 @@ def ingest_funding(vault: Path, dev_root: Path, *, db: Path | None = None, at: d
         return FundingReport(False, 0), None
     bars = read_bars(dev_root)          # read ONCE: two reads could straddle an edit to settings.py
     page = build_page(measure(rows, bars), bars, vault, dev_root, db, at, by)
+    changed = page_changed(page, vault)
     write_page(page, vault, now=at)
     # No register for the Regime type (registers.SPECS has none); the desk page carries the inbound
     # link instead, via seed.COMPILED_PAGES, which is what keeps lint L3 quiet.
     write_index(vault, load_pages(vault))
-    append_log(vault, "Ingest", f"basis funding windows: {len(rows):,} row(s) from `{rel_to(db, dev_root)}` -> "
-               f"[[{REGIME_FILE}]]; gross-bar-only median "
-               f"{page.meta['dev']['measurement']['gross_bar_only'].get('median')}% (upper bound) vs all-window "
-               f"{page.meta['dev']['measurement']['all_windows'].get('median')}%.", when=at)
+    if changed:
+            append_log(vault, "Ingest", f"basis funding windows: {len(rows):,} row(s) from `{rel_to(db, dev_root)}` -> "
+                   f"[[{REGIME_FILE}]]; gross-bar-only median "
+                   f"{page.meta['dev']['measurement']['gross_bar_only'].get('median')}% (upper bound) vs all-window "
+                   f"{page.meta['dev']['measurement']['all_windows'].get('median')}%.", when=at)
     return FundingReport(True, len(rows)), page
 
 

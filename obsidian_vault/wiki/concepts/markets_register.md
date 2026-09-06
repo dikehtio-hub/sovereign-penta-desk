@@ -9,7 +9,7 @@ tags:
 - market
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:24Z'
+  at: '2026-09-06T01:10:25Z'
 status: draft
 dev:
   register_for: Market
@@ -131,7 +131,7 @@ dev:
 | [[jerome-powell-out-from-fed-board-by-december-31\|Jerome Powell out from Fed Board by December 31?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |
 | [[lisa-cook-out-as-fed-governor-by-december-31-20260807204638266\|Lisa Cook out as Fed Governor by December 31?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |
 | [[lisa-cook-out-as-fed-governor-by-november-30-20260807204638265\|Lisa Cook out as Fed Governor by November 30?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |
-| [[lisa-cook-out-as-fed-governor-by-october-31-20260807204638264\|Lisa Cook out as Fed Governor by  October 31?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |
+| [[lisa-cook-out-as-fed-governor-by-october-31-20260807204638264\|Lisa Cook out as Fed Governor by October 31?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |
 | [[lisa-cook-out-as-fed-governor-by-september-30-20260807204638263\|Lisa Cook out as Fed Governor by September 30?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |
 | [[will-1-fed-rate-cut-happen-in-2026\|Will 1 Fed rate cut happen in 2026?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |
 | [[will-2-fed-rate-cuts-happen-in-2026\|Will 2 Fed rate cuts happen in 2026?]] | FED-RATES | draft | 2026-09-05T21:27:24Z |

@@ -37,7 +37,7 @@ from ..frontmatter import parse_iso8601
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
 from ..registers import update_register as _update_register
-from . import add_common_args, at_from, guard, rel_to
+from . import add_common_args, at_from, guard, item_link, rel_to
 
 DEFAULT_DIRS = (Path("cross_market") / "experiments", Path("HyperLiquid") / "HL_Monarch" / "data" / "experiments")
 WINDOW_BEFORE = timedelta(minutes=2)
@@ -135,7 +135,7 @@ def compile_lead_lag_registration(data: dict[str, Any], path: Path, vault: Path,
     if data.get("enforced_in_code"):
         body += ["## Enforced in code", "", str(data["enforced_in_code"]), ""]
     body += ["## Related", "", f"- {DESK_LINKS[3]}",
-             "- [[Item_18_Cross_Market_Titan_Correlator_Macro_Crypto|Item 18: Cross-Market Titan Correlator]]",
+             item_link(vault, "Item_18_Cross_Market_Titan_Correlator_Macro_Crypto", "Item 18: Cross-Market Titan Correlator"),
              f"- [[{REGISTER_FILE}|Experiments register]]", ""]
     dev: dict[str, Any] = {"desk": 3, "item": 18, "registration": rel, "kind": "lead_lag"}
     if data.get("registered_utc"):
@@ -251,8 +251,8 @@ def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, 
                 params.append({"name": f"{_safe(name)}_{k}", "value": v, "file": rel, "json_path": k})
     body += ["## Related", "", f"- {DESK_LINKS.get(desk, DESK_LINKS[3])}"]
     if desk == 1:  # Round 99 ruling: primary Item 14 (whale cascade sweeper), Item 8 (basis harvester) cross-referenced
-        body += ["- [[Item_14_Hyperliquid_Whale_Cascade_Sweeper|Item 14: Hyperliquid Whale Cascade Sweeper]] (primary)",
-                 "- [[Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester|Item 8: Hyperliquid Delta-Neutral Funding Rate Harvester]] (cross-reference)"]
+        body += [item_link(vault, "Item_14_Hyperliquid_Whale_Cascade_Sweeper", "Item 14: Hyperliquid Whale Cascade Sweeper", " (primary)"),
+                 item_link(vault, "Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester", "Item 8: Hyperliquid Delta-Neutral Funding Rate Harvester", " (cross-reference)")]
     body += [f"- [[{REGISTER_FILE}|Experiments register]]", ""]
     dev: dict[str, Any] = {"desk": desk, "registration": rel, "kind": kind}
     if desk == 1:

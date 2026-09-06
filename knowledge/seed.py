@@ -33,7 +33,8 @@ from typing import Any
 from . import DEV_ROOT, EXIT_HALT, EXIT_OK, GENERATED_BY, VAULT, halted
 from .frontmatter import parse_iso8601
 from .pages import (Page, append_log, carry_human_fields, default_stale_after, iso, load_page,
-                    load_pages, make_meta, now_utc, page_path, write_index, write_page)
+                    load_pages, make_meta, now_utc, page_path, unchanged_but_for_stamp, write_index,
+                    write_page)
 
 REGISTRY_NAME = "MASTER_COMMAND_LIST.txt"
 REGISTRY_SOURCE_ID = "top20-registry"
@@ -455,17 +456,43 @@ def build_item_page(item: ItemSpec, desks: dict[int, DeskSpec], vault: Path, dev
     return Page(page_path(vault, "Item", item_filename(item)), meta, "\n".join(body))
 
 
+# The eight registers a desk links. Each page appears only once its own adapter has run, so the
+# list is FILTERED to what exists (lint L8) rather than asserted - see page_exists below.
+REGISTER_LINKS: tuple[tuple[str, str], ...] = (
+    ("experiments_register", "Experiments register"), ("rulings_register", "Rulings register"),
+    ("computations_register", "Computations register"), ("events_register", "Events register"),
+    ("markets_register", "Markets register"), ("crm_register", "CRM register"),
+    ("journal_register", "Journal register"), ("theses_register", "Theses register"),
+)
+
+# Folders a desk-linked stem may live in. Concept covers registers and theses; the other two carry
+# the compiled regime and verdict pages.
+LINKABLE_FOLDERS = ("Concept", "Regime", "Experiment")
+
+
+def page_exists(vault: Path, stem: str) -> bool:
+    """Round 105 (lint L8): a desk lists only pages that are actually there.
+
+    Round 104's comment on COMPILED_PAGES claimed a stem listed before its adapter had ever run was
+    "a dangling link, not an error". L8's first run disagreed and it was right: Desk 3 pointed at
+    latency_decay, which knowledge.ingest.clob will not write until the FOMC drill, and every desk
+    pointed at registers that a fresh vault has not built yet. A desk page promising a page that is
+    not there is broken for whoever clicks it today. Each entry reappears by itself on the next seed.
+    """
+    return any(page_path(vault, t, stem).is_file() for t in LINKABLE_FOLDERS)
+
+
 # Compiled pages a desk links, so lint L3 sees no orphan: desk number -> (stem, label, note).
 # Round 104: was an `if d.number == 3` block; a table because Desk 1 now compiles pages too and the
 # next adapter should add a row here rather than another branch. A stem listed before its adapter has
 # ever run is a DANGLING LINK, not an error - the page appears on the desk the first time it compiles.
 COMPILED_PAGES: dict[int, list[tuple[str, str, str]]] = {
-    1: [("experiments_register", "Experiments register", "pre-registrations and verdicts"),
-        ("hl_funding_regime", "HyperLiquid funding regime", "realised basis APR against the harvester's entry bars"),
+    1: [("hl_funding_regime", "HyperLiquid funding regime", "realised basis APR against the harvester's entry bars"),
         ("whale_sweeper_cascade_replay_verdict", "Whale sweeper cascade replay",
-         "the Item 14 retrospective replay, graded against its pre-registered bar")],
-    3: [("experiments_register", "Experiments register", "pre-registrations and verdicts"),
-        ("btc_macro_regime", "BTC macro regime", "lead-lag classification history"),
+         "the Item 14 retrospective replay, graded against its pre-registered bar"),
+        ("cascade_anatomy", "Cascade anatomy",
+         "side A vs side B microstructure, and the 1-to-1 synthetic control matching")],
+    3: [("btc_macro_regime", "BTC macro regime", "lead-lag classification history"),
         ("latency_decay", "Latency decay across events", "post-print depth survival per event")],
 }
 
@@ -484,17 +511,26 @@ def build_desk_page(d: DeskSpec, items: list[ItemSpec], vault: Path, dev_root: P
              f" · {'deployed' if i.checked else 'roadmap'}" for i in mine] or ["- (none in the registry)"]
     body += ["", "## Rulings", ""]
     body += [f"- [[{ruling_filename(r)[:-3]}|{r.title}]]" for r in rulings]
-    body += ["", "## Registers (machine-maintained)", "",
-             "- [[experiments_register|Experiments register]]", "- [[rulings_register|Rulings register]]",
-             "- [[computations_register|Computations register]]", "- [[events_register|Events register]]",
-             "- [[markets_register|Markets register]]", "- [[crm_register|CRM register]]",
-             "- [[journal_register|Journal register]]", "- [[theses_register|Theses register]]"]
-    if d.number in COMPILED_PAGES:
+    # Every desk links every register - the invariant RegistersAndSeedLinksTests asserts - so these
+    # are NOT filtered by existence like the compiled pages below. seed() guarantees all eight exist
+    # instead (see the tail of seed), which satisfies lint L8 without weakening the invariant.
+    body += ["", "## Registers (machine-maintained)", ""]
+    body += [f"- [[{stem}|{label}]]" for stem, label in REGISTER_LINKS]
+    compiled = [(s, l, n) for s, l, n in COMPILED_PAGES.get(d.number, ()) if page_exists(vault, s)]
+    if compiled:
         body += ["", "## Compiled pages (Phase 2 adapters)", ""]
-        body += [f"- [[{stem}|{label}]] - {note}" for stem, label, note in COMPILED_PAGES[d.number]]
+        body += [f"- [[{stem}|{label}]] - {note}" for stem, label, note in compiled]
     body += ["", "## Other desks", ""]
     body += [f"- [[{desk_filename(o)[:-3]}|Desk {o.number}: {o.name}]]" for o in DESKS if o.number != d.number]
-    body += ["", "## Related", "", "- [[Monarch_Hub|Monarch Hub]] (exporter-owned dashboard index)", ""]
+    # Monarch_Hub.md is written by the exporter, not by this package, so it is present in the live
+    # vault and absent from a fresh one. Link it only when it is there (lint L8): a desk page
+    # promising a dashboard that does not exist is broken for whoever clicks it.
+    body += ["", "## Related", ""]
+    if (vault / "Monarch_Hub.md").is_file():
+        body += ["- [[Monarch_Hub|Monarch Hub]] (exporter-owned dashboard index)"]
+    else:
+        body += ["- Monarch Hub (exporter-owned dashboard index) - not written yet"]
+    body += [""]
     dev: dict[str, Any] = {"desk": d.number}
     a = _existing(dev_root, d.asserts)
     p = _existing(dev_root, d.parameters)
@@ -565,22 +601,6 @@ class SeedReport:
                 + (f"; log -> {self.log}" if self.log else ""))
 
 
-def unchanged_but_for_stamp(existing: Page, page: Page) -> bool:
-    """True when the page on disk differs from the freshly built one ONLY in `generated.at`.
-
-    Compared field by field rather than by rendered text, and called AFTER carry_human_fields has run
-    on the built page, so `verified`, a status past draft and dev.ratified_by are already present on
-    both sides: a ratified page compares equal to its regeneration and keeps its original stamp.
-    """
-    if existing.body != page.body:
-        return False
-    a, b = dict(existing.meta), dict(page.meta)
-    ga, gb = dict(a.pop("generated", {}) or {}), dict(b.pop("generated", {}) or {})
-    ga.pop("at", None)
-    gb.pop("at", None)
-    return a == b and ga == gb
-
-
 def build_all(items: list[ItemSpec], vault: Path, dev_root: Path, registry: Path,
               at: datetime, by: str = GENERATED_BY) -> list[Page]:
     desks = {d.number: d for d in DESKS}
@@ -620,8 +640,18 @@ def seed(vault: Path, dev_root: Path, registry: Path, *, at: datetime | None = N
     if not dry_run:
         for d in ("wiki", "crm", "journal", "raw"):
             (vault / d).mkdir(parents=True, exist_ok=True)
+        # Round 105 (lint L8): a register page is created by its own adapter, so on a fresh vault
+        # every desk pointed at eight pages that did not exist yet. An empty register is a perfectly
+        # good register - it says "0 page(s)" - so seed writes all eight and the links always
+        # resolve. write_page leaves an already-correct register untouched (Ruling R104-3).
+        from .registers import SPECS, update_register
+        for type_ in SPECS:
+            write_page(update_register(vault, type_, at=at, by=by), vault, now=at)
         report.index = write_index(vault, load_pages(vault)).name
         n_items = sum(1 for _ in items)
+    # Ruling R104-3: a seed that wrote nothing did nothing, and log.md is a record of what happened,
+    # not of what was attempted. Without this the log grew a line - and git a diff - on every run.
+    if not dry_run and report.written:
         report.log = append_log(
             vault, "Seed",
             f"seed from the Top 20 registry (generated.at {iso(at)}): {len(report.written)} page(s) written, "

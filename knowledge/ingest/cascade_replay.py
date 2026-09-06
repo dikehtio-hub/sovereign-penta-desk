@@ -39,7 +39,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc,
                      page_path, write_index, write_page)
-from . import add_common_args, at_from, guard, md_cell, rel_to
+from . import add_common_args, at_from, guard, item_link, link_if_exists, md_cell, page_changed, rel_to
 from .experiments import update_register
 
 STEM = "whale_sweeper_cascade_replay_verdict"
@@ -104,8 +104,23 @@ def _f(v, spec: str = "+.4f") -> str:
     return "-" if v is None else format(float(v), spec)
 
 
+def written_at(art: dict[str, Any], result: Path) -> tuple[str, str]:
+    """When the engine actually wrote this artifact, and how we know (Ruling R104-2).
+
+    The `_artifact` envelope is authoritative. The file mtime is the fallback for artifacts written
+    before Round 105 added the envelope, and it is a WEAKER claim - a checkout, a copy or a backup
+    restores content with a fresh mtime - so the page states which one it is rather than presenting
+    a guess as a fact.
+    """
+    stamp = (art.get("_artifact") or {}).get("written_at")
+    if isinstance(stamp, str) and stamp:
+        return stamp, "the artifact's own `_artifact.written_at`"
+    return iso(datetime.fromtimestamp(result.stat().st_mtime, tz=timezone.utc)), "the file mtime (no `_artifact` envelope)"
+
+
 def build_page(art: dict[str, Any], reg: dict[str, Any], vault: Path, dev_root: Path, result: Path,
-               registration: Path, at: datetime, observed_at: str | None, by: str = GENERATED_BY) -> Page:
+               registration: Path, at: datetime, observed_at: str | None, by: str = GENERATED_BY,
+               observed_from: str = "the file mtime") -> Page:
     g, m = grade(art, reg), measured(art)
     bar = reg.get("acceptance_bar") or {}
     horizons, asym = art.get("horizons") or {}, art.get("asymmetry") or {}
@@ -120,13 +135,17 @@ def build_page(art: dict[str, Any], reg: dict[str, Any], vault: Path, dev_root: 
     # append_log already left one phantom row here in Round 104. Same artifact (same mtime and the
     # same numbers) replaces the previous row; a genuinely new run has a new mtime and appends.
     if history and all(history[-1].get(k) == row[k] for k in ("observed_at", "rows_at_run", "ratio_30m", "cluster_p")):
+        # Keep the ORIGINAL `at`: it records when this observation was first ingested, and the
+        # observation has not changed. Bumping it would also make the rendered History table differ
+        # on every re-run, defeating the Ruling R104-3 idempotence guard in write_page.
+        row["at"] = history[-1].get("at", row["at"])
         history[-1] = row
     else:
         history.append(row)
 
     body = [
         "# Whale sweeper cascade replay - verdict", "",
-        f"> **{g['grade']}**. Graded here against [[whale_sweeper_cascade_replay_meta|the pre-registration]] "
+        f"> **{g['grade']}**. Graded here against the pre-registration "
         f"(backlog B15, registered {reg.get('registered_utc')}), not copied from the engine's output.", "",
         "## Grade of evidence", "",
         f"**{(reg.get('grade_of_evidence') or {}).get('kind', 'retrospective replay')}.** "
@@ -205,11 +224,16 @@ def build_page(art: dict[str, Any], reg: dict[str, Any], vault: Path, dev_root: 
              f"- qualifying after the truncation and null filters: **{m['qualifying']:,}** "
              f"({m['truncated']:,} excluded for an incomplete forward series, per the registration's "
              "`known_defect_not_fixed`)", ""]
-    if observed_at:
-        body += [f"- artifact observed at **{observed_at}** (file mtime). **The artifact carries no run "
-                 "timestamp of its own**, so two runs over a growing table cannot be ordered from their contents "
-                 "alone. Recorded here as an observation, not as the run instant; a self-stamping `_artifact` "
-                 "envelope like the one Ruling R102-2 put on the lead-lag exporter would close this.", ""]
+    env = art.get("_artifact") or {}
+    if observed_at and env:
+        body += [f"- artifact written at **{observed_at}** by `{env.get('writer', '-')}`, from "
+                 f"{env.get('rows_in_table', '-'):,} rows, seed {env.get('seed', '-')} "
+                 f"(source: {observed_from}). Ruling R104-2 put this envelope on the engine in Round 105, so two "
+                 "runs over a continuously growing table can finally be ordered from their own contents.", ""]
+    elif observed_at:
+        body += [f"- artifact observed at **{observed_at}**, taken from {observed_from}. This artifact predates "
+                 "the Ruling R104-2 envelope, so its true run instant is unknown and the mtime is only an upper "
+                 "bound - a checkout or a copy would reset it. Re-run the engine to stamp it properly.", ""]
     body += ["## Regime breakdown (reported)", "", "| Regime | n | median ratio 30m | $ expectancy |", "|---|---|---|---|"]
     for k, v in sorted((art.get("regime_breakdown") or {}).items()):
         body.append(f"| `{md_cell(k)}` | {v.get('n', 0):,} | {_f(v.get('median_fade_ratio'), '.4f')} | "
@@ -227,8 +251,9 @@ def build_page(art: dict[str, Any], reg: dict[str, Any], vault: Path, dev_root: 
         body.append(f"| {h['at']} | {h.get('rows_at_run'):,} | {h.get('events'):,} | "
                     f"{_f(h.get('top_coin_share'), '.4f')} | {_f(h.get('ratio_30m'), '.4f')} | "
                     f"{_f(h.get('cluster_p'), '.4f')} | {h.get('grade')} |")
-    body += ["", "## Related", "", "- [[whale_sweeper_cascade_replay_meta|The pre-registration (B15)]]",
-             "- [[Item_14_Hyperliquid_Whale_Cascade_Sweeper|Item 14: Whale Cascade Sweeper]]",
+    body += ["", "## Related", "",
+             link_if_exists(vault, "Experiment", REGISTRATION_STEM, "The pre-registration (B15)"),
+             item_link(vault, "Item_14_Hyperliquid_Whale_Cascade_Sweeper", "Item 14: Whale Cascade Sweeper"),
              "- [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]", ""]
 
     reg_rel = rel_to(registration, dev_root)
@@ -243,7 +268,7 @@ def build_page(art: dict[str, Any], reg: dict[str, Any], vault: Path, dev_root: 
         "engine_verdict": g["engine_verdict"], "grades_agree": g["agrees"],
         "band_if_sample_qualified": g["band_if_sample_qualified"], "gate_failures": g["gate_failures"],
         "measurement": m, "sample_metrics": g["metrics"], "grade_vocabulary": list(GRADES),
-        "registration": REGISTRATION_STEM, "observed_at": observed_at,
+        "registration": REGISTRATION_STEM, "observed_at": observed_at, "observed_from": observed_from,
         "parameters": params, "requires_files": [reg_rel], "history": history,
     }
     meta = make_meta("Experiment", "Whale sweeper cascade replay - verdict",
@@ -274,17 +299,20 @@ def ingest_replay(vault: Path, dev_root: Path, *, result: Path | None = None, re
         return None
     art = json.loads(result.read_text(encoding="utf-8"))
     reg = json.loads(registration.read_text(encoding="utf-8"))
-    observed = iso(datetime.fromtimestamp(result.stat().st_mtime, tz=timezone.utc))
-    page = build_page(art, reg, vault, dev_root, result, registration, at, observed, by)
+    observed, observed_from = written_at(art, result)
+    page = build_page(art, reg, vault, dev_root, result, registration, at, observed, by,
+                      observed_from=observed_from)
+    changed = page_changed(page, vault)
     write_page(page, vault, now=at)
     write_page(update_register(vault, at=at, by=by), vault, now=at)
     write_index(vault, load_pages(vault))
     g = page.meta["dev"]
-    append_log(vault, "Ingest", f"cascade replay graded against its pre-registration: **{g['grade']}** "
-               f"(engine said `{g['engine_verdict']}`, {'agree' if g['grades_agree'] else 'DISAGREE'}); "
-               f"ratio {_f(g['measurement']['fade_ratio_30m'], '.4f')}, "
-               f"P {_f(g['measurement']['cluster_p_ge_1_25'], '.4f')} "
-               f"-> [[{STEM}]].", when=at)
+    if changed:
+        append_log(vault, "Ingest", f"cascade replay graded against its pre-registration: **{g['grade']}** "
+                   f"(engine said `{g['engine_verdict']}`, {'agree' if g['grades_agree'] else 'DISAGREE'}); "
+                   f"ratio {_f(g['measurement']['fade_ratio_30m'], '.4f')}, "
+                   f"P {_f(g['measurement']['cluster_p_ge_1_25'], '.4f')} "
+                   f"-> [[{STEM}]].", when=at)
     return page
 
 

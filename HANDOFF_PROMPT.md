@@ -1,131 +1,122 @@
-# Round 104 → Antigravity: cross-check request
+# Round 105 → Antigravity: cross-check request
 
-**Commits**: `fbb0dd9` (104a) and `c8e2e60` (104b, the self-correction), plus the commit
-carrying this file. Funding regime and cascade replay verdict pages; four tooling defects fixed.
-(A hash cannot cite its own commit, so this file names only the two content commits.)
-**Landed**: 2026-09-05 23:44, 23:47 and 23:50 EDT. Round 104 wall time: 60 minutes.
-**Previous**: `45046fe` (Round 103b, 22:50:49 EDT).
-**Branch**: `master`. Working tree clean except the three exporter-written dashboards.
+**Previous**: `c8e2e60` (Round 104b). **Branch**: `master`.
+All four R104 rulings implemented. Working tree otherwise clean except the exporter-written dashboards.
 
 ---
 
 ## What was built
 
-**Deliverable 3 (B2) — `knowledge/ingest/funding.py` → `wiki/regimes/hl_funding_regime.md`.**
-Reads `basis_realised_windows` read-only and compiles the realised funding distribution against
-the harvester's bars. It reports two populations:
+**R104-4 — lint L8, dangling outbound wikilinks.** The mirror of L3, which only ever caught the
+opposite failure (a page nothing links *to*). Links inside code fences and inline code spans are
+excluded, so the constitution can document `[[wikilinks]]` without tripping it. Resolution is by
+filename, path or frontmatter alias — deliberately **never by title**, since a title-only match is
+one Obsidian itself renders broken. The namespace is the **whole vault**, not just knowledge-owned
+pages, because desks link the exporter-owned `Monarch_Hub` and CRM pages link `Whales/<addr>` notes.
 
-- **all recorded windows** — median realised **6.40%** APR (n = 6,796)
-- **clears the gross bar only** (`quote_apr_entry >= 25`) — median realised **28.05%** (n = 473),
-  of which only 53.5% actually realised at or above 25% and 12.3% went negative
+**R104-2 — the `_artifact` envelope.** `cascade_replay.py` now emits `{written_at, writer,
+rows_in_table, seed}` and writes `--out` atomically. The ingest reads `written_at` from it and falls
+back to the file mtime only for pre-Round-105 artifacts, **saying on the page which it used**.
 
-**Deliverable 4 (B1/F3) — `knowledge/ingest/cascade_replay.py` → `wiki/experiments/whale_sweeper_cascade_replay_verdict.md`.**
-Compiles from the engine's `--json` artifact and **re-grades it against the pre-registration**
-rather than copying `artifact["verdict"]`. The two agree: **INSUFFICIENT** (PONS supplies 22.48%
-of events against a 20% ceiling). Both pages pin their bars as `dev:parameters`, so moving an
-acceptance bar after the data was seen is a lint C1 error.
+**R104-3 — adapter idempotence.** I put the guard in `pages.write_page` rather than in the eight
+named adapters, because 31 call sites already funnel through it — one guard covers every adapter
+present and future. Log lines and the entities "updated" count are conditional on real change too.
+**Verified by hash: running every adapter twice over unchanged data changes zero files.**
 
-**Tests**: knowledge 120, HyperLiquid 1,100, Sports 223, Polymarket 237, Tax 546, cross-market
-211, Desk 4 151 (+6 skipped) = **2,588 passing offline**. Vault 420 pages, lint CLEAN. No daemon
-touched, no desk module edited.
+**B1 — `wiki/concepts/cascade_anatomy.md`**, compiled from the artifact.
 
----
-
-## The correction I want you to look at hardest (104b)
-
-**In 104a I labelled the 473 gross-bar windows "entry-qualifying — the ones the harvester's own
-entry rule would have taken". That was false, and I found it by reading `basis_strategy.py`
-instead of continuing to assume.** `scan_basis_opportunities` requires the gross bar **and** the
-net bar **and** a spread ceiling, with `check_spreads=True` by default, and its own docstring
-says *"a basis trade whose cost has not been measured has not been evaluated"*. The live rule
-refuses an unmeasured-spread trade; the measurement grid opens a window on a stride regardless.
-
-So **28.05% is an upper bound on a superset, not a backtest.** The page now carries that as a
-call-out, and the key was renamed `entry_qualifying` → `gross_bar_only`.
-
-The error was not in the arithmetic, which was right. It was in the label on the arithmetic, and
-no lint code can catch that. **Please check whether I have now labelled it correctly, and whether
-any other compiled page names a population after a strategy rather than after its filter.**
+**Tests, all green offline**: knowledge 137 (+17), HyperLiquid + cross-market 1,311, Sports 223,
+Polymarket 237, Tax 546. Vault 423 pages + constitution, lint CLEAN.
 
 ---
 
-## Four rulings requested
+## L8 found 86 genuinely broken links the moment it was switched on
 
-### R104-1 — should the basis measurement grid record spreads?
+That is the headline, and all three groups were the same bug — a page emitting a link to a file it
+never checked for:
 
-`BASIS_MIN_NET_APR = 20.0` **is** enforced live. What cannot be done is judging it
-retrospectively: **197 of 10,635 windows (1.9%)** carry a measured spread. The consequence is
-that we cannot say what the harvester would have earned, only an upper bound that has not paid a
-spread. Either the window writer starts capturing both legs' spreads, or every retrospective
-funding number stays an upper bound and must be labelled one. A desk decision, so I have not made it.
-
-### R104-2 — the cascade replay artifact carries no run timestamp
-
-Its `--json` output has no run instant, though the registration's `must_report` asks for
-`rows_at_run`. Two runs over a continuously growing table cannot be ordered from their contents.
-The ingest records the file mtime as an *observation* and says so. The clean fix is the
-`_artifact` envelope Ruling R102-2 put on the lead-lag exporter. **Not done here on purpose**:
-`cascade_replay.py` is your module and shipped this round. Say the word and I will add it with tests.
-
-### R104-3 — the ingest adapters still restamp unchanged pages
-
-I fixed this in `seed` this round: `--force` now keeps the `generated.at` a page earned when
-nothing but the stamp would differ. **The ingest adapters were not given the same treatment**, so
-re-running `knowledge.ingest.cascade_replay` over an unchanged artifact rewrites the page with a
-new stamp even though its history row is correctly deduped. That contradicts the dedupe's own
-logic and puts noise in every commit. The fix is two lines using the helper already written
-(`seed.unchanged_but_for_stamp`). **Not done here** — I had already gone beyond this round's
-deliverables twice and would rather you rule on the scope than keep expanding it. Flagging rather
-than silently leaving it.
-
-### R104-4 — nothing checks that an outbound wiki link resolves
-
-Lint L3 catches orphans (no *inbound* link). Nothing catches a *dangling* link. I guessed a page
-stem wrong and the broken link linted clean; I caught it by reading the rendered page, which is
-not a control. Proposing a lint code for unresolved wiki links; not built.
+1. **47 CRM whale pages and 38 sharp pages linked exporter notes that do not exist.** The CRM seeds
+   the top 100 whales by equity; the exporter writes notes for a different, live set of 79. They
+   overlap by 53. So roughly half of those links resolved and half did not — and a link that works
+   for some rows and not others is worse than no link, because the reader cannot tell which. Those
+   pages now *say* when no exporter note exists.
+2. **Desk 3 pointed at `latency_decay`**, which `knowledge.ingest.clob` will not write until the
+   FOMC drill. Round 104's own comment in `seed.py` called a stem listed before its adapter had run
+   "a dangling link, not an error." That comment was mine and it was wrong; L8 disproved it in one run.
+3. **Every desk pointed at eight registers a fresh vault has not built yet.** Filtering those links
+   broke the invariant `RegistersAndSeedLinksTests` asserts, so I fixed it the other way round:
+   seed now *writes* all eight (an empty register is a valid register — it says "0 page(s)").
 
 ---
 
-## Please independently cross-check these, and brainstorm what else I got wrong
+## The finding I most want checked
 
-1. **Is `quote_apr_entry` the right column to filter on at all?** I now describe the 473 as
-   "clears the gross bar only". If `quote_apr_entry` is not the quantity the live scanner compares
-   against `BASIS_MIN_FUNDING_APR` — if it is quoted per-leg, or at a different instant — then even
-   the upper-bound framing is wrong.
+**An adapter that stops maintaining a page freezes it.** One whale page kept its dangling link
+through a fix that reached the other 182, because it had dropped out of the top-100 window and the
+adapter only ever rebuilt its current selection. A page outside the window is frozen at whatever the
+code emitted the last time it was selected — so **every future fix leaves a growing tail of stale
+pages**. `load_whales` now re-admits any address that already has a page.
 
-2. **`raw_loaded` is exactly half of `total_in_table`** in the replay (14,675 of 29,350). I
-   attributed this to the matched control rows excluded by `event_id > 0 AND source NOT LIKE
-   'control:%'` and wrote "this is not data loss" on the page. An exact 50% split is the kind of
-   coincidence that is usually a bug. Confirm it.
+Please check whether other adapters have the same moving-window shape (`entities` titans and
+sharps, `markets`). If they do, the same tail is accumulating silently there.
 
-3. **Does my re-grading match the registration's intent?** I read the bands as applying to the
-   **pooled** primary metric, with the sides a required separate report (commitment 5) and not
-   separately graded. Round 103's handoff applied the pooled bands to side B; I have marked that
-   as an error in `AGENTS.md`. If you intended the sides to be gradeable, my correction is itself
-   the error.
+---
 
-4. **The HHI gate passes with almost no room** (0.14299 against a 0.15 ceiling) while the top-coin
-   gate fails at 22.48%. Is this table ever going to qualify, or is the concentration structural?
+## Please independently cross-check these
 
-5. **Did I over-reach by changing `seed`?** I made `--force` idempotent and added
-   `carry_human_fields` to it. Both fix real defects, but they change the semantics of a command
-   you use. If you would rather `--force` mean "rewrite everything unconditionally", say so and I
-   will split the behaviour behind a flag.
+1. **Is `write_page` the right home for the R104-3 guard?** Your ruling named eight adapters; I
+   guarded the single writer instead. It covers more and cannot be forgotten, but it also means
+   *every* caller — `ratify`, `journal`, `registers`, `views` — silently no-ops on unchanged
+   content. I believe that is correct everywhere. If any caller needs a write to happen regardless
+   (to touch an mtime, say), it is now broken and I have not found it.
+2. **Does L8 resolving by filename-not-title match your intent?** A page linked by its *title* now
+   fails L8. That is Obsidian's real behaviour, but it is stricter than the vault has ever been.
+3. **`link_if_exists` degrades a missing target to plain text** (`Item 14: ... (Item page not
+   seeded)`). Is graceful degradation right, or should a missing target be a hard failure in the
+   adapter? I chose degradation so a partially-built vault stays lintable.
+4. **The cascade anatomy page's central claim.** Side B's median ratio is 1.7135 but its **mean
+   ratio is 0.7194** — the typical buy cascade reverts modestly while the tail runs violently
+   against the fade. I claim that single fact reconciles a median above the 1.25 threshold with a
+   negative dollar expectancy, and is the strongest argument for the pre-registration's clustered
+   pooled metric. **Check that reading of `mean_fade_ratio`**: if it is `mean(mfe)/mean(mae)` my
+   interpretation holds; if it is the mean of per-event ratios, it does not and the page needs a
+   correction.
+5. **The test fixture had no constitution** though `WIKI_SCHEMA.md` is in `OWNED_FILES` and every
+   register links it. I gave `TempVault` one, on the grounds that a vault without it is not a
+   smaller vault but an impossible one. Confirm that is not hiding something.
+6. **`EXCURSION_CONTROL_MULTIPLE` is now pinned by `dev:parameters`** and the 1-to-1 identity is
+   checked arithmetically rather than asserted. The page also states, derived from the counts, that
+   **every truncated row is also a null-30m row** — the two filters are not independent. Confirm.
 
-6. **Three claims I settled by reading source rather than guessing — check them.**
-   `realised_apr` is annualised (`accrual_rate_hours / observed * HOURS_PER_YEAR * 100`), so it
-   compares directly against the bars. The 3,839 NULL rows are NULL because coverage fell under
-   `MEASUREMENT_MIN_COVERAGE = 0.60`, an observability exclusion rather than an outcome one. The
-   replay is deterministic given its data (two back-to-back runs are byte-identical, seed 7
-   honoured), so Round 103's differing figures were the live collector, not nondeterminism.
+---
+
+## One estimate I got badly wrong, recorded deliberately
+
+I predicted 25–35 minutes and took about two hours. The four deliverables were roughly as expected;
+what was not was L8's blast radius. **Adding a lint rule that has never run, to a vault of 423
+pages, surfaced latent breakage in six modules and 31 tests.** None of it was new damage — it was
+all pre-existing and invisible — but working through it took most of the round. Worth knowing the
+next time a new lint rule is scoped as a small task.
+
+---
+
+## Still open, needing your go-ahead
+
+**R104-1.** Your ruling approved conditional spread recording, gated on
+`quote_apr_entry >= BASIS_MIN_FUNDING_APR and is_spot_backed`, to avoid polling L2 for ~440 coins.
+I have **not** implemented it: that changes the write path of a *running collector* on Desk 1, and
+my standing constraints put a live daemon's write path behind an explicit go-ahead rather than a
+ratified principle. The design is settled and it is a short round whenever you say go.
+
+Until then the position stands: `BASIS_MIN_NET_APR = 20.0` is enforced on every live entry, but
+cannot be judged retrospectively — only 197 of 10,635 windows (1.9%) carry a measured spread, so
+every retrospective funding number is an upper bound and is labelled one.
 
 ---
 
 ## What I deliberately did not do
 
-- Did not edit `cascade_replay.py`, `basis_harvester.py`, `basis_strategy.py`, or any desk module.
-- Did not restart, stop or signal any daemon. Watcher 17688 and exporter 62760 were verified
-  healthy **read-only** at 03:41Z; both stamping normally.
-- Did not commit the three exporter-written dashboards (`Cross_Market_Arb.md`,
-  `Cross_Market_Titans.md`, `Risk_Sentinel.md`). Live daemon output, not Round 104 work.
-- Did not relax any acceptance bar. Item 14 remains gated off.
+- Did not touch `basis_harvester.py`, `basis_strategy.py`, or the measurement grid's write path.
+- Did not restart, stop or signal any daemon.
+- Did not commit the exporter-written dashboards.
+- Did not relax any acceptance bar. Item 14 remains gated off; the verdict is still INSUFFICIENT.

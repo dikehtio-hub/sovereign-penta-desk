@@ -1,7 +1,7 @@
 ---
 type: Entity/Whale
 title: Whale 0xcf53…ee11
-description: 'Hyperliquid whale 0xcf53…ee11: rank 51 by account equity at seed; first
+description: 'Hyperliquid whale 0xcf53…ee11: rank 53 by account equity at seed; first
   seen on xyz:SKHX.'
 tags:
 - crm
@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:50Z'
+  at: '2026-09-06T04:55:31Z'
 status: draft
 sources:
 - id: whale_wallets
@@ -22,7 +22,7 @@ dev:
   first_coin: xyz:SKHX
   discovered_at: '2026-08-31T18:34:38Z'
   is_liquidator: false
-  rank_at_seed: 51
+  rank_at_seed: 53
   evidence:
   - at: '2026-08-31T18:34:39Z'
     account_value: 2815196.11
@@ -36,7 +36,7 @@ dev:
 - address: `0xcf5343ba750a6e30afbb1dadda08bc78f8c8ee11`
 - discovered: `2026-08-31T18:34:38Z` via `xyz:SKHX` ($11,056)
 - system liquidator: False
-- rank by equity at seed: 51
+- rank by equity at seed: 53
 - live note (exporter-owned): [[Whales/0xcf5343ba750a6e30afbb1dadda08bc78f8c8ee11|whale note]]
 
 ## Judgement

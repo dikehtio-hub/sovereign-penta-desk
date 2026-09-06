@@ -5,6 +5,21 @@ the detail.
 
 ## Status
 
+Round 105 complete (2026-09-06): ALL FOUR R104 RULINGS IMPLEMENTED, AND LINT L8 FOUND 86
+BROKEN LINKS THE MOMENT IT WAS SWITCHED ON. R104-4: lint L8 flags a dangling outbound
+wikilink - the mirror of L3, which only ever caught the opposite failure. Links inside code
+fences and code spans are excluded, so the constitution can document `[[wikilinks]]` without
+tripping it. R104-2: cascade_replay.py now emits an `_artifact` envelope (written_at, writer,
+rows_in_table, seed) and writes --out atomically; the ingest reads written_at from it and
+falls back to the file mtime only for pre-Round-105 artifacts, SAYING WHICH on the page.
+R104-3: the guard went into pages.write_page rather than the eight named adapters - 31 call
+sites already funnel through it, so one guard covers every adapter present and future. A page
+whose content has not moved is not rewritten and keeps the generated.at it earned; the log
+line and the entities 'updated' count are now conditional on a real change too. VERIFIED BY
+HASH: running every adapter twice over unchanged data changes ZERO files. B1: new
+wiki/concepts/cascade_anatomy.md. Tests: module 23 = 137 (+17), HyperLiquid + cross-market
+1,311, all green offline. Vault 423 pages + constitution, lint CLEAN. No daemon touched.
+
 Round 104 complete (2026-09-06, corrected in 104b): TWO NEW COMPILED PAGES ON DESK 1, AND
 FOUR REAL DEFECTS FOUND IN OUR OWN TOOLING WHILE BUILDING THEM. Deliverables 1-2 (the wall-clock
 test fix and the exporter --stop) landed earlier in the round at 25 green exporter tests.
@@ -1099,6 +1114,58 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 105 findings
+
+### L8 found 86 broken links on its first run, in three groups
+
+- **47 CRM whale pages and 38 sharp pages linked exporter-owned notes that do not exist.**
+  The CRM seeds the top 100 whales by equity; the exporter writes notes for a different, live
+  set of 79. They overlap by 53. Every page emitted `[[Whales/<addr>]]` unconditionally, so
+  roughly half resolved and half did not - and a link that works for some rows and not others
+  is worse than no link, because the reader cannot tell which. The pages now SAY when no
+  exporter note exists, which is also the honest statement about that counterparty.
+- **Desk 3 pointed at `latency_decay`**, which knowledge.ingest.clob will not write until the
+  FOMC drill. Round 104's own comment in seed.py called a stem listed before its adapter had
+  run "a dangling link, not an error". That comment was wrong and L8 proved it in one run.
+- **Every desk pointed at eight registers a fresh vault has not built yet.** Filtering those
+  links broke the design invariant that every desk links every register, so the fix is the
+  other way round: seed now WRITES all eight (an empty register is a valid register, it says
+  "0 page(s)"). Both L3 and L8 are satisfied without weakening the invariant.
+
+### The adapter that stops maintaining a page freezes it
+
+- One whale page kept its dangling link through a fix that reached the other 182, because it
+  had dropped out of the top-100 window and the adapter only ever rebuilt its current
+  selection. A page outside the window is frozen at whatever the code emitted the last time it
+  was selected - so every future fix leaves a growing tail of stale pages. load_whales now
+  re-admits any address that already has a page: an adapter maintains every page it created,
+  or it does not own them.
+
+### Smaller things worth knowing
+
+- **The `_artifact` envelope justified itself immediately.** Between Round 104's run and this
+  one the table grew 29,350 -> 29,612 rows, and side B moved from ratio 1.7378 / P 0.4808 to
+  1.7135 / 0.4823. Same seed, same code, different data. The verdict is unchanged
+  (INSUFFICIENT) and the anatomy page records both readings side by side.
+- **Side B's median/mean divergence is the real microstructure finding.** Median ratio 1.71
+  against a MEAN ratio of 0.72: the typical buy cascade reverts modestly, the tail runs
+  violently against the fade. That single fact reconciles a median above the 1.25 threshold
+  with a negative dollar expectancy, and it is the strongest argument for the pre-
+  registration's clustered, pooled metric over a headline median.
+- The 1-to-1 control identity is now CHECKED rather than described: treatment share 0.5
+  against an expected 1/(1+EXCURSION_CONTROL_MULTIPLE), with the constant pinned by
+  dev:parameters so C1 fires if it changes. The page also states, derived from the counts,
+  that every truncated row is also a null-30m row - the two filters are not independent.
+- The test fixture had no constitution, though WIKI_SCHEMA.md is in OWNED_FILES and every
+  register links it. That is not a smaller vault, it is an impossible one; 30 tests failed L8
+  on `[[WIKI_SCHEMA]]` until the fixture got one.
+- Adapters now degrade a link to readable plain text when its target is not compiled yet
+  (`link_if_exists`), rather than emitting a link to nothing. The link returns on the next seed.
+- **THE ESTIMATE WAS WRONG BY A WIDE MARGIN**: 25-35 minutes predicted, ~2 hours actual. The
+  four deliverables were about as expected; what was not was L8's blast radius. Adding a rule
+  that has never run to a vault of 423 pages surfaced latent breakage in six modules and 31
+  tests. Worth recording for the next time a lint rule is proposed as a small task.
 
 ## Round 104 findings
 

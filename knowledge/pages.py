@@ -182,8 +182,30 @@ def _write_text(path: Path, text: str) -> None:
         fh.write(text)
 
 
+def unchanged_but_for_stamp(existing: "Page | None", page: Page) -> bool:
+    """True when the page on disk differs from the freshly built one ONLY in `generated.at`.
+
+    Compared field by field rather than by rendered text, and meant to be called AFTER
+    carry_human_fields, so `verified`, a status past draft and dev.ratified_by are present on both
+    sides: a ratified page compares equal to its regeneration and keeps its original stamp.
+    """
+    if existing is None or existing.body != page.body:
+        return False
+    a, b = dict(existing.meta), dict(page.meta)
+    ga, gb = dict(a.pop("generated", {}) or {}), dict(b.pop("generated", {}) or {})
+    ga.pop("at", None)
+    gb.pop("at", None)
+    return a == b and ga == gb
+
+
 def write_page(page: Page, vault: Path, now: datetime | None = None) -> Path:
-    """Validate, check ownership and window, then write. The package's only page writer."""
+    """Validate, check ownership and window, then write. The package's only page writer.
+
+    Ruling R104-3 (Round 105): a page whose content has not moved is NOT rewritten, and keeps the
+    `generated.at` it earned. Recompiling identical content is not generating it, and 31 call sites
+    across this package would otherwise each need to remember that. Guarding the single writer
+    instead of the eight named adapters also covers the ninth nobody has written yet.
+    """
     now = now or now_utc()
     issues = validate(page.meta)
     if issues:
@@ -193,6 +215,12 @@ def write_page(page: Page, vault: Path, now: datetime | None = None) -> Path:
         raise WriteRefused(f"{page.path.name} is reserved; use write_index / append_log")
     if in_window(page.meta, now):
         raise WriteRefused(f"{page.path.name}: inside its own registration window; not amended")
+    existing = load_page(page.path) if page.path.is_file() else None
+    if unchanged_but_for_stamp(existing, page):
+        # Carry the earned stamp onto the in-memory page too, so a caller that reads page.meta
+        # after this call sees what is actually on disk rather than the instant it almost wrote.
+        page.meta["generated"] = dict(existing.meta.get("generated") or {})
+        return page.path
     _write_text(page.path, serialize(page.meta, page.body))
     return page.path
 
@@ -208,6 +236,33 @@ def write_owned_text(path: Path, text: str, vault: Path) -> Path:
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
 MDLINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+
+
+CODE_FENCE_RE = re.compile(r"^([ \t]*)(`{3,}|~{3,}).*?^\1\2[^\S\n]*$", re.S | re.M)
+CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1).)*?\1", re.S)
+
+
+def strip_code(body: str) -> str:
+    """Body with fenced blocks and inline code spans blanked out, newlines preserved.
+
+    Round 105 (Ruling R104-4): a link checker that reads inside code is a link checker nobody can
+    trust. WIKI_SCHEMA.md s.'Query' documents the SYNTAX with `[[wikilinks]]` in backticks, and
+    the constitution is exactly the document that must be able to describe a link without making
+    one. Newlines survive so any line numbers a caller derives stay honest.
+    """
+    def blank(m: re.Match[str]) -> str:
+        return re.sub(r"[^\n]", " ", m.group(0))
+    return CODE_SPAN_RE.sub(blank, CODE_FENCE_RE.sub(blank, body))
+
+
+def wikilink_targets(body: str) -> set[str]:
+    """Just the [[target]] side of wikilinks, ignoring anything inside code (lint L8).
+
+    Distinct from extract_links, which also returns `[text](path)` markdown targets: those name
+    files on disk and are checked by L2/L5, while these name PAGES and resolve by stem.
+    """
+    return {t for t in (m.group(1).strip().rstrip("\\").strip()
+                        for m in WIKILINK_RE.finditer(strip_code(body))) if t}
 
 
 def extract_links(body: str) -> set[str]:

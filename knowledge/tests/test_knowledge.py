@@ -97,6 +97,14 @@ class TempVault(unittest.TestCase):
             "- Single Trade Risk Budget: 1.0% ($1,000)\n- Hard Daily Drawdown Killswitch: $3,500.00 (3.5%)\n",
             encoding="utf-8")
         (self.dev_root / "AGENTS.md").write_text("# log\n", encoding="utf-8")
+        # Round 105: every real vault has the constitution - it is in OWNED_FILES and every
+        # register links it - so a fixture without one is not a smaller vault, it is an
+        # impossible one. Its absence made lint L8 report [[WIKI_SCHEMA]] dangling in 30 tests.
+        (self.vault / "WIKI_SCHEMA.md").write_text(
+            "---\ntype: Concept\ntitle: WIKI_SCHEMA\ndescription: The constitution.\n"
+            "generated:\n  by: human:operator\n  at: '2026-09-05T00:00:00Z'\nstatus: stable\n"
+            "stale_after: '2030-01-01T00:00:00Z'\n---\n\n# Constitution\n\n"
+            "Answer with `[[wikilinks]]`.\n", encoding="utf-8")
         (self.dev_root / "LLM_WIKI_BLUEPRINT.md").write_text("---\ntype: Blueprint\n---\n", encoding="utf-8")
 
     def tearDown(self):
@@ -1026,7 +1034,9 @@ class HLExperimentsTests(IngestFixture):
         reg, body = fm.parse((self.vault / "wiki/experiments/regime_filtered_v1_meta.md").read_text(encoding="utf-8"))
         self.assertEqual((reg["dev"]["desk"], reg["dev"]["kind"]), (1, "registration"))
         self.assertEqual((reg["dev"]["item"], reg["dev"]["related_items"]), (14, [8]))  # Round 99 attribution ruling
-        self.assertIn("[[Item_14_Hyperliquid_Whale_Cascade_Sweeper|", body)
+        # Round 105 (lint L8): this fixture's registry has no Item 14, so the reference degrades to
+        # readable plain text instead of emitting a wikilink that resolves to nothing.
+        self.assertIn("Item 14: Hyperliquid Whale Cascade Sweeper (Item page not seeded) (primary)", body)
         self.assertEqual(reg["dev"]["requires_files"], ["HyperLiquid/HL_Monarch/data/experiments/baseline_unfiltered_N12_2026-09-01.json"])
         self.assertEqual(reg["dev"]["parameters"], [{"name": "regime_filtered_v1_acceptance_bar_min_closed_trades", "value": 50,
                                                      "file": "HyperLiquid/HL_Monarch/data/experiments/regime_filtered_v1.meta.json",
@@ -1331,7 +1341,13 @@ class EntitiesIngestTests(CRMFixture):
         self.assertNotIn("titan", w["dev"])
         self.assertEqual(w["dev"]["evidence"][0]["account_value"], 73059495.55)
         self.assertEqual(w["dev"]["evidence"][0]["at"], "2026-08-30T17:35:53Z")  # epoch ms 1788111353767 -> ISO
-        self.assertIn(f"[[Whales/{EOA_WHALE}|whale note]]", wbody)  # exporter-owned note linked, never written
+        # Round 105 (lint L8): the exporter-owned note is linked only when it EXISTS, and this
+        # fixture writes none - 85 CRM pages used to link notes that were never there.
+        self.assertIn(f"none written for `{EOA_WHALE}`", wbody)
+        (self.vault / "Whales" / f"{EOA_WHALE}.md").write_text("# w\n", encoding="utf-8")
+        ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW + timedelta(hours=1))
+        wbody2 = fm.parse((self.vault / f"crm/whales/whale_{EOA_WHALE}.md").read_text(encoding="utf-8"))[1]
+        self.assertIn(f"[[Whales/{EOA_WHALE}|whale note]]", wbody2)  # linked, still never written by us
         w2, _ = fm.parse((self.vault / f"crm/whales/whale_{W2}.md").read_text(encoding="utf-8"))
         self.assertEqual((w2["dev"]["rank_at_seed"], w2["dev"]["titan"]), (2, f"titan_{W2}"))
         s, sbody = fm.parse((self.vault / f"crm/sharps/sharp_{SHARP1}.md").read_text(encoding="utf-8"))
@@ -1687,7 +1703,10 @@ class CarryOverTests(IngestFixture):
         for rel in targets:
             m, _ = fm.parse((self.vault / rel).read_text(encoding="utf-8"))
             self.assertEqual((m["status"], m["stale_after"], m["verified"][0]["by"]), ("stable", "2027-06-01T00:00:00Z", "human:operator"), rel)
-            self.assertEqual(m["generated"]["at"], pages.iso(later), rel)  # everything else was regenerated
+            # Round 105 (Ruling R104-3): a --force over unchanged content no longer restamps. The
+            # human fields above are carried, so each page is identical to its regeneration and keeps
+            # the `generated.at` it earned; restamping would claim work that never happened.
+            self.assertEqual(m["generated"]["at"], pages.iso(NOW), rel)
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=later), [])
 
 
@@ -1842,7 +1861,7 @@ REPLAY_ART = {
     "sample_gates": {"passed": False, "metrics": {"events": 14336, "coins": 58, "top_coin": "PONS",
                                                   "top_coin_share": 0.2248, "hhi": 0.14299}},
     "data_audit": {"total_in_table": 29350, "raw_loaded": 14675, "truncated_count": 226,
-                   "qualifying_count": 14336},
+                   "null_30m_count": 339, "qualifying_count": 14336},
     "horizons": {h: {"n": 14336, "median_mfe": 0.37, "median_mae": 0.60, "median_fade_ratio": 0.61,
                      "win_share": 43.8, "dollar_expectancy": -0.04} for h in ("5m", "15m", "30m", "60m")},
     "asymmetry": {"side_A_sell_fade_buys": {"n": 6835, "median_fade_ratio_30m": 0.2784,
@@ -1925,6 +1944,9 @@ class FundingIngestTests(Round104Fixture):
     def test_page_pins_both_bars_to_settings_and_lints_clean(self):
         report, page = ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW)
         self.assertTrue(report.written)
+        # the desk links its compiled pages only once they exist (lint L8), so a re-seed after the
+        # ingest is what makes the new Regime page reachable - exactly the live operating order.
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW, force=True)
         meta, body = fm.parse((self.vault / "wiki/regimes/hl_funding_regime.md").read_text(encoding="utf-8"))
         names = {p["name"]: p["value"] for p in meta["dev"]["parameters"]}
         self.assertEqual(names, {"basis_min_funding_apr": 25.0, "basis_min_net_apr": 20.0})
@@ -1940,11 +1962,21 @@ class FundingIngestTests(Round104Fixture):
         codes = [(f.code, f.message) for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)]
         self.assertTrue(any(c == "C1" and "basis_min_funding_apr" in msg for c, msg in codes), codes)
 
-    def test_history_accumulates_one_row_per_run(self):
+    def test_history_records_measurements_not_runs(self):
+        """Round 105: two runs over an unmoved table are ONE observation, not two."""
         ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW)
         ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW + timedelta(hours=1))
-        meta, _ = fm.parse((self.vault / "wiki/regimes/hl_funding_regime.md").read_text(encoding="utf-8"))
+        path = self.vault / "wiki/regimes/hl_funding_regime.md"
+        meta, _ = fm.parse(path.read_text(encoding="utf-8"))
+        self.assertEqual(len(meta["dev"]["history"]), 1)
+        self.assertEqual(meta["dev"]["history"][0]["at"], pages.iso(NOW))   # the first sighting stands
+        # a table that has actually moved is a new observation and does append
+        rows = self.default_windows() + [("NEW", 12.0, 40.0, None, "unmeasured", 0.9, "UNKNOWN")]
+        self.write_windows(rows)
+        ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW + timedelta(hours=2))
+        meta, _ = fm.parse(path.read_text(encoding="utf-8"))
         self.assertEqual(len(meta["dev"]["history"]), 2)
+        self.assertEqual(meta["dev"]["history"][-1]["rows"], 9)
 
     def test_history_rows_written_before_the_104b_rename_still_render(self):
         """A key rename that KeyErrors on an existing page is worse than the wording it fixed."""
@@ -2011,6 +2043,9 @@ class CascadeReplayIngestTests(Round104Fixture):
     def test_verdict_page_pins_the_registration_and_lints_clean(self):
         ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
                                 registration=self.registration, at=NOW)
+        # the desk links a compiled page only once it exists (lint L8), so the re-seed is what makes
+        # the new page reachable and keeps L3 quiet - the live operating order, not a workaround.
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW, force=True)
         meta, body = fm.parse((self.vault / "wiki/experiments/whale_sweeper_cascade_replay_verdict.md")
                               .read_text(encoding="utf-8"))
         self.assertEqual(meta["dev"]["grade"], "INSUFFICIENT")
@@ -2019,7 +2054,11 @@ class CascadeReplayIngestTests(Round104Fixture):
                           "cascade_replay_max_single_coin_share", "cascade_replay_max_hhi"})
         self.assertIn("RETROSPECTIVE REPLAY, NOT A FORWARD TEST", body)
         self.assertIn("is not a verdict", body)
-        self.assertIn("[[%s|" % ingest_cr.REGISTRATION_STEM, body)   # the link a guessed stem got wrong
+        # Round 105: the registration page is compiled by a different adapter, so when it is absent
+        # the reference degrades to plain text rather than dangling (lint L8). The stem is still the
+        # real one - guessing it wrong was the Round 104 defect that motivated L8.
+        self.assertIn("The pre-registration (B15)", body)
+        self.assertEqual(ingest_cr.REGISTRATION_STEM, "whale_sweeper_cascade_replay_meta")
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
 
     def test_c1_fires_if_the_acceptance_bar_is_edited_after_the_data_was_seen(self):
@@ -2039,7 +2078,9 @@ class CascadeReplayIngestTests(Round104Fixture):
         meta, _ = fm.parse((self.vault / "wiki/experiments/whale_sweeper_cascade_replay_verdict.md")
                            .read_text(encoding="utf-8"))
         self.assertEqual(len(meta["dev"]["history"]), 1)
-        self.assertEqual(meta["dev"]["history"][0]["at"], pages.iso(NOW + timedelta(hours=1)))
+        # Round 105: the deduped row keeps the `at` of the FIRST sighting - the observation did not
+        # change, so neither did when we first recorded it (and bumping it would defeat R104-3).
+        self.assertEqual(meta["dev"]["history"][0]["at"], pages.iso(NOW))
         # a genuinely new run (new mtime, new numbers) does append
         art = json.loads(json.dumps(REPLAY_ART))
         art["data_audit"]["total_in_table"] = 30000
@@ -2065,6 +2106,186 @@ class CascadeReplayIngestTests(Round104Fixture):
         self.artifact.unlink()
         code = ingest_cr.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out)
         self.assertEqual(code, 3)
+        self.assertIn("cascade_replay --json", out.getvalue())
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 105: lint L8, the _artifact envelope, write idempotence, cascade anatomy
+# --------------------------------------------------------------------------------------
+from knowledge.ingest import cascade_anatomy as ingest_ca  # noqa: E402
+
+SETTINGS_105 = "EXCURSION_CONTROL_MULTIPLE = 1              # matched random entries per event\n"
+
+
+class LintL8Tests(TempVault):
+    def _page(self, stem: str, body: str, type_="Concept"):
+        path = self.vault / "wiki" / "concepts" / f"{stem}.md"
+        pages.write_page(pages.Page(path, pages.make_meta(type_, stem, "A page.", at=NOW), body), self.vault, now=NOW)
+        return path
+
+    def test_a_dangling_wikilink_is_an_error(self):
+        self._page("a", "# a\n\n- [[b|the other page]]\n")
+        self._page("b", "# b\n\n- [[a]]\n")
+        self.assertEqual([f.code for f in lint.check_l8(pages.load_documents(self.vault), self.vault)], [])
+        self._page("a", "# a\n\n- [[b]]\n- [[nowhere]]\n")
+        found = lint.check_l8(pages.load_documents(self.vault), self.vault)
+        self.assertEqual([(f.code, f.severity) for f in found], [("L8", "error")])
+        self.assertIn("[[nowhere]]", found[0].message)
+
+    def test_links_inside_code_are_not_links(self):
+        """The constitution documents the syntax; a checker that reads inside code is unusable."""
+        self._page("b", "# b\n\n- [[a]]\n")
+        self._page("a", "# a\n\n- [[b]]\n\nAnswer with `[[wikilinks]]`.\n\n```\n[[also_not_a_link]]\n```\n")
+        self.assertEqual(lint.check_l8(pages.load_documents(self.vault), self.vault), [])
+        self.assertEqual(pages.wikilink_targets("`[[x]]` and [[y]]"), {"y"})
+        self.assertEqual(pages.wikilink_targets("```\n[[x]]\n```\n[[y]]"), {"y"})
+
+    def test_a_link_resolves_by_filename_or_path_but_never_by_title(self):
+        self._page("b", "# b\n\n- [[a]]\n")
+        path = self.vault / "wiki" / "concepts" / "a.md"
+        pages.write_page(pages.Page(path, pages.make_meta("Concept", "A Long Human Title", "d.", at=NOW),
+                                    "# a\n\n- [[b]]\n"), self.vault, now=NOW)
+        names = lint.link_namespace(pages.load_documents(self.vault), self.vault)
+        self.assertIn("a", names)
+        self.assertIn("wiki/concepts/a", names)
+        self.assertNotIn("A Long Human Title", names)   # Obsidian would render that broken
+
+    def test_the_whole_vault_is_linkable_not_only_owned_pages(self):
+        """Desks link the exporter-owned Monarch_Hub; scoping to owned pages reported 183 false errors."""
+        (self.vault / "Monarch_Hub.md").write_text("# hub\n", encoding="utf-8")
+        (self.vault / "Whales").mkdir(exist_ok=True)
+        (self.vault / "Whales" / "0xabc.md").write_text("# whale\n", encoding="utf-8")
+        self._page("b", "# b\n\n- [[a]]\n")
+        self._page("a", "# a\n\n- [[b]]\n- [[Monarch_Hub]]\n- [[Whales/0xabc|note]]\n")
+        self.assertEqual(lint.check_l8(pages.load_documents(self.vault), self.vault), [])
+
+    def test_l8_runs_as_part_of_the_vault_lint(self):
+        self._page("b", "# b\n\n- [[a]]\n")
+        self._page("a", "# a\n\n- [[b]]\n- [[missing_page]]\n")
+        self.assertIn("L8", {f.code for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)})
+
+
+class WriteIdempotenceTests(TempVault):
+    """Ruling R104-3, enforced at the single writer rather than in eight adapters."""
+
+    def _page(self, at, body="# p\n", desc="A page."):
+        return pages.Page(self.vault / "wiki" / "concepts" / "p.md",
+                          pages.make_meta("Concept", "p", desc, at=at), body)
+
+    def test_identical_content_keeps_its_earned_stamp_and_is_not_rewritten(self):
+        pages.write_page(self._page(NOW), self.vault, now=NOW)
+        path = self.vault / "wiki" / "concepts" / "p.md"
+        before = path.read_bytes()
+        later = NOW + timedelta(days=2)
+        page = self._page(later)
+        pages.write_page(page, self.vault, now=later)
+        self.assertEqual(path.read_bytes(), before)                       # byte-identical: no write
+        self.assertEqual(page.meta["generated"]["at"], pages.iso(NOW))    # caller sees what is on disk
+
+    def test_changed_content_is_written_and_restamped(self):
+        pages.write_page(self._page(NOW), self.vault, now=NOW)
+        later = NOW + timedelta(days=2)
+        pages.write_page(self._page(later, body="# p\n\nnew line\n"), self.vault, now=later)
+        meta, body = fm.parse((self.vault / "wiki/concepts/p.md").read_text(encoding="utf-8"))
+        self.assertIn("new line", body)
+        self.assertEqual(meta["generated"]["at"], pages.iso(later))
+
+    def test_a_metadata_only_change_still_writes(self):
+        pages.write_page(self._page(NOW), self.vault, now=NOW)
+        later = NOW + timedelta(days=2)
+        pages.write_page(self._page(later, desc="A different description."), self.vault, now=later)
+        meta, _ = fm.parse((self.vault / "wiki/concepts/p.md").read_text(encoding="utf-8"))
+        self.assertEqual(meta["description"], "A different description.")
+        self.assertEqual(meta["generated"]["at"], pages.iso(later))
+
+
+class ArtifactEnvelopeTests(Round104Fixture):
+    def test_written_at_prefers_the_envelope_over_the_mtime(self):
+        art = json.loads(json.dumps(REPLAY_ART))
+        art["_artifact"] = {"written_at": "2026-09-06T04:54:00Z", "writer": "engine",
+                            "rows_in_table": 29612, "seed": 7}
+        stamp, source = ingest_cr.written_at(art, self.artifact)
+        self.assertEqual(stamp, "2026-09-06T04:54:00Z")
+        self.assertIn("_artifact", source)
+
+    def test_an_artifact_without_an_envelope_falls_back_and_says_so(self):
+        stamp, source = ingest_cr.written_at(REPLAY_ART, self.artifact)   # the fixture has no envelope
+        self.assertIn("mtime", source)
+        self.assertTrue(stamp.endswith("Z"))
+
+    def test_the_verdict_page_reports_the_envelope_and_its_provenance(self):
+        art = json.loads(json.dumps(REPLAY_ART))
+        art["_artifact"] = {"written_at": "2026-09-06T04:54:00Z", "writer": "engine",
+                            "rows_in_table": 29612, "seed": 7}
+        self.artifact.write_text(json.dumps(art), encoding="utf-8")
+        page = ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                       registration=self.registration, at=NOW)
+        self.assertIn("artifact written at **2026-09-06T04:54:00Z**", page.body)
+        self.assertIn("29,612 rows", page.body)
+        self.assertEqual(page.meta["dev"]["observed_from"], "the artifact's own `_artifact.written_at`")
+
+    def test_reingesting_the_same_artifact_writes_nothing_and_logs_nothing(self):
+        ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                registration=self.registration, at=NOW)
+        path = self.vault / "wiki/experiments/whale_sweeper_cascade_replay_verdict.md"
+        before, log_before = path.read_bytes(), (self.vault / "log.md").read_text(encoding="utf-8")
+        ingest_cr.ingest_replay(self.vault, self.dev_root, result=self.artifact,
+                                registration=self.registration, at=NOW + timedelta(hours=3))
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual((self.vault / "log.md").read_text(encoding="utf-8"), log_before)
+
+
+class CascadeAnatomyTests(Round104Fixture):
+    def setUp(self):
+        super().setUp()
+        (self.dev_root / "HyperLiquid" / "HL_Monarch" / "config" / "settings.py").write_text(
+            BARS_PY + SETTINGS_105, encoding="utf-8")
+
+    def test_the_control_identity_is_checked_not_asserted(self):
+        audit = ingest_ca.control_audit(REPLAY_ART, 1)
+        self.assertEqual(audit["treatment_share"], 0.5)
+        self.assertEqual(audit["expected_share"], 0.5)
+        self.assertTrue(audit["holds"])
+        # a table that is NOT 1-to-1 must fail the check rather than be described as holding
+        art = json.loads(json.dumps(REPLAY_ART))
+        art["data_audit"]["raw_loaded"] = 20000
+        self.assertFalse(ingest_ca.control_audit(art, 1)["holds"])
+        self.assertTrue(ingest_ca.control_audit(art, 1)["treatment_share"] > 0.5)
+
+    def test_containment_of_truncation_in_nulls_is_derived_from_the_counts(self):
+        audit = ingest_ca.control_audit(REPLAY_ART, 1)
+        self.assertEqual(audit["excluded"], 14675 - 14336)
+        self.assertEqual(audit["excluded"], REPLAY_ART["data_audit"]["null_30m_count"])
+        self.assertTrue(audit["truncation_within_null"])
+        art = json.loads(json.dumps(REPLAY_ART))
+        art["data_audit"]["null_30m_count"] = 10
+        self.assertFalse(ingest_ca.control_audit(art, 1)["truncation_within_null"])
+
+    def test_page_records_both_sides_and_refuses_to_call_side_b_a_finding(self):
+        page = ingest_ca.ingest_anatomy(self.vault, self.dev_root, result=self.artifact, at=NOW)
+        self.assertIsNotNone(page)
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW, force=True)
+
+        body = page.body
+        self.assertIn("0.2784", body)                       # side A median, from the artifact
+        self.assertIn("1.7378", body)                       # side B median, reported
+        self.assertIn("does not grade sides", body)         # and explicitly not graded
+        self.assertIn("median/mean divergence", body.lower())
+        self.assertEqual([p["value"] for p in page.meta["dev"]["parameters"]], [1])
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_c1_fires_if_the_control_multiple_changes_without_recompiling(self):
+        ingest_ca.ingest_anatomy(self.vault, self.dev_root, result=self.artifact, at=NOW)
+        (self.dev_root / "HyperLiquid" / "HL_Monarch" / "config" / "settings.py").write_text(
+            BARS_PY + "EXCURSION_CONTROL_MULTIPLE = 3\n", encoding="utf-8")
+        codes = [(f.code, f.message) for f in lint.lint_vault(self.vault, self.dev_root, now=NOW)]
+        self.assertTrue(any(c == "C1" and "excursion_control_multiple" in m for c, m in codes), codes)
+
+    def test_missing_artifact_refuses(self):
+        out = io.StringIO()
+        self.artifact.unlink()
+        self.assertEqual(ingest_ca.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out), 3)
         self.assertIn("cascade_replay --json", out.getvalue())
 
 

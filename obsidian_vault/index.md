@@ -74,7 +74,7 @@
 * [Experiment: passive_fade_rebenchmark](wiki/experiments/passive_fade_rebenchmark_meta.md) - PASSIVE - the fade does not trade; sweeps accumulate with execution disabled
 * [Experiment: regime_filtered_v1](wiki/experiments/regime_filtered_v1_meta.md) - regime_filtered_v1
 * [Experiment: whale_sweeper_cascade_replay](wiki/experiments/whale_sweeper_cascade_replay_meta.md) - PRE-REGISTERED (Round 103, backlog B15).
-* [Whale sweeper cascade replay - verdict](wiki/experiments/whale_sweeper_cascade_replay_verdict.md) - Item 14 retrospective replay graded against its pre-registered bar: **INSUFFICIENT** (ratio 0.6124, P 0.0000, 14,336 events on 58 coins). Retrospective replay, not a forward test.
+* [Whale sweeper cascade replay - verdict](wiki/experiments/whale_sweeper_cascade_replay_verdict.md) - Item 14 retrospective replay graded against its pre-registered bar: **INSUFFICIENT** (ratio 0.6169, P 0.0000, 14,467 events on 58 coins). Retrospective replay, not a forward test.
 
 # Event
 * [Event: fomc_2026-09-16](wiki/events/fomc_2026-09-16.md) - FOMC statement 2026-09-16T18:00:00Z (SEP meeting); window T-2..T+5 registered.
@@ -188,8 +188,9 @@
 
 # Concept
 * [Calibration](wiki/concepts/calibration.md) - Operator calibration across 0 scored prediction(s); mean Brier -.
+* [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
-* [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 183 page(s) today.
+* [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 9 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
@@ -254,104 +255,106 @@
 # Entity/Whale
 * [Whale 0x0622…8088](crm/whales/whale_0x0622a2198712c9527817493553dca548f42e8088.md) - Hyperliquid whale 0x0622…8088: rank 22 by account equity at seed; first seen on ETH.
 * [Whale 0x09bc…410d](crm/whales/whale_0x09bc1cf4d9f0b59e1425a8fde4d4b1f7d3c9410d.md) - Hyperliquid whale 0x09bc…410d: rank 17 by account equity at seed; first seen on BTC.
-* [Whale 0x09dc…c094](crm/whales/whale_0x09dccb6f33b986987457d33db6801b74d2a2c094.md) - Hyperliquid whale 0x09dc…c094: rank 54 by account equity at seed; first seen on ETH.
-* [Whale 0x0ad9…4cbf](crm/whales/whale_0x0ad9e656d9e6211d0ea1c5462342e1fc94cc4cbf.md) - Hyperliquid whale 0x0ad9…4cbf: rank 55 by account equity at seed; first seen on xyz:SNDK.
-* [Whale 0x0c49…d346](crm/whales/whale_0x0c4926daf1250b8da7b9fc339f304d923b94d346.md) - Hyperliquid whale 0x0c49…d346: rank 46 by account equity at seed; first seen on BTC.
-* [Whale 0x0c4a…1b19](crm/whales/whale_0x0c4a3a7ac74d43732f9b5ea507f01ab72a381b19.md) - Hyperliquid whale 0x0c4a…1b19: rank 38 by account equity at seed; first seen on BTC.
-* [Whale 0x0c5d…36b3](crm/whales/whale_0x0c5d0549a1f7ad185286a08bfc10f8e9a1c936b3.md) - Hyperliquid whale 0x0c5d…36b3: rank 71 by account equity at seed; first seen on ETH.
-* [Whale 0x0fd4…e0c7](crm/whales/whale_0x0fd468a73084daa6ea77a9261e40fdec3e67e0c7.md) - Hyperliquid whale 0x0fd4…e0c7: rank 53 by account equity at seed; first seen on BTC.
-* [Whale 0x1158…1aa5](crm/whales/whale_0x115849ce84370f25cadcf0d348510d73837e1aa5.md) - Hyperliquid whale 0x1158…1aa5: rank 81 by account equity at seed; first seen on BTC.
-* [Whale 0x1367…560e](crm/whales/whale_0x1367df28c0681431b8a8f3d887576a1cad85560e.md) - Hyperliquid whale 0x1367…560e: rank 100 by account equity at seed; first seen on xyz:GOLD.
+* [Whale 0x09dc…c094](crm/whales/whale_0x09dccb6f33b986987457d33db6801b74d2a2c094.md) - Hyperliquid whale 0x09dc…c094: rank 56 by account equity at seed; first seen on ETH.
+* [Whale 0x0ad9…4cbf](crm/whales/whale_0x0ad9e656d9e6211d0ea1c5462342e1fc94cc4cbf.md) - Hyperliquid whale 0x0ad9…4cbf: rank 57 by account equity at seed; first seen on xyz:SNDK.
+* [Whale 0x0c49…d346](crm/whales/whale_0x0c4926daf1250b8da7b9fc339f304d923b94d346.md) - Hyperliquid whale 0x0c49…d346: rank 48 by account equity at seed; first seen on BTC.
+* [Whale 0x0c4a…1b19](crm/whales/whale_0x0c4a3a7ac74d43732f9b5ea507f01ab72a381b19.md) - Hyperliquid whale 0x0c4a…1b19: rank 40 by account equity at seed; first seen on BTC.
+* [Whale 0x0c5d…36b3](crm/whales/whale_0x0c5d0549a1f7ad185286a08bfc10f8e9a1c936b3.md) - Hyperliquid whale 0x0c5d…36b3: rank 73 by account equity at seed; first seen on ETH.
+* [Whale 0x0fd4…e0c7](crm/whales/whale_0x0fd468a73084daa6ea77a9261e40fdec3e67e0c7.md) - Hyperliquid whale 0x0fd4…e0c7: rank 55 by account equity at seed; first seen on BTC.
+* [Whale 0x1158…1aa5](crm/whales/whale_0x115849ce84370f25cadcf0d348510d73837e1aa5.md) - Hyperliquid whale 0x1158…1aa5: rank 83 by account equity at seed; first seen on BTC.
+* [Whale 0x1367…560e](crm/whales/whale_0x1367df28c0681431b8a8f3d887576a1cad85560e.md) - Hyperliquid whale 0x1367…560e: rank 101 by account equity at seed; first seen on xyz:GOLD.
 * [Whale 0x152e…c9dc](crm/whales/whale_0x152e41f0b83e6cad4b5dc730c1d6279b7d67c9dc.md) - Hyperliquid whale 0x152e…c9dc: rank 10 by account equity at seed; first seen on ETH.
 * [Whale 0x1bbf…5fc4](crm/whales/whale_0x1bbfb3a33600338d5a948618189649a4588d5fc4.md) - Hyperliquid whale 0x1bbf…5fc4: rank 28 by account equity at seed; first seen on SOL.
 * [Whale 0x1e37…8d5e](crm/whales/whale_0x1e37a337ed460039d1b15bd3bc489de789768d5e.md) - Hyperliquid whale 0x1e37…8d5e: rank 11 by account equity at seed; first seen on XRP.
-* [Whale 0x2577…4897](crm/whales/whale_0x25773676902085225ae5751075e4161369334897.md) - Hyperliquid whale 0x2577…4897: rank 97 by account equity at seed; first seen on xyz:XYZ100.
-* [Whale 0x27d3…02b9](crm/whales/whale_0x27d33e77c8e6335089f56e399bf706ae9ad402b9.md) - Hyperliquid whale 0x27d3…02b9: rank 98 by account equity at seed; first seen on ETH.
+* [Whale 0x2577…4897](crm/whales/whale_0x25773676902085225ae5751075e4161369334897.md) - Hyperliquid whale 0x2577…4897: rank 99 by account equity at seed; first seen on xyz:XYZ100.
+* [Whale 0x258a…ff03](crm/whales/whale_0x258a4b8a8447c61aabf1bef9bb14ee4d69efff03.md) - Hyperliquid whale 0x258a…ff03: rank 36 by account equity at seed; first seen on ARB.
+* [Whale 0x27d3…02b9](crm/whales/whale_0x27d33e77c8e6335089f56e399bf706ae9ad402b9.md) - Hyperliquid whale 0x27d3…02b9: rank 100 by account equity at seed; first seen on ETH.
 * [Whale 0x2edd…8179](crm/whales/whale_0x2eddf3aa5c4df34f9263a98b564bec3b4ec78179.md) - Hyperliquid whale 0x2edd…8179: rank 15 by account equity at seed; first seen on BTC.
-* [Whale 0x34fb…93de](crm/whales/whale_0x34fb5ec7d4e939161946340ea2a1f29254b893de.md) - Hyperliquid whale 0x34fb…93de: rank 76 by account equity at seed; first seen on SOL.
+* [Whale 0x34fb…93de](crm/whales/whale_0x34fb5ec7d4e939161946340ea2a1f29254b893de.md) - Hyperliquid whale 0x34fb…93de: rank 78 by account equity at seed; first seen on SOL.
 * [Whale 0x362a…1d9f](crm/whales/whale_0x362ad6209a5e904a5569f69884375809c5781d9f.md) - Hyperliquid whale 0x362a…1d9f: rank 20 by account equity at seed; first seen on ZEC.
-* [Whale 0x3947…f3b1](crm/whales/whale_0x39475d17bcd20adc540e647dae6781b153fbf3b1.md) - Hyperliquid whale 0x3947…f3b1: rank 39 by account equity at seed; first seen on SOL.
-* [Whale 0x3dc9…54b0](crm/whales/whale_0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0.md) - Hyperliquid whale 0x3dc9…54b0: rank 57 by account equity at seed; first seen on xyz:INTC.
+* [Whale 0x3947…f3b1](crm/whales/whale_0x39475d17bcd20adc540e647dae6781b153fbf3b1.md) - Hyperliquid whale 0x3947…f3b1: rank 41 by account equity at seed; first seen on SOL.
+* [Whale 0x3dc9…54b0](crm/whales/whale_0x3dc908374e11623d8eb9f07dfc7a2e5e803a54b0.md) - Hyperliquid whale 0x3dc9…54b0: rank 59 by account equity at seed; first seen on xyz:INTC.
 * [Whale 0x3ff5…f705](crm/whales/whale_0x3ff54fd26855db3758d0b5ae7aed47440c47f705.md) - Hyperliquid whale 0x3ff5…f705: rank 7 by account equity at seed; first seen on BTC.
-* [Whale 0x4044…794c](crm/whales/whale_0x4044570e13b5184f7eb2709de25a4eb766a4794c.md) - Hyperliquid whale 0x4044…794c: rank 89 by account equity at seed; first seen on BTC.
+* [Whale 0x4044…794c](crm/whales/whale_0x4044570e13b5184f7eb2709de25a4eb766a4794c.md) - Hyperliquid whale 0x4044…794c: rank 91 by account equity at seed; first seen on BTC.
 * [Whale 0x4487…c92d](crm/whales/whale_0x44871d62caaeb8b91777be8aae0e23ee68b4c92d.md) - Hyperliquid whale 0x4487…c92d: rank 18 by account equity at seed; first seen on ETH.
-* [Whale 0x45f7…f166](crm/whales/whale_0x45f717946a3fb49054ebebecbb1ab8ce9325f166.md) - Hyperliquid whale 0x45f7…f166: rank 61 by account equity at seed; first seen on PONS.
+* [Whale 0x45f7…f166](crm/whales/whale_0x45f717946a3fb49054ebebecbb1ab8ce9325f166.md) - Hyperliquid whale 0x45f7…f166: rank 63 by account equity at seed; first seen on PONS.
 * [Whale 0x4747…c0bd](crm/whales/whale_0x47472cd62c99b8b5ce7e84e733515133e9aec0bd.md) - Hyperliquid whale 0x4747…c0bd: rank 16 by account equity at seed; first seen on BTC.
 * [Whale 0x4e23…20c3](crm/whales/whale_0x4e23288cee4960f9f962195c22948e4bc7ae20c3.md) - Hyperliquid whale 0x4e23…20c3: rank 9 by account equity at seed; first seen on HYPE.
 * [Whale 0x5323…b23c](crm/whales/whale_0x5323b92268b4e140ac2133c677e991cd9ad1b23c.md) - Hyperliquid whale 0x5323…b23c: rank 29 by account equity at seed; first seen on SOL.
-* [Whale 0x5396…8b79](crm/whales/whale_0x53969485d7422b35c7fe5a4025498f9b69268b79.md) - Hyperliquid whale 0x5396…8b79: rank 66 by account equity at seed; first seen on UNI.
-* [Whale 0x53f8…ceff](crm/whales/whale_0x53f8f390fd4f70941c5d160a964f6893c8dbceff.md) - Hyperliquid whale 0x53f8…ceff: rank 43 by account equity at seed; first seen on BTC.
-* [Whale 0x5750…3586](crm/whales/whale_0x575087ab0899e40cf3a042a2c38a29d4f9643586.md) - Hyperliquid whale 0x5750…3586: rank 85 by account equity at seed; first seen on BTC.
-* [Whale 0x5c92…2d97](crm/whales/whale_0x5c92c6e4b3bacd41390944cd70a59e3f88562d97.md) - Hyperliquid whale 0x5c92…2d97: rank 72 by account equity at seed; first seen on SOL.
-* [Whale 0x610b…b613](crm/whales/whale_0x610b8dd6b392d010c2b6ad8d121dfc09524cb613.md) - Hyperliquid whale 0x610b…b613: rank 60 by account equity at seed; first seen on DOGE.
+* [Whale 0x5396…8b79](crm/whales/whale_0x53969485d7422b35c7fe5a4025498f9b69268b79.md) - Hyperliquid whale 0x5396…8b79: rank 68 by account equity at seed; first seen on UNI.
+* [Whale 0x53f8…ceff](crm/whales/whale_0x53f8f390fd4f70941c5d160a964f6893c8dbceff.md) - Hyperliquid whale 0x53f8…ceff: rank 45 by account equity at seed; first seen on BTC.
+* [Whale 0x5750…3586](crm/whales/whale_0x575087ab0899e40cf3a042a2c38a29d4f9643586.md) - Hyperliquid whale 0x5750…3586: rank 87 by account equity at seed; first seen on BTC.
+* [Whale 0x5c92…2d97](crm/whales/whale_0x5c92c6e4b3bacd41390944cd70a59e3f88562d97.md) - Hyperliquid whale 0x5c92…2d97: rank 74 by account equity at seed; first seen on SOL.
+* [Whale 0x610b…b613](crm/whales/whale_0x610b8dd6b392d010c2b6ad8d121dfc09524cb613.md) - Hyperliquid whale 0x610b…b613: rank 62 by account equity at seed; first seen on DOGE.
 * [Whale 0x61ce…a62b](crm/whales/whale_0x61ceef212ff4a86933c69fb6aca2fe35d8f2a62b.md) - Hyperliquid whale 0x61ce…a62b: rank 19 by account equity at seed; first seen on ETH.
-* [Whale 0x62f8…02e6](crm/whales/whale_0x62f82c3ef1da6093118fadb29090c4e3263f02e6.md) - Hyperliquid whale 0x62f8…02e6: rank 62 by account equity at seed; first seen on SOL.
-* [Whale 0x63d4…0522](crm/whales/whale_0x63d417a577b50c96f4f09148d4e4d70950db0522.md) - Hyperliquid whale 0x63d4…0522: rank 99 by account equity at seed; first seen on PONS.
+* [Whale 0x62f8…02e6](crm/whales/whale_0x62f82c3ef1da6093118fadb29090c4e3263f02e6.md) - Hyperliquid whale 0x62f8…02e6: rank 64 by account equity at seed; first seen on SOL.
+* [Whale 0x63d4…0522](crm/whales/whale_0x63d417a577b50c96f4f09148d4e4d70950db0522.md) - Hyperliquid whale 0x63d4…0522: rank 102 by account equity at seed; first seen on PONS.
 * [Whale 0x645b…87b8](crm/whales/whale_0x645b2eeaa0a46df3c4211bebda1b2c7703e287b8.md) - Hyperliquid whale 0x645b…87b8: rank 5 by account equity at seed; first seen on HYPE.
-* [Whale 0x6463…42f5](crm/whales/whale_0x6463f53d916cb7741a05a2c11aebdbd7324342f5.md) - Hyperliquid whale 0x6463…42f5: rank 80 by account equity at seed; first seen on BTC.
-* [Whale 0x6540…f7b7](crm/whales/whale_0x654016a8c9fcf0c4cb7ed6078aba21f7f399f7b7.md) - Hyperliquid whale 0x6540…f7b7: rank 52 by account equity at seed; first seen on BTC.
+* [Whale 0x6463…42f5](crm/whales/whale_0x6463f53d916cb7741a05a2c11aebdbd7324342f5.md) - Hyperliquid whale 0x6463…42f5: rank 82 by account equity at seed; first seen on BTC.
+* [Whale 0x6540…f7b7](crm/whales/whale_0x654016a8c9fcf0c4cb7ed6078aba21f7f399f7b7.md) - Hyperliquid whale 0x6540…f7b7: rank 54 by account equity at seed; first seen on BTC.
 * [Whale 0x65a0…23af](crm/whales/whale_0x65a093e4f2ee1063ea9d97f4bc30453b3dce23af.md) - Hyperliquid whale 0x65a0…23af: rank 27 by account equity at seed; first seen on ZEC.
-* [Whale 0x67ce…a104](crm/whales/whale_0x67ce9065db53067d1b290bf472f3b07f781da104.md) - Hyperliquid whale 0x67ce…a104: rank 94 by account equity at seed; first seen on ETH.
-* [Whale 0x6c93…59a4](crm/whales/whale_0x6c93641c0a049a171bf80b34d639c51c31b259a4.md) - Hyperliquid whale 0x6c93…59a4: rank 63 by account equity at seed; first seen on ETH.
-* [Whale 0x6d95…d377](crm/whales/whale_0x6d954bc170d242750a233754df96725ee47ad377.md) - Hyperliquid whale 0x6d95…d377: rank 36 by account equity at seed; first seen on SOL.
-* [Whale 0x71cf…6c20](crm/whales/whale_0x71cfa5e263e866f7961091e01ebc5a2d11616c20.md) - Hyperliquid whale 0x71cf…6c20: rank 84 by account equity at seed; first seen on WIF.
+* [Whale 0x67ce…a104](crm/whales/whale_0x67ce9065db53067d1b290bf472f3b07f781da104.md) - Hyperliquid whale 0x67ce…a104: rank 96 by account equity at seed; first seen on ETH.
+* [Whale 0x6c93…59a4](crm/whales/whale_0x6c93641c0a049a171bf80b34d639c51c31b259a4.md) - Hyperliquid whale 0x6c93…59a4: rank 65 by account equity at seed; first seen on ETH.
+* [Whale 0x6d95…d377](crm/whales/whale_0x6d954bc170d242750a233754df96725ee47ad377.md) - Hyperliquid whale 0x6d95…d377: rank 38 by account equity at seed; first seen on SOL.
+* [Whale 0x71cf…6c20](crm/whales/whale_0x71cfa5e263e866f7961091e01ebc5a2d11616c20.md) - Hyperliquid whale 0x71cf…6c20: rank 86 by account equity at seed; first seen on WIF.
 * [Whale 0x71d0…8c26](crm/whales/whale_0x71d0e11ebb6150cebe20cf62f798be1a50108c26.md) - Hyperliquid whale 0x71d0…8c26: rank 12 by account equity at seed; first seen on HYPE.
-* [Whale 0x72d0…62ea](crm/whales/whale_0x72d0b1f98fd9cdd4e46976edd86857b0266a62ea.md) - Hyperliquid whale 0x72d0…62ea: rank 83 by account equity at seed; first seen on BTC.
-* [Whale 0x7345…b404](crm/whales/whale_0x734531e87f8c1643321355f7143fcc6169c4b404.md) - Hyperliquid whale 0x7345…b404: rank 58 by account equity at seed; first seen on XRP.
-* [Whale 0x7665…2eae](crm/whales/whale_0x7665e4a890be4eb215bfc6c1c864e81406032eae.md) - Hyperliquid whale 0x7665…2eae: rank 65 by account equity at seed; first seen on BTC.
-* [Whale 0x77ee…a018](crm/whales/whale_0x77ee3604adbdefa66a817b3cf776412a6613a018.md) - Hyperliquid whale 0x77ee…a018: rank 67 by account equity at seed; first seen on BTC.
-* [Whale 0x7a51…900d](crm/whales/whale_0x7a51ce9751493a2448c3ebc76667c6e7cf27900d.md) - Hyperliquid whale 0x7a51…900d: rank 92 by account equity at seed; first seen on HYPE.
-* [Whale 0x7a5a…0394](crm/whales/whale_0x7a5a42bd6b1fd13368732be8a7b63e06064e0394.md) - Hyperliquid whale 0x7a5a…0394: rank 48 by account equity at seed; first seen on SOL.
+* [Whale 0x72d0…62ea](crm/whales/whale_0x72d0b1f98fd9cdd4e46976edd86857b0266a62ea.md) - Hyperliquid whale 0x72d0…62ea: rank 85 by account equity at seed; first seen on BTC.
+* [Whale 0x7345…b404](crm/whales/whale_0x734531e87f8c1643321355f7143fcc6169c4b404.md) - Hyperliquid whale 0x7345…b404: rank 60 by account equity at seed; first seen on XRP.
+* [Whale 0x7665…2eae](crm/whales/whale_0x7665e4a890be4eb215bfc6c1c864e81406032eae.md) - Hyperliquid whale 0x7665…2eae: rank 67 by account equity at seed; first seen on BTC.
+* [Whale 0x77ee…a018](crm/whales/whale_0x77ee3604adbdefa66a817b3cf776412a6613a018.md) - Hyperliquid whale 0x77ee…a018: rank 69 by account equity at seed; first seen on BTC.
+* [Whale 0x7a51…900d](crm/whales/whale_0x7a51ce9751493a2448c3ebc76667c6e7cf27900d.md) - Hyperliquid whale 0x7a51…900d: rank 94 by account equity at seed; first seen on HYPE.
+* [Whale 0x7a5a…0394](crm/whales/whale_0x7a5a42bd6b1fd13368732be8a7b63e06064e0394.md) - Hyperliquid whale 0x7a5a…0394: rank 50 by account equity at seed; first seen on SOL.
 * [Whale 0x7ca1…9235](crm/whales/whale_0x7ca165f354e3260e2f8d5a7508cc9dd2fa009235.md) - Hyperliquid whale 0x7ca1…9235: rank 25 by account equity at seed; first seen on BTC.
 * [Whale 0x7d0c…1b28](crm/whales/whale_0x7d0c59691fec7f3fea385cdc3126c37a41d91b28.md) - Hyperliquid whale 0x7d0c…1b28: rank 31 by account equity at seed; first seen on XRP.
-* [Whale 0x7e1a…0be9](crm/whales/whale_0x7e1ad5e2bbe30d6d202e7c41036ea0a07c560be9.md) - Hyperliquid whale 0x7e1a…0be9: rank 75 by account equity at seed; first seen on ETH.
-* [Whale 0x8b9d…7b28](crm/whales/whale_0x8b9da005316ecfd7022ccca9b6231281e5c47b28.md) - Hyperliquid whale 0x8b9d…7b28: rank 96 by account equity at seed; first seen on XRP.
-* [Whale 0x921a…05a6](crm/whales/whale_0x921a02e7401b71e36751edc3ab652bb8077e05a6.md) - Hyperliquid whale 0x921a…05a6: rank 93 by account equity at seed; first seen on SOL.
+* [Whale 0x7e1a…0be9](crm/whales/whale_0x7e1ad5e2bbe30d6d202e7c41036ea0a07c560be9.md) - Hyperliquid whale 0x7e1a…0be9: rank 77 by account equity at seed; first seen on ETH.
+* [Whale 0x8b9d…7b28](crm/whales/whale_0x8b9da005316ecfd7022ccca9b6231281e5c47b28.md) - Hyperliquid whale 0x8b9d…7b28: rank 98 by account equity at seed; first seen on XRP.
+* [Whale 0x921a…05a6](crm/whales/whale_0x921a02e7401b71e36751edc3ab652bb8077e05a6.md) - Hyperliquid whale 0x921a…05a6: rank 95 by account equity at seed; first seen on SOL.
 * [Whale 0x92ea…50e9](crm/whales/whale_0x92ea19eceb7a8de0f50978a1583a5d8b018050e9.md) - Hyperliquid whale 0x92ea…50e9: rank 2 by account equity at seed; first seen on BTC.
 * [Whale 0x936c…bb0f](crm/whales/whale_0x936cf4fb95c30ce83f658b5bbb247e4bb381bb0f.md) - Hyperliquid whale 0x936c…bb0f: rank 6 by account equity at seed; first seen on ETH.
-* [Whale 0x9546…181c](crm/whales/whale_0x9546b9d4103be41ce13483a8f299d0df0eeb181c.md) - Hyperliquid whale 0x9546…181c: rank 35 by account equity at seed; first seen on SOL.
-* [Whale 0x9599…c60a](crm/whales/whale_0x95995f302ad58138d791ce49f9f3b1274e80c60a.md) - Hyperliquid whale 0x9599…c60a: rank 47 by account equity at seed; first seen on ETH.
-* [Whale 0x9c06…0560](crm/whales/whale_0x9c062c0575c30a3b7614d0c6ea8de67faab00560.md) - Hyperliquid whale 0x9c06…0560: rank 86 by account equity at seed; first seen on xyz:GOLD.
-* [Whale 0xa047…553c](crm/whales/whale_0xa0479b2c614cbd03ceab36ae5a6d0822035e553c.md) - Hyperliquid whale 0xa047…553c: rank 50 by account equity at seed; first seen on BTC.
+* [Whale 0x9546…181c](crm/whales/whale_0x9546b9d4103be41ce13483a8f299d0df0eeb181c.md) - Hyperliquid whale 0x9546…181c: rank 37 by account equity at seed; first seen on SOL.
+* [Whale 0x9599…c60a](crm/whales/whale_0x95995f302ad58138d791ce49f9f3b1274e80c60a.md) - Hyperliquid whale 0x9599…c60a: rank 49 by account equity at seed; first seen on ETH.
+* [Whale 0x9c06…0560](crm/whales/whale_0x9c062c0575c30a3b7614d0c6ea8de67faab00560.md) - Hyperliquid whale 0x9c06…0560: rank 88 by account equity at seed; first seen on xyz:GOLD.
+* [Whale 0xa047…553c](crm/whales/whale_0xa0479b2c614cbd03ceab36ae5a6d0822035e553c.md) - Hyperliquid whale 0xa047…553c: rank 52 by account equity at seed; first seen on BTC.
 * [Whale 0xa0b7…6165](crm/whales/whale_0xa0b7020185b97f496f523c3f769eebcffcc56165.md) - Hyperliquid whale 0xa0b7…6165: rank 26 by account equity at seed; first seen on SOL.
 * [Whale 0xa314…d8f9](crm/whales/whale_0xa31489f5bcba00d33621fed897721566ff07d8f9.md) - Hyperliquid whale 0xa314…d8f9: rank 14 by account equity at seed; first seen on BTC.
-* [Whale 0xa4a6…46cf](crm/whales/whale_0xa4a6e0fd7528a6f5c6ccbb3240ba8a2f825446cf.md) - Hyperliquid whale 0xa4a6…46cf: rank 82 by account equity at seed; first seen on UNI.
-* [Whale 0xa6a1…29eb](crm/whales/whale_0xa6a1140c06c35619038823f58a54f25eb33c29eb.md) - Hyperliquid whale 0xa6a1…29eb: rank 56 by account equity at seed; first seen on SOL.
-* [Whale 0xaa7a…af37](crm/whales/whale_0xaa7a2106d961c66a8cf47dafa9deeaae7600af37.md) - Hyperliquid whale 0xaa7a…af37: rank 68 by account equity at seed; first seen on BTC.
-* [Whale 0xac48…3201](crm/whales/whale_0xac487c027ffe32021bbba77e30786f8c8f353201.md) - Hyperliquid whale 0xac48…3201: rank 95 by account equity at seed; first seen on xyz:CRWD.
-* [Whale 0xaf9f…a4fa](crm/whales/whale_0xaf9f722a676230cc44045efe26fe9a85801ca4fa.md) - Hyperliquid whale 0xaf9f…a4fa: rank 79 by account equity at seed; first seen on BTC.
+* [Whale 0xa4a6…46cf](crm/whales/whale_0xa4a6e0fd7528a6f5c6ccbb3240ba8a2f825446cf.md) - Hyperliquid whale 0xa4a6…46cf: rank 84 by account equity at seed; first seen on UNI.
+* [Whale 0xa6a1…29eb](crm/whales/whale_0xa6a1140c06c35619038823f58a54f25eb33c29eb.md) - Hyperliquid whale 0xa6a1…29eb: rank 58 by account equity at seed; first seen on SOL.
+* [Whale 0xaa7a…af37](crm/whales/whale_0xaa7a2106d961c66a8cf47dafa9deeaae7600af37.md) - Hyperliquid whale 0xaa7a…af37: rank 70 by account equity at seed; first seen on BTC.
+* [Whale 0xac48…3201](crm/whales/whale_0xac487c027ffe32021bbba77e30786f8c8f353201.md) - Hyperliquid whale 0xac48…3201: rank 97 by account equity at seed; first seen on xyz:CRWD.
+* [Whale 0xaf9f…a4fa](crm/whales/whale_0xaf9f722a676230cc44045efe26fe9a85801ca4fa.md) - Hyperliquid whale 0xaf9f…a4fa: rank 81 by account equity at seed; first seen on BTC.
 * [Whale 0xb2f7…af9f](crm/whales/whale_0xb2f7374b222a930d20e8d556f33228211d1baf9f.md) - Hyperliquid whale 0xb2f7…af9f: rank 13 by account equity at seed; first seen on xyz:SNDK.
-* [Whale 0xb46b…538e](crm/whales/whale_0xb46bf797b3efd9ae28642bbcd6f7bb6f7b52538e.md) - Hyperliquid whale 0xb46b…538e: rank 42 by account equity at seed; first seen on ZEC.
-* [Whale 0xb5b3…7a08](crm/whales/whale_0xb5b3f3caf9d778b1293e5cd29f32e84b04c67a08.md) - Hyperliquid whale 0xb5b3…7a08: rank 69 by account equity at seed; first seen on BTC.
-* [Whale 0xb695…a92d](crm/whales/whale_0xb695651daa495f59dd2725c6fe98322d8b51a92d.md) - Hyperliquid whale 0xb695…a92d: rank 44 by account equity at seed; first seen on BTC.
-* [Whale 0xb8eb…1dd5](crm/whales/whale_0xb8eb97eaed8367079894d2f1bed69bd220ec1dd5.md) - Hyperliquid whale 0xb8eb…1dd5: rank 78 by account equity at seed; first seen on ETH.
-* [Whale 0xba5d…a352](crm/whales/whale_0xba5d9cc840745aeeeeedac5712e32f13ab8ea352.md) - Hyperliquid whale 0xba5d…a352: rank 90 by account equity at seed; first seen on SOL.
-* [Whale 0xbcd4…0dd2](crm/whales/whale_0xbcd420d13362532756c968f663f96ba95e240dd2.md) - Hyperliquid whale 0xbcd4…0dd2: rank 41 by account equity at seed; first seen on BTC.
+* [Whale 0xb46b…538e](crm/whales/whale_0xb46bf797b3efd9ae28642bbcd6f7bb6f7b52538e.md) - Hyperliquid whale 0xb46b…538e: rank 44 by account equity at seed; first seen on ZEC.
+* [Whale 0xb5b3…7a08](crm/whales/whale_0xb5b3f3caf9d778b1293e5cd29f32e84b04c67a08.md) - Hyperliquid whale 0xb5b3…7a08: rank 71 by account equity at seed; first seen on BTC.
+* [Whale 0xb695…a92d](crm/whales/whale_0xb695651daa495f59dd2725c6fe98322d8b51a92d.md) - Hyperliquid whale 0xb695…a92d: rank 46 by account equity at seed; first seen on BTC.
+* [Whale 0xb8eb…1dd5](crm/whales/whale_0xb8eb97eaed8367079894d2f1bed69bd220ec1dd5.md) - Hyperliquid whale 0xb8eb…1dd5: rank 80 by account equity at seed; first seen on ETH.
+* [Whale 0xba5d…a352](crm/whales/whale_0xba5d9cc840745aeeeeedac5712e32f13ab8ea352.md) - Hyperliquid whale 0xba5d…a352: rank 92 by account equity at seed; first seen on SOL.
+* [Whale 0xbcd4…0dd2](crm/whales/whale_0xbcd420d13362532756c968f663f96ba95e240dd2.md) - Hyperliquid whale 0xbcd4…0dd2: rank 43 by account equity at seed; first seen on BTC.
 * [Whale 0xc179…e0c8](crm/whales/whale_0xc179e03922afe8fa9533d3f896338b9fb87ce0c8.md) - Hyperliquid whale 0xc179…e0c8: rank 4 by account equity at seed; first seen on BTC.
 * [Whale 0xc298…8a9c](crm/whales/whale_0xc298efc4785f2f282838924103509156c9578a9c.md) - Hyperliquid whale 0xc298…8a9c: rank 32 by account equity at seed; first seen on HYPE.
-* [Whale 0xc619…10f5](crm/whales/whale_0xc619b01f1a4f894c5e83338c42f98dcb82b710f5.md) - Hyperliquid whale 0xc619…10f5: rank 88 by account equity at seed; first seen on HYPE.
-* [Whale 0xca23…e9e0](crm/whales/whale_0xca230e816bdb34a46960c2f978a30a563d1ae9e0.md) - Hyperliquid whale 0xca23…e9e0: rank 91 by account equity at seed; first seen on ZEC.
-* [Whale 0xcb84…52cd](crm/whales/whale_0xcb8436264dd4b0d9912b65dbe2893e71de7752cd.md) - Hyperliquid whale 0xcb84…52cd: rank 77 by account equity at seed; first seen on SOL.
+* [Whale 0xc619…10f5](crm/whales/whale_0xc619b01f1a4f894c5e83338c42f98dcb82b710f5.md) - Hyperliquid whale 0xc619…10f5: rank 90 by account equity at seed; first seen on HYPE.
+* [Whale 0xca23…e9e0](crm/whales/whale_0xca230e816bdb34a46960c2f978a30a563d1ae9e0.md) - Hyperliquid whale 0xca23…e9e0: rank 93 by account equity at seed; first seen on ZEC.
+* [Whale 0xcb84…52cd](crm/whales/whale_0xcb8436264dd4b0d9912b65dbe2893e71de7752cd.md) - Hyperliquid whale 0xcb84…52cd: rank 79 by account equity at seed; first seen on SOL.
 * [Whale 0xcf3f…f95f](crm/whales/whale_0xcf3f419d08a5bdc2c6e5fbd9ad70904c5420f95f.md) - Hyperliquid whale 0xcf3f…f95f: rank 24 by account equity at seed; first seen on BTC.
-* [Whale 0xcf53…ee11](crm/whales/whale_0xcf5343ba750a6e30afbb1dadda08bc78f8c8ee11.md) - Hyperliquid whale 0xcf53…ee11: rank 51 by account equity at seed; first seen on xyz:SKHX.
+* [Whale 0xcf53…ee11](crm/whales/whale_0xcf5343ba750a6e30afbb1dadda08bc78f8c8ee11.md) - Hyperliquid whale 0xcf53…ee11: rank 53 by account equity at seed; first seen on xyz:SKHX.
 * [Whale 0xd21d…90f1](crm/whales/whale_0xd21d931890d27b6e7e2e668f27931e17698e90f1.md) - Hyperliquid whale 0xd21d…90f1: rank 34 by account equity at seed; first seen on LIT.
-* [Whale 0xd911…961e](crm/whales/whale_0xd911e53d53b663972254e086450fd6198a25961e.md) - Hyperliquid whale 0xd911…961e: rank 70 by account equity at seed; first seen on ETH.
-* [Whale 0xdb3a…cf3b](crm/whales/whale_0xdb3a56575b99abf9a58e3dcbd9227d45f203cf3b.md) - Hyperliquid whale 0xdb3a…cf3b: rank 49 by account equity at seed; first seen on HYPE.
-* [Whale 0xdd7a…8830](crm/whales/whale_0xdd7a372377fc633f74ab6e20963803d52f448830.md) - Hyperliquid whale 0xdd7a…8830: rank 87 by account equity at seed; first seen on BTC.
+* [Whale 0xd911…961e](crm/whales/whale_0xd911e53d53b663972254e086450fd6198a25961e.md) - Hyperliquid whale 0xd911…961e: rank 72 by account equity at seed; first seen on ETH.
+* [Whale 0xdb3a…cf3b](crm/whales/whale_0xdb3a56575b99abf9a58e3dcbd9227d45f203cf3b.md) - Hyperliquid whale 0xdb3a…cf3b: rank 51 by account equity at seed; first seen on HYPE.
+* [Whale 0xdbe0…d6d5](crm/whales/whale_0xdbe0780a5c5a0e3b345101bbc01ac2218196d6d5.md) - Hyperliquid whale 0xdbe0…d6d5: rank 35 by account equity at seed; first seen on PUMP.
+* [Whale 0xdd7a…8830](crm/whales/whale_0xdd7a372377fc633f74ab6e20963803d52f448830.md) - Hyperliquid whale 0xdd7a…8830: rank 89 by account equity at seed; first seen on BTC.
 * [Whale 0xdf95…7d72](crm/whales/whale_0xdf954bbe619273a56e0cfa90dad8382195dc7d72.md) - Hyperliquid whale 0xdf95…7d72: rank 30 by account equity at seed; first seen on xyz:BRENTOIL.
-* [Whale 0xe2ad…3c8c](crm/whales/whale_0xe2ad376800c2da03d611700ffc1d013090733c8c.md) - Hyperliquid whale 0xe2ad…3c8c: rank 45 by account equity at seed; first seen on ETH.
-* [Whale 0xe330…77a1](crm/whales/whale_0xe330ac756dabf22466317a01f5d1e9baa00e77a1.md) - Hyperliquid whale 0xe330…77a1: rank 64 by account equity at seed; first seen on ETH.
-* [Whale 0xeac8…1ede](crm/whales/whale_0xeac842b2214cfece3f0d288293da19f408d91ede.md) - Hyperliquid whale 0xeac8…1ede: rank 59 by account equity at seed; first seen on NEAR.
+* [Whale 0xe2ad…3c8c](crm/whales/whale_0xe2ad376800c2da03d611700ffc1d013090733c8c.md) - Hyperliquid whale 0xe2ad…3c8c: rank 47 by account equity at seed; first seen on ETH.
+* [Whale 0xe330…77a1](crm/whales/whale_0xe330ac756dabf22466317a01f5d1e9baa00e77a1.md) - Hyperliquid whale 0xe330…77a1: rank 66 by account equity at seed; first seen on ETH.
+* [Whale 0xeac8…1ede](crm/whales/whale_0xeac842b2214cfece3f0d288293da19f408d91ede.md) - Hyperliquid whale 0xeac8…1ede: rank 61 by account equity at seed; first seen on NEAR.
 * [Whale 0xecb6…2b00](crm/whales/whale_0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00.md) - Hyperliquid whale 0xecb6…2b00: rank 1 by account equity at seed; first seen on BTC.
 * [Whale 0xefe4…194b](crm/whales/whale_0xefe4c06b6d310978bead596e1798a4fc1d9d194b.md) - Hyperliquid whale 0xefe4…194b: rank 8 by account equity at seed; first seen on PONS.
 * [Whale 0xf02d…54c6](crm/whales/whale_0xf02d16a272a842f8bac1d9a9e773aba1933454c6.md) - Hyperliquid whale 0xf02d…54c6: rank 33 by account equity at seed; first seen on HYPE.
-* [Whale 0xf250…ae13](crm/whales/whale_0xf2500dbc34617daf22b5186a1bfb9f5f3a33ae13.md) - Hyperliquid whale 0xf250…ae13: rank 37 by account equity at seed; first seen on ZEC.
-* [Whale 0xf29c…9971](crm/whales/whale_0xf29c6bc1147a841519b382459a6d7a373c6b9971.md) - Hyperliquid whale 0xf29c…9971: rank 74 by account equity at seed; first seen on SOL.
+* [Whale 0xf250…ae13](crm/whales/whale_0xf2500dbc34617daf22b5186a1bfb9f5f3a33ae13.md) - Hyperliquid whale 0xf250…ae13: rank 39 by account equity at seed; first seen on ZEC.
+* [Whale 0xf29c…9971](crm/whales/whale_0xf29c6bc1147a841519b382459a6d7a373c6b9971.md) - Hyperliquid whale 0xf29c…9971: rank 76 by account equity at seed; first seen on SOL.
 * [Whale 0xf517…c032](crm/whales/whale_0xf517639a8872e756ac98d3c65507d2ebc25cc032.md) - Hyperliquid whale 0xf517…c032: rank 21 by account equity at seed; first seen on BTC.
-* [Whale 0xf5a5…1286](crm/whales/whale_0xf5a523b171032c060d49c39fbf2e9bec473e1286.md) - Hyperliquid whale 0xf5a5…1286: rank 40 by account equity at seed; first seen on ARB.
+* [Whale 0xf5a5…1286](crm/whales/whale_0xf5a523b171032c060d49c39fbf2e9bec473e1286.md) - Hyperliquid whale 0xf5a5…1286: rank 42 by account equity at seed; first seen on ARB.
 * [Whale 0xf910…0a2d](crm/whales/whale_0xf9109ada2f73c62e9889b45453065f0d99260a2d.md) - Hyperliquid whale 0xf910…0a2d: rank 23 by account equity at seed; first seen on SOL.
 * [Whale 0xfc27…9d9d](crm/whales/whale_0xfc27136e42af1732ddc9ce2605ea9bff1b959d9d.md) - Hyperliquid whale 0xfc27…9d9d: rank 3 by account equity at seed; first seen on BTC.
-* [Whale 0xffc0…af0b](crm/whales/whale_0xffc03f2cfbc0b2dc47e84003800ad296eb6caf0b.md) - Hyperliquid whale 0xffc0…af0b: rank 73 by account equity at seed; first seen on SOL.
+* [Whale 0xffc0…af0b](crm/whales/whale_0xffc03f2cfbc0b2dc47e84003800ad296eb6caf0b.md) - Hyperliquid whale 0xffc0…af0b: rank 75 by account equity at seed; first seen on SOL.
 
 # Entity/Sharp Trader
 * [Sharp trader Large-Peach](crm/sharps/sharp_0x011175c87089797b1c5bebcfb6d501b4c51d60f7.md) - Polymarket sharp trader Large-Peach (0x0111…60f7); identity unresolved.

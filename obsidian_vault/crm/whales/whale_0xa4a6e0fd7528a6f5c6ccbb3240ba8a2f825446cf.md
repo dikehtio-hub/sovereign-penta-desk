@@ -1,7 +1,7 @@
 ---
 type: Entity/Whale
 title: Whale 0xa4a6…46cf
-description: 'Hyperliquid whale 0xa4a6…46cf: rank 82 by account equity at seed; first
+description: 'Hyperliquid whale 0xa4a6…46cf: rank 84 by account equity at seed; first
   seen on UNI.'
 tags:
 - crm
@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:50Z'
+  at: '2026-09-06T04:55:31Z'
 status: draft
 sources:
 - id: whale_wallets
@@ -22,7 +22,7 @@ dev:
   first_coin: UNI
   discovered_at: '2026-08-31T22:29:55Z'
   is_liquidator: true
-  rank_at_seed: 82
+  rank_at_seed: 84
   evidence:
   - at: '2026-08-31T22:29:56Z'
     account_value: 1862215.11
@@ -36,8 +36,8 @@ dev:
 - address: `0xa4a6e0fd7528a6f5c6ccbb3240ba8a2f825446cf`
 - discovered: `2026-08-31T22:29:55Z` via `UNI` ($21,060)
 - system liquidator: True
-- rank by equity at seed: 82
-- live note (exporter-owned): [[Whales/0xa4a6e0fd7528a6f5c6ccbb3240ba8a2f825446cf|whale note]]
+- rank by equity at seed: 84
+- live note (exporter-owned): none written for `0xa4a6e0fd7528a6f5c6ccbb3240ba8a2f825446cf` (the exporter tracks a different set)
 
 ## Judgement
 

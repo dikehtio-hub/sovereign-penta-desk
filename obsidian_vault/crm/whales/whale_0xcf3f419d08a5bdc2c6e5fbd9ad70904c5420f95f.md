@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:52:50Z'
+  at: '2026-09-06T04:51:55Z'
 status: draft
 sources:
 - id: whale_wallets
@@ -37,7 +37,7 @@ dev:
 - discovered: `2026-08-31T05:19:50Z` via `BTC` ($32,004)
 - system liquidator: False
 - rank by equity at seed: 24
-- live note (exporter-owned): [[Whales/0xcf3f419d08a5bdc2c6e5fbd9ad70904c5420f95f|whale note]]
+- live note (exporter-owned): none written for `0xcf3f419d08a5bdc2c6e5fbd9ad70904c5420f95f` (the exporter tracks a different set)
 
 ## Judgement
 
