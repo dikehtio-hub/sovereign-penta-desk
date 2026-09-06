@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 04:35 EDT (Round 111).
+Last updated: 2026-09-06 04:40 EDT (Round 111; dates and daemon state re-verified).
 
 ---
 
@@ -24,6 +24,9 @@ Last updated: 2026-09-06 04:35 EDT (Round 111).
 - **Laptop ON and LOGGED IN at 13:58 EDT.** The task `Monarch_FOMC_Drill` fires
   at T-2 min and records 420 seconds of order-book depth on three Fed markets.
   It cannot run on a sleeping or logged-out machine.
+- **AC POWER REQUIRED (Battery Warning):** `Monarch_FOMC_Drill` has `DisallowStartIfOnBatteries: True`
+  and `StopIfGoingOnBatteries: True`. If the laptop is on battery at 13:58 EDT, the drill WILL NOT START,
+  and unplugging mid-recording stops it. Keep AC plugged in, or clear these flags in Task Scheduler.
 - **At 14:00 the statement prints. A HUMAN must read the actual rate decision**
   and write `event.json`:
   `{"kind":"fed_rate","payload":{"change_bps":<int from the statement>},`
@@ -37,9 +40,13 @@ Last updated: 2026-09-06 04:35 EDT (Round 111).
 - **If missed:** the next FOMC is Oct 27-28. Ten weeks of pipeline work sits idle
   until then, and the forecast never scores.
 
-### 2026-09-06 (Sun) ~22:20 EDT — Tier 2b gate (soft)
-- Needs 24 unbroken hours of *tagged* stamps, which began at the 22:20 watcher
-  restart tonight. Just leave the laptop on and awake.
+### 2026-09-06 (Sun) ~22:20 EDT — Tier 2b gate (soft) — TODAY
+- Needs 24 unbroken hours of *tagged* stamps. The clock started at the 2026-09-05
+  22:20 EDT watcher restart, so it closes ~22:20 tonight.
+- **Verified 2026-09-06 04:00 EDT**: 30.3 h of unbroken tagged stamps, largest gap
+  12.2 min against a 60 min break threshold. Sleep is off (idle standby and
+  hibernate both 0); no `Kernel-Power` ID 42 since 2026-09-04. On track.
+- Just leave the laptop on. Closing the lid is the one path not ruled out.
 - **If missed:** nothing breaks; the clock restarts from the next boot.
 
 ---
@@ -47,12 +54,10 @@ Last updated: 2026-09-06 04:35 EDT (Round 111).
 ## 🟠 BLOCKING — work is stopped until you do these
 
 - [ ] **Send the Round 111 handoff prompt to Antigravity.**
-- [ ] **Decide on the FOMC drill task's battery conditions.** `Monarch_FOMC_Drill` has
-      `DisallowStartIfOnBatteries: True` and `StopIfGoingOnBatteries: True` (the Windows
-      default). **If the laptop is on battery at 13:58 EDT on 2026-09-16 the drill will not
-      start**, and unplugging mid-recording stops it. You are on AC now, so nothing is wrong
-      today - but this is invisible until the moment it matters, and the next FOMC is ten
-      weeks later. Clearing the two flags is a small, testable change; say the word.
+- [ ] **Clear the FOMC drill's battery flags, or commit to staying on AC.** The condition
+      itself is described under the 2026-09-16 entry above. This line is the DECISION:
+      leave the flags and rely on remembering the charger, or have me clear them. Clearing
+      is small and testable. Either is fine; drifting into the 16th without choosing is not.
 - [ ] **Decide when the collector restarts** so the new spread gate takes effect.
       Ruling R104-1 is implemented but collector `38548` is still running the old
       code, which samples only 5 candidates per pass. Until it restarts, no new
@@ -88,9 +93,11 @@ Last updated: 2026-09-06 04:35 EDT (Round 111).
   60 minutes breaks the run and restarts the clock at zero.
 - **Shut down cleanly** — normal Windows shutdown, never the power button.
   `hyperliquid_data.db` is 4.9 GB with an open write-ahead log.
-- **Never kill the daemons by hand.** Current: watcher 17688 (tags live, stamping
-  every ~5 min), exporter 62760 (restarted 2026-09-06T02:44Z), supervisor 46740,
-  collector 38548. Both were verified healthy read-only at 03:41Z.
+- **Never kill the daemons by hand.** All four verified healthy read-only at
+  2026-09-06 04:05 EDT: watcher 17688 (tags live, stamp 0.3 min old), exporter 62760
+  (restarted 2026-09-06T02:44Z), supervisor 46740, collector 38548 (30.5 h uptime,
+  writing `asset_snapshots` 0.2 min ago). The C2 bot is correctly DOWN - it has no
+  token and no admin allowlist, so it would fail closed anyway.
 - **Never seed the live tax ledger.** `seed-bankroll` is paper-only.
 - **`DEV/HALT.flag`** is the kill switch: create it and every execution engine
   refuses with exit 3. Delete it to resume.
