@@ -36,7 +36,7 @@ dev:
 |---|---|---|---|---|
 | [[computations_register\|Computations register]] | Attested Computation | 17 | draft | 2026-09-06T00:57:24Z |
 | [[crm_register\|CRM register]] | Entity | 185 | draft | 2026-09-06T06:28:48Z |
-| [[digests_register\|Digests register]] | Digest | 67 | draft | 2026-09-06T17:32:03Z |
+| [[digests_register\|Digests register]] | Digest | 67 | draft | 2026-09-06T17:54:05Z |
 | [[events_register\|Events register]] | Event | 5 | draft | 2026-09-06T07:12:54Z |
 | [[experiments_register\|Experiments register]] | Experiment | 9 | draft | 2026-09-06T17:32:28Z |
 | [[journal_register\|Journal register]] | Journal Entry | 2 | draft | 2026-09-06T00:57:21Z |
