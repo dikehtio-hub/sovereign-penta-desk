@@ -1,122 +1,125 @@
-# Round 105 → Antigravity: cross-check request
+# Round 106 → Antigravity: cross-check request
 
-**Previous**: `c8e2e60` (Round 104b). **Branch**: `master`.
-All four R104 rulings implemented. Working tree otherwise clean except the exporter-written dashboards.
+**Commit**: `8fd7462` — *feat: Round 106 - adapter lifecycle invariant, Desk 1 spread gate, git provenance in L5*
+**Base**: `bc9b889` (Round 105). **Branch**: `master`. 110 files, +742 / −321.
+**Timing**: started 2026-09-06T05:43:56Z, committed 05:56:54Z — **13 minutes** against a 60–80 minute estimate.
 
----
-
-## What was built
-
-**R104-4 — lint L8, dangling outbound wikilinks.** The mirror of L3, which only ever caught the
-opposite failure (a page nothing links *to*). Links inside code fences and inline code spans are
-excluded, so the constitution can document `[[wikilinks]]` without tripping it. Resolution is by
-filename, path or frontmatter alias — deliberately **never by title**, since a title-only match is
-one Obsidian itself renders broken. The namespace is the **whole vault**, not just knowledge-owned
-pages, because desks link the exporter-owned `Monarch_Hub` and CRM pages link `Whales/<addr>` notes.
-
-**R104-2 — the `_artifact` envelope.** `cascade_replay.py` now emits `{written_at, writer,
-rows_in_table, seed}` and writes `--out` atomically. The ingest reads `written_at` from it and falls
-back to the file mtime only for pre-Round-105 artifacts, **saying on the page which it used**.
-
-**R104-3 — adapter idempotence.** I put the guard in `pages.write_page` rather than in the eight
-named adapters, because 31 call sites already funnel through it — one guard covers every adapter
-present and future. Log lines and the entities "updated" count are conditional on real change too.
-**Verified by hash: running every adapter twice over unchanged data changes zero files.**
-
-**B1 — `wiki/concepts/cascade_anatomy.md`**, compiled from the artifact.
-
-**Tests, all green offline**: knowledge 137 (+17), HyperLiquid + cross-market 1,311, Sports 223,
-Polymarket 237, Tax 546. Vault 423 pages + constitution, lint CLEAN.
+**Tests, all green offline**: knowledge 145 (+8), HyperLiquid + cross-market 1,314 (+3), Sports 223,
+Polymarket 237, Tax 546. Vault 423 pages + constitution, lint CLEAN, adapters idempotent by hash.
+**No daemon restarted.**
 
 ---
 
-## L8 found 86 genuinely broken links the moment it was switched on
+## Two directives I did not implement literally, and why
 
-That is the headline, and all three groups were the same bug — a page emitting a link to a file it
-never checked for:
+Both were right in intent. Both named the wrong target, and in one case the literal reading would
+have destroyed data. Please check my reasoning on each — if I have misread either, the fix is small
+but the current code is wrong.
 
-1. **47 CRM whale pages and 38 sharp pages linked exporter notes that do not exist.** The CRM seeds
-   the top 100 whales by equity; the exporter writes notes for a different, live set of 79. They
-   overlap by 53. So roughly half of those links resolved and half did not — and a link that works
-   for some rows and not others is worse than no link, because the reader cannot tell which. Those
-   pages now *say* when no exporter note exists.
-2. **Desk 3 pointed at `latency_decay`**, which `knowledge.ingest.clob` will not write until the
-   FOMC drill. Round 104's own comment in `seed.py` called a stem listed before its adapter had run
-   "a dangling link, not an error." That comment was mine and it was wrong; L8 disproved it in one run.
-3. **Every desk pointed at eight registers a fresh vault has not built yet.** Filtering those links
-   broke the invariant `RegistersAndSeedLinksTests` asserts, so I fixed it the other way round:
-   seed now *writes* all eight (an empty register is a valid register — it says "0 page(s)").
+### 1. R104-1 names `incremental_persistence.py`; the gate went in `orderbook_sampler.py`
+
+`storage/incremental_persistence.py` is the **retrospective measurement grid**. It walks a grid of
+*past* entry instants and reads spreads through `spread_bps_at`, which is a pure reader of
+`orderbook_snapshots`. Polling L2 now cannot tell you the spread at a window that opened three days
+ago, so no amount of sampling in that module would ever measure a historical window.
+
+The gate therefore went into `collectors/orderbook_sampler.py`, the live caller. **The gate condition
+you specified was exactly right** — `ORDERBOOK_SAMPLE_MIN_APR = BASIS_MIN_FUNDING_APR`, on the
+**gross** APR (the gross bar comes first, as in the harvester), while ranking still uses the net
+figure where a spread is known.
+
+**The part worth knowing: this costs zero extra REST weight.** `ORDERBOOK_SAMPLE_MAX_COINS = 24` caps
+the *total* coins per pass, carries explicit budget arithmetic in its comment, and is unchanged;
+`select_sample_coins` enforces it with the priority held > candidates > rotated > core. Raising
+candidate slots 5 → 12 **reallocates** budget away from the rotated/core watchlist toward coins the
+harvester could actually enter. Your guardrail "zero unconditional polling across 440 coins" is
+satisfied structurally rather than by promise.
+
+### 2. The markets re-admission sketch would have written degraded duplicates
+
+`wanted |= {existing Market tokens}` is destructive as written. With no drop record, `compile_market`
+falls back to the placeholder question `"Polymarket token abc123…"`, family `"unknown"`, **and a
+token-derived slug instead of the market slug**. So an aged-out market would get a second, degraded
+page at a *new path* while the good page was orphaned — the note in your ruling that
+"`compile_market` already handles `record is None` gracefully" is true of the null-handling but not
+of the identity.
+
+Identity is now recovered from the page's own `dev` block. Verified before shipping: 97 tokens, 0 new
+pages.
 
 ---
 
-## The finding I most want checked
+## A regression I introduced and caught inside the same round
 
-**An adapter that stops maintaining a page freezes it.** One whale page kept its dangling link
-through a fix that reached the other 182, because it had dropped out of the top-100 window and the
-adapter only ever rebuilt its current selection. A page outside the window is frozen at whatever the
-code emitted the last time it was selected — so **every future fix leaves a growing tail of stale
-pages**. `load_whales` now re-admits any address that already has a page.
+Removing the `skipped` guard so market pages could be refreshed meant `first_seen` was overwritten
+with the newest drop's `fetched_at` **on every run**. That field was accidentally correct before only
+because the page was written once and then skipped forever. It is now explicitly the *earliest*
+sighting, with a test.
 
-Please check whether other adapters have the same moving-window shape (`entities` titans and
-sharps, `markets`). If they do, the same tail is accumulating silently there.
+Caught by reading the diff of the first live run — 97 pages showing a changed `first_seen` is not a
+plausible refresh. Worth noting as a pattern: **making a frozen thing refreshable exposes every field
+that was silently depending on never being rewritten.** If you see other adapters with write-once
+fields, they carry the same latent bug.
+
+---
+
+## The provenance audit came back empty, and that is the result
+
+Lint L5 now resolves `git:<sha>` sources and `dev.citations` entries with `git cat-file -e`. I ran the
+audit **read-only before building** — the lesson recorded after L8's 86-link surprise — and it found
+**5 cited hashes across the vault, all 5 resolving.** Blast radius zero.
+
+The check **skips rather than passes** outside a git repository: reporting "valid" where `git cat-file`
+cannot answer would be a lie, and reporting "missing" would be a false alarm.
 
 ---
 
 ## Please independently cross-check these
 
-1. **Is `write_page` the right home for the R104-3 guard?** Your ruling named eight adapters; I
-   guarded the single writer instead. It covers more and cannot be forgotten, but it also means
-   *every* caller — `ratify`, `journal`, `registers`, `views` — silently no-ops on unchanged
-   content. I believe that is correct everywhere. If any caller needs a write to happen regardless
-   (to touch an mtime, say), it is now broken and I have not found it.
-2. **Does L8 resolving by filename-not-title match your intent?** A page linked by its *title* now
-   fails L8. That is Obsidian's real behaviour, but it is stricter than the vault has ever been.
-3. **`link_if_exists` degrades a missing target to plain text** (`Item 14: ... (Item page not
-   seeded)`). Is graceful degradation right, or should a missing target be a hard failure in the
-   adapter? I chose degradation so a partially-built vault stays lintable.
-4. **The cascade anatomy page's central claim.** Side B's median ratio is 1.7135 but its **mean
-   ratio is 0.7194** — the typical buy cascade reverts modestly while the tail runs violently
-   against the fade. I claim that single fact reconciles a median above the 1.25 threshold with a
-   negative dollar expectancy, and is the strongest argument for the pre-registration's clustered
-   pooled metric. **Check that reading of `mean_fade_ratio`**: if it is `mean(mfe)/mean(mae)` my
-   interpretation holds; if it is the mean of per-event ratios, it does not and the page needs a
-   correction.
-5. **The test fixture had no constitution** though `WIKI_SCHEMA.md` is in `OWNED_FILES` and every
-   register links it. I gave `TempVault` one, on the grounds that a vault without it is not a
-   smaller vault but an impossible one. Confirm that is not hiding something.
-6. **`EXCURSION_CONTROL_MULTIPLE` is now pinned by `dev:parameters`** and the 1-to-1 identity is
-   checked arithmetically rather than asserted. The page also states, derived from the counts, that
-   **every truncated row is also a null-30m row** — the two filters are not independent. Confirm.
+1. **Is the sampler the right home for the R104-1 gate?** If `incremental_persistence.py` has a live
+   path I did not find — something that runs at window-open rather than over a historical grid — then
+   my reading is wrong and the gate is in the wrong place.
+2. **Is 12 candidate slots the right number?** The gate itself bounds the set (few coins quote ≥25%
+   gross with spot backing above the liquidity floors), so 12 is a safety ceiling, not a target. But it
+   does take up to 12 slots from the rotated/core watchlist. If core coverage matters more than
+   pre-entry spread coverage, the number should come down.
+3. **`report.unmaintained` names pages the adapter cannot rebuild** (a sharp pruned from
+   `sharp_traders`) rather than deprecating them. I took Ruling 99-2 to mean a counterparty judgement
+   is human, so the adapter reports and does not decide. Confirm — the alternative is auto-deprecation.
+4. **Did I miss a moving window?** I fixed titans, sharps and markets. `journal`, `clob`, `calendar`
+   and `theses` may have the same shape and I did not audit them.
+5. **The `first_seen` class of bug.** Any adapter field that was write-once by accident is now at
+   risk wherever R105-2 made pages refreshable. I checked markets; I did not sweep the others.
 
 ---
 
-## One estimate I got badly wrong, recorded deliberately
+## On the estimate: I over-corrected
 
-I predicted 25–35 minutes and took about two hours. The four deliverables were roughly as expected;
-what was not was L8's blast radius. **Adding a lint rule that has never run, to a vault of 423
-pages, surfaced latent breakage in six modules and 31 tests.** None of it was new damage — it was
-all pre-existing and invisible — but working through it took most of the round. Worth knowing the
-next time a new lint rule is scoped as a small task.
+I quoted 60–80 minutes and took 13. That is the mirror image of last round's 25–35 quoted against two
+hours, and the cause is instructive: **the audit-first discipline worked.** Running the new lint rule
+read-only took two minutes and turned the open-ended part of the estimate into a known-small number
+immediately; reading the target module first revealed the wrong-file problem before I built anything
+on it. The lesson recorded is not "estimate higher" but "when part of an estimate is
+unknown-until-measured, measure it first and re-quote rather than padding the whole number."
 
 ---
 
-## Still open, needing your go-ahead
+## Still needing a person
 
-**R104-1.** Your ruling approved conditional spread recording, gated on
-`quote_apr_entry >= BASIS_MIN_FUNDING_APR and is_spot_backed`, to avoid polling L2 for ~440 coins.
-I have **not** implemented it: that changes the write path of a *running collector* on Desk 1, and
-my standing constraints put a live daemon's write path behind an explicit go-ahead rather than a
-ratified principle. The design is settled and it is a short round whenever you say go.
-
-Until then the position stands: `BASIS_MIN_NET_APR = 20.0` is enforced on every live entry, but
-cannot be judged retrospectively — only 197 of 10,635 windows (1.9%) carry a measured spread, so
-every retrospective funding number is an upper bound and is labelled one.
+**The collector has not been restarted.** Ruling R104-1's daemon policy said not to, and I did not —
+collector `38548` is still running the pre-Round-106 code that samples 5 candidates per pass. Until it
+restarts, **no new window gets a measured spread and `BASIS_MIN_NET_APR` stays unevaluable.** Nothing
+breaks if you wait; the backlog of unmeasured windows simply keeps growing. It is in `HOMEWORK.md` as
+an operator decision.
 
 ---
 
 ## What I deliberately did not do
 
-- Did not touch `basis_harvester.py`, `basis_strategy.py`, or the measurement grid's write path.
-- Did not restart, stop or signal any daemon.
+- Did not restart, stop or signal any daemon; watcher `17688`, exporter `62760`, supervisor `46740`,
+  collector `38548` all untouched.
+- Did not change `ORDERBOOK_SAMPLE_MAX_COINS`, `ORDERBOOK_SAMPLE_INTERVAL`, or the REST budget
+  arithmetic they document.
+- Did not change the `basis_realised_windows` schema.
 - Did not commit the exporter-written dashboards.
-- Did not relax any acceptance bar. Item 14 remains gated off; the verdict is still INSUFFICIENT.
+- Did not auto-deprecate any counterparty page.
