@@ -11,6 +11,8 @@ verified:
     at: 2026-09-05T20:30:00Z   # Round 97 ruling 8: the constitution TEXT was read and approved
   - by: antigravity/architect
     at: 2026-09-06T07:15:00Z   # Round 108: s.7 lint table amended with L8 and L9 verified & ratified
+  - by: antigravity/architect
+    at: 2026-09-06T07:40:00Z   # Round 109: s.4 page types amended with Digest verified & ratified
 status: stable
 sources:
   - id: round-95-blueprint
@@ -145,6 +147,7 @@ hand-edited.
 | Regime | wiki/regimes | Tier 1/2/2b verdict pages |
 | Market | wiki/markets | the newest macro or sports drop record |
 | Concept | wiki/concepts | docstring theses, YAML rationale, filed answers |
+| Digest | wiki/digests | one round of the sovereign work chain (`AGENTS.md`) |
 | Source Summary | wiki/sources | one per raw source ingested |
 | Attested Computation | wiki/computations | every dashboard "Shell twin"; declarative only (R95-C) |
 | Entity/Whale, Entity/Sharp Trader, Entity/Titan, Entity/Sportsbook, Entity/Market Maker, Entity/Official, Contact | crm/whales, crm/sharps, crm/titans, crm/books, crm/makers, crm/officials, crm/contacts | databases, the identity cache, edge_opportunities, book Q, humans |
