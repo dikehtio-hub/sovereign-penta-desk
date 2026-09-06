@@ -9,7 +9,7 @@ tags:
 generated:
   by: claude-code/fable-5.1
   at: '2026-09-06T02:05:52Z'
-status: draft
+status: stable
 sources:
 - id: registration
   resource: HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.meta.json
@@ -45,6 +45,10 @@ dev:
     file: HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.meta.json
     json_path: sample_requirements.min_samples_60m_per_event
   tests_run: 0
+  ratified_by: 103-B15
+verified:
+- by: antigravity/architect
+  at: '2026-09-06T02:31:00Z'
 ---
 # Experiment: whale_sweeper_cascade_replay
 

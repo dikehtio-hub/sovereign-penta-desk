@@ -1402,6 +1402,20 @@ class RatifyTests(RulingsIngestTests):
         self.assertEqual(ratify_mod.ruling_round("98-1"), 98)
         self.assertIsNone(ratify_mod.ruling_round("R95"))
 
+    def test_ratify_one_page_by_stem(self):
+        """Round 103b: ratifying a single registration must not sweep every page of that type."""
+        ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
+        report = ratify_mod.ratify(self.vault, type_="Ruling", stem="Directive_75-1", ruling="103-1", at=NOW)
+        self.assertEqual((report.selected, report.ratified), (1, ["wiki/rulings/Directive_75-1.md"]))
+        d, _ = fm.parse((self.vault / "wiki/rulings/Directive_75-1.md").read_text(encoding="utf-8"))
+        self.assertEqual((d["status"], d["dev"]["ratified_by"]), ("stable", "103-1"))
+        other, _ = fm.parse((self.vault / "wiki/rulings/Directive_75-2.md").read_text(encoding="utf-8"))
+        self.assertNotIn("verified", other)
+        out = io.StringIO()
+        self.assertEqual(ratify_mod.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--type", "Ruling",
+                                          "--stem", "Ruling_39-1", "--ruling", "103-1"], out=out), EXIT_OK)
+        self.assertIn("1 selected, 1 verified", out.getvalue())
+
     def test_ratify_cli_and_actor_check(self):
         ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
         out = io.StringIO()

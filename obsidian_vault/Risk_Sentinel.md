@@ -6,15 +6,15 @@ tags:
   - risk-of-ruin
   - cross-market
   - dashboard
-last_synced: "2026-09-06 00:42:57 UTC"
+last_synced: "2026-09-06 02:44:18 UTC"
 ---
 
 # 🛡 Risk Sentinel - Multi-Desk Monte Carlo (Item 19)
 
 > [!SUCCESS] **Practical ruin (-50%) over 365d: `0.00%`** · hard ruin `0.000%`
-> - **Last Synchronized**: `2026-09-06 00:42:57 UTC`
-> - **Paths**: `20,000` × `365` days, seed `7`, start equity `$100,397.29`
-> - **Buffer**: keep `$3,426` unallocated (VaR99 365d drawdown `3.4%`); size every desk at `x2.00`
+> - **Last Synchronized**: `2026-09-06 02:44:18 UTC`
+> - **Paths**: `20,000` × `365` days, seed `7`, start equity `$100,405.20`
+> - **Buffer**: keep `$3,393` unallocated (VaR99 365d drawdown `3.4%`); size every desk at `x2.00`
 > - Shell twin: `python -m cross_market.risk_simulator --iterations 20000 --json`
 
 > **Cockpit Navigation**: [[Monarch_Hub|👑 Master Hub]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]] • [[Sports_Desk|🏈 Sports Desk]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]] • [[Cross_Market_Titans|🌐 Titans]] • [[Bot_Config|⚙️ Bot Config]]
@@ -27,13 +27,13 @@ last_synced: "2026-09-06 00:42:57 UTC"
 | :--- | :---: | :---: |
 | Hard ruin P(equity ≤ 0) | `0.000%` | `0.000%` |
 | Practical ruin P(drawdown ≥ 50%) | `0.00%` | `0.00%` |
-| Max drawdown VaR 95 | `0.71%` | `2.82%` |
-| Max drawdown VaR 99 | `1.13%` | `3.41%` |
-| Median max drawdown | — | `1.95%` |
+| Max drawdown VaR 95 | `0.70%` | `2.80%` |
+| Max drawdown VaR 99 | `1.12%` | `3.38%` |
+| Median max drawdown | — | `1.93%` |
 
-**Terminal equity** (365d): p05 `$105,896` · p50 `$109,090` · p95 `$112,307` · median log growth `+0.0830` · escrow median `$4,151`
+**Terminal equity** (365d): p05 `$105,916` · p50 `$109,092` · p95 `$112,276` · median log growth `+0.0830` · escrow median `$4,146`
 
-**Desk mean P&L** (365d): basis `$6,087` · sports `$2,303` · arb `$4,461` · tax `-$4,161` · liquidations per path `0.154`
+**Desk mean P&L** (365d): basis `$6,077` · sports `$2,303` · arb `$4,461` · tax `-$4,157` · liquidations per path `0.155`
 
 ---
 
@@ -44,12 +44,12 @@ Multiplier on every desk's sizing (basis capital per position, sports Kelly frac
 | Multiplier | Median log growth | Practical ruin | Hard ruin | VaR95 365d | Allocation | |
 | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | `x0.25` | `+0.0212` | `0.00%` | `0.00%` | `0.7%` | `20%` |  |
-| `x0.50` | `+0.0420` | `0.00%` | `0.00%` | `1.4%` | `30%` |  |
+| `x0.50` | `+0.0419` | `0.00%` | `0.00%` | `1.4%` | `30%` |  |
 | `x0.75` | `+0.0624` | `0.00%` | `0.00%` | `2.1%` | `41%` |  |
 | `x1.00` | `+0.0825` | `0.00%` | `0.00%` | `2.8%` | `51%` |  |
-| `x1.25` | `+0.1023` | `0.00%` | `0.00%` | `3.5%` | `61%` |  |
-| `x1.50` | `+0.1217` | `0.00%` | `0.00%` | `4.2%` | `71%` |  |
-| `x2.00` | `+0.1596` | `0.00%` | `0.00%` | `5.5%` | `92%` | **recommended** |
+| `x1.25` | `+0.1022` | `0.00%` | `0.00%` | `3.5%` | `61%` |  |
+| `x1.50` | `+0.1216` | `0.00%` | `0.00%` | `4.1%` | `71%` |  |
+| `x2.00` | `+0.1595` | `0.00%` | `0.00%` | `5.4%` | `92%` | **recommended** |
 
 **Binding constraint**: capital allocation - ruin never bound at any size that fits the equity, so the pick means 'risk is not the limit', not 'add leverage'.
 
@@ -61,13 +61,13 @@ Correlation `0.50`, shock-day probability `0.020` (`7.3` days per path), perp vo
 
 | Metric | Baseline | Stressed | Δ |
 | :--- | :---: | :---: | :---: |
-| VaR99 max drawdown 365d | `3.40%` | `3.41%` | `+0.01 pp` |
-| VaR95 max drawdown 365d | `2.82%` | `2.82%` | `+0.00 pp` |
+| VaR99 max drawdown 365d | `3.37%` | `3.38%` | `+0.01 pp` |
+| VaR95 max drawdown 365d | `2.79%` | `2.80%` | `+0.01 pp` |
 | Practical ruin 365d | `0.00%` | `0.00%` | `+0.00 pp` |
-| Recommended cash buffer | `$3,413` | `$3,426` | `+13` |
-| Basis desk P&L | `$6,237` | `$6,087` | `-150` |
+| Recommended cash buffer | `$3,380` | `$3,393` | `+13` |
+| Basis desk P&L | `$6,227` | `$6,077` | `-150` |
 | Arb desk P&L | `$4,471` | `$4,461` | `-10` |
-| Liquidations per path | `0.136` | `0.154` | `+0.018` |
+| Liquidations per path | `0.137` | `0.155` | `+0.018` |
 
 ---
 
@@ -84,18 +84,18 @@ Desk 4 (Quant Trading Lab) is outside this simulation. `assumed` inputs have no 
 | `arb_per_day` | `1` | assumed (< 10 arb fills) |
 | `arb_return_std` | `0.005` | assumed (< 10 arb fills) |
 | `basis_capital_per_position` | `20000` | measured (basis_paper_state.json) |
-| `basis_daily_vol` | `0.114344` | measured (hyperliquid_data.db, para:ANSEM, XPL, 90h) |
-| `basis_funding_apr` | `264.438` | measured (hyperliquid_data.db, para:ANSEM, XPL, 90h) - book entry APR 1478.2% |
-| `basis_funding_autocorr` | `0.206074` | measured (hyperliquid_data.db, para:ANSEM, XPL, 90h) |
+| `basis_daily_vol` | `0.114736` | measured (hyperliquid_data.db, para:ANSEM, XPL, 92h) |
+| `basis_funding_apr` | `263.084` | measured (hyperliquid_data.db, para:ANSEM, XPL, 92h) - book entry APR 1478.2% |
+| `basis_funding_autocorr` | `0.170459` | measured (hyperliquid_data.db, para:ANSEM, XPL, 92h) |
 | `basis_funding_half_life_days` | `7` | assumed |
-| `basis_funding_hourly_std` | `0.000560597` | measured (hyperliquid_data.db, para:ANSEM, XPL, 90h) |
+| `basis_funding_hourly_std` | `0.000555598` | measured (hyperliquid_data.db, para:ANSEM, XPL, 92h) |
 | `basis_funding_long_run_apr` | `25` | assumed |
 | `basis_leverage` | `1` | assumed |
 | `basis_liquidation_cost` | `0.03` | assumed |
 | `basis_positions` | `2` | measured (basis_paper_state.json) |
 | `basis_rebalance_days` | `1` | assumed |
 | `basis_tail_df` | `3` | assumed |
-| `equity` | `100397` | measured (basis_paper_state.json) |
+| `equity` | `100405` | measured (basis_paper_state.json) |
 | `sports_bankroll_fraction` | `0.1` | assumed |
 | `sports_bets_per_day` | `3` | assumed (< 20 settled wagers) |
 | `sports_decimal_odds` | `2.4` | measured (sports_market.db edge_opportunities, 3 positive-Kelly rows) |

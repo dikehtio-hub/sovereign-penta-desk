@@ -13,6 +13,7 @@
 * **Ratify**: Ruling 99-2: 1 Ruling page(s) tagged `extracted` verified by `antigravity/architect` and set `stable`; 28 already carried that verification.
 * **Ingest**: lead-lag Tier 1 verdict (macro): **no-lead** -> [[lead_lag_tier1_macro_20260906T0142Z]]; [[btc_macro_regime]] history now 1 row(s).
 * **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 1 Experiment page(s) written, 6 kept; [index](index.md) rebuilt.
+* **Ratify**: Ruling 103-B15: 1 Experiment page(s) verified by `antigravity/architect` and set `stable`; 0 already carried that verification.
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

@@ -5,7 +5,7 @@ tags:
   - trading-terminal
   - hurdle-tracker
   - execution-telemetry
-last_synced: "2026-09-05 20:11:31 UTC"
+last_synced: "2026-09-06 02:10:04 UTC"
 ---
 
 # 📈 Monarch Trading Terminal & 50-Trade Hurdle Tracker
@@ -13,11 +13,11 @@ last_synced: "2026-09-05 20:11:31 UTC"
 > [!INFO] **Live Delta-Neutral Harvester Telemetry**
 > - **Total Account Equity**: **`$100.4K`** (Starting: `$100.0K`)
 > - **Available Cash Balance**: **`$60.4K`** • Deployed Collateral: **`$40.0K`**
-> - **Net Realized Yield / PnL**: **`+$370.93`**
-> - **Accrued Funding Yield**: **`+$411.93`** (71 accrual cycles)
+> - **Net Realized Yield / PnL**: **`+$400.60`**
+> - **Accrued Funding Yield**: **`+$441.60`** (77 accrual cycles)
 > - **Total Execution Fees Paid**: `$41.00` (Net of maker/taker accounting)
 > - **Active Basis Pairs**: `2 pairs deployed`
-> - **Last Synchronized**: `2026-09-05 20:11:31 UTC`
+> - **Last Synchronized**: `2026-09-06 02:10:04 UTC`
 
 ---
 
@@ -46,8 +46,8 @@ last_synced: "2026-09-05 20:11:31 UTC"
 
 | Asset | Spot Pair | Leg Notional | Spot Entry | Perp Entry | Entry APR | Realised APR | Funding Accrued | Duration |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`para:ANSEM`** | `UANSEM` | $10.0K | `$0.2996` | `$0.2996` | `+2924.75%` | `+470.62%` | **`+$381.44`** | `109.5h` |
-| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+15.91%` | **`+$6.54`** | `66.5h` |
+| **`para:ANSEM`** | `UANSEM` | $10.0K | `$0.2996` | `$0.2996` | `+2924.75%` | `+466.72%` | **`+$410.25`** | `115.4h` |
+| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+15.44%` | **`+$7.40`** | `72.5h` |
 
 ---
 
@@ -71,6 +71,7 @@ last_synced: "2026-09-05 20:11:31 UTC"
 
 ## 🔗 Cockpit Navigation
 
+- [[Desk_01_HyperLiquid_Monarch|🧭 Desk 1: HyperLiquid Monarch (wiki)]] · Shell twin: `python HyperLiquid/HL_Monarch/main.py obsidian --once`
 - [[Monarch_Hub|👑 Monarch Intelligence Hub]]
 - [[Bot_Control|🎮 Bot Control & Activation Deck]]
 - [[Bot_Config|⚙️ Bot Configuration & Risk Controller]]

@@ -162,6 +162,42 @@ class TestLeadLag(LeadLagCase):
         self.assertIn("offline research only", text)
         self.assertIn("Polymarket leads HyperLiquid by 10 min", text)
 
+    def test_cli_json_emits_the_verdict_dict_on_the_analysis_branch(self):
+        """Ruling R102-1 (Round 103). `--json` used to cover --check-data ONLY, so the pipeline this repo
+        documented from Round 97 - `lead_lag --coin BTC --family macro --json > verdict.json` - wrote the
+        human report and every consumer rejected it. The maiden run had to extract the verdict by calling
+        run() directly. This asserts the flag now produces a parseable verdict on the analysis branch."""
+        import contextlib
+        import io
+        self.plant(lag_minutes=10)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(ll.main(["--coin", "btc", "--drops", str(self.drops), "--db", str(self.db),
+                                      "--max-lag", "30", "--json"]), 0)
+        payload = json.loads(out.getvalue())                                   # the whole point: it parses
+        # the schema knowledge.ingest.lead_lag consumes
+        for key in ("sufficient", "events", "price_points", "max_lag", "best_lag_minutes",
+                    "correlation", "n", "interpretation", "curve", "latency_minutes"):
+            self.assertIn(key, payload)
+        self.assertTrue(payload["sufficient"])
+        self.assertEqual(payload["best_lag_minutes"], 10)
+        self.assertIn("Polymarket leads HyperLiquid by 10 min", payload["interpretation"])
+        self.assertIsInstance(payload["curve"], list)
+        self.assertNotIn("LEAD-LAG: Polymarket probability shifts", out.getvalue())   # no human report mixed in
+
+    def test_cli_json_still_returns_the_readiness_dict_with_check_data(self):
+        """The flag's original meaning is unchanged: --check-data --json is still the readiness dict."""
+        import contextlib
+        import io
+        self.plant(lag_minutes=10)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            ll.main(["--check-data", "--json", "--drops", str(self.drops)])
+        payload = json.loads(out.getvalue())
+        self.assertIn("ready", payload)
+        self.assertIn("reasons", payload)
+        self.assertNotIn("best_lag_minutes", payload)                          # readiness, not a verdict
+
 
 if __name__ == "__main__":
     unittest.main()

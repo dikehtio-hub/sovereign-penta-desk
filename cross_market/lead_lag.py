@@ -557,7 +557,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--min-span-hours", type=float, default=READY_MIN_SPAN_HOURS)
     parser.add_argument("--min-ready-points", type=int, default=READY_MIN_POINTS)
     parser.add_argument("--max-gap-minutes", type=float, default=READY_MAX_GAP_MINUTES)
-    parser.add_argument("--json", action="store_true", help="with --check-data: print JSON instead of lines")
+    parser.add_argument("--json", action="store_true",
+                        help="print JSON instead of lines - the readiness dict with --check-data, "
+                             "the verdict dict otherwise (Ruling R102-1)")
     parser.add_argument("--force", action="store_true",
                         help="Round 57 (Directive 57-2): run the correlation on the live drop dirs even when "
                              "--check-data says NOT READY (explicit --drops / --events are never gated)")
@@ -585,7 +587,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                        events_csv=Path(args.events) if args.events else None, family=args.family,
                        subfamily=args.subfamily, latency_minutes=args.latency_minutes,
                        subfamily_from=args.subfamily_from)
-    print(format_report(result, args.coin.upper(), keys))
+    # Ruling R102-1 (Round 103): --json covers THIS branch too, not just --check-data. Until now the flag
+    # was documented for the readiness check only, so the pipeline this repo has published since Round 97
+    # (`lead_lag --coin BTC --family macro --json > verdict.json`) wrote the human report and every consumer
+    # rejected it. `default=str` because the result carries datetimes on some paths.
+    print(json.dumps(result, indent=2, default=str) if args.json else format_report(result, args.coin.upper(), keys))
     return 0
 
 

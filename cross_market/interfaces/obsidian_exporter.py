@@ -53,6 +53,9 @@ NOMINAL_CAPITAL = 1_000.0
 # command line says obsidian_exporter too and a reused pid must not pass as a holder.
 EXPORTER_PID_NAME = "cross_market_exporter.pid"
 DEFAULT_PID_FILE = Path(__file__).resolve().parents[1] / "data" / EXPORTER_PID_NAME
+# Ruling R102-2: the lead-lag result that produced the current Cross_Market_Titans.md block, as JSON,
+# so knowledge.ingest.lead_lag can record THE SAME RUN instead of re-running the correlation later.
+DEFAULT_VERDICT_PATH = Path(__file__).resolve().parents[1] / "data" / "lead_lag_latest_verdict.json"
 EXPORTER_MARK = "cross_market"
 STATUS_EXIT_STOPPED = 3                                 # --status: 0 = a loop holds the lock, 3 = none does
 
@@ -243,7 +246,12 @@ class LeadLagRefresher:
 
     def __init__(self, coin: str = "BTC", cooldown_hours: float = 24.0, drop_dirs=None, db_path=None,
                  family: str = "macro", runner=None, max_lag: int = 60, min_shift: float = 0.02,
-                 min_events: int = 5, min_points: int = 60, retry_hours: float = 1.0):
+                 min_events: int = 5, min_points: int = 60, retry_hours: float = 1.0,
+                 verdict_path: Optional[Path] = None):
+        # Ruling R102-2: the same run that writes the note also serialises its result dict here, so the
+        # dashboard and the wiki describe ONE run. Before this, ingesting meant re-running the correlation
+        # seconds later against a series the watcher had already grown - two numbers for one verdict.
+        self.verdict_path = Path(verdict_path) if verdict_path is not None else DEFAULT_VERDICT_PATH
         self.coin = str(coin).upper()
         self.cooldown_hours = float(cooldown_hours)
         # Round 75: an "insufficient" result is recorded but retried after `retry_hours`, not the
@@ -261,6 +269,27 @@ class LeadLagRefresher:
         from cross_market.lead_lag import DEFAULT_DROP_DIRS, data_readiness, stamped_moments
         dirs = [Path(d) for d in (self.drop_dirs if self.drop_dirs is not None else DEFAULT_DROP_DIRS)]
         return data_readiness(stamped_moments(dirs, self.family), now=now)
+
+    def _write_verdict_artifact(self, result: Dict[str, Any], keys: Any, now: datetime) -> Optional[Path]:
+        """Ruling R102-2: serialise the run that just wrote the note, for knowledge.ingest.lead_lag.
+
+        Written atomically (temp file then replace) because the ingest may read it at any moment, and
+        NEVER allowed to break the export: a failure here returns None and the cycle continues. The
+        envelope carries who ran it and when, so the wiki page can cite the exporter rather than a
+        re-run. `default=str` for the datetimes some paths carry.
+        """
+        try:
+            payload = dict(result)
+            payload["_artifact"] = {"written_at": now.isoformat(), "coin": self.coin, "family": self.family,
+                                    "markets": keys, "writer": "process:cross_market.interfaces.obsidian_exporter"}
+            self.verdict_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.verdict_path.with_suffix(".json.tmp")
+            with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+                json.dump(payload, fh, indent=2, default=str)
+            os.replace(tmp, self.verdict_path)
+            return self.verdict_path
+        except Exception:                                   # noqa: BLE001 - never break the arb export
+            return None
 
     def cooldown_remaining_hours(self, note: Path, now: datetime) -> Optional[float]:
         """Hours until the next run per the note: its run-at marker plus the cooldown the block states."""
@@ -308,6 +337,7 @@ class LeadLagRefresher:
             cooldown = self.cooldown_hours if result.get("sufficient") else self.retry_hours
             block = render_lead_lag_block(result, self.coin, keys, ran_at=now, cooldown_hours=cooldown)
             path, changed = refresh_marked_block(note, block, LEADLAG_START, LEADLAG_END)
+            self._write_verdict_artifact(result, keys, now)
         except Exception as exc:                            # noqa: BLE001 - never break the arb export
             return "lead-lag: run failed (%s: %s)" % (type(exc).__name__, exc)
         self.runs += 1

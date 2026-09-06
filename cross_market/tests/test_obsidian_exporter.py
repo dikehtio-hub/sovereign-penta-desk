@@ -295,6 +295,44 @@ class TestLeadLagRefresher(ExporterBase):
                      "n": 0, "interpretation": "", "curve": []}, 3)
         return run
 
+    def test_the_run_that_writes_the_note_also_writes_the_verdict_artifact(self):
+        """Ruling R102-2 (Round 103). The dashboard and the wiki must describe ONE run. Before this the
+        ingest re-ran the correlation seconds later against a series the watcher had already grown, so
+        the note said n=1495 and the wiki page said n=1497 for the same verdict."""
+        import json as _json
+        from cross_market.interfaces.obsidian_exporter import DEFAULT_VERDICT_PATH, LeadLagRefresher
+        self._stamps(300)
+        self._note()
+        artifact = self.root / "lead_lag_latest_verdict.json"
+        calls = []
+        r = LeadLagRefresher(drop_dirs=[self.questions], runner=self._runner(calls), verdict_path=artifact)
+        self.assertFalse(artifact.exists())
+        status = r.run(str(self.vault), now=self.NOW)
+        self.assertIn("lead-lag: RAN", status)
+        self.assertTrue(artifact.exists(), "the artifact must be written by the same cycle that wrote the note")
+        payload = _json.loads(artifact.read_text(encoding="utf-8"))
+        self.assertEqual(payload["best_lag_minutes"], r.last_result["best_lag_minutes"])   # same run, same numbers
+        self.assertEqual(payload["correlation"], r.last_result["correlation"])
+        env = payload["_artifact"]
+        self.assertEqual(env["written_at"], self.NOW.isoformat())
+        self.assertEqual((env["coin"], env["family"]), ("BTC", "macro"))
+        self.assertEqual(env["writer"], "process:cross_market.interfaces.obsidian_exporter")
+        self.assertFalse(artifact.with_suffix(".json.tmp").exists())            # written atomically, temp removed
+        self.assertTrue(DEFAULT_VERDICT_PATH.name == "lead_lag_latest_verdict.json")
+
+    def test_a_failed_artifact_write_never_breaks_the_export(self):
+        """The artifact is a convenience; the dashboard is the product. A write failure returns None and
+        the cycle still reports RAN."""
+        from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
+        self._stamps(300)
+        self._note()
+        blocked = self.root / "no_such_dir" / "x"           # a directory path where a file must go
+        blocked.mkdir(parents=True)
+        r = LeadLagRefresher(drop_dirs=[self.questions], runner=self._runner([]), verdict_path=blocked)
+        status = r.run(str(self.vault), now=self.NOW)
+        self.assertIn("lead-lag: RAN", status)
+        self.assertIsNone(r._write_verdict_artifact({"a": 1}, 3, self.NOW))
+
     def test_not_ready_gates_the_run_and_leaves_the_note_alone(self):
         from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
         self._stamps(6)

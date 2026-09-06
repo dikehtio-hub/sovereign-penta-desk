@@ -5,17 +5,17 @@ tags:
   - bot-control
   - operations
   - launchers
-last_synced: "2026-09-05 20:11:31 UTC"
+last_synced: "2026-09-06 02:10:04 UTC"
 ---
 
 # 🎮 Monarch Bot Control & Activation Deck
 
 > [!INFO] **Live Service Telemetry & Operational State**
-> - **HyperLiquid Ingestion Collector**: 🟢 **ONLINE (PID: 38548)** • SQLite DB Updated: `3s ago`
-> - **Polymarket Engine**: ⚪ **IDLE (316442s ago)**
+> - **HyperLiquid Ingestion Collector**: 🟢 **ONLINE (PID: 38548)** • SQLite DB Updated: `7s ago`
+> - **Polymarket Engine**: ⚪ **IDLE (337957s ago)**
 > - **Active Risk Preset**: `CUSTOM` • Capital Per Leg: `$10,000`
 > - **Execution State**: 🟢 **ACCEPTING ENTRIES** • Kill-Switch: 🟢 **ARMED (NORMAL)**
-> - **Last Synchronized**: `2026-09-05 20:11:31 UTC`
+> - **Last Synchronized**: `2026-09-06 02:10:04 UTC`
 
 ---
 
@@ -51,6 +51,7 @@ last_synced: "2026-09-05 20:11:31 UTC"
 
 ## 🔗 Cockpit Navigation
 
+- [[Desk_01_HyperLiquid_Monarch|🧭 Desk 1: HyperLiquid Monarch (wiki)]] · Shell twin: `python HyperLiquid/HL_Monarch/main.py obsidian --once`
 - [[Monarch_Hub|👑 Monarch Intelligence Hub]]
 - [[Bot_Config|⚙️ Bot Configuration & Risk Controller]]
 - [[Trading_Terminal|📈 Live Trading Terminal & 50-Trade Hurdle]]

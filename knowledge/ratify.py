@@ -44,7 +44,7 @@ def ruling_round(ruling: str) -> int | None:
 
 def ratify(vault: Path, *, type_: str, ruling: str, tag: str | None = None, by: str = DEFAULT_ACTOR,
            status: str = "stable", at: datetime | None = None, dry_run: bool = False,
-           max_round: int | None = None) -> RatifyReport:
+           max_round: int | None = None, stem: str | None = None) -> RatifyReport:
     """`max_round` (Round 101): a ruling issued in round N cannot ratify a page whose `dev.round` is later
     than N. Default: the ruling's own round. Without it, a batch ratification re-run after new rounds
     were extracted would silently verify citations the ruling never saw (Ruling 99-2 under 98-1)."""
@@ -56,6 +56,8 @@ def ratify(vault: Path, *, type_: str, ruling: str, tag: str | None = None, by: 
     report = RatifyReport()
     for page in load_pages(vault):
         if page.type != type_:
+            continue
+        if stem and page.path.stem != stem:      # ratify exactly one page by file stem
             continue
         if tag and tag not in (page.meta.get("tags") or []):
             continue
@@ -94,6 +96,7 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap.add_argument("--dev-root", type=Path, default=DEV_ROOT)
     ap.add_argument("--type", required=True, help="page type to ratify, e.g. Ruling")
     ap.add_argument("--tag", default=None, help="only pages carrying this tag, e.g. extracted")
+    ap.add_argument("--stem", default=None, help="ratify exactly one page, by file stem (no .md)")
     ap.add_argument("--ruling", required=True, help="the ruling that authorises this, e.g. 98-1")
     ap.add_argument("--by", default=DEFAULT_ACTOR)
     ap.add_argument("--status", default="stable", choices=["draft", "stable", "deprecated"])
@@ -109,7 +112,8 @@ def main(argv: list[str] | None = None, out=None) -> int:
         return EXIT_HALT
     try:
         report = ratify(args.vault, type_=args.type, ruling=args.ruling, tag=args.tag, by=args.by, status=args.status,
-                        at=parse_iso8601(args.at) if args.at else None, dry_run=args.dry_run, max_round=args.max_round)
+                        at=parse_iso8601(args.at) if args.at else None, dry_run=args.dry_run, max_round=args.max_round,
+                        stem=args.stem)
     except ValueError as exc:
         print(f"[REFUSE] {exc} (exit {EXIT_HALT})", file=out)
         return EXIT_HALT

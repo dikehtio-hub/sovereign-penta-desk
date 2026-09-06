@@ -1,0 +1,15 @@
+{
+  "events": 0,
+  "price_points": 0,
+  "max_lag": 60,
+  "sufficient": false,
+  "reason": "0 probability shifts < 5 required",
+  "curve": [],
+  "_artifact": {
+    "written_at": "2026-09-06T02:00:00+00:00",
+    "coin": "BTC",
+    "family": "macro",
+    "markets": 0,
+    "writer": "process:cross_market.interfaces.obsidian_exporter"
+  }
+}

@@ -9,7 +9,7 @@ tags:
 - experiment
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T02:05:52Z'
+  at: '2026-09-06T02:31:00Z'
 status: draft
 dev:
   register_for: Experiment
@@ -38,7 +38,7 @@ dev:
 | [[lead_lag_tier2b_meta\|Experiment: lead_lag_tier2b_dual_tag_membership]] | lead_lag | draft | 2026-09-06T00:28:49Z |
 | [[passive_fade_rebenchmark_meta\|Experiment: passive_fade_rebenchmark]] | registration | draft | 2026-09-06T00:28:49Z |
 | [[regime_filtered_v1_meta\|Experiment: regime_filtered_v1]] | registration | draft | 2026-09-06T00:28:49Z |
-| [[whale_sweeper_cascade_replay_meta\|Experiment: whale_sweeper_cascade_replay]] | registration | draft | 2026-09-06T02:05:52Z |
+| [[whale_sweeper_cascade_replay_meta\|Experiment: whale_sweeper_cascade_replay]] | registration | stable | 2026-09-06T02:05:52Z |
 
 8 page(s).
 

@@ -5,6 +5,48 @@ the detail.
 
 ## Status
 
+Round 103 complete (2026-09-06): MAIDEN NIGHT CLOSED, ALL FOUR ENTRIES GREEN; THE
+LEAD-LAG TOOLING DEFECT IS FIXED. Committed in two halves on purpose: 103a (dbe37df)
+before the scheduled tasks, 103b after them, because maiden_protocol imports FOUR desk
+modules in fresh processes (lead_lag, both obsidian_exporters, titan_correlator) and the
+maiden record is not the place for an untested edit. 103a: the Item 14 sweeper acceptance
+bar PRE-REGISTERED before any replay (B15) and knowledge.ingest.lead_lag defaulted to the
+exporter artifact. 103b: RULING R102-1 - cross_market/lead_lag.py --json now covers the
+ANALYSIS branch, not just --check-data, so the pipeline this repo has published since
+Round 97 finally works; verified live (parsed, best_lag -45, corr +0.069, n=1551) and
+pinned by two tests, one asserting the verdict schema and one asserting --check-data
+--json still returns readiness. RULING R102-2 - LeadLagRefresher._write_verdict_artifact
+serialises the run that wrote Cross_Market_Titans.md to
+cross_market/data/lead_lag_latest_verdict.json, atomically (temp then os.replace) with an
+_artifact envelope naming the writer and instant; a write failure returns None and never
+breaks the export. Two tests cover the happy path and the failure. Tests: module 23 = 101,
+master 23 modules 1,039, total 1,093 + 1,039 + 546 = 2,678, all green offline. Vault 418
+pages + constitution, lint CLEAN. NEW HOMEWORK.md at the repo root: the operator's own
+task list, human-required actions only. Daemons: watcher is now 17688 (restarted 22:20 by
+its scheduled task, tags live); exporter 56412, supervisor 46740, collector 38548 unchanged
+and NOT restarted - the R102-2 artifact will not appear until 56412 is restarted, which is
+the operator's call.
+
+EXPORTER RESTARTED (the first daemon restart this project has performed itself): 56412
+stopped, start_cross_market_exporter.bat relaunched it as 62760 at 02:44:06Z, and the new
+process took the pid lock and began cycling. Verified by WAITING for the lock rather than
+checking immediately - the mistake tonight's watcher script makes. Cross_Market_Arb.md now
+carries the Round 101 line '> **Desk**: [[Desk_03_Cross_Market_Desk]] · Shell twin: ...'.
+Sports_Desk.md does not yet: it is written by a different exporter that is not a daemon and
+will pick the line up on its next --once run. CONSEQUENCE WORTH KNOWING: the R102-2 artifact
+still does not exist, because the lead-lag cooldown runs from the note's run-at marker and
+the next run is 2026-09-07T01:40:34Z (~23 h out). A restarted exporter honours the same
+cooldown by design, so restarting did not and could not produce the file early.
+ITEM 14 PRE-REGISTRATION RATIFIED (status stable, verified antigravity/architect, ratified_by
+103-B15) via a new `knowledge.ratify --stem` that targets exactly one page instead of a whole
+tag group. Antigravity independently BUILT AND RAN the replay engine
+(HyperLiquid/HL_Monarch/analytics/cascade_replay.py, +7 tests) while this round was in
+flight; its verdict under the registered bar is INSUFFICIENT (top coin PONS 22.5% > the 20%
+ceiling), which is the pre-registration doing exactly its job - Side B's eye-catching 1.7378
+ratio is NOT a finding, and at P=0.5020 it would have been RETUNE at best even had the
+sample qualified. Side A is a clean FAIL (ratio 0.2784, P=0.0090): fading forced selling
+does not work, momentum persists.
+
 Round 102 complete (2026-09-06): THE ITEM 18 MAIDEN RUN HAPPENED AND THE VERDICT IS IN
 THE WIKI. The 24 h gate opened at 01:40:33Z (21:40:33 EDT); the exporter's own cycle ran
 the analysis two seconds later and wrote Cross_Market_Titans.md. `python -m
@@ -1013,6 +1055,71 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 103 findings
+
+### The six-point maiden-night arbitration (HANDOFF_PROMPT.md), answered
+
+1. **Entry A and B timing and verdicts.** A at 21:50:00 EDT: six PASS, exit 0. B at
+   22:10:00: six PASS, exit 0. The Round 95 prediction that A would show series_ready
+   PASS with the other five WAITing did NOT hold, and the reason is benign: the gate
+   opened at 01:40:33Z and the exporter's own 15 s cycle ran the analysis at 01:40:34Z,
+   so by the first protocol run at 01:41:00Z the RAN line, the note marker and the
+   cooldown were all already present. The prediction assumed a slower loop.
+2. **Exporter log summary.** `log lines 3976 · gated 3769 · failed 0 · runs 1` at Entry C.
+   failed 0 and runs >= 1: PASS. The Round 75 price-read guard never fired.
+3. **Tier 1 verdict audit.** Peak |corr| 0.070 at lag -45 min against the registered 0.20
+   bar: NO measurable lead-lag. The 0.20 hurdle is not cleared, so the 5-minute latency
+   rule never has to be applied - there is no peak to characterise.
+4. **Tier 2 subfamily audit.** crypto (latency rule 5 min): -45 min, +0.069, n=1549.
+   fed-rates (latency rule 0 min): -10 min, +0.073, n=1538. Both below the bar, both
+   therefore 'no measurable lead-lag'. Neither is an alpha finding and neither is an
+   'insufficient' non-verdict: the samples were ample, the correlation simply is not there.
+5. **Restart telemetry and Entry C.** The 22:20 restart printed the literal
+   '[STOP] watcher pid 49812 terminated' and 'Polymarket watcher launched DETACHED, no
+   window'. Entry C at 22:35:00 is the definitive arbiter and PASSES on both counts: the
+   watcher is pid 17688 (!= 49812) and the status line ends 'carries tags (Round 76 code
+   is live)'. Six PASS, exit 0.
+6. **Tier 2b timeline anchoring.** The laptop stayed on; the tagged series begins at the
+   restart, first tagged stamp 02:20:07Z. Tier 2b is therefore due no earlier than
+   2026-09-07T02:20Z (~22:20 EDT Sunday). The 24-hour continuous span binds first, as
+   registered: at ~12 tagged stamps/hour the 200-point floor is reached in ~17 h.
+
+### Other findings
+
+- **restart_polymarket_watcher.bat EXITS 3 ON A SUCCESSFUL RESTART.** It runs `--status`
+  about two seconds after a detached launch, before the new process has taken its pid
+  lock, so it printed 'watcher STOPPED - no lock' and returned 3 while pid 17688 was
+  already alive and polling. The restart was completely successful. Anything treating
+  that exit code as failure - a human, a future task chain - would wrongly conclude the
+  restart broke. Directive 79-2's script needs a short wait-for-lock loop before the
+  status call. NOT FIXED tonight (it is an operator batch file and the maiden night was
+  still running); a ruling is requested.
+- Series continuity across the restart: 4.1 min gap (02:15:59Z -> 02:20:07Z) against a
+  60 min break threshold, and the largest gap anywhere in the 24.7 h series is 12.2 min.
+  47.8 minutes of margin.
+- The R102-2 artifact cannot exist until exporter 56412 restarts, because the running
+  process keeps its loaded module. Until then `knowledge.ingest.lead_lag` with no
+  --result refuses with a message naming the exporter. Honest, but it puts the exporter
+  restart on the critical path for the next ingest.
+- Checklist corrections reported to Antigravity: Items 10, 12, 13 are [x] in the
+  Antigravity checklist and [ ] in the registry (Round 88 asked for this ruling and never
+  got one); Item 16 is described as parquet and there is no parquet in the codebase;
+  cascade_excursions is 28,544 rows not 27,916 (our own copied-state drift); and the
+  registry's Item 14 Primary Code cites analytics/excursions.py, WHICH DOES NOT EXIST -
+  the writer is storage/incremental_persistence.py. Registry lines 80-484 untouched.
+  One check came back clean: Item 19's '100,000-path' claim is correct
+  (DEFAULT_ITERATIONS = 100_000; the exporter merely invokes it with 20,000).
+- **The sweeper replay verdict is NOT in the vault yet.** Antigravity ran it and reported the
+  numbers in a handoff message; the registration says a result is written to the wiki as a
+  verdict page. cascade_replay.py has --json/--out, so the honest fix is to run it once,
+  keep the JSON as the raw artifact, and ingest THAT rather than transcribing numbers out of
+  a chat message. Proposed for Round 104; not done tonight because transcribed numbers would
+  be a copied-state violation on the very page that exists to prevent one.
+- The exporter has no `--stop` flag (the fetcher does) and
+  stop_all_ecosystem_sync.bat matches on WINDOW TITLES, which a detached pythonw daemon does
+  not have - so neither can stop it. The only route is a kill by pid. Worth a `--stop` on the
+  exporter to match the fetcher's interface.
 
 ## Round 102 findings
 

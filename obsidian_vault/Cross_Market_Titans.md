@@ -49,15 +49,28 @@ Tracks alignment between **Polymarket event market sentiment**, **HyperLiquid pe
 <!-- lead-lag-sentinel:start -->
 ## 🛰 Lead-Lag Data Readiness Sentinel (Item 18)
 
-> [!WARNING] **Verdict: `[NOT READY]`**
-> - **Series**: `macro` stamped drops, latest continuous segment (no gap > 60 min), 279 on disk
-> - **Segment**: `279 points / 23.5h @ 11.8/h` since `2026-09-05T01:39Z`; largest gap `12.2 min`, `0` break(s)
+> [!SUCCESS] **Verdict: `[READY]`**
+> - **Series**: `macro` stamped drops, latest continuous segment (no gap > 60 min), 299 on disk
+> - **Segment**: `299 points / 25.2h @ 11.8/h` since `2026-09-05T01:39Z`; largest gap `12.2 min`, `0` break(s)
 > - **Bar**: span ≥ 24h and ≥ 200 points, watcher still adding
-> - **Blocking**: span 23.5h < 24h
-> - **Data Readiness ETA**: `2026-09-06T01:39Z`
-> - **Checked**: `2026-09-06 01:10 UTC` · newest stamp 0 min ago
+> - **Gate**: open - the first honest live run may proceed: `python -m cross_market.lead_lag --coin BTC`
+> - **Checked**: `2026-09-06 02:50 UTC` · newest stamp 0 min ago
 > - Shell twin: `python -m cross_market.lead_lag --check-data` (exit 0 = ready, 3 = not)
 <!-- lead-lag-sentinel:end -->
+
+---
+
+<!-- lead-lag-horizon:start -->
+<!-- lead-lag-run-at: 2026-09-06T01:40:34.503335+00:00 -->
+## ⚡ Lead-Lag Predictive Horizon (Item 18)
+
+> [!SUCCESS] **no measurable lead-lag (peak |corr| 0.07 < 0.2)**
+> - **Best lag**: `-45 min` · **correlation** `+0.070` · **n** `1495` overlapping minutes
+> - **Strongest lags**: `-45m +0.07` · `-46m -0.07` · `-31m +0.06` · `-7m +0.06` · `-33m -0.06`
+> - **Evidence**: `617` markets · `1465` probability shifts · `8919` BTC price points · max lag `±60 min`
+> - **Ran**: `2026-09-06 01:40 UTC` on the stamped drops + a read-only snapshot DB; next run after `24 h` (the sentinel card above must still read READY)
+> - Offline research only: reads drops and a read-only database; places nothing. Shell twin: `python -m cross_market.lead_lag --coin BTC`
+<!-- lead-lag-horizon:end -->
 
 ---
 
