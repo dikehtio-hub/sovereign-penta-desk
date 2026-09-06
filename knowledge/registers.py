@@ -38,13 +38,21 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "Journal Entry": ("journal_register", "Journal register",
                       "Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human.",
                       ("date", "receipts", "predictions_n")),
+    # "Thesis" selects Concept pages compiled from module docstrings (dev.kind == thesis).
+    "Thesis": ("theses_register", "Theses register",
+               "Every module thesis compiled from a desk docstring; each heading is pinned to its source so a silent deletion is a lint C1 finding.",
+               ("module", "desk")),
 }
 
 
-def matches(page_type: str | None, type_: str) -> bool:
+def matches(page_type: str | None, type_: str, dev: dict | None = None) -> bool:
     if page_type is None:
         return False
-    return page_type.startswith("Entity/") if type_ == "Entity" else page_type == type_
+    if type_ == "Entity":
+        return page_type.startswith("Entity/")
+    if type_ == "Thesis":
+        return page_type == "Concept" and isinstance(dev, dict) and dev.get("kind") == "thesis"
+    return page_type == type_
 
 REGISTER_STEMS = tuple(spec[0] for spec in SPECS.values())
 
@@ -61,7 +69,7 @@ def _cell(page: Page, col: str) -> str:
 
 def update_register(vault, type_: str, *, at: datetime, by: str = GENERATED_BY) -> Page:
     stem, title, description, cols = SPECS[type_]
-    pages = sorted((p for p in load_pages(vault) if matches(p.type, type_)), key=lambda p: p.path.name)
+    pages = sorted((p for p in load_pages(vault) if matches(p.type, type_, p.meta.get("dev"))), key=lambda p: p.path.name)
     head = "| Page | " + " | ".join(c.replace("_", " ") for c in cols) + " | Status | Generated |"
     sep = "|---|" + "---|" * len(cols) + "---|---|"
     lines = [f"# {title}", "", f"> {description}", "> Maintained by the knowledge layer; hand edits are overwritten.", "", head, sep]

@@ -67,10 +67,18 @@ class Execution:
     venue: str
     strategy: str
     file: str
+    edge: float | None = None     # from notes `edge:0.9950;` (Round 101, Ruling 100-b)
+    hurdle: float | None = None   # from notes `hurdle:0.9820;`
 
     @property
     def notional(self) -> float:
         return round(self.quantity * self.price, 2)
+
+    @property
+    def hurdle_check(self) -> str:
+        if self.edge is None or self.hurdle is None:
+            return "UNCHECKED"
+        return "PASS" if self.edge >= self.hurdle else "FLAG"
 
 
 def _strategy_of(row: dict[str, str], filename: str) -> str:
@@ -79,6 +87,11 @@ def _strategy_of(row: dict[str, str], filename: str) -> str:
         return m.group(1)
     parts = filename.split("_")
     return parts[2] if filename.startswith("fills_") and len(parts) > 3 else "unknown"
+
+
+def _note_number(row: dict[str, str], key: str) -> float | None:
+    m = re.search(rf"\b{key}[=:]\s*(-?[0-9]*\.?[0-9]+)", row.get("notes") or "", re.I)
+    return float(m.group(1)) if m else None
 
 
 def load_executions(receipts_dir: Path, day: date) -> list[Execution]:
@@ -96,7 +109,8 @@ def load_executions(receipts_dir: Path, day: date) -> list[Execution]:
                         at=ts, symbol=str(row.get("symbol") or ""), side=str(row.get("side") or "").upper(),
                         quantity=float(row.get("quantity") or 0), price=float(row.get("price") or 0),
                         fee=float(row.get("fee") or 0), venue=str(row.get("source") or ""),
-                        strategy=_strategy_of(row, path.name), file=path.name))
+                        strategy=_strategy_of(row, path.name), file=path.name,
+                        edge=_note_number(row, "edge"), hurdle=_note_number(row, "hurdle")))
         except (OSError, ValueError, csv.Error):
             continue
     return out
@@ -127,6 +141,8 @@ def _section(existing: Page | None, heading: str, placeholder: str) -> str:
 # ---------------------------------------------------------------- the page
 
 def claim_text(p: dict[str, Any]) -> str:
+    if p.get("claim"):
+        return str(p["claim"])
     return f"{p.get('field')} {p.get('op')} {p.get('value')}"
 
 
@@ -147,8 +163,10 @@ def build_journal(day: date, executions: list[Execution], predictions: list[dict
             PLAN_HEADING, "", _section(existing, PLAN_HEADING, PLAN_PLACEHOLDER), "",
             "## Executions (paper receipts; paper by location)", ""]
     if executions:
-        body += ["| at | venue | strategy | symbol | side | qty | price | notional | fee | receipt |", "|---|---|---|---|---|---|---|---|---|---|"]
-        body += [f"| {e.at} | {e.venue} | {e.strategy} | {e.symbol} | {e.side} | {e.quantity:g} | {e.price:g} | ${e.notional:,.2f} | {e.fee:g} | `{e.file}` |"
+        body += ["| at | venue | strategy | symbol | side | qty | price | notional | fee | edge | hurdle | check | receipt |",
+                 "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+        body += [f"| {e.at} | {e.venue} | {e.strategy} | {e.symbol} | {e.side} | {e.quantity:g} | {e.price:g} | ${e.notional:,.2f} | {e.fee:g} | "
+                 f"{'-' if e.edge is None else f'{e.edge:.4f}'} | {'-' if e.hurdle is None else f'{e.hurdle:.4f}'} | {e.hurdle_check} | `{e.file}` |"
                  for e in executions]
     else:
         body.append("_(no paper receipts for this day)_")
@@ -161,32 +179,39 @@ def build_journal(day: date, executions: list[Execution], predictions: list[dict
     else:
         body.append("_(no predictions recorded; `knowledge.journal --predict --event E --field F --op OP --value V --p P`)_")
     body += ["", "## Debrief (machine; paper only, R95-F)", ""]
-    debrief: dict[str, Any] = {"executions": len(executions), "notional_total": total, "by_strategy": by_strategy}
+    debrief: dict[str, Any] = {"executions": len(executions), "turnover_total": total, "by_strategy": by_strategy}
     if executions:
-        if budget is not None:
-            flag = total > budget
-            debrief["drawdown_budget_usd"] = budget
-            debrief["drawdown_check"] = "FLAG" if flag else "PASS"
-            body.append(f"- drawdown budget: day paper notional ${total:,.2f} vs the quant lab daily killswitch ${budget:,.2f}: "
-                        f"**{'FLAG - exceeds the budget' if flag else 'PASS'}**")
+        # Ruling 100-c: the killswitch is a cumulative realised-loss budget, not a volume ceiling. Receipts are
+        # fills, so realised net loss needs paired closes; until then the drawdown check is honestly UNCHECKED
+        # and the volume is labelled for what it is.
+        body.append(f"- Daily Paper Notional Turnover: ${total:,.2f}" + (f" (reference: quant lab daily killswitch ${budget:,.2f}, a realised-loss budget, "
+                    "not a turnover ceiling)" if budget is not None else ""))
+        debrief["drawdown_check"] = "UNCHECKED"
+        debrief["drawdown_budget_usd"] = budget
+        body.append("- drawdown vs killswitch: UNCHECKED - receipts are fills; realised net loss needs paired closes (Ruling 100-c)")
+        checks = [e.hurdle_check for e in executions]
+        if "FLAG" in checks:
+            debrief["hurdle_check"] = "FLAG"
+        elif "PASS" in checks:
+            debrief["hurdle_check"] = "PASS"
         else:
-            debrief["drawdown_check"] = "UNCHECKED"
-            body.append("- drawdown budget: UNCHECKED (quant_trading_lab/CLAUDE.md killswitch line not found)")
-        debrief["hurdle_check"] = "UNCHECKED"
-        body.append("- after-tax hurdle: UNCHECKED - the receipt writer records no edge or hurdle (Tax_Reserve_Agent/interfaces/receipts.py "
-                    "columns), so the check needs the hurdle stamped on the receipt (backlog)")
-        body += [f"- per strategy: " + ", ".join(f"{k} ${v:,.2f}" for k, v in sorted(by_strategy.items()))]
+            debrief["hurdle_check"] = "UNCHECKED"
+        debrief["hurdle_counts"] = {k: checks.count(k) for k in ("PASS", "FLAG", "UNCHECKED") if checks.count(k)}
+        body.append(f"- after-tax hurdle (from receipt notes `edge:`/`hurdle:`, Ruling 100-b): **{debrief['hurdle_check']}** · "
+                    + ", ".join(f"{k} {v}" for k, v in debrief["hurdle_counts"].items())
+                    + ("; an UNCHECKED fill carries no edge/hurdle on its receipt" if "UNCHECKED" in checks else ""))
+        body += [f"- per strategy turnover: " + ", ".join(f"{k} ${v:,.2f}" for k, v in sorted(by_strategy.items()))]
     else:
         debrief["drawdown_check"] = debrief["hurdle_check"] = "N/A"
         body.append("- nothing to check: no paper executions today")
     body += ["", OPEN_HEADING, "", _section(existing, OPEN_HEADING, OPEN_PLACEHOLDER), "",
              "## Related", "", f"- [[{CALIBRATION_FILE}|Calibration]]", "- [[journal_register|Journal register]]", ""]
-    dev: dict[str, Any] = {"date": day.isoformat(), "receipts": len(executions), "notional_total": total, "predictions_n": len(predictions),
+    dev: dict[str, Any] = {"date": day.isoformat(), "receipts": len(executions), "turnover_total": total, "predictions_n": len(predictions),
                            "predictions": predictions, "debrief": debrief}
     if param:
         dev["parameters"] = [param]
     scored = [p for p in predictions if p.get("brier") is not None]
-    desc = (f"Journal {day.isoformat()}: {len(executions)} paper execution(s), ${total:,.0f} notional"
+    desc = (f"Journal {day.isoformat()}: {len(executions)} paper execution(s), ${total:,.0f} turnover"
             + (f", {len(scored)}/{len(predictions)} prediction(s) scored" if predictions else "") + ".")
     meta = make_meta("Journal Entry", f"Journal {day.isoformat()}", desc, tags=["journal", day.isoformat()[:7]],
                      generated_by=by, at=at, status="draft", dev=dev)
@@ -218,19 +243,30 @@ def write_day(vault: Path, dev_root: Path, day: date, *, receipts_dir: Path | No
 
 # ---------------------------------------------------------------- predictions and scoring
 
-def add_prediction(vault: Path, dev_root: Path, day: date, *, event: str, field_: str, op: str, value: Any, p: float,
-                   at: datetime | None = None, by_human: str = "human:operator") -> Page:
-    if op not in OPS:
-        raise ValueError(f"op must be one of {OPS}")
+def add_prediction(vault: Path, dev_root: Path, day: date, *, event: str, p: float, field_: str | None = None, op: str | None = None,
+                   value: Any = None, claim: str | None = None, at: datetime | None = None, by_human: str = "human:operator") -> Page:
+    """A mechanical rule {field, op, value} (scored against the Event payload) or a free-text `claim`
+    (scored by hand with --score --event E --outcome 0|1; Ruling 100-a)."""
+    if claim is None:
+        if op not in OPS:
+            raise ValueError(f"op must be one of {OPS}")
+        if not field_ or value is None:
+            raise ValueError("a mechanical prediction needs field, op and value")
+    elif not str(claim).strip():
+        raise ValueError("a free-text claim must not be empty")
     if not (0.0 < float(p) < 1.0):
         raise ValueError("p must be strictly between 0 and 1")
     at = at or now_utc()
     preds = existing_predictions(vault, day)
-    preds.append({"event": event, "field": field_, "op": op, "value": value, "p": float(p), "at": iso(at), "by": by_human,
-                  "outcome": None, "brier": None, "scored_at": None})
+    row: dict[str, Any] = {"event": event, "p": float(p), "at": iso(at), "by": by_human, "outcome": None, "brier": None, "scored_at": None}
+    if claim is None:
+        row.update({"field": field_, "op": op, "value": value})
+    else:
+        row["claim"] = str(claim).strip()
+    preds.append(row)
     page = write_day(vault, dev_root, day, at=at, create=True, predictions=preds)
     assert page is not None
-    append_log(vault, "Journal", f"prediction on [[{event}]]: `{field_} {op} {value}` with p={float(p):.2f} recorded in [[{day.isoformat()}]].", when=at)
+    append_log(vault, "Journal", f"prediction on [[{event}]]: `{claim_text(row)}` with p={float(p):.2f} recorded in [[{day.isoformat()}]].", when=at)
     return page
 
 
@@ -244,7 +280,10 @@ def _holds(actual: Any, op: str, value: Any) -> bool | None:
     return {"==": a == v, "!=": a != v, ">=": a >= v, "<=": a <= v, ">": a > v, "<": a < v}[op]
 
 
-def score_predictions(vault: Path, dev_root: Path, *, at: datetime | None = None, by: str = GENERATED_BY) -> dict[str, int]:
+def score_predictions(vault: Path, dev_root: Path, *, at: datetime | None = None, by: str = GENERATED_BY,
+                      event: str | None = None, manual_outcome: int | None = None) -> dict[str, int]:
+    """Mechanical rules score against the Event payload. A free-text claim scores only when the operator
+    passes `event` and `manual_outcome` (0|1), which is recorded as `scored_by: human:operator`."""
     at = at or now_utc()
     scored = pending = 0
     for page in load_pages(vault):
@@ -255,16 +294,23 @@ def score_predictions(vault: Path, dev_root: Path, *, at: datetime | None = None
         for p in preds:
             if p.get("brier") is not None:
                 continue
-            ev = load_page(page_path(vault, "Event", str(p.get("event"))))
-            payload = (ev.meta.get("dev") or {}).get("payload") if ev else None
-            if not isinstance(payload, dict) or p.get("field") not in payload:
-                pending += 1
-                continue
-            holds = _holds(payload[p["field"]], str(p.get("op")), p.get("value"))
-            if holds is None:
-                pending += 1
-                continue
-            outcome = 1 if holds else 0
+            if p.get("claim"):                                   # free text: manual outcome for this event only
+                if manual_outcome is None or event is None or p.get("event") != event:
+                    pending += 1
+                    continue
+                outcome = 1 if int(manual_outcome) else 0
+                p["scored_by"] = "human:operator"
+            else:
+                ev = load_page(page_path(vault, "Event", str(p.get("event"))))
+                payload = (ev.meta.get("dev") or {}).get("payload") if ev else None
+                if not isinstance(payload, dict) or p.get("field") not in payload:
+                    pending += 1
+                    continue
+                holds = _holds(payload[p["field"]], str(p.get("op")), p.get("value"))
+                if holds is None:
+                    pending += 1
+                    continue
+                outcome = 1 if holds else 0
             p["outcome"] = outcome
             p["brier"] = round((float(p["p"]) - outcome) ** 2, 4)
             p["scored_at"] = iso(at)
@@ -338,7 +384,9 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap.add_argument("--op", choices=OPS)
     ap.add_argument("--value")
     ap.add_argument("--p", type=float)
+    ap.add_argument("--claim", default=None, help="free-text prediction (scored later with --score --event E --outcome 0|1)")
     ap.add_argument("--score", action="store_true")
+    ap.add_argument("--outcome", type=int, choices=[0, 1], default=None, help="with --score --event: manual outcome for free-text claims")
     args = ap.parse_args(argv)
     if halted(args.dev_root):
         print(f"[HALT] {args.dev_root / 'HALT.flag'} present - journal refuses (exit {EXIT_HALT})", file=out)
@@ -349,23 +397,30 @@ def main(argv: list[str] | None = None, out=None) -> int:
     at = parse_iso8601(args.at) if args.at else now_utc()
     day = date.fromisoformat(args.date) if args.date else at.astimezone(timezone.utc).date()
     if args.predict:
-        if not (args.event and args.field and args.op and args.value is not None and args.p is not None):
-            print("[REFUSE] --predict needs --event --field --op --value --p (exit 3)", file=out)
+        mechanical = args.field and args.op and args.value is not None
+        if not (args.event and args.p is not None and (mechanical or args.claim)):
+            print("[REFUSE] --predict needs --event --p and either --field --op --value or --claim (exit 3)", file=out)
             return EXIT_HALT
         value: Any = args.value
+        if mechanical:
+            try:
+                value = int(value) if re.fullmatch(r"-?\d+", value) else float(value)
+            except ValueError:
+                pass
         try:
-            value = int(value) if re.fullmatch(r"-?\d+", value) else float(value)
-        except ValueError:
-            pass
-        try:
-            page = add_prediction(args.vault, args.dev_root, day, event=args.event, field_=args.field, op=args.op, value=value, p=args.p, at=at)
+            page = add_prediction(args.vault, args.dev_root, day, event=args.event, p=args.p, at=at,
+                                  field_=args.field if mechanical else None, op=args.op if mechanical else None,
+                                  value=value if mechanical else None, claim=None if mechanical else args.claim)
         except ValueError as exc:
             print(f"[REFUSE] {exc} (exit 3)", file=out)
             return EXIT_HALT
         print(f"[WRITE] {page.path.relative_to(args.vault).as_posix()}  prediction recorded", file=out)
         return EXIT_OK
     if args.score:
-        res = score_predictions(args.vault, args.dev_root, at=at)
+        if args.outcome is not None and not args.event:
+            print("[REFUSE] --outcome needs --event (exit 3)", file=out)
+            return EXIT_HALT
+        res = score_predictions(args.vault, args.dev_root, at=at, event=args.event, manual_outcome=args.outcome)
         print(f"journal: scored {res['scored']}, pending {res['pending']}; calibration rebuilt", file=out)
         return EXIT_OK
     page = write_day(args.vault, args.dev_root, day, receipts_dir=args.receipts, at=at, create=args.create)

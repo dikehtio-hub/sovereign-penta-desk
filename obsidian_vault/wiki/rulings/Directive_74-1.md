@@ -13,7 +13,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -27,7 +27,7 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 366
+    line: 391
     excerpt: '…Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds
       cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word
       "cross_market" so a Sports Desk exporter never passes as the holder), --status
@@ -48,7 +48,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 366): …Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word "cross_market" so a Sports Desk exporter never passes as the holder), --status (exit 0 running / 3 stopped; also prints the Item 18 state: last lead-lag run from the Titans note, macro serie…
+- **Status** (line 391): …Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word "cross_market" so a Sports Desk exporter never passes as the holder), --status (exit 0 running / 3 stopped; also prints the Item 18 state: last lead-lag run from the Titans note, macro serie…
 
 ## Related
 

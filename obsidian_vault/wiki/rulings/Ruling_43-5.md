@@ -12,7 +12,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -26,7 +26,7 @@ dev:
   kind: ruling
   citations:
   - section: Round 43 findings
-    line: 2035
+    line: 2079
     excerpt: '…- Ruling 43-5 recorded in the harvester docstring: returns are right-tail
       heavy (one of five positions paid $322 of $350); report median and top share,
       hold the 25%/20% bar - baseline large-cap funding nets negative after drag.'
@@ -45,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Round 43 findings** (line 2035): …- Ruling 43-5 recorded in the harvester docstring: returns are right-tail heavy (one of five positions paid $322 of $350); report median and top share, hold the 25%/20% bar - baseline large-cap funding nets negative after drag.
+- **Round 43 findings** (line 2079): …- Ruling 43-5 recorded in the harvester docstring: returns are right-tail heavy (one of five positions paid $322 of $350); report median and top share, hold the 25%/20% bar - baseline large-cap funding nets negative after drag.
 
 ## Related
 

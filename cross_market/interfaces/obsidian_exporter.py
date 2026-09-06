@@ -153,6 +153,9 @@ def render(snapshot: Dict[str, Any], synced_at: str, vault_path: Path) -> str:
         "> - **Last Synchronized**: `%s`" % synced_at, "",
         "> **Cockpit Navigation**: [[%s|👑 Master Hub]] • [[Sports_Desk|🏈 Sports Desk]] "
         "• [[Polymarket_Monarch|🌐 Polymarket]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]]" % HUB_NOTE,
+        # Round 101 (F1, Ruling 98-2): the wiki Desk page and the command that reproduces this card.
+        "> **Desk**: [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]] · "
+        "Shell twin: `python -m cross_market.interfaces.obsidian_exporter --once`",
         "", "---", "",
         "> [!NOTE] **Why the bar is so high**",
         "> Each leg's loss is deductible only against a class of income the other leg does not",

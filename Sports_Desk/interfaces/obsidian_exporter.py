@@ -268,6 +268,9 @@ def render(snapshot: Dict[str, Any], synced_at: str, vault_path: Path) -> str:
               "> - **Last Synchronized**: `%s`" % synced_at, "",
               "> **Cockpit Navigation**: [[%s|👑 Master Hub]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]] "
               "• [[HyperLiquid_Monarch|🏛 HyperLiquid]] • [[Polymarket_Monarch|🌐 Polymarket]]" % HUB_NOTE,
+              # Round 101 (F1, Ruling 98-2): the wiki Desk page and the command that reproduces this card.
+              "> **Desk**: [[Desk_02_Sports_Desk|Desk 2: Sports Desk]] · "
+              "Shell twin: `python -m Sports_Desk.interfaces.obsidian_exporter --once`",
               "", "---", "", "## 🎯 Active +EV Hotlist (bankroll-approved)", ""]
 
     if hotlist:

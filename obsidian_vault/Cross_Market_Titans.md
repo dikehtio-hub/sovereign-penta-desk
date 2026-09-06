@@ -50,12 +50,12 @@ Tracks alignment between **Polymarket event market sentiment**, **HyperLiquid pe
 ## 🛰 Lead-Lag Data Readiness Sentinel (Item 18)
 
 > [!WARNING] **Verdict: `[NOT READY]`**
-> - **Series**: `macro` stamped drops, latest continuous segment (no gap > 60 min), 26 on disk
-> - **Segment**: `26 points / 2.0h @ 12.7/h` since `2026-09-05T01:39Z`; largest gap `5.1 min`, `0` break(s)
+> - **Series**: `macro` stamped drops, latest continuous segment (no gap > 60 min), 279 on disk
+> - **Segment**: `279 points / 23.5h @ 11.8/h` since `2026-09-05T01:39Z`; largest gap `12.2 min`, `0` break(s)
 > - **Bar**: span ≥ 24h and ≥ 200 points, watcher still adding
-> - **Blocking**: span 2.0h < 24h; points 26 < 200
+> - **Blocking**: span 23.5h < 24h
 > - **Data Readiness ETA**: `2026-09-06T01:39Z`
-> - **Checked**: `2026-09-05 03:39 UTC` · newest stamp 1 min ago
+> - **Checked**: `2026-09-06 01:10 UTC` · newest stamp 0 min ago
 > - Shell twin: `python -m cross_market.lead_lag --check-data` (exit 0 = ready, 3 = not)
 <!-- lead-lag-sentinel:end -->
 

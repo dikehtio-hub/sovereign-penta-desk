@@ -5,6 +5,30 @@ the detail.
 
 ## Status
 
+Round 101 complete (2026-09-05): KNOWLEDGE PHASE 4 - BASES VIEWS + TEMPLATES (B13),
+DASHBOARD SHELL TWINS + DESK BACKLINKS (F1), DOCSTRING THESES (B12), RECEIPT EDGE/HURDLE
+(Ruling 100-b) + Rulings 100-a/c/e/f. NEW knowledge/views.py: seven wiki/_views/*.base
+(Obsidian Bases; filters file.inFolder, table views) and four wiki/_templates/*.md whose
+frontmatter is OKF-valid before a placeholder is filled; `_` folders are tooling, skipped
+by index and lint. NEW knowledge/ingest/theses.py: ALL-CAPS docstring sections of the desk
+modules -> wiki/concepts/thesis_*.md (35 pages), every heading pinned with dev:asserts
+so a silent deletion is a C1 finding; eighth register theses_register. F1: Sports_Desk,
+cross_market, HL_Monarch (three notes), Polymarket_Monarch and Tax_Reserve_Agent exporters
+now print a `Desk:` wikilink and a `Shell twin:` --once command; SOURCE-ONLY - the running
+exporter (56412) does not reload and is unaffected until restarted; quant_trading_lab's
+exporter is its own repo with a dirty tree and was not touched. Receipts:
+log_execution_receipt(gross_edge=, after_tax_hurdle=) stamps `edge:`/`hurdle:` into notes;
+latency_sniper.record_paper passes edge = event confidence and hurdle = the worst fill
+breakeven (both probabilities, so edge >= hurdle IS the sniper's rule), falling back for
+older writer doubles. Journal: --claim free-text predictions scored by hand (--score --event
+E --outcome 0|1, scored_by human:operator); debrief reports Daily Paper Notional Turnover,
+drawdown vs killswitch UNCHECKED (fills are not realised loss, 100-c), per-fill hurdle
+PASS/FLAG/UNCHECKED. tests_run written back onto the registration PAGE per tier (100-e; the
+raw meta file untouched). Ruling_98-1.md ratified under 98-1 and its page lists the 27
+pages it ratified (## Effect in this wiki). REAL VAULT: 415 pages + constitution, lint
+CLEAN. Tests: module 23 = 100; master 23 modules 1,036; total 2,675, all green
+offline (exporter, sniper and receipt suites re-run). Daemons and tonight's tasks untouched.
+
 Round 100 complete (2026-09-05): KNOWLEDGE PHASE 3 - JOURNAL + CALIBRATION LEDGER (B10),
 TYPED RELATIONS (B11, lint L6), STALENESS POLICY (B14, lint L7), UNIVERSAL CARRY-OVER
 (Ruling 99-2). NEW knowledge/journal.py: journal/YYYY-MM-DD.md on receipts or --create;
@@ -969,6 +993,22 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 101 findings
+
+- The exporter change is the first knowledge-layer commit that touches daemon SOURCE.
+  A pythonw process does not reload a module, so 56412 keeps printing the old header
+  until its next restart; the maiden-night marker block is unaffected. The change is
+  one string element per note, and the exporter suites pass.
+- The sniper's receipt carries `edge` = confidence and `hurdle` = worst breakeven, both
+  probabilities. That is the only pair of numbers for which "edge >= hurdle" reproduces
+  the module's actual placement rule; a dollar edge would not.
+- Bases filters use file.inFolder(...) rather than a property test because a nested
+  `dev:` mapping is opaque to Bases; the folder-per-type layout carries the type.
+- Templates omit stale_after on purpose with a comment: a fresh Concept page then
+  draws a lint L7 warning until the human sets the review date, which is the nudge.
+- The killswitch is a realised-loss budget (100-c); with fills only, the drawdown check
+  is UNCHECKED and the page says why. Pairing closes is the unlock, not a heuristic.
 
 ## Round 100 findings
 

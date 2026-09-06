@@ -141,14 +141,21 @@ def _first_clause(cit: Citation, limit: int = 110) -> str:
     return (sentence[: limit - 1].rstrip(_TITLE_STRIP) + "…") if len(sentence) > limit else sentence
 
 
-def compile_ruling(cit: Citation, agents_rel: str, vault: Path, at, by: str = GENERATED_BY) -> Page:
+def compile_ruling(cit: Citation, agents_rel: str, vault: Path, at, by: str = GENERATED_BY,
+                   ratified_pages: list[str] | None = None) -> Page:
     clause = _first_clause(cit)
     title = f"{cit.id}" + (f": {clause}" if clause else "")
+    ratified_pages = ratified_pages or []
     body = [f"# {cit.id}", "",
             "> Extracted from the handoff log by number; `status: draft` until Antigravity ratifies the text (R95-D).", "",
             "## Citations", ""]
     for o in cit.occurrences:
         body += [f"- **{o.section}** (line {o.line}): {o.excerpt}"]
+    if ratified_pages:  # Ruling 100-f: a ruling that ratified pages says so, and lists them
+        body += ["", f"## Effect in this wiki", "",
+                 f"This ruling ratified {len(ratified_pages)} page(s) (`dev.ratified_by: {cit.major}-{cit.minor}`), each carrying "
+                 f"`verified: antigravity/architect` and `status: stable`:", ""]
+        body += [f"- [[{stem}]]" for stem in ratified_pages]
     body += ["", "## Related", "", f"- [[{REGISTER_FILE}|Rulings register]]", ""]
     dev: dict[str, Any] = {
         "round": cit.major, "ruling_id": cit.short, "kind": cit.kind.lower(),
@@ -157,7 +164,8 @@ def compile_ruling(cit: Citation, agents_rel: str, vault: Path, at, by: str = GE
         "asserts": [{"file": agents_rel, "pattern": rf"{cit.kind}\s+{cit.major}-{cit.minor}\b",
                      "claim": "the citation still exists in the handoff log"}],
     }
-    meta = make_meta("Ruling", title, (cit.occurrences[0].excerpt.lstrip("…")[:300]),
+    description = (f"Ratification of {len(ratified_pages)} wiki page(s): " if ratified_pages else "") + cit.occurrences[0].excerpt.lstrip("…")
+    meta = make_meta("Ruling", title, description[:300],
                      tags=["ruling", cit.kind.lower(), f"round-{cit.major}", "extracted"],
                      generated_by=by, at=at, status="draft", stale_after=default_stale_after("Ruling", at),
                      sources=[{"id": "agents-md", "resource": agents_rel,
@@ -182,8 +190,14 @@ def ingest_rulings(agents_path: Path, vault: Path, dev_root: Path, *, at=None, b
     cits = extract_citations(text)
     rel = rel_to(agents_path, dev_root)
     report = RulingsReport(found=len(cits))
+    ratified_by: dict[str, list[str]] = {}
+    for p in load_pages(vault):
+        rb = (p.meta.get("dev") or {}).get("ratified_by")
+        if isinstance(rb, str):
+            ratified_by.setdefault(rb, []).append(p.path.stem)
     for key in sorted(cits, key=lambda k: (cits[k].major, cits[k].minor, cits[k].kind)):
-        page = compile_ruling(cits[key], rel, vault, at, by)
+        cit = cits[key]
+        page = compile_ruling(cit, rel, vault, at, by, ratified_pages=sorted(ratified_by.get(f"{cit.major}-{cit.minor}", [])))
         prel = page.path.relative_to(vault).as_posix()
         if page.path.exists() and not force:
             report.skipped.append(prel)

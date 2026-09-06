@@ -418,6 +418,7 @@ last_synced: "{now_utc}"
 # 👑 Polymarket Monarch • Real-Time Intelligence
 
 {nav_line}
+> **Desk**: [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]] · Shell twin: `python Polymarket/Polymarket_Monarch/obsidian_sync.py --once`
 
 > [!TIP] **System Status: LIVE**
 > - **Last Synchronized**: `{now_utc}`

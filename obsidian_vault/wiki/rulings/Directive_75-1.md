@@ -13,7 +13,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -27,14 +27,14 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 347
+    line: 372
     excerpt: '…`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not
       yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag:
       RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down)
       and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies
       under the registered bars, the meta file read, never written).…'
   - section: Round 75 findings
-    line: 1244
+    line: 1288
     excerpt: …- **Directive 75-1's four steps are one command with exit codes**, so
       the 01:40Z check can be pasted by whoever is at the keyboard; Tier 2 cannot
       be run early by mistake - the protocol refuses until the run-at marker exists.
@@ -53,8 +53,8 @@ verified:
 
 ## Citations
 
-- **Status** (line 347): …`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag: RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down) and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies under the registered bars, the meta file read, never written).…
-- **Round 75 findings** (line 1244): …- **Directive 75-1's four steps are one command with exit codes**, so the 01:40Z check can be pasted by whoever is at the keyboard; Tier 2 cannot be run early by mistake - the protocol refuses until the run-at marker exists.
+- **Status** (line 372): …`python -m cross_market.maiden_protocol` (exit 0 all checks / 3 not yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag: RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down) and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies under the registered bars, the meta file read, never written).…
+- **Round 75 findings** (line 1288): …- **Directive 75-1's four steps are one command with exit codes**, so the 01:40Z check can be pasted by whoever is at the keyboard; Tier 2 cannot be run early by mistake - the protocol refuses until the run-at marker exists.
 
 ## Related
 

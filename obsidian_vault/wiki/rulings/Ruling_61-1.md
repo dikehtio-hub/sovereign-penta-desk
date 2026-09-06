@@ -12,7 +12,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -26,7 +26,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 514
+    line: 539
     excerpt: …stress_calibration() judges each held perp against its OWN median daily
       vol (shock = > 3x it), qualifies a coin at >= 14 distinct days, and averages
       shock probability / multiplier over qualifying coins (Ruling 61-1).…
@@ -45,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 514): …stress_calibration() judges each held perp against its OWN median daily vol (shock = > 3x it), qualifies a coin at >= 14 distinct days, and averages shock probability / multiplier over qualifying coins (Ruling 61-1).…
+- **Status** (line 539): …stress_calibration() judges each held perp against its OWN median daily vol (shock = > 3x it), qualifies a coin at >= 14 distinct days, and averages shock probability / multiplier over qualifying coins (Ruling 61-1).…
 
 ## Related
 

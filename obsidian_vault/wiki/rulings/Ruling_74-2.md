@@ -13,7 +13,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -27,7 +27,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 366
+    line: 391
     excerpt: '…Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json
       (counts only, no subfamily correlation run) and enforced in code: lead_lag --subfamily
       fed-rates|crypto reads the `sport` label the fetcher stamped (drops carry no
@@ -47,7 +47,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 366): …Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json (counts only, no subfamily correlation run) and enforced in code: lead_lag --subfamily fed-rates|crypto reads the `sport` label the fetcher stamped (drops carry no tag_slug), --latency-minutes 5 reports a peak inside the poll…
+- **Status** (line 391): …Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json (counts only, no subfamily correlation run) and enforced in code: lead_lag --subfamily fed-rates|crypto reads the `sport` label the fetcher stamped (drops carry no tag_slug), --latency-minutes 5 reports a peak inside the poll…
 
 ## Related
 

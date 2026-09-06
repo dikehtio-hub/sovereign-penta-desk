@@ -205,11 +205,30 @@ def update_regime(vault: Path, verdict: Page, *, at: datetime, by: str = GENERAT
     return Page(path, meta, _render_regime(history))
 
 
+REGISTRATION_FOR_TIER = {"2": "lead_lag_tier2_meta", "2b": "lead_lag_tier2b_meta"}  # Tier 1 has no meta file (the maiden run)
+
+
+def annotate_registration(vault: Path, tier: str, *, at: datetime) -> Page | None:
+    """Ruling 100-e: write the running verdict count back onto the registration PAGE (never the raw meta file)."""
+    stem = REGISTRATION_FOR_TIER.get(str(tier))
+    if not stem:
+        return None
+    reg = load_page(page_path(vault, "Experiment", stem))
+    if reg is None:
+        return None
+    runs = sum(1 for p in load_pages(vault) if p.type == "Experiment" and (p.meta.get("dev") or {}).get("kind") == "lead_lag_verdict"
+               and str((p.meta.get("dev") or {}).get("tier")) == str(tier))
+    reg.meta.setdefault("dev", {})["tests_run"] = runs
+    write_page(reg, vault, now=at)
+    return reg
+
+
 def ingest_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier: str, source: str,
                    at: datetime | None = None, by: str = GENERATED_BY) -> tuple[Page, Page]:
     at = at or now_utc()
     verdict = compile_verdict(result, vault, dev_root, tier=tier, source=source, at=at, by=by)
     write_page(verdict, vault, now=at)
+    annotate_registration(vault, tier, at=at)
     regime = update_regime(vault, verdict, at=at, by=by)
     write_page(regime, vault, now=at)
     write_page(update_register(vault, at=at, by=by), vault, now=at)

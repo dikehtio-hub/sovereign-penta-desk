@@ -12,7 +12,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -26,7 +26,7 @@ dev:
   kind: ratification
   citations:
   - section: Status
-    line: 308
+    line: 333
     excerpt: '…Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll()
       no longer binds `log=print` at import (`_emit` resolves print at call time);
       a tree-wide grep confirms no `= print` default remains outside tests.…'
@@ -45,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 308): …Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll() no longer binds `log=print` at import (`_emit` resolves print at call time); a tree-wide grep confirms no `= print` default remains outside tests.…
+- **Status** (line 333): …Ratification 77-3 applied: Sports_Desk/ingestors/odds_fetcher.poll() no longer binds `log=print` at import (`_emit` resolves print at call time); a tree-wide grep confirms no `= print` default remains outside tests.…
 
 ## Related
 

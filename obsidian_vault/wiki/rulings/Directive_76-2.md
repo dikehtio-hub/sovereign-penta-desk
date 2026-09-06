@@ -13,7 +13,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -27,7 +27,7 @@ dev:
   kind: directive
   citations:
   - section: Status
-    line: 333
+    line: 358
     excerpt: '…Directive 76-2 is implemented but INERT: collect_live_questions records
       every tag a market was fetched under in `tags` (list, --tags order) while `sport`
       keeps the first tag''s label, so the matcher, Tier 1 and the registered Tier
@@ -47,7 +47,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 333): …Directive 76-2 is implemented but INERT: collect_live_questions records every tag a market was fetched under in `tags` (list, --tags order) while `sport` keeps the first tag's label, so the matcher, Tier 1 and the registered Tier 2 filter read what they read before.…
+- **Status** (line 358): …Directive 76-2 is implemented but INERT: collect_live_questions records every tag a market was fetched under in `tags` (list, --tags order) while `sport` keeps the first tag's label, so the matcher, Tier 1 and the registered Tier 2 filter read what they read before.…
 
 ## Related
 

@@ -231,6 +231,8 @@ def iter_page_files(vault: Path) -> Iterable[Path]:
         for p in sorted(root.rglob("*.md")):
             if p.name in RESERVED_FILES:
                 continue
+            if any(part.startswith("_") for part in p.relative_to(root).parts[:-1]):
+                continue  # _views/, _templates/: tooling folders, not pages (Round 101)
             yield p
 
 

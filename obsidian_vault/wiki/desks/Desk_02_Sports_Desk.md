@@ -9,7 +9,7 @@ tags:
 - desk-2
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:42Z'
+  at: '2026-09-06T00:57:06Z'
 status: draft
 sources:
 - id: top20-registry
@@ -77,6 +77,7 @@ Sportsbook desk: multi-book odds ingestion, Shin/Power devigging to fair value, 
 - [[markets_register|Markets register]]
 - [[crm_register|CRM register]]
 - [[journal_register|Journal register]]
+- [[theses_register|Theses register]]
 
 ## Other desks
 

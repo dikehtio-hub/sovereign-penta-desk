@@ -29,17 +29,29 @@ RECEIPT_COLUMNS = ["timestamp", "symbol", "side", "quantity", "price",
 
 
 def build_notes(strategy: str, exit_reason: Optional[str] = None,
-                extra: Optional[str] = None) -> str:
+                extra: Optional[str] = None,
+                gross_edge: Optional[float] = None,
+                after_tax_hurdle: Optional[float] = None) -> str:
     """
-    The `notes` cell: `strategy:<name>; exit_reason:<reason>; <extra>`.
+    The `notes` cell: `strategy:<name>; exit_reason:<reason>; edge:<f>; hurdle:<f>; <extra>`.
 
     Each tag is terminated with `;` because the ledger matches them with a LIKE.
     Without the terminator `strategy:sandbox` also matches `strategy:sandbox_v2`,
     pooling one strategy's exposure into another's bucket.
+
+    `edge` and `hurdle` (Round 101, Ruling 100-b) are the gross edge the caller
+    priced and the after-tax hurdle it had to clear, as fractions, so a journal
+    can check the fill against the rule it was placed under without re-deriving
+    either from the ledger. Both are optional: a fill that carries neither is
+    reported as UNCHECKED, never as passing.
     """
     parts = [f"strategy:{str(strategy).strip()};"]
     if exit_reason:
         parts.append(f"exit_reason:{str(exit_reason).strip()};")
+    if gross_edge is not None:
+        parts.append(f"edge:{float(gross_edge):.4f};")
+    if after_tax_hurdle is not None:
+        parts.append(f"hurdle:{float(after_tax_hurdle):.4f};")
     if extra:
         parts.append(str(extra).strip())
     return " ".join(parts)
@@ -56,7 +68,9 @@ def log_execution_receipt(symbol: str,
                           tx_hash: Optional[str] = None,
                           timestamp: Optional[str] = None,
                           imports_dir: Optional[Path] = None,
-                          extra_notes: Optional[str] = None) -> Optional[Path]:
+                          extra_notes: Optional[str] = None,
+                          gross_edge: Optional[float] = None,
+                          after_tax_hurdle: Optional[float] = None) -> Optional[Path]:
     """
     Writes one filled trade to the drop folder. Returns the path, or None.
 
@@ -101,7 +115,7 @@ def log_execution_receipt(symbol: str,
             writer.writerow([stamp, symbol, str(side).upper(), f"{quantity:.8f}",
                              f"{price:.8f}", f"{float(fee):.8f}",
                              str(key).replace(" ", "_"), venue,
-                             build_notes(name, exit_reason, extra_notes)])
+                             build_notes(name, exit_reason, extra_notes, gross_edge, after_tax_hurdle)])
         return path
     except Exception as e:
         print(f"[WARN] Could not write execution receipt for {symbol} ({type(e).__name__}: "

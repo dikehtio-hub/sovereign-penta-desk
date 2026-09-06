@@ -15,6 +15,7 @@ second run with the same actor changes nothing.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -32,19 +33,35 @@ DEFAULT_ACTOR = "antigravity/architect"
 class RatifyReport:
     ratified: list[str] = field(default_factory=list)
     already: list[str] = field(default_factory=list)
+    skipped_later: list[str] = field(default_factory=list)   # dev.round later than the ruling's round
     selected: int = 0
 
 
+def ruling_round(ruling: str) -> int | None:
+    m = re.match(r"^(\d+)-\d+$", ruling.strip())
+    return int(m.group(1)) if m else None
+
+
 def ratify(vault: Path, *, type_: str, ruling: str, tag: str | None = None, by: str = DEFAULT_ACTOR,
-           status: str = "stable", at: datetime | None = None, dry_run: bool = False) -> RatifyReport:
+           status: str = "stable", at: datetime | None = None, dry_run: bool = False,
+           max_round: int | None = None) -> RatifyReport:
+    """`max_round` (Round 101): a ruling issued in round N cannot ratify a page whose `dev.round` is later
+    than N. Default: the ruling's own round. Without it, a batch ratification re-run after new rounds
+    were extracted would silently verify citations the ruling never saw (Ruling 99-2 under 98-1)."""
     at = at or now_utc()
     if not is_actor(by):
         raise ValueError(f"{by!r} is not an OKF actor string")
+    if max_round is None:
+        max_round = ruling_round(ruling)
     report = RatifyReport()
     for page in load_pages(vault):
         if page.type != type_:
             continue
         if tag and tag not in (page.meta.get("tags") or []):
+            continue
+        page_round = (page.meta.get("dev") or {}).get("round")
+        if max_round is not None and isinstance(page_round, int) and page_round > max_round:
+            report.skipped_later.append(page.path.relative_to(vault).as_posix())
             continue
         report.selected += 1
         rel = page.path.relative_to(vault).as_posix()
@@ -82,6 +99,7 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap.add_argument("--status", default="stable", choices=["draft", "stable", "deprecated"])
     ap.add_argument("--at", default=None)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--max-round", type=int, default=None, help="do not ratify pages with dev.round later than this (default: the ruling's round)")
     args = ap.parse_args(argv)
     if halted(args.dev_root):
         print(f"[HALT] {args.dev_root / 'HALT.flag'} present - ratify refuses (exit {EXIT_HALT})", file=out)
@@ -91,13 +109,16 @@ def main(argv: list[str] | None = None, out=None) -> int:
         return EXIT_HALT
     try:
         report = ratify(args.vault, type_=args.type, ruling=args.ruling, tag=args.tag, by=args.by, status=args.status,
-                        at=parse_iso8601(args.at) if args.at else None, dry_run=args.dry_run)
+                        at=parse_iso8601(args.at) if args.at else None, dry_run=args.dry_run, max_round=args.max_round)
     except ValueError as exc:
         print(f"[REFUSE] {exc} (exit {EXIT_HALT})", file=out)
         return EXIT_HALT
     for r in report.ratified:
         print(("[DRY]   " if args.dry_run else "[VERIFY] ") + r, file=out)
-    print(f"ratify: {report.selected} selected, {len(report.ratified)} verified, {len(report.already)} already", file=out)
+    for r in report.skipped_later:
+        print("[LATER]  " + r + " (dev.round later than the ruling; not covered)", file=out)
+    print(f"ratify: {report.selected} selected, {len(report.ratified)} verified, {len(report.already)} already, "
+          f"{len(report.skipped_later)} later-round page(s) not covered", file=out)
     return EXIT_OK
 
 

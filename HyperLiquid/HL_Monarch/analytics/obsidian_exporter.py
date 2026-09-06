@@ -195,6 +195,31 @@ def get_service_telemetry() -> Dict[str, Any]:
 
 # --- Note Generators -------------------------------------------------------
 
+# Round 101 (F1, Ruling 98-2): the knowledge layer's Desk page and the command that reproduces these cards.
+# The Desk link is emitted only when the vault has been seeded (wiki/desks/...), so an unseeded vault never
+# shows a link Obsidian cannot resolve; the shell twin is always printed.
+DESK_WIKI_NOTE = "Desk_01_HyperLiquid_Monarch"
+DESK_WIKI_LABEL = "🧭 Desk 1: HyperLiquid Monarch (wiki)"
+SHELL_TWIN_COMMAND = "python HyperLiquid/HL_Monarch/main.py obsidian --once"
+
+
+def desk_wiki_link(vault_path: Path) -> Optional[str]:
+    seeded = (Path(vault_path) / "wiki" / "desks" / f"{DESK_WIKI_NOTE}.md").exists()
+    return wikilink(DESK_WIKI_NOTE, DESK_WIKI_LABEL) if seeded else None
+
+
+def desk_nav_bullet(vault_path: Path) -> str:
+    link = desk_wiki_link(vault_path)
+    return (f"- {link} · Shell twin: `{SHELL_TWIN_COMMAND}`" if link
+            else f"- Shell twin: `{SHELL_TWIN_COMMAND}` (wiki Desk page not seeded in this vault)")
+
+
+def desk_nav_line(vault_path: Path) -> str:
+    link = desk_wiki_link(vault_path)
+    return (f"> **Desk**: {link} · Shell twin: `{SHELL_TWIN_COMMAND}`" if link
+            else f"> **Shell twin**: `{SHELL_TWIN_COMMAND}`")
+
+
 def generate_bot_control_note(vault_path: Path, synced_at: str) -> Tuple[Path, bool]:
     """Generate the Bot_Control.md interactive activation deck note."""
     file_path = vault_path / f"{BOT_CONTROL_NOTE}.md"
@@ -264,6 +289,7 @@ last_synced: "{synced_at}"
 
 ## 🔗 Cockpit Navigation
 
+{desk_nav_bullet(vault_path)}
 - [[Monarch_Hub|👑 Monarch Intelligence Hub]]
 - [[Bot_Config|⚙️ Bot Configuration & Risk Controller]]
 - [[Trading_Terminal|📈 Live Trading Terminal & 50-Trade Hurdle]]
@@ -467,6 +493,7 @@ last_synced: "{synced_at}"
 
 ## 🔗 Cockpit Navigation
 
+{desk_nav_bullet(vault_path)}
 - [[Monarch_Hub|👑 Monarch Intelligence Hub]]
 - [[Bot_Control|🎮 Bot Control & Activation Deck]]
 - [[Bot_Config|⚙️ Bot Configuration & Risk Controller]]
@@ -718,6 +745,7 @@ def export_hyperliquid_to_obsidian(
     if xarb_link:
         nav_parts.append(xarb_link)
     nav_line = "> **Cockpit Navigation**: " + " • ".join(nav_parts)
+    nav_line += "\n" + desk_nav_line(vault_path)  # Round 101 (F1, Ruling 98-2)
 
     content = f"""---
 title: HyperLiquid Monarch TradFi & Crypto Intelligence

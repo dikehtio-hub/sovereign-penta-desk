@@ -734,12 +734,21 @@ def record_paper(opportunity: Opportunity, event: Event, receipts_dir: Optional[
              "expected_profit:%.2f; capped_by:%s; book_age:%.1fs" % (
                  STRATEGY, event.kind, event.source, event.confidence, opportunity.rule, opportunity.outcome,
                  opportunity.side, opportunity.expected_profit, opportunity.capped_by, opportunity.book_age_s))
+    # Round 101 (Ruling 100-b): the rule this fill was placed under, on the receipt. Both are probabilities:
+    # `edge` is the event confidence the levels were taken at, `hurdle` the highest after-tax breakeven win
+    # probability among the fills, so a journal's "edge >= hurdle" IS the sniper's own rule.
+    worst_breakeven = max((f.breakeven for f in opportunity.fills), default=None)
+    kwargs = dict(symbol=opportunity.market, side="BUY" if opportunity.side == "BUY_YES" else "SELL",
+                  quantity=round(opportunity.shares, 6), price=round(opportunity.vwap, 6), strategy=STRATEGY,
+                  venue="polymarket", fee=round(opportunity.fee_rate * opportunity.notional, 6),
+                  timestamp=stamp or _now().isoformat(), imports_dir=Path(receipts_dir or PAPER_RECEIPTS_DIR),
+                  extra_notes=notes)
     try:
-        return writer(symbol=opportunity.market, side="BUY" if opportunity.side == "BUY_YES" else "SELL",
-                      quantity=round(opportunity.shares, 6), price=round(opportunity.vwap, 6), strategy=STRATEGY,
-                      venue="polymarket", fee=round(opportunity.fee_rate * opportunity.notional, 6),
-                      timestamp=stamp or _now().isoformat(), imports_dir=Path(receipts_dir or PAPER_RECEIPTS_DIR),
-                      extra_notes=notes)
+        try:
+            return writer(**kwargs, gross_edge=round(float(event.confidence), 4),
+                          after_tax_hurdle=round(float(worst_breakeven), 4) if worst_breakeven is not None else None)
+        except TypeError:  # an older writer (or a test double) without the Round 101 keywords
+            return writer(**kwargs)
     except Exception as exc:                                # noqa: BLE001
         print("[WARN] paper receipt not written (%s: %s)" % (type(exc).__name__, exc))
         return None

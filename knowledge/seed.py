@@ -472,7 +472,7 @@ def build_desk_page(d: DeskSpec, items: list[ItemSpec], vault: Path, dev_root: P
              "- [[experiments_register|Experiments register]]", "- [[rulings_register|Rulings register]]",
              "- [[computations_register|Computations register]]", "- [[events_register|Events register]]",
              "- [[markets_register|Markets register]]", "- [[crm_register|CRM register]]",
-             "- [[journal_register|Journal register]]"]
+             "- [[journal_register|Journal register]]", "- [[theses_register|Theses register]]"]
     if d.number == 3:
         body += ["", "## Compiled pages (Phase 2 adapters)", "",
                  "- [[experiments_register|Experiments register]] - pre-registrations and verdicts",

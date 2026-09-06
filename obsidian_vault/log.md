@@ -3,6 +3,13 @@
 * **Ingest**: directives, ratifications and numbered rulings from `AGENTS.md`: 28 distinct citation(s), 28 page(s) written, 0 kept; [index](index.md) rebuilt.
 * **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 6 Experiment page(s) written, 0 kept; [index](index.md) rebuilt.
 * **Ingest**: attested computations: 1 page(s) written, 14 kept (2 shell twins, 13 knowledge CLIs); [index](index.md) rebuilt.
+* **Journal**: prediction on [[fomc_2026-09-16]]: `change_bps == 0` with p=0.90 recorded in [[2026-09-06]].
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T00:57:06Z): 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: directives, ratifications and numbered rulings from `AGENTS.md`: 29 distinct citation(s), 29 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ratify**: Ruling 98-1: 2 Ruling page(s) tagged `extracted` verified by `antigravity/architect` and set `stable`; 27 already carried that verification.
+* **Ingest**: docstring theses: 75 module(s) scanned, 35 Concept page(s) written, 0 kept; every heading pinned with dev:asserts; [index](index.md) rebuilt.
+* **Ingest**: attested computations: 2 page(s) written, 15 kept (2 shell twins, 15 knowledge CLIs); [index](index.md) rebuilt.
+* **Ratify**: correction: the verification placed on [[Ruling_99-2]] by the 98-1 batch is withdrawn - Ruling 98-1 (Round 98) never covered a Round 99 citation; the page is `draft` until Antigravity ratifies it explicitly. knowledge.ratify now refuses pages whose dev.round is later than the ruling's round.
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

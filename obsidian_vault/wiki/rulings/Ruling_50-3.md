@@ -12,7 +12,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -26,7 +26,7 @@ dev:
   kind: ruling
   citations:
   - section: Round 53 findings
-    line: 1719
+    line: 1763
     excerpt: '…- **Live activation**: the real drop dir now carries live sports (410)
       and macro (300) questions from a one-shot run; the WATCHER itself is an operator-session
       process in start_all_ecosystem_sync.bat (Ruling 50-3).…'
@@ -45,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Round 53 findings** (line 1719): …- **Live activation**: the real drop dir now carries live sports (410) and macro (300) questions from a one-shot run; the WATCHER itself is an operator-session process in start_all_ecosystem_sync.bat (Ruling 50-3).…
+- **Round 53 findings** (line 1763): …- **Live activation**: the real drop dir now carries live sports (410) and macro (300) questions from a one-shot run; the WATCHER itself is an operator-session process in start_all_ecosystem_sync.bat (Ruling 50-3).…
 
 ## Related
 

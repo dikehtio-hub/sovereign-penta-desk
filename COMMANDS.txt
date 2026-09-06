@@ -2360,6 +2360,28 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 101 - KNOWLEDGE PHASE 4: BASES VIEWS + TEMPLATES, SHELL TWINS + DESK BACKLINKS, DOCSTRING THESES, RECEIPT EDGE/HURDLE
+     python -m knowledge.views [--force] [--dry-run]
+         wiki/_views/{rulings,experiments,markets,profiles,crm,journal,events}.base - Obsidian Bases YAML (filters file.inFolder(...),
+         table views with title/status/stale_after columns) and wiki/_templates/{postmortem,memo,contact,thesis}.md with OKF-valid
+         frontmatter (generated.by human:operator, Obsidian {{date}}/{{time}}/{{title}} placeholders). `_` folders are tooling: skipped
+         by index and lint. Operator settings (never written here): Templates folder -> wiki/_templates, Daily notes -> journal.
+     python -m knowledge.ingest.theses [--root DIR ...] [--force]
+         Titled ALL-CAPS docstring sections (THE THESIS., WHAT IT REFUSES..., WHY THIS MODULE EXISTS...) of the desk modules ->
+         wiki/concepts/thesis_<module>.md; every heading pinned with dev:asserts (C1) and the module as dev:requires_files; Concept
+         policy stale_after 90 d; theses_register (8th register, linked from every Desk).
+     F1 (Ruling 98-2): Sports_Desk, cross_market, HL_Monarch (Bot_Control, Trading_Terminal, HyperLiquid_Monarch), Polymarket_Monarch and
+         Tax_Reserve_Agent exporters print `Desk: [[Desk_0N_...]] · Shell twin: <--once command>`. Source-only change; running
+         daemons are unaffected until restarted. quant_trading_lab's exporter is its own repo (dirty tree) - not touched.
+     Receipts (Ruling 100-b): receipts.log_execution_receipt(gross_edge=, after_tax_hurdle=) -> notes `edge:0.9950; hurdle:0.9820;`;
+         latency_sniper.record_paper passes edge = event confidence and hurdle = the worst fill breakeven (both probabilities, so
+         edge >= hurdle IS the sniper's rule); older writer doubles without the keywords still work.
+     Journal (Rulings 100-a/100-c): free-text --claim predictions scored with --score --event E --outcome 0|1 (scored_by human:operator);
+         debrief labels volume `Daily Paper Notional Turnover`, drawdown vs killswitch UNCHECKED (fills are not realised loss), per-fill
+         hurdle check PASS/FLAG/UNCHECKED from receipt notes. Ruling 100-e: tests_run written back onto the registration PAGE per tier.
+         Ruling 100-f: Ruling_98-1.md ratified; its page lists the 27 pages it ratified (## Effect in this wiki).
+     Tests: python -m unittest knowledge.tests.test_knowledge   (master module 23, 100 tests)
+
      ROUND 100 - KNOWLEDGE PHASE 3: JOURNAL + CALIBRATION LEDGER, TYPED RELATIONS (L6), STALENESS POLICY (L7) (knowledge/journal.py)
      python -m knowledge.journal --date YYYY-MM-DD [--create] [--receipts DIR] [--at ISO]
          journal/YYYY-MM-DD.md when paper receipts exist for the day or on --create. Plan (human, preserved) · Executions (one row per
@@ -2837,7 +2859,7 @@ esults_drops\.
        polymarket: python Polymarket\Polymarket_Monarch\obsidian_sync.py --once  (Polymarket_Monarch.md + Wallets/)
        tests:     python -m unittest Tax_Reserve_Agent.tests.test_agent test_empty_ledger test_new_features
                   test_sports_tax test_tradovate_receipts                            (546)
-     MASTER SUITE (23 modules, 1,027): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
+     MASTER SUITE (23 modules, 1,036): the Sports_Desk + cross_market modules above plus cross_market.tests.test_c2_bot, cross_market.tests.test_latency_sniper, cross_market.tests.test_amm_rewards, knowledge.tests.test_knowledge,
        Tax_Reserve_Agent.tests.test_sports_tax and test_new_features, via python -m unittest.
      ALL VAULT NOTES AT ONCE: start_all_ecosystem_sync.bat (background watchers), or run the
        five `--once` commands above in order; the canvas links the newest Tax_Reserve note.

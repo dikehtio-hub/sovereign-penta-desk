@@ -9,7 +9,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -23,7 +23,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 486
+    line: 511
     excerpt: …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
   asserts:
   - file: AGENTS.md
@@ -40,7 +40,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 486): …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
+- **Status** (line 511): …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
 
 ## Related
 

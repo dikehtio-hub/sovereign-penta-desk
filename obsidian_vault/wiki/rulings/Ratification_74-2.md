@@ -9,7 +9,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -23,10 +23,10 @@ dev:
   kind: ratification
   citations:
   - section: Status
-    line: 347
+    line: 372
     excerpt: …Nothing in polymarket_fetcher.py was touched (Ratification 74-2).…
   - section: Round 99 findings
-    line: 950
+    line: 994
     excerpt: '…- The old title rule ("text after the citation") produced `Ratification
       74-2: ).…` whenever a citation closed a parenthetical; titles are now the cleaned
       sentence that contains the citation, with the citation and its parentheses removed.'
@@ -45,8 +45,8 @@ verified:
 
 ## Citations
 
-- **Status** (line 347): …Nothing in polymarket_fetcher.py was touched (Ratification 74-2).…
-- **Round 99 findings** (line 950): …- The old title rule ("text after the citation") produced `Ratification 74-2: ).…` whenever a citation closed a parenthetical; titles are now the cleaned sentence that contains the citation, with the citation and its parentheses removed.
+- **Status** (line 372): …Nothing in polymarket_fetcher.py was touched (Ratification 74-2).…
+- **Round 99 findings** (line 994): …- The old title rule ("text after the citation") produced `Ratification 74-2: ).…` whenever a citation closed a parenthetical; titles are now the cleaned sentence that contains the citation, with the citation and its parentheses removed.
 
 ## Related
 

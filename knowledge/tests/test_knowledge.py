@@ -11,6 +11,8 @@ import json
 import os
 import tempfile
 import unittest
+
+import yaml
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -1198,7 +1200,7 @@ class RegistersAndSeedLinksTests(IngestFixture):
         body = (self.vault / "wiki/desks/Desk_04_Quant_Trading_Lab.md").read_text(encoding="utf-8")
         for stem in registers.REGISTER_STEMS:
             self.assertIn(f"[[{stem}|", body)
-        self.assertEqual(len(registers.REGISTER_STEMS), 7)
+        self.assertEqual(len(registers.REGISTER_STEMS), 8)
 
     def test_register_columns_and_cells(self):
         ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
@@ -1372,6 +1374,17 @@ class RatifyTests(RulingsIngestTests):
         self.assertIn("| directive | 75 | stable |", registers.update_register(self.vault, "Ruling", at=NOW).body)
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(hours=3)), [])
 
+    def test_ratify_never_covers_a_later_round(self):
+        (self.dev_root / "AGENTS.md").write_text(AGENTS_FIXTURE + "\n## Round 99 findings\n\nRuling 99-2 says carry human fields everywhere.\n", encoding="utf-8")
+        ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
+        report = ratify_mod.ratify(self.vault, type_="Ruling", tag="extracted", ruling="98-1", at=NOW)
+        self.assertEqual(report.skipped_later, ["wiki/rulings/Ruling_99-2.md"])
+        self.assertEqual(report.selected, 5)  # the four Round 39-77 pages + Ruling 66-1; 99-2 is later than round 98
+        r, _ = fm.parse((self.vault / "wiki/rulings/Ruling_99-2.md").read_text(encoding="utf-8"))
+        self.assertNotIn("verified", r)
+        self.assertEqual(ratify_mod.ruling_round("98-1"), 98)
+        self.assertIsNone(ratify_mod.ruling_round("R95"))
+
     def test_ratify_cli_and_actor_check(self):
         ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
         out = io.StringIO()
@@ -1401,7 +1414,8 @@ class JournalTests(IngestFixture):
         self.receipts = self.dev_root / "cross_market" / "data" / "paper_receipts"
         self.receipts.mkdir(parents=True)
         (self.receipts / "fills_polymarket_latency_sniper_20260905_180000_a1b2c3d4.csv").write_text(
-            RECEIPT_HEADER + "2026-09-05T18:00:03+00:00,FOMC-NOCHANGE-YES,BUY,1000.00000000,0.50000000,0.00000000,paper-1,polymarket,strategy=latency_sniper; paper\n",
+            RECEIPT_HEADER + "2026-09-05T18:00:03+00:00,FOMC-NOCHANGE-YES,BUY,1000.00000000,0.50000000,0.00000000,paper-1,polymarket,"
+            "strategy:latency_sniper; edge:0.9950; hurdle:0.9820; paper:1;\n",
             encoding="utf-8")
         (self.receipts / "fills_polymarket_polymarket_amm_20260905_181500_e5f6a7b8.csv").write_text(
             RECEIPT_HEADER + "2026-09-05T18:15:00+00:00,BTC-78K-YES,SELL,100.00000000,0.98000000,0.00000000,paper-2,polymarket,strategy=polymarket_amm; paper\n"
@@ -1414,13 +1428,16 @@ class JournalTests(IngestFixture):
         self.assertIsNotNone(page)
         self.assertEqual(page.path.name, "2026-09-05.md")
         d = page.meta["dev"]
-        self.assertEqual((d["receipts"], d["notional_total"]), (2, 598.0))          # 1000*0.5 + 100*0.98; the 09-04 row is not this day
-        self.assertEqual(d["debrief"]["drawdown_check"], "PASS")                   # 598 < 3,500 killswitch from the fixture CLAUDE.md
-        self.assertEqual(d["debrief"]["hurdle_check"], "UNCHECKED")
+        self.assertEqual((d["receipts"], d["turnover_total"]), (2, 598.0))          # 1000*0.5 + 100*0.98; the 09-04 row is not this day
+        self.assertEqual(d["debrief"]["drawdown_check"], "UNCHECKED")              # Ruling 100-c: fills are not realised loss
+        self.assertEqual(d["debrief"]["drawdown_budget_usd"], 3500.0)
+        self.assertEqual(d["debrief"]["hurdle_check"], "PASS")                     # one receipt carries edge >= hurdle, the other is unchecked
+        self.assertEqual(d["debrief"]["hurdle_counts"], {"PASS": 1, "UNCHECKED": 1})
         self.assertEqual(d["debrief"]["by_strategy"], {"latency_sniper": 500.0, "polymarket_amm": 98.0})
         self.assertEqual(d["parameters"][0]["name"], "daily_drawdown_killswitch_usd")
         self.assertNotIn("stale_after", page.meta)                                 # journals are never stale
-        self.assertIn("| 2026-09-05T18:00:03+00:00 | polymarket | latency_sniper | FOMC-NOCHANGE-YES | BUY | 1000 | 0.5 | $500.00 |", page.body)
+        self.assertIn("| 2026-09-05T18:00:03+00:00 | polymarket | latency_sniper | FOMC-NOCHANGE-YES | BUY | 1000 | 0.5 | $500.00 | 0 | 0.9950 | 0.9820 | PASS |", page.body)
+        self.assertIn("Daily Paper Notional Turnover: $598.00", page.body)
         # the operator writes a plan; a re-run keeps it and re-renders everything else
         text = page.path.read_text(encoding="utf-8").replace(journal_mod.PLAN_PLACEHOLDER, "Sit out the BTC ladders; drill card at T-2.")
         page.path.write_text(text, encoding="utf-8")
@@ -1431,16 +1448,18 @@ class JournalTests(IngestFixture):
         self.assertEqual(reg["dev"]["count"], 1)
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
 
-    def test_quiet_day_needs_create_and_flags_a_budget_breach(self):
+    def test_quiet_day_needs_create_and_a_receipt_below_its_hurdle_flags(self):
         quiet = date(2026, 9, 7)
         self.assertIsNone(journal_mod.write_day(self.vault, self.dev_root, quiet, at=NOW))
         page = journal_mod.write_day(self.vault, self.dev_root, quiet, at=NOW, create=True)
-        self.assertEqual(page.meta["dev"]["debrief"], {"executions": 0, "notional_total": 0.0, "by_strategy": {}, "drawdown_check": "N/A", "hurdle_check": "N/A"})
+        self.assertEqual(page.meta["dev"]["debrief"], {"executions": 0, "turnover_total": 0.0, "by_strategy": {}, "drawdown_check": "N/A", "hurdle_check": "N/A"})
         (self.receipts / "fills_polymarket_latency_sniper_20260907_x.csv").write_text(
-            RECEIPT_HEADER + "2026-09-07T18:00:03+00:00,BIG,BUY,10000.00000000,0.50000000,0,paper-9,polymarket,strategy=latency_sniper\n", encoding="utf-8")
+            RECEIPT_HEADER + "2026-09-07T18:00:03+00:00,BELOW,BUY,100.00000000,0.50000000,0,paper-9,polymarket,strategy:latency_sniper; edge=0.0300;hurdle=0.0380;\n",
+            encoding="utf-8")
         page = journal_mod.write_day(self.vault, self.dev_root, quiet, at=NOW)
-        self.assertEqual(page.meta["dev"]["debrief"]["drawdown_check"], "FLAG")   # $5,000 > $3,500
-        self.assertIn("FLAG - exceeds the budget", page.body)
+        self.assertEqual(page.meta["dev"]["debrief"]["hurdle_check"], "FLAG")     # 0.030 < 0.038; `=` separators accepted too
+        self.assertIn("| 0.0300 | 0.0380 | FLAG |", page.body)
+        self.assertEqual(page.meta["dev"]["debrief"]["drawdown_check"], "UNCHECKED")
 
     def test_predict_then_score_against_the_event_payload(self):
         # two predictions before the print: one right at 0.9, one wrong at 0.8
@@ -1473,11 +1492,29 @@ class JournalTests(IngestFixture):
         self.assertIn("**Journal**: prediction on [[fomc_2026-09-16]]: `change_bps == 0` with p=0.90", log)
         self.assertIn("**Journal**: scored 2 prediction(s)", log)
 
+    def test_free_text_claim_scores_only_by_hand(self):
+        journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="fomc_2026-09-16", claim="Powell says 'data dependent' at least twice", p=0.7, at=NOW)
+        journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="fomc_2026-09-16", field_="change_bps", op="==", value=0, p=0.9, at=NOW)
+        ingest_clob.ingest_survival(CURVE_JSON, self.vault, self.dev_root, event_id="fomc_2026-09-16", source="curve.json",
+                                    at=datetime(2026, 9, 16, 18, 10, tzinfo=timezone.utc))
+        res = journal_mod.score_predictions(self.vault, self.dev_root, at=datetime(2026, 9, 16, 18, 20, tzinfo=timezone.utc))
+        self.assertEqual(res, {"scored": 1, "pending": 1})  # the rule scored mechanically; the claim waits for a hand outcome
+        res = journal_mod.score_predictions(self.vault, self.dev_root, at=datetime(2026, 9, 16, 19, 0, tzinfo=timezone.utc),
+                                            event="fomc_2026-09-16", manual_outcome=1)
+        self.assertEqual(res, {"scored": 1, "pending": 0})
+        page = journal_mod.load_page(journal_mod.page_path(self.vault, "Journal Entry", "2026-09-05"))
+        claim = next(p for p in page.meta["dev"]["predictions"] if p.get("claim"))
+        self.assertEqual((claim["outcome"], claim["brier"], claim["scored_by"]), (1, 0.09, "human:operator"))
+        self.assertIn("| `Powell says 'data dependent' at least twice` | 0.70 | 1 | 0.0900 |", page.body)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=datetime(2026, 9, 16, 19, 0, tzinfo=timezone.utc)), [])
+
     def test_prediction_validation_and_cli(self):
         with self.assertRaises(ValueError):
             journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="e", field_="f", op="==", value=0, p=1.0, at=NOW)
         with self.assertRaises(ValueError):
             journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="e", field_="f", op="~", value=0, p=0.5, at=NOW)
+        with self.assertRaises(ValueError):
+            journal_mod.add_prediction(self.vault, self.dev_root, self.day, event="e", claim="   ", p=0.5, at=NOW)
         base = ["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--at", "2026-09-05T20:00:00Z"]
         out = io.StringIO()
         self.assertEqual(journal_mod.main(base + ["--date", "2026-09-05"], out=out), EXIT_OK)
@@ -1490,9 +1527,14 @@ class JournalTests(IngestFixture):
         page = journal_mod.load_page(journal_mod.page_path(self.vault, "Journal Entry", "2026-09-05"))
         self.assertEqual(page.meta["dev"]["predictions"][0]["value"], 0)  # "0" parsed as an int
         self.assertEqual(journal_mod.main(base + ["--predict", "--event", "x"], out=io.StringIO()), EXIT_HALT)
+        self.assertEqual(journal_mod.main(base + ["--predict", "--event", "x", "--claim", "free text", "--p", "0.6"], out=io.StringIO()), EXIT_OK)
+        self.assertEqual(journal_mod.main(base + ["--score", "--outcome", "1"], out=io.StringIO()), EXIT_HALT)  # --outcome needs --event
         out = io.StringIO()
         self.assertEqual(journal_mod.main(base + ["--score"], out=out), EXIT_OK)
-        self.assertIn("pending 1", out.getvalue())
+        self.assertIn("pending 2", out.getvalue())
+        out = io.StringIO()
+        self.assertEqual(journal_mod.main(base + ["--score", "--event", "x", "--outcome", "0"], out=out), EXIT_OK)
+        self.assertIn("scored 1, pending 1", out.getvalue())
         (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
         self.assertEqual(journal_mod.main(base + ["--date", "2026-09-05"], out=io.StringIO()), EXIT_HALT)
 
@@ -1595,6 +1637,128 @@ class CarryOverTests(IngestFixture):
             self.assertEqual((m["status"], m["stale_after"], m["verified"][0]["by"]), ("stable", "2027-06-01T00:00:00Z", "human:operator"), rel)
             self.assertEqual(m["generated"]["at"], pages.iso(later), rel)  # everything else was regenerated
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=later), [])
+
+
+# ---------------------------------------------------------------- Round 101: views, theses, receipt hurdle, effects, back-annotation
+
+from knowledge import views as views_mod  # noqa: E402
+from knowledge.ingest import theses as ingest_th  # noqa: E402
+
+THESIS_MODULE = '''"""Item 12, Phase 1: the latency sniper - OFFLINE ENGINE.
+
+THE THESIS. When a scheduled number prints, the resting book is stale for a few
+seconds and a reader of the statement can lift it before it is pulled.
+
+WHAT IT REFUSES, FAIL-CLOSED ON EVERY AXIS
+HALT.flag refuses everything; confidence under 0.99 refuses everything; a book
+older than 10 s is skipped; a market without a rule is never touched.
+
+NOTE: this one-liner is not a heading.
+Ordinary prose here.
+"""
+X = 1
+'''
+
+
+class ViewsTests(IngestFixture):
+    def test_bases_and_templates_are_written_valid_and_skipped_by_lint(self):
+        written, skipped = views_mod.write_views(self.vault, force=False)
+        self.assertEqual(len(written), len(views_mod.VIEWS) + len(views_mod.TEMPLATES))
+        base = yaml.safe_load((self.vault / "wiki/_views/rulings.base").read_text(encoding="utf-8"))
+        self.assertEqual(base["filters"]["and"][0], 'file.inFolder("wiki/rulings")')
+        self.assertEqual(base["views"][0]["type"], "table")
+        self.assertIn("title", base["views"][0]["order"])
+        self.assertEqual(base["properties"]["stale_after"]["displayName"], "stale after")
+        for v in views_mod.VIEWS:
+            yaml.safe_load((self.vault / f"wiki/_views/{v.name}.base").read_text(encoding="utf-8"))
+        # a template's frontmatter is OKF-valid before any placeholder is filled
+        tpl = (self.vault / "wiki/_templates/thesis.md").read_text(encoding="utf-8")
+        meta, _ = fm.parse(tpl.replace("{{title}}", "T").replace("{{date:YYYY-MM-DD}}", "2026-09-05").replace("{{time:HH:mm:ss}}", "12:00:00"))
+        self.assertEqual(fm.validate(meta), [])
+        self.assertEqual(meta["generated"]["by"], "human:operator")
+        # underscore folders are tooling: not pages, not indexed, not linted
+        self.assertFalse(any("_templates" in p.path.as_posix() for p in pages.load_pages(self.vault)))
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+        again_written, again_skipped = views_mod.write_views(self.vault)
+        self.assertEqual((again_written, len(again_skipped)), ([], len(written)))
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(views_mod.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=io.StringIO()), EXIT_HALT)
+
+
+class ThesesTests(IngestFixture):
+    def setUp(self):
+        super().setUp()
+        (self.dev_root / "cross_market" / "thesis_demo.py").write_text(THESIS_MODULE, encoding="utf-8")
+
+    def test_sections_extracted_pinned_and_registered(self):
+        secs = ingest_th.extract_sections(ast_docstring := __import__("ast").get_docstring(__import__("ast").parse(THESIS_MODULE)))
+        self.assertEqual([s.heading for s in secs], ["THE THESIS", "WHAT IT REFUSES, FAIL-CLOSED ON EVERY AXIS"])
+        self.assertTrue(secs[0].text.startswith("When a scheduled number prints"))
+        report = ingest_th.ingest_theses(["cross_market"], self.vault, self.dev_root, at=NOW)
+        self.assertIn("wiki/concepts/thesis_cross_market_thesis_demo.md", report.written)
+        self.assertGreaterEqual(report.scanned, 3)  # latency_sniper.py and amm_rewards.py stubs have no headings -> skipped
+        m, body = fm.parse((self.vault / "wiki/concepts/thesis_cross_market_thesis_demo.md").read_text(encoding="utf-8"))
+        self.assertEqual((m["type"], m["dev"]["kind"], m["dev"]["desk"]), ("Concept", "thesis", 3))
+        self.assertEqual(m["dev"]["headings"], ["THE THESIS", "WHAT IT REFUSES, FAIL-CLOSED ON EVERY AXIS"])
+        self.assertEqual(m["dev"]["asserts"][0]["file"], "cross_market/thesis_demo.py")
+        self.assertEqual(m["dev"]["requires_files"], ["cross_market/thesis_demo.py"])
+        self.assertEqual(m["stale_after"], "2026-12-04T20:00:00Z")  # Concept policy: 90 d
+        self.assertIn("## The Thesis", body)
+        self.assertIn("## What It Refuses, Fail-Closed On Every Axis", body)
+        reg, _ = fm.parse((self.vault / "wiki/concepts/theses_register.md").read_text(encoding="utf-8"))
+        self.assertEqual(reg["dev"]["pages"], ["thesis_cross_market_thesis_demo"])
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+        # deleting a heading from the docstring is a C1 finding
+        (self.dev_root / "cross_market" / "thesis_demo.py").write_text(THESIS_MODULE.replace("WHAT IT REFUSES, FAIL-CLOSED ON EVERY AXIS", "REFUSALS"), encoding="utf-8")
+        c1 = [x for x in lint.lint_vault(self.vault, self.dev_root, now=NOW) if x.code == "C1"]
+        self.assertTrue(any("FAIL-CLOSED" in x.message for x in c1))
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        self.assertEqual(ingest_th.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=io.StringIO()), EXIT_HALT)
+
+
+class ReceiptHurdleTests(TempVault):
+    def test_writer_stamps_edge_and_hurdle_into_notes(self):
+        from Tax_Reserve_Agent.interfaces import receipts as rc
+        self.assertEqual(rc.build_notes("latency_sniper", None, "paper:1;", gross_edge=0.995, after_tax_hurdle=0.982),
+                         "strategy:latency_sniper; edge:0.9950; hurdle:0.9820; paper:1;")
+        self.assertEqual(rc.build_notes("amm", "tp", None), "strategy:amm; exit_reason:tp;")  # unchanged when absent
+        target = self.root / "receipts"
+        path = rc.log_execution_receipt("TOK", "BUY", 10, 0.5, "latency_sniper", venue="polymarket", imports_dir=target,
+                                        timestamp="2026-09-05T18:00:03+00:00", gross_edge=0.995, after_tax_hurdle=0.982)
+        self.assertIsNotNone(path)
+        rows = journal_mod.load_executions(target, date(2026, 9, 5))
+        self.assertEqual((rows[0].edge, rows[0].hurdle, rows[0].hurdle_check, rows[0].strategy), (0.995, 0.982, "PASS", "latency_sniper"))
+
+
+class RulingEffectTests(RulingsIngestTests):
+    def test_a_ratifying_ruling_lists_the_pages_it_ratified(self):
+        ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW)
+        ratify_mod.ratify(self.vault, type_="Ruling", tag="extracted", ruling="99-1", at=NOW + timedelta(hours=1))  # a Round 99 ruling covers them all
+        # the log now cites "Ruling 99-1" as a ruling id too
+        (self.dev_root / "AGENTS.md").write_text(AGENTS_FIXTURE + "\n## Round 99 findings\n\nRuling 99-1 applied: the pages were ratified.\n", encoding="utf-8")
+        ingest_rl.ingest_rulings(self.dev_root / "AGENTS.md", self.vault, self.dev_root, at=NOW + timedelta(hours=2), force=True)
+        m, body = fm.parse((self.vault / "wiki/rulings/Ruling_99-1.md").read_text(encoding="utf-8"))
+        self.assertTrue(m["description"].startswith("Ratification of 5 wiki page(s): "), m["description"])
+        self.assertIn("## Effect in this wiki", body)
+        self.assertIn("- [[Directive_75-2]]", body)
+        self.assertNotIn("verified", m)  # the ratifying ruling's own page is not verified by its own batch
+        d, _ = fm.parse((self.vault / "wiki/rulings/Directive_75-1.md").read_text(encoding="utf-8"))
+        self.assertEqual(d["dev"]["ratified_by"], "99-1")  # carried through the --force
+
+
+class BackAnnotationTests(IngestFixture):
+    def test_verdict_count_written_back_onto_the_registration_page(self):
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        reg = self.vault / "wiki/experiments/lead_lag_tier2_meta.md"
+        self.assertEqual(fm.parse(reg.read_text(encoding="utf-8"))[0]["dev"]["tests_run"], 0)
+        for i in range(2):
+            ingest_ll.ingest_verdict(dict(VERDICT_JSON, subfamily="crypto"), self.vault, self.dev_root, tier="2", source="verdict.json", at=NOW + timedelta(hours=i))
+        self.assertEqual(fm.parse(reg.read_text(encoding="utf-8"))[0]["dev"]["tests_run"], 2)
+        ingest_ll.ingest_verdict(VERDICT_JSON, self.vault, self.dev_root, tier="1", source="verdict.json", at=NOW + timedelta(hours=3))
+        self.assertEqual(fm.parse(reg.read_text(encoding="utf-8"))[0]["dev"]["tests_run"], 2)  # Tier 1 has no registration page
+        # the raw meta file is untouched
+        self.assertEqual(json.loads((self.exp_dir / "lead_lag_tier2.meta.json").read_text(encoding="utf-8")), META_JSON)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(hours=4)), [])
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -99,6 +99,14 @@ COMPUTATIONS: tuple[Computation, ...] = (
                 "knowledge/journal.py", KTEST, ("receipts", "predictions_n", "debrief", "scored", "pending"),
                 "The trading-day journal (paper executions, debrief) and the calibration ledger (predictions Brier-scored against Event payloads).",
                 "knowledge_cli", K_EXIT),
+    Computation("knowledge_views", "knowledge.views", "python -m knowledge.views [--force] [--dry-run]",
+                "knowledge/views.py", KTEST, ("written", "skipped"),
+                "Obsidian Bases views (wiki/_views/*.base) and human page templates (wiki/_templates/*.md) with OKF-valid frontmatter.",
+                "knowledge_cli", K_EXIT),
+    Computation("knowledge_ingest_theses", "knowledge.ingest.theses", "python -m knowledge.ingest.theses [--root DIR ...] [--force]",
+                "knowledge/ingest/theses.py", KTEST, ("scanned", "written", "skipped"),
+                "Titled docstring sections of the desk modules -> Concept pages, each heading pinned with dev:asserts (lint C1).",
+                "knowledge_cli", K_EXIT),
 )
 
 

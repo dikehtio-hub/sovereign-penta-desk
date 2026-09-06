@@ -149,7 +149,9 @@ hand-edited.
 | Journal Entry, Debrief | journal, journal/debriefs | receipts, Risk Sentinel state, escrow note, the operator's plan |
 | Lint Report | wiki/lint | `knowledge.lint --json` |
 | Blueprint, Constitution | wiki/concepts, vault root | this layer's own design documents |
-| Register (a Concept) | wiki/concepts/*_register.md | machine-maintained lists of every page of one compiled type (experiments, rulings, computations, events, markets); every Desk page links every register, so nothing compiled is an orphan; hand edits are overwritten |
+| Register (a Concept) | wiki/concepts/*_register.md | machine-maintained lists of every page of one compiled type (experiments, rulings, computations, events, markets, crm, journal, theses); every Desk page links every register, so nothing compiled is an orphan; hand edits are overwritten |
+| Thesis (a Concept) | wiki/concepts/thesis_*.md | the titled ALL-CAPS sections of a desk module's docstring, each heading pinned with `dev.asserts` so a silent deletion is a lint C1 finding (Round 101, B12) |
+| tooling, not pages | wiki/_views/*.base, wiki/_templates/*.md | Obsidian Bases views and human page templates; any folder whose name starts with `_` is skipped by the index and by lint |
 
 File names are `Type_NN_Slug.md` for numbered things (`Desk_03_Cross_Market_Desk.md`,
 `Item_12_Polymarket_Breaking_News_Oracle_Latency_Sniper.md`, `Ruling_R04.md`),
@@ -220,21 +222,27 @@ operator says "keep that". Two queries are pre-baked as commands in Phase 2:
 paper receipts exist for that day, or on `--create`. Five sections: **Plan**
 (human, preserved across re-runs like a CRM judgement), **Executions**
 (machine: every CSV receipt under `cross_market/data/paper_receipts/`, one
-row per fill with notional = quantity x price; paper by location), **Calibration
-ledger** (machine-managed rows from `dev.predictions`), **Debrief** (machine:
-the day's paper notional against the quant lab's daily killswitch as a
-drawdown budget, per-strategy totals; the after-tax hurdle is reported as
-UNCHECKED because the receipt writer records no edge, and the page says so),
+row per fill with notional = quantity x price and the `edge:` / `hurdle:`
+the writer stamped into `notes`, Ruling 100-b), **Calibration ledger**
+(machine-managed rows from `dev.predictions`), **Debrief** (machine: the
+day's **Daily Paper Notional Turnover** with the quant lab's killswitch as a
+reference only, because the killswitch is a realised-loss budget and fills
+are not realised loss, so the drawdown check is UNCHECKED until paired
+closes exist, Ruling 100-c; the after-tax hurdle check per fill is PASS when
+edge >= hurdle, FLAG below it, UNCHECKED when the receipt carries neither),
 **Open** (human, preserved). Journal pages are never stale.
 
 **Calibration ledger.** `--predict --event E --field F --op OP --value V --p P`
-records a probability BEFORE an event (`by: human:operator`); `--score`
-resolves every unscored prediction against the Event page's `dev.payload`
-(written by the recording adapter after the print): outcome = 1 if `F OP V`
-holds, Brier = (p - outcome)^2. `wiki/concepts/calibration.md` aggregates
-every scored prediction: count, mean Brier (0.25 is the always-0.5 baseline),
-and a reliability table by probability bin. A prediction is never edited
-after it is written; a wrong one stays wrong.
+records a mechanical prediction BEFORE an event (`by: human:operator`);
+`--predict --event E --claim "..." --p P` records a free-text one (Ruling
+100-a). `--score` resolves every unscored mechanical prediction against the
+Event page's `dev.payload` (written by the recording adapter after the
+print): outcome = 1 if `F OP V` holds. A free-text claim is scored only by
+hand: `--score --event E --outcome 0|1`, recorded as `scored_by:
+human:operator`. Brier = (p - outcome)^2. `wiki/concepts/calibration.md`
+aggregates every scored prediction: count, mean Brier (0.25 is the
+always-0.5 baseline), and a reliability table by probability bin. A
+prediction is never edited after it is written; a wrong one stays wrong.
 
 ### Typed relations (Round 100, B11)
 
@@ -339,12 +347,18 @@ python -m knowledge.ratify --type Ruling --tag extracted --ruling 98-1
                                                                    records a ratification: verified + status stable on the selected pages
 python -m knowledge.journal --date 2026-09-05 [--create]           -> journal/2026-09-05.md (executions from paper receipts, debrief)
 python -m knowledge.journal --predict --event fomc_2026-09-16 --field change_bps --op == --value 0 --p 0.9
-python -m knowledge.journal --score                                scores every unscored prediction; rebuilds wiki/concepts/calibration.md
+python -m knowledge.journal --score [--event E --outcome 0|1]          scores predictions (hand outcome for free-text claims); rebuilds calibration.md
+python -m knowledge.views [--force]                                -> wiki/_views/*.base (Obsidian Bases) and wiki/_templates/*.md
+python -m knowledge.ingest.theses [--root DIR ...] [--force]       -> wiki/concepts/thesis_*.md from desk module docstrings (pinned by C1)
 python -m unittest knowledge.tests.test_knowledge                  (Master Module 23)
 ```
 
-Registers: `wiki/concepts/{experiments,rulings,computations,events,markets,crm,journal}_register.md`
-are rebuilt by the adapter that owns the type; every Desk page links all seven.
+Registers: `wiki/concepts/{experiments,rulings,computations,events,markets,crm,journal,theses}_register.md`
+are rebuilt by the adapter that owns the type; every Desk page links all eight.
+Dashboards link back (Round 101, F1): every exporter prints a `Desk:` wikilink to
+its Desk page and a `Shell twin:` command that reproduces the card; the quant lab
+exporter lives in its own repository and is the one exception until that repo is
+touched.
 Every adapter carries `verified`, `stale_after`, a promoted status and
 `dev.ratified_by` across a `--force` rewrite (Ruling 99-2, `pages.carry_human_fields`).
 Calendars are committed YAML under `knowledge/calendars/` (FOMC from

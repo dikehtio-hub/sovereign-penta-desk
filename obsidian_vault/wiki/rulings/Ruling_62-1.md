@@ -12,7 +12,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -26,7 +26,7 @@ dev:
   kind: ruling
   citations:
   - section: Round 62 findings
-    line: 1461
+    line: 1505
     excerpt: '…- **Ruling 62-1 both sides**: the writer passes one timestamp to both
       legs; the reader clusters loose receipts within 60 s of a group''s first fill
       (59 s apart = one dutch, 61 s = two) and groups by arb_group first.…'
@@ -45,7 +45,7 @@ verified:
 
 ## Citations
 
-- **Round 62 findings** (line 1461): …- **Ruling 62-1 both sides**: the writer passes one timestamp to both legs; the reader clusters loose receipts within 60 s of a group's first fill (59 s apart = one dutch, 61 s = two) and groups by arb_group first.…
+- **Round 62 findings** (line 1505): …- **Ruling 62-1 both sides**: the writer passes one timestamp to both legs; the reader clusters loose receipts within 60 s of a group's first fill (59 s apart = one dutch, 61 s = two) and groups by arb_group first.…
 
 ## Related
 

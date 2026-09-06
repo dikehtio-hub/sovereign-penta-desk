@@ -13,7 +13,7 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:46Z'
+  at: '2026-09-06T00:57:10Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
@@ -27,7 +27,7 @@ dev:
   kind: ruling
   citations:
   - section: Status
-    line: 418
+    line: 443
     excerpt: '…onds N` (and the module CLI) skips rewriting the market dashboard while
       its last write is younger than N seconds, judged on the file''s mtime so it
       holds across processes; every other note and every number are untouched (Ruling
@@ -47,7 +47,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 418): …onds N` (and the module CLI) skips rewriting the market dashboard while its last write is younger than N seconds, judged on the file's mtime so it holds across processes; every other note and every number are untouched (Ruling 69-2: no coarsening).…
+- **Status** (line 443): …onds N` (and the module CLI) skips rewriting the market dashboard while its last write is younger than N seconds, judged on the file's mtime so it holds across processes; every other note and every number are untouched (Ruling 69-2: no coarsening).…
 
 ## Related
 
