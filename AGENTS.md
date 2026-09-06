@@ -5,6 +5,32 @@ the detail.
 
 ## Status
 
+Round 114 complete (2026-09-06): THE REOPENING QUESTION WAS ASKED OF THE RIGHT POPULATION AND THE
+ANSWER IS INSUFFICIENT; THE DRILL'S ENTRY POINT IS UNDER VERSION CONTROL; THE PRE-FLIGHT CHECKS THE
+CLOCK. D2 (Ruling R113-1.C option 3): a new engine runner, analytics/fade_rebenchmark.py, asks the
+registration's question of the persisted excursions read-only and writes a JSON artifact next to the
+registration (tracked); knowledge/ingest/fade_rebenchmark.py grades it INDEPENDENTLY against the
+registration's own gates and its own rule text. THE POPULATION WAS THE FINDING: cascade_excursions
+holds two treatment sources the desk's schema says must never be pooled; the fade's is trade_sweep
+(the engine default, the registration's own 'sweeps accumulate'). Round 113 pooled both and read the
+sample as ready. Over trade_sweep alone: 13,645 events on 46 coins, top coin ZEC 26.8%
+against a 20% ceiling, 5.49-day span against 7 required - two gates fail, verdict INSUFFICIENT,
+engine and page agree. Had the sample qualified, ratio_30m 0.7896 with P(>= 1.25) = 0.0000 at
+20,000 draws would have been FAIL; stated for completeness, not a verdict. The registration now
+carries a dated `population` block (bars unchanged); the progress mirror measures the named
+population, gains the max_hhi gate, and no longer treats an INSUFFICIENT verdict as terminal - the
+page says ACCUMULATING and names the blocking gates. D1 (R113-1.F): the batch file moved to
+cross_market/scripts/ and is tracked; the task's action re-pointed with trigger, battery flags,
+logon and instance policy verified identical before and after; the pre-flight FAILS if the batch is
+ever untracked. D3: the pre-flight grew to 29 checks - W32Time service state (STOPPED on this
+machine; +0.37 s measured against time.windows.com, so a HOMEWORK line, not an emergency), NTP offset,
+books-dir writability by a removed probe, stamp path length (182 of 240), MultipleInstances policy,
+orphan record-loop processes. Real run: 0 FAIL, 3 WARN. A DOUBLE WRITER was caught on the first real
+run: the experiments ingest compiled the new *.verdict.json as a registration into the same page the
+adapter writes; JSON carrying the engine's `_artifact` envelope is now skipped there. Tests: knowledge
+302 (+16), HL 1,108 (+5). Lint CLEAN at 496 pages; idempotent across fade/experiments/digests/seed.
+NO DAEMON RESTARTED; W32Time deliberately left as found.
+
 Round 113 complete (2026-09-06): THE FOMC DRILL HAS A PRE-FLIGHT, THE HUB CAN NO LONGER LAG A
 REGISTER, AND `ready` MEANS EVERY GATE. D4: `python -m knowledge.drills.fomc_rehearsal` checks the
 five things the 2026-09-16 drill needs to agree on (Event page, rules registration + raw JSON, the
@@ -1241,6 +1267,68 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 114 findings
+
+### The registered population was not the table, and Round 113 got it wrong
+
+- `cascade_excursions` holds `trade_sweep` (13,645 rows, 46 coins) and `trade_flow` (5,363 rows, 28
+  coins). `measurement_schema.sql`: "the two event sources answer different questions and must never
+  be pooled". The fade's events are sweeps; `benchmark()` and the `excursion` command default to
+  trade_sweep. Round 113's gates were computed over every treatment row (19,008; top coin 19.84%) and
+  said `ready`. Over trade_sweep the top coin is ZEC 26.8% and the span is 5.49 days.
+- Recorded as a dated `population` block on the registration - a clarification of the population the
+  code always used, with the Round 113 error stated in it. No bar changed. The mirror now filters by
+  `population.source` when a registration names one and pools only when none does (the cascade-replay
+  engine pools by design).
+- The registration's own state_at_registration numbers (492 events, 15 coins) match NEITHER source in
+  the persisted table at that instant (48 and 274 rows): they came from the snapshot-based benchmark,
+  a different pipeline. So the population could not be inferred from counts; it had to come from the
+  code the registration binds to.
+
+### INSUFFICIENT is not terminal
+
+- Round 113 flipped a registration to `evaluated` the moment any `_verdict` page existed. An
+  INSUFFICIENT verdict says "come back when the sample qualifies"; treating it as closed would have
+  hidden exactly the condition L11 exists to surface. Now only a PASS/FAIL/RETUNE grade (or a verdict
+  page too old to carry one) closes the question; the registration page shows the last evaluation
+  and the gates that block. This also re-opens `whale_sweeper_cascade_replay` (Round 104:
+  INSUFFICIENT on PONS 22.5%) - its pooled sample now passes the share gate, so it reads `ready` and
+  L11 will ask for a re-run in three days. That is the rule working, not a regression.
+
+### The verdict, exactly
+
+- Engine artifact written 2026-09-06T19:44:26.500127Z over 38,016 rows in the table; population trade_sweep;
+  13,645 events, 46 coins, top ZEC 26.8%, span 5.49 d. Decision horizon 30m (the longest
+  the registration enumerates; 60m reported only). ratio_30m 0.7896 (below 1: the cascade kept
+  going); P(ratio >= 1.25) 0.0000, P(ratio >= 1.0) 0.0677, 20,000 cluster-bootstrap draws.
+  Page grade INSUFFICIENT; engine INSUFFICIENT; agree. The fade stays retired; the question stays open.
+
+### A double writer, caught by the idempotence check and by nothing else
+
+- The artifact lives beside the registrations (tracked, unlike Round 104's in cross_market/data). The
+  experiments ingest globs `*.json` there and compiled `passive_fade_rebenchmark.verdict.json` as a
+  generic registration - into `passive_fade_rebenchmark_verdict.md`, the very page the new adapter
+  writes. Each run flipped the page between the two shapes; lint was CLEAN both ways and both adapters
+  reported success. Only hashing the vault across two passes showed it (Round 110's lesson, again).
+  `compile_registration` now returns None for any JSON carrying an `_artifact` envelope, with a test
+  that runs both writers in both orders.
+
+### The pre-flight found the clock unattended
+
+- W32Time is Stopped. `w32tm /query /status` says so; the stripchart against time.windows.com still
+  measured +0.37 s. Reported as WARN with the two-command remedy; not started, because starting a
+  service is the operator's call. Everything else the 16th needs is consistent: tracked batch, 182-char
+  stamp paths, writable books parent, IgnoreNew, no orphan recorder.
+
+### Smaller things
+
+- Re-pointing the task used Set-ScheduledTask -Action only; a before/after JSON of trigger, battery
+  flags, logon type, MultipleInstances and Enabled was compared and matched. The battery flags stay
+  set: that decision is still the operator's.
+- The runner's smoke at 50 draws took 6 s; the full 20,000-draw run is minutes of pure Python because
+  the engine's `_aggregate` sorts for medians on every resample. Left as is: the registered code path
+  is the registered code path.
 
 ## Round 113 findings
 

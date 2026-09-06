@@ -9,10 +9,15 @@ Round 113, Deliverable 4. The live drill on 2026-09-16 is five things that have 
   2. the rules registration - a vault page compiled from cross_market/experiments/*.rules.json
   3. the drill card       - what the operator reads at T-2 (under 60 lines, whole token ids, no writes)
   4. the batch file       - what the scheduled task actually runs: three HARD-CODED token ids, a
-                            duration, a books directory, a python path. It is git-ignored, so a fresh
-                            clone has no drill at all; that is reported, not hidden.
+                            duration, a books directory, a python path. Until Round 114 it lived under
+                            a git-ignored data directory, so a fresh clone had no drill at all; it is
+                            now tracked (Ruling R113-1.F) and this FAILS if it ever stops being.
   5. the scheduled task   - Monarch_FOMC_Drill: when it fires, what it runs, whether battery settings
-                            or an interactive-only logon can stop it
+                            or an interactive-only logon can stop it, whether a second launch is
+                            ignored, whether a recorder is ALREADY running
+  6. the machine          - the Windows Time service and the measured clock offset (a scheduler on a
+                            clock 40 s slow records the print as history), whether the books directory
+                            can be written and its stamp paths fit under MAX_PATH
 
 Rounds 93b and 102/103 each found a piece that looked right and was not (a drill dated to the wrong
 day; a --json flag documented for four rounds that never worked). This module exists so the next
@@ -39,13 +44,17 @@ from ..frontmatter import parse_iso8601
 from ..query import MAX_LINES, books_dir, countdown, drill_card, find_event, rules_for
 
 TASK_NAME = "Monarch_FOMC_Drill"
-BAT = Path("cross_market") / "data" / "fomc_drill_2026-09-16.bat"      # git-ignored (.gitignore:137)
+BAT = Path("cross_market") / "scripts" / "fomc_drill_2026-09-16.bat"   # tracked since Round 114 (was data/, ignored)
 RECORDER = Path("cross_market") / "latency_sniper.py"
 LEAD = timedelta(minutes=2)          # the task fires at T-2; the window opens at T-2
 TAIL = timedelta(minutes=5)          # and closes at T+5
 MIN_FREE_GB = 1.0
 AC_STATES = {2, 3, 6, 7, 8, 9}       # Win32_Battery.BatteryStatus values meaning "mains present"
 NEVER_RAN = 267011                   # SCHED_S_TASK_HAS_NOT_RUN
+MAX_CLOCK_DRIFT_S = 1.0              # Round 114 D3: past this the stamps' own timestamps are the suspect
+MAX_STAMP_PATH = 240                 # under Windows MAX_PATH (260) with room for the recorder's temp names
+STAMP_EXAMPLE = "clob_" + "9" * 76 + "_20260916T175800_000000Z.json"   # latency_sniper's stamp filename shape
+NTP_HOST = "time.windows.com"
 
 # Read by PowerShell via -EncodedCommand so no quoting survives the trip through argv. Probed live
 # in Round 113 against the real task before being trusted.
@@ -66,6 +75,10 @@ $d = Get-PSDrive -Name C
   battery_status = $(if ($b) { [int]$b.BatteryStatus } else { $null })
   battery_pct = $(if ($b) { [int]$b.EstimatedChargeRemaining } else { $null })
   free_gb = [math]::Round($d.Free / 1GB, 1)
+  multiple_instances = [string]$t.Settings.MultipleInstances
+  recorder_pids = @(Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -match 'latency_sniper' -and $_.CommandLine -match 'record-loop' } | ForEach-Object { [int]$_.ProcessId })
+  time_service = [string](Get-Service W32Time -ErrorAction SilentlyContinue).Status
+  clock_offset_s = $(try { $s = (w32tm /stripchart /computer:__NTP__ /dataonly /samples:1 2>&1 | Select-Object -Last 1); if ($s -match '([+-]\d+\.\d+)s') { [double]$Matches[1] } else { $null } } catch { $null })
 } | ConvertTo-Json -Compress
 """
 
@@ -79,7 +92,7 @@ class Check:
 
 def collect_task(name: str = TASK_NAME, runner: Callable[..., Any] = subprocess.run) -> dict[str, Any]:
     """Ask Task Scheduler about the drill task. Never raises: a failure to ask is `exists: False`."""
-    script = PS_SCRIPT.replace("__TASK__", name)
+    script = PS_SCRIPT.replace("__TASK__", name).replace("__NTP__", NTP_HOST)
     enc = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
     try:
         r = runner(["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
@@ -113,9 +126,39 @@ def _iso(value: Any) -> datetime | None:
         return None
 
 
+def git_tracked(path: Path, dev_root: Path, runner: Callable[..., Any] = subprocess.run) -> bool | None:
+    """Is this file under version control? None when git cannot answer (no repo, no git)."""
+    try:
+        r = runner(["git", "ls-files", "--error-unmatch", str(path)], cwd=str(dev_root),
+                   capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return r.returncode == 0
+
+
+def probe_writable(directory: Path) -> tuple[bool, str]:
+    """Create and remove one small file in the nearest EXISTING ancestor of `directory`.
+
+    The recorder does mkdir(parents=True) itself, so the books directory need not exist yet; what
+    must be true is that it CAN come to exist and take files. This is the one thing the pre-flight
+    writes, it is outside the vault, and it is removed before the function returns.
+    """
+    target = directory
+    while not target.exists() and target.parent != target:
+        target = target.parent
+    probe = target / f".fomc_rehearsal_probe_{datetime.now(timezone.utc).strftime('%H%M%S%f')}"
+    try:
+        probe.write_bytes(b"probe")
+        probe.unlink()
+    except OSError as exc:
+        return False, f"{target}: {exc}"
+    return True, f"wrote and removed a probe in {target}" + ("" if target == directory else f" (nearest existing ancestor of {directory})")
+
+
 def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
                task: dict[str, Any] | None, bat_text: str | None, bat_path: Path | None = None,
-               recorder_text: str | None = None) -> list[Check]:
+               recorder_text: str | None = None, bat_tracked: bool | None = None,
+               writable: tuple[bool, str] | None = None) -> list[Check]:
     out: list[Check] = []
     ok = lambda name, cond, detail: out.append(Check(name, "PASS" if cond else "FAIL", detail))  # noqa: E731
     bat_path = bat_path or (dev_root / BAT)
@@ -176,8 +219,14 @@ def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
     # 4. the batch file the task runs
     if bat_text is None:
         out.append(Check("drill batch file", "FAIL",
-                         f"{bat_path} missing. It is git-ignored: a fresh clone has NO drill until it is recreated"))
+                         f"{bat_path} missing: a fresh clone has NO drill. It is tracked since Round 114 - "
+                         f"check `git ls-files {BAT.as_posix()}`"))
     else:
+        tracked = git_tracked(bat_path, dev_root) if bat_tracked is None else bat_tracked
+        out.append(Check("batch tracked in git", "PASS" if tracked else ("WARN" if tracked is None else "FAIL"),
+                         "under version control" if tracked else
+                         ("git could not answer" if tracked is None else
+                          f"{bat_path.name} is NOT tracked: a fresh clone would have no drill (Ruling R113-1.F)")))
         m = re.search(r"--tokens\s+(\S+)", bat_text)
         bat_tokens = m.group(1).split(",") if m else []
         ok("batch tokens == registered tokens", sorted(bat_tokens) == sorted(page_tokens) and bool(bat_tokens),
@@ -196,6 +245,14 @@ def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
             recorder_text = (dev_root / RECORDER).read_text(encoding="utf-8", errors="replace")
         ok("recorder has --record-loop", recorder_text is not None and '"--record-loop"' in recorder_text,
            f"{RECORDER.as_posix()} {'defines' if recorder_text and '--record-loop' in recorder_text else 'LACKS'} the flag the batch passes")
+
+    # 6. the machine: can the books directory take the files, and do their names fit
+    books_abs = dev_root / books_dir(event)
+    w_ok, w_detail = probe_writable(books_abs) if writable is None else writable
+    ok("books dir writable", w_ok, w_detail + ("" if books_abs.exists() else "; the recorder will mkdir it"))
+    stamp_len = len(str(books_abs / STAMP_EXAMPLE))
+    ok("stamp paths fit under MAX_PATH", stamp_len <= MAX_STAMP_PATH,
+       f"{stamp_len} chars for a 76-digit token stamp (limit {MAX_STAMP_PATH})")
 
     # 5. the scheduled task
     if task is None:
@@ -237,6 +294,25 @@ def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
             us_day = (release - LEAD).astimezone().strftime("%m/%d/%Y")
             out.append(Check("next run is the release day", "PASS" if (local_day in nr or us_day in nr) else "WARN",
                              f"scheduler says next run {nr or '-'}"))
+        # Round 114 D3: concurrency and the clock
+        mi = str(task.get("multiple_instances") or "")
+        out.append(Check("task ignores a second launch", "PASS" if mi in ("IgnoreNew", "Queue") else "WARN",
+                         f"MultipleInstances={mi or '-'}"
+                         + ("" if mi in ("IgnoreNew", "Queue") else ": a second start would run two recorders into one books dir")))
+        pids = [int(p) for p in (task.get("recorder_pids") or []) if str(p).isdigit()]
+        out.append(Check("no recorder already running", "PASS" if not pids else "WARN",
+                         "no latency_sniper --record-loop process" if not pids else
+                         f"record-loop process(es) alive: {pids} - an orphan writing into the books dir at fire time"))
+        svc = str(task.get("time_service") or "")
+        out.append(Check("Windows Time service", "PASS" if svc == "Running" else "WARN",
+                         f"W32Time is {svc or 'unknown'}" + ("" if svc == "Running" else
+                         ": nothing corrects the clock between now and the print (Start-Service W32Time; w32tm /resync)")))
+        off = task.get("clock_offset_s")
+        if isinstance(off, (int, float)):
+            out.append(Check("clock offset vs NTP", "PASS" if abs(off) <= MAX_CLOCK_DRIFT_S else "WARN",
+                             f"{off:+.3f} s against {NTP_HOST} (limit {MAX_CLOCK_DRIFT_S:.1f} s)"))
+        else:
+            out.append(Check("clock offset vs NTP", "WARN", f"not measured ({NTP_HOST} unreachable or w32tm unavailable)"))
     return out
 
 

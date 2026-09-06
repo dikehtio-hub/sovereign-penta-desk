@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T18:33:57Z'
+  at: '2026-09-06T22:11:22Z'
 status: draft
 sources:
 - id: registration
@@ -24,29 +24,33 @@ dev:
   - 8
   registered_utc: '2026-09-01T05:42:16.383702+00:00'
   progress:
-    accumulated: 19008
+    accumulated: 13645
     target: 500
     unit: events
-    status: ready
-    measured_at: '2026-09-06T18:33:57Z'
+    status: accumulating
+    measured_at: '2026-09-06T22:11:22Z'
     gates:
       min_events:
-        value: 19008
+        value: 13645
         bar: 500
         pass: true
       min_coins:
-        value: 62
+        value: 46
         bar: 20
         pass: true
       max_single_coin_share:
-        value: 0.1984
+        value: 0.266
         bar: 0.2
-        pass: true
+        pass: false
       window_days:
-        value: 7.49
+        value: 5.49
         bar: 7.0
-        pass: true
-    ready_since: '2026-09-06T18:33:57Z'
+        pass: false
+    population: trade_sweep
+    last_verdict:
+      grade: INSUFFICIENT
+      page: passive_fade_rebenchmark_verdict
+      at: '2026-09-06T19:44:26.500127Z'
   parameters:
   - name: passive_fade_rebenchmark_sample_requirements_window_days
     value: 7
@@ -106,7 +110,7 @@ dev:
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
 > [!NOTE]
-> **READY (since 2026-09-06)**: every sample gate passes (min_events 19008 vs 500; min_coins 62 vs 20; max_single_coin_share 0.1984 vs 0.2; window_days 7.49 vs 7.0) and no verdict page exists. Evaluate it under the registered bar or retire it; lint L11 warns once this has stood for 3 days.
+> **ACCUMULATING** - 2/4 sample gates pass over population `trade_sweep`. Failing: max_single_coin_share 0.266 vs 0.2; window_days 5.49 vs 7.0. Last evaluation 2026-09-06: **INSUFFICIENT** ([[passive_fade_rebenchmark_verdict]]) - an insufficient sample is never a verdict, so the question stays open.
 
 
 ## Registered utc
@@ -130,6 +134,16 @@ The retirement verdict came from 15.2 hours in which CASHCAT and PONS supplied 8
 | `min_coins` | 20 |
 | `max_single_coin_share` | 0.2 |
 | `note` | Enforced in code by wick_benchmark.reopening_gate(). |
+
+## Population
+
+| Key | Value |
+|---|---|
+| `recorded_utc` | 2026-09-06T19:10:12.329926Z |
+| `source` | trade_sweep |
+| `basis` | wick_benchmark.benchmark() and the `excursion` command default to trade_sweep ('the strategy's'); this registration's status line says sweeps accumulate; measurement_schema.sql keeps the source column because the two event sources answer di |
+| `finding` | Round 113 mirrored the sample gates over BOTH treatment sources pooled (19,008 events, 62 coins, top coin ZEC 19.84%) and marked this registration ready. Over trade_sweep alone at the same instant: 13,645 events, 46 coins, top coin ZEC 26.6 |
+| `bars_unchanged` | true |
 
 ## Reopening bar
 

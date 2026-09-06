@@ -2360,6 +2360,40 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 114 - REOPENING VERDICT (INSUFFICIENT), TRACKED DRILL BATCH, PRE-FLIGHT CLOCK + WRITABILITY + CONCURRENCY
+     cd HyperLiquid/HL_Monarch && python -m analytics.fade_rebenchmark [--resamples 20000] [--source trade_sweep]
+         Asks passive_fade_rebenchmark's reopening question of the PERSISTED excursions (mode=ro) and writes
+         data/experiments/passive_fade_rebenchmark.verdict.json (tracked, next to the registration). One source
+         only - trade_sweep, the registered population; trade_flow is a different event class and is never
+         pooled. Engine gate (reopening_gate: >=500 events, >=20 coins, no coin > 20%, retention) plus the
+         registered 7-day window; bar P(ratio_30m >= 1.25) > 0.90 under a cluster bootstrap resampling coins.
+         Decision horizon 30m (the longest the registration enumerates); 60m reported, never graded. 50 draws
+         take 6 s; 20,000 take minutes (the engine sorts for medians on every resample). Result 2026-09-06:
+         INSUFFICIENT - 13,645 events, 46 coins, top ZEC 26.8%, span 5.49 d; ratio_30m 0.7896,
+         P(>=1.25) 0.0000 (not a verdict: the gates fail).
+     python -m knowledge.ingest.fade_rebenchmark [--result PATH] [--registration PATH]
+         Grades the artifact INDEPENDENTLY against the registration (gates re-checked from its numbers, bar
+         parsed from its rule text, population checked against population.source) and compares with the
+         engine's verdict; a disagreement is a finding. Writes wiki/experiments/passive_fade_rebenchmark_verdict.md.
+         Refuses (exit 3) without the artifact. An INSUFFICIENT grade does NOT flip the registration to
+         `evaluated`: the registration page says ACCUMULATING, names the failing gates and links the verdict.
+     python -m knowledge.ingest.experiments --force
+         dev.progress now measures the population the registration names (`population.source`), pools only
+         when none is named, adds the max_hhi gate, records `population` and `last_verdict` on the page.
+         JSON files carrying an `_artifact` envelope (engine artifacts such as *.verdict.json) are SKIPPED:
+         their own adapter compiles them. Compiling them here too made two writers of one page.
+     python -m knowledge.drills.fomc_rehearsal        (29 checks; real run 0 FAIL, 3 WARN)
+         New since Round 113: batch tracked in git (FAIL if not), books dir writable (a probe file written and
+         removed in the nearest existing ancestor - the one write the pre-flight makes, outside the vault),
+         stamp paths under 240 chars, task MultipleInstances (IgnoreNew), no latency_sniper --record-loop
+         process alive, W32Time service state, clock offset against time.windows.com via w32tm /stripchart
+         (network; WARN when unmeasured; limit 1.0 s).
+     cross_market/scripts/fomc_drill_2026-09-16.bat   (TRACKED; was cross_market/data/, git-ignored)
+         Monarch_FOMC_Drill's action re-pointed 2026-09-06 with Set-ScheduledTask -Action; trigger, battery
+         flags, logon type, instance policy verified identical before/after. Battery flags still set.
+     W32Time is STOPPED on this machine (found by the pre-flight). Remedy, operator's call:
+         Start-Service W32Time; w32tm /resync          then re-run the pre-flight
+
      ROUND 113 - FOMC DRILL REHEARSAL, write_register HUB CASCADE, `ready` + GATES + LINT L11, DESK 4 SKIPS
      python -m knowledge.drills.fomc_rehearsal                    (the pre-flight; run it any day before the 16th)
      python -m knowledge.drills.fomc_rehearsal --no-task          (offline: skips the Task Scheduler query)

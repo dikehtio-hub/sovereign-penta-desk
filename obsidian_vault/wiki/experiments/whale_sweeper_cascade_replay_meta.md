@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T18:33:57Z'
+  at: '2026-09-06T22:11:22Z'
 status: stable
 sources:
 - id: registration
@@ -27,8 +27,8 @@ dev:
     accumulated: 19008
     target: 500
     unit: events
-    status: evaluated
-    measured_at: '2026-09-06T17:32:28Z'
+    status: ready
+    measured_at: '2026-09-06T22:11:22Z'
     gates:
       min_events:
         value: 19008
@@ -42,6 +42,16 @@ dev:
         value: 0.1984
         bar: 0.2
         pass: true
+      max_hhi:
+        value: 0.1328
+        bar: 0.15
+        pass: true
+    population: pooled
+    last_verdict:
+      grade: INSUFFICIENT
+      page: whale_sweeper_cascade_replay_verdict
+      at: '2026-09-06T04:54:00.462755Z'
+    ready_since: '2026-09-06T22:11:22Z'
   parameters:
   - name: whale_sweeper_cascade_replay_sample_requirements_min_events
     value: 500
@@ -72,6 +82,9 @@ verified:
 # Experiment: whale_sweeper_cascade_replay
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
+> [!NOTE]
+> **READY (since 2026-09-06)**: every sample gate passes (min_events 19008 vs 500; min_coins 62 vs 20; max_single_coin_share 0.1984 vs 0.2; max_hhi 0.1328 vs 0.15) and no verdict page exists. Evaluate it under the registered bar or retire it; lint L11 warns once this has stood for 3 days.
+
 
 ## Registered utc
 

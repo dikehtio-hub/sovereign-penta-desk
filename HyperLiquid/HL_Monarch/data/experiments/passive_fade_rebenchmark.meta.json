@@ -10,6 +10,13 @@
     "max_single_coin_share": 0.2,
     "note": "Enforced in code by wick_benchmark.reopening_gate()."
   },
+  "population": {
+    "recorded_utc": "2026-09-06T19:10:12.329926Z",
+    "source": "trade_sweep",
+    "basis": "wick_benchmark.benchmark() and the `excursion` command default to trade_sweep ('the strategy's'); this registration's status line says sweeps accumulate; measurement_schema.sql keeps the source column because the two event sources answer different questions and must never be pooled.",
+    "finding": "Round 113 mirrored the sample gates over BOTH treatment sources pooled (19,008 events, 62 coins, top coin ZEC 19.84%) and marked this registration ready. Over trade_sweep alone at the same instant: 13,645 events, 46 coins, top coin ZEC 26.6%, span 5.49 days - the share and window gates fail. Corrected in Round 114 by naming the population here; the bars above are unchanged.",
+    "bars_unchanged": true
+  },
   "reopening_bar": {
     "rule": "P(ratio >= 1.25) > 0.90 under a CLUSTER bootstrap resampling coins",
     "rationale": "Deliberately asymmetric. Retiring took p=0.024 on a narrow sample; coming back should cost more than leaving did."

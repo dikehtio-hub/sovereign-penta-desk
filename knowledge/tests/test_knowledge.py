@@ -3369,7 +3369,9 @@ class FomcRehearsalTests(QueryCardTests):
              "triggers": [fire.replace(tzinfo=None).isoformat()], "actions": [f'"{self.bat_path}"'],
              "disallow_start_on_batteries": False, "stop_if_going_on_batteries": False, "wake_to_run": False,
              "logon_type": "Interactive", "next_run": fire.strftime("%m/%d/%Y %H:%M:%S"),
-             "last_result": self.rh.NEVER_RAN, "battery_status": 2, "battery_pct": 100, "free_gb": 50.0}
+             "last_result": self.rh.NEVER_RAN, "battery_status": 2, "battery_pct": 100, "free_gb": 50.0,
+             "multiple_instances": "IgnoreNew", "recorder_pids": [], "time_service": "Running",
+             "clock_offset_s": 0.05}
         t.update(over)
         return t
 
@@ -3382,7 +3384,8 @@ class FomcRehearsalTests(QueryCardTests):
                 + ",".join(tokens or self.tokens) + " --interval 1 --duration %DUR% --books %BOOKS%\r\n")
 
     def checks(self, **kw):
-        args = dict(task=self.task(), bat_text=self.bat(), recorder_text=self.RECORDER, bat_path=self.bat_path)
+        args = dict(task=self.task(), bat_text=self.bat(), recorder_text=self.RECORDER, bat_path=self.bat_path,
+                    bat_tracked=True, writable=(True, "probe ok"))
         args.update(kw)
         return self.rh.run_checks(self.vault, self.dev_root, self.event, self.now, **args)
 
@@ -3396,9 +3399,46 @@ class FomcRehearsalTests(QueryCardTests):
         for name in ("window is T-2..T+5", "rules.json tokens == page tokens", "rules.json release == event release",
                      "card wrote nothing", "card carries whole token ids", "batch tokens == registered tokens",
                      "batch default duration == window length", "batch books dir == event books_dir",
-                     "task fires at T-2 local time", "task action is the drill batch", "recorder has --record-loop"):
+                     "task fires at T-2 local time", "task action is the drill batch", "recorder has --record-loop",
+                     "batch tracked in git", "books dir writable", "stamp paths fit under MAX_PATH",
+                     "task ignores a second launch", "no recorder already running", "Windows Time service",
+                     "clock offset vs NTP"):
             self.assertEqual(lv[name], "PASS", name)
         self.assertEqual(lv["logon type"], "WARN")            # interactive-only is always worth a line
+
+    def test_an_untracked_batch_is_a_failure_and_git_silence_is_a_warning(self):
+        """Ruling R113-1.F: the entry point the scheduler runs must be under version control."""
+        self.assertEqual(self.levels(self.checks(bat_tracked=False))["batch tracked in git"], "FAIL")
+        self.assertEqual(self.levels(self.checks(bat_tracked=True))["batch tracked in git"], "PASS")
+        # the fixture dev_root is not a git repository: git answers "not tracked", never silence
+        self.assertFalse(self.rh.git_tracked(self.bat_path, self.dev_root))
+
+    def test_the_machine_checks_warn_and_never_fail_closed_on_their_own(self):
+        lv = self.levels(self.checks(task=self.task(time_service="Stopped", clock_offset_s=2.5,
+                                                    recorder_pids=[4242], multiple_instances="Parallel")))
+        self.assertEqual(lv["Windows Time service"], "WARN")
+        self.assertEqual(lv["clock offset vs NTP"], "WARN")
+        self.assertEqual(lv["no recorder already running"], "WARN")
+        self.assertEqual(lv["task ignores a second launch"], "WARN")
+        self.assertEqual([n for n, l in lv.items() if l == "FAIL"], [])
+
+    def test_an_unmeasured_clock_is_reported_not_assumed(self):
+        lv = self.levels(self.checks(task=self.task(clock_offset_s=None)))
+        self.assertEqual(lv["clock offset vs NTP"], "WARN")
+
+    def test_an_unwritable_books_dir_is_a_failure(self):
+        lv = self.levels(self.checks(writable=(False, "denied")))
+        self.assertEqual(lv["books dir writable"], "FAIL")
+
+    def test_the_real_probe_writes_and_removes_one_file_outside_the_vault(self):
+        target = self.dev_root / "cross_market" / "data" / "clob_books" / "fomc_2026-09-16"
+        (self.dev_root / "cross_market" / "data").mkdir(parents=True, exist_ok=True)
+        before_vault = self.rh.hash_vault(self.vault)
+        ok, detail = self.rh.probe_writable(target)
+        self.assertTrue(ok, detail)
+        self.assertIn("nearest existing ancestor", detail)          # the books dir itself does not exist yet
+        self.assertEqual(sorted(p.name for p in (self.dev_root / "cross_market" / "data").iterdir()), [])
+        self.assertEqual(self.rh.hash_vault(self.vault), before_vault)
 
     def test_a_trigger_one_minute_off_is_a_failure(self):
         off = (self.release - timedelta(minutes=1)).astimezone().replace(tzinfo=None).isoformat()
@@ -3427,9 +3467,196 @@ class FomcRehearsalTests(QueryCardTests):
         code = self.rh.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--event", self.event,
                              "--now", pages.iso(self.now), "--no-task"], out=out)
         self.assertEqual(code, self.rh.EXIT_FINDINGS)
-        self.assertIn("git-ignored", out.getvalue())
+        self.assertIn("fresh clone has NO drill", out.getvalue())
         self.assertIn("[WARN] scheduled task: not queried", out.getvalue())
         self.assertEqual(self.rh.hash_vault(self.vault), before)
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 114: the passive-fade rebenchmark verdict (R113-1.C option 3), graded independently; the
+# progress mirror learns the registered POPULATION, the max_hhi gate, and that INSUFFICIENT is not
+# terminal
+# --------------------------------------------------------------------------------------
+
+class FadeRebenchmarkIngestTests(IngestFixture):
+    REG = {"experiment": "passive_fade_rebenchmark", "registered_utc": "2026-09-01T05:42:16Z",
+           "status": "PASSIVE - sweeps accumulate",
+           "sample_requirements": {"window_days": 7, "min_events": 500, "min_coins": 20, "max_single_coin_share": 0.2},
+           "population": {"source": "trade_sweep", "recorded_utc": "2026-09-06T19:20:00Z"},
+           "reopening_bar": {"rule": "P(ratio >= 1.25) > 0.90 under a CLUSTER bootstrap resampling coins",
+                             "rationale": "Deliberately asymmetric."}}
+
+    def setUp(self):
+        super().setUp()
+        from knowledge.ingest import fade_rebenchmark as ingest_fade
+        self.fade = ingest_fade
+        self.exp = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "experiments"
+        self.exp.mkdir(parents=True, exist_ok=True)
+        self.registration = self.exp / "passive_fade_rebenchmark.meta.json"
+        self.registration.write_text(json.dumps(self.REG), encoding="utf-8")
+        self.result = self.exp / "passive_fade_rebenchmark.verdict.json"
+        self.db = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db"
+
+    def art(self, *, verdict="INSUFFICIENT", events=13645, coins=46, share=0.2678, span=5.49, p=0.0, ratio=0.79,
+            source="trade_sweep", written="2026-09-06T19:30:00Z", rows=38016):
+        h = {"signal": {"n": events - 92, "ratio": ratio}, "control": {"n": 3 * events, "ratio": 0.95},
+             "edge_vs_control": ratio - 0.95, "coins_measured": coins, "hhi": 0.12, "top_coin_share": share,
+             "top_coin": "ZEC", "cluster_p_ge_1": 0.01, "cluster_p_ge_reopen": p}
+        return {"_artifact": {"written_at": written, "writer": "HyperLiquid.HL_Monarch.analytics.fade_rebenchmark",
+                              "rows_in_table": rows, "seed": 7, "resamples": 20000},
+                "experiment": "passive_fade_rebenchmark", "source": source, "verdict": verdict, "verdict_reasons": ["x"],
+                "decision_horizon_minutes": 30.0, "registered_horizons_minutes": [5.0, 15.0, 30.0],
+                "reopening_bar": {"ratio": 1.25, "confidence": 0.9, "min_events": 500, "min_coins": 20,
+                                  "max_single_coin_share": 0.2, "window_days": 7.0},
+                "primary_metric": {"name": "ratio_30m", "value": ratio, "n": events - 92, "cluster_p_ge_1_25": p,
+                                   "cluster_p_ge_1": 0.01, "control_ratio": 0.95, "edge_vs_control": ratio - 0.95},
+                "sample_gates": {"engine": {"status": "x", "eligible": share <= 0.2},
+                                 "metrics": {"events": events, "coins": coins, "top_coin_share": share, "top_coin": "ZEC",
+                                             "hhi": 0.12, "span_days": span, "window_days_required": 7.0,
+                                             "window_covered": span >= 7}},
+                "horizons": {k: dict(h, registered=(k != "60m")) for k in ("5m", "15m", "30m", "60m")},
+                "data_audit": {"total_in_table": rows, "treatment_rows": events, "control_rows": events,
+                               "first_event_utc": "2026-09-01T05:00:00Z", "last_event_utc": "2026-09-06T17:00:00Z",
+                               "measurable_at_decision_horizon": events - 92}}
+
+    def ingest(self, art, at=NOW):
+        self.result.write_text(json.dumps(art), encoding="utf-8")
+        return self.fade.ingest_rebenchmark(self.vault, self.dev_root, at=at)
+
+    def page(self):
+        return fm.parse((self.vault / "wiki/experiments/passive_fade_rebenchmark_verdict.md").read_text(encoding="utf-8"))
+
+    def test_the_real_shape_is_insufficient_and_says_which_gates_block(self):
+        self.ingest(self.art())
+        meta, body = self.page()
+        d = meta["dev"]
+        self.assertEqual((d["grade"], d["engine_verdict"], d["grades_agree"]), ("INSUFFICIENT", "INSUFFICIENT", True))
+        self.assertEqual(len(d["gate_failures"]), 2)
+        self.assertTrue(any(f.startswith("top_coin_share=") for f in d["gate_failures"]))
+        self.assertTrue(any(f.startswith("span_days=") for f in d["gate_failures"]))
+        self.assertIn("no verdict is issued", body)
+        self.assertIn("it is not a verdict", body)
+        self.assertEqual(d["bar"], {"ratio": 1.25, "confidence": 0.9})     # parsed from the registration's text
+        self.assertEqual(d["measurement"]["source"], "trade_sweep")
+        reg = registers.update_register(self.vault, "Experiment", at=NOW).body
+        self.assertIn("[[passive_fade_rebenchmark_verdict\\|", reg)
+
+    def test_pass_and_fail_follow_the_bar_only_when_every_gate_passes(self):
+        self.ingest(self.art(verdict="PASS", share=0.15, span=7.5, p=0.95, ratio=1.4))
+        self.assertEqual(self.page()[0]["dev"]["grade"], "PASS")
+        self.ingest(self.art(verdict="FAIL", share=0.15, span=7.5, p=0.30, ratio=1.1, written="2026-09-07T00:00:00Z"))
+        meta, body = self.page()
+        self.assertEqual(meta["dev"]["grade"], "FAIL")
+        self.assertIn("stays retired", body)
+
+    def test_a_disagreement_with_the_engine_is_a_finding(self):
+        self.ingest(self.art(verdict="PASS", share=0.30, span=7.5, p=0.95))     # engine claims PASS on a narrow sample
+        meta, body = self.page()
+        self.assertEqual((meta["dev"]["grade"], meta["dev"]["grades_agree"]), ("INSUFFICIENT", False))
+        self.assertIn("THEY DISAGREE", body)
+
+    def test_the_wrong_population_is_insufficient_whatever_the_numbers_say(self):
+        self.ingest(self.art(verdict="PASS", source="trade_flow", share=0.15, span=7.5, p=0.99))
+        meta, body = self.page()
+        self.assertEqual(meta["dev"]["grade"], "INSUFFICIENT")
+        self.assertTrue(any(f.startswith("population:") for f in meta["dev"]["gate_failures"]))
+        self.assertIn("NOT the registered population", body)
+
+    def test_the_artifact_is_the_unit_of_observation(self):
+        self.ingest(self.art())
+        first = (self.vault / "wiki/experiments/passive_fade_rebenchmark_verdict.md").read_bytes()
+        self.ingest(self.art(), at=NOW + timedelta(hours=1))          # same artifact, later run: nothing moves
+        self.assertEqual((self.vault / "wiki/experiments/passive_fade_rebenchmark_verdict.md").read_bytes(), first)
+        self.assertEqual(len(self.page()[0]["dev"]["history"]), 1)
+        self.ingest(self.art(events=14000, rows=39000, written="2026-09-07T00:00:00Z"), at=NOW + timedelta(days=1))
+        self.assertEqual(len(self.page()[0]["dev"]["history"]), 2)
+
+    def test_the_cli_refuses_without_an_artifact_and_writes_with_one(self):
+        out = io.StringIO()
+        code = self.fade.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out)
+        self.assertEqual(code, 3)
+        self.assertIn("analytics.fade_rebenchmark", out.getvalue())
+        self.result.write_text(json.dumps(self.art()), encoding="utf-8")
+        out = io.StringIO()
+        code = self.fade.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--at", pages.iso(NOW)], out=out)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("grade INSUFFICIENT", out.getvalue())
+
+    def test_the_artifact_beside_the_registration_is_not_compiled_as_a_registration(self):
+        """Round 114: the experiments ingest and this adapter were both writing _verdict.md - a double writer."""
+        self.result.write_text(json.dumps(self.art()), encoding="utf-8")
+        report = ingest_exp.ingest_experiments([self.exp], self.vault, self.dev_root, at=NOW, force=True)
+        self.assertIn("passive_fade_rebenchmark.verdict.json", report.ignored)
+        self.assertFalse((self.vault / "wiki/experiments/passive_fade_rebenchmark_verdict.md").exists())
+        self.ingest(self.art())
+        meta, _ = self.page()
+        self.assertEqual(meta["dev"]["kind"], "rebenchmark_verdict")
+        ingest_exp.ingest_experiments([self.exp], self.vault, self.dev_root, at=NOW + timedelta(hours=1), force=True)
+        self.assertEqual(self.page()[0]["dev"]["kind"], "rebenchmark_verdict")     # still ours
+
+    # --- the registration page's progress after a verdict exists ---
+
+    def _progress(self):
+        ingest_exp.ingest_experiments([self.exp], self.vault, self.dev_root, at=NOW, force=True)
+        meta, body = fm.parse((self.vault / "wiki/experiments/passive_fade_rebenchmark_meta.md").read_text(encoding="utf-8"))
+        return meta["dev"]["progress"], body
+
+    def test_an_insufficient_verdict_does_not_close_the_question(self):
+        self.ingest(self.art())
+        p, body = self._progress()
+        self.assertNotEqual(p["status"], "evaluated")
+        self.assertEqual(p["last_verdict"]["grade"], "INSUFFICIENT")
+        self.assertEqual(p["last_verdict"]["page"], "passive_fade_rebenchmark_verdict")
+
+    def test_a_pass_or_fail_verdict_closes_it(self):
+        self.ingest(self.art(verdict="FAIL", share=0.15, span=7.5, p=0.3))
+        p, _ = self._progress()
+        self.assertEqual(p["status"], "evaluated")
+
+    # --- the mirror measures the REGISTERED population ---
+
+    def _seed_db(self, rows):
+        import sqlite3
+        if self.db.exists():
+            self.db.unlink()
+        c = sqlite3.connect(self.db)
+        c.execute("CREATE TABLE cascade_excursions (event_id INTEGER, coin TEXT, timestamp_utc INTEGER, source TEXT)")
+        c.executemany("INSERT INTO cascade_excursions VALUES (?,?,?,?)",
+                      [(i + 1, coin, ts, src) for i, (coin, ts, src) in enumerate(rows)])
+        c.commit()
+        c.close()
+
+    def test_gates_are_measured_over_the_registered_population_not_the_table(self):
+        start = int((NOW - timedelta(days=8)).timestamp() * 1000)
+        step = 8 * 86_400_000 // 600
+        sweep = [("WHALE" if i < 200 else f"S{i % 30}", start + i * step, "trade_sweep") for i in range(600)]   # one coin at 33%
+        flow = [(f"F{i % 40}", start + i * step, "trade_flow") for i in range(600)]                             # broad
+        self._seed_db(sweep + flow)
+        p, body = self._progress()
+        self.assertEqual(p["population"], "trade_sweep")
+        self.assertEqual(p["accumulated"], 600)                       # not 1,200
+        self.assertFalse(p["gates"]["max_single_coin_share"]["pass"])
+        self.assertEqual(p["status"], "accumulating")
+        self.assertIn("**ACCUMULATING**", body)
+        self.assertIn("population `trade_sweep`", body)
+        # drop the population block: the mirror pools every treatment row, and the pooled sample passes
+        reg = dict(self.REG)
+        reg.pop("population")
+        self.registration.write_text(json.dumps(reg), encoding="utf-8")
+        p, _ = self._progress()
+        self.assertEqual((p["population"], p["accumulated"], p["status"]), ("pooled", 1200, "ready"))
+
+    def test_max_hhi_is_a_gate_when_the_registration_names_one(self):
+        start = int((NOW - timedelta(days=8)).timestamp() * 1000)
+        rows = [("WHALE" if i < 100 else f"S{i % 30}", start + i * 1_000_000, "trade_sweep") for i in range(600)]
+        self._seed_db(rows)
+        reg = json.loads(json.dumps(self.REG))
+        reg["sample_requirements"]["max_hhi"] = 0.02
+        self.registration.write_text(json.dumps(reg), encoding="utf-8")
+        p, _ = self._progress()
+        self.assertIn("max_hhi", p["gates"])
+        self.assertFalse(p["gates"]["max_hhi"]["pass"])           # WHALE alone contributes (100/600)^2 = 0.0278
 
 
 if __name__ == "__main__":  # pragma: no cover

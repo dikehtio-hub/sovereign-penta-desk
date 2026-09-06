@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 14:50 EDT (Round 113; drill pre-flight exists, fastapi installed).
+Last updated: 2026-09-06 18:20 EDT (Round 114; batch tracked, verdict INSUFFICIENT, clock unattended).
 
 ---
 
@@ -53,13 +53,18 @@ Last updated: 2026-09-06 14:50 EDT (Round 113; drill pre-flight exists, fastapi 
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 113 handoff prompt to Antigravity.**
+- [ ] **Send the Round 114 handoff prompt to Antigravity.**
+- [ ] **Start the Windows Time service.** The pre-flight found W32Time STOPPED. The clock is only
+      +0.37 s off today, but nothing corrects it between now and the 16th, and a scheduler on a slow
+      clock records the print as history. Two commands in an elevated PowerShell:
+      `Start-Service W32Time; w32tm /resync` - then `python -m knowledge.drills.fomc_rehearsal` should
+      show that WARN gone. I did not start it: starting a service is yours to do.
 - [ ] **Clear the FOMC drill's battery flags, or commit to staying on AC.** The condition
       itself is described under the 2026-09-16 entry above. This line is the DECISION:
       leave the flags and rely on remembering the charger, or have me clear them. Clearing
       is small and testable. Either is fine; drifting into the 16th without choosing is not.
-      `python -m knowledge.drills.fomc_rehearsal` now reports this as a WARN every time you run it,
-      and will report PASS the moment the flags are cleared.
+      `python -m knowledge.drills.fomc_rehearsal` (29 checks now) reports this as a WARN every time you
+      run it, and will report PASS the moment the flags are cleared.
 - [ ] **Decide when the collector restarts** so the new spread gate takes effect.
       Ruling R104-1 is implemented but collector `38548` is still running the old
       code, which samples only 5 candidates per pass. Until it restarts, no new
@@ -89,9 +94,9 @@ Last updated: 2026-09-06 14:50 EDT (Round 113; drill pre-flight exists, fastapi 
       `pip install hyperliquid-python-sdk` (dry run: also eth-utils 5.3.1 and msgpack
       1.2.2 - new crypto-adjacent packages into the same environment the live desks run
       in), and `test_run_paper_trading` skips until `pip install uvicorn` (0.52.4, no
-      other deps). I did not install either without your word. Say yes to one or both
-      and I will dry-run again, install, and run the four modules for the first time in
-      a long while - they may fail for real reasons, which is the point.
+      other deps). Antigravity approved both in Round 114 on condition the dry run shows no
+      downgrades (it does not). I still have not installed either: the environment the live
+      desks run in is yours. Say yes to one or both and I will install and run the four modules.
 
 ---
 
@@ -113,6 +118,15 @@ Last updated: 2026-09-06 14:50 EDT (Round 113; drill pre-flight exists, fastapi 
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 — **The drill's batch file is under version control and the task points at it**
+  (Round 114). `cross_market/scripts/fomc_drill_2026-09-16.bat`; a fresh clone now has the drill.
+  Trigger, battery flags, logon and instance policy verified unchanged by the re-point.
+- 2026-09-06 — **Passive fade reopening question answered: INSUFFICIENT** (Round 114). Over the
+  registered population (trade_sweep) the top coin is ZEC 26.8% against a 20% ceiling and the
+  data span 5.49 days against 7 required, so no verdict is issued; the fade stays retired
+  and the page keeps counting. Round 113 had pooled two event sources and called it ready;
+  that is corrected on the registration itself.
 
 - 2026-09-06 — **FOMC drill pre-flight built and run** (Round 113). 22 read-only checks
   across the Event page, rules registration, drill card, the batch file the task runs,

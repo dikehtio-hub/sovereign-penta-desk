@@ -1,0 +1,186 @@
+{
+  "_artifact": {
+    "written_at": "2026-09-06T19:44:26.500127Z",
+    "writer": "HyperLiquid.HL_Monarch.analytics.fade_rebenchmark",
+    "rows_in_table": 38016,
+    "seed": 7,
+    "resamples": 20000,
+    "db": "C:\\Users\\ixis1\\Desktop\\DEV\\HyperLiquid\\HL_Monarch\\data\\hyperliquid_data.db"
+  },
+  "experiment": "passive_fade_rebenchmark",
+  "source": "trade_sweep",
+  "verdict": "INSUFFICIENT",
+  "verdict_reasons": [
+    "engine gate SAMPLE_TOO_NARROW: top coin 27% > 20%",
+    "window 5.49 d < 7 d required (the rows span less than the registered window)"
+  ],
+  "decision_horizon_minutes": 30.0,
+  "registered_horizons_minutes": [
+    5.0,
+    15.0,
+    30.0
+  ],
+  "reopening_bar": {
+    "ratio": 1.25,
+    "confidence": 0.9,
+    "min_events": 500,
+    "min_coins": 20,
+    "max_single_coin_share": 0.2,
+    "window_days": 7.0
+  },
+  "primary_metric": {
+    "name": "ratio_30m",
+    "value": 0.7895786288225686,
+    "n": 13553,
+    "cluster_p_ge_1_25": 0.0,
+    "cluster_p_ge_1": 0.0677,
+    "control_ratio": 0.9498057481925781,
+    "edge_vs_control": -0.16022711937000955
+  },
+  "sample_gates": {
+    "engine": {
+      "status": "SAMPLE_TOO_NARROW",
+      "detail": "top coin 27% > 20%",
+      "eligible": false,
+      "retention": {
+        "covers": true,
+        "retention_hours": 192.0,
+        "needed_hours": 168.5,
+        "detail": "snapshots retained 192h >= 168.5h needed for a 7-day window"
+      }
+    },
+    "metrics": {
+      "events": 13645,
+      "coins": 46,
+      "top_coin_share": 0.2677635947760643,
+      "top_coin": "ZEC",
+      "hhi": 0.1903602020796509,
+      "span_days": 5.49,
+      "window_days_required": 7.0,
+      "window_covered": false
+    }
+  },
+  "horizons": {
+    "5m": {
+      "signal": {
+        "n": 12927,
+        "mean_mfe": 0.7559280463941437,
+        "mean_mae": 1.1152129947042553,
+        "median_mfe": 0.4805700555141421,
+        "median_mae": 0.5521546032889134,
+        "ratio": 0.6778328893079382,
+        "win_share": 44.24847218998995
+      },
+      "control": {
+        "n": 10101,
+        "mean_mfe": 0.3890151322016243,
+        "mean_mae": 0.39084090060700866,
+        "median_mfe": 0.16387121650279982,
+        "median_mae": 0.1612036539495016,
+        "ratio": 0.9953286147827702,
+        "win_share": 50.54945054945055
+      },
+      "edge_vs_control": -0.31749572547483207,
+      "coins_measured": 46,
+      "hhi": 0.2010444975755671,
+      "top_coin_share": 0.28026610969289084,
+      "top_coin": "ZEC",
+      "cluster_p_ge_1": 0.00055,
+      "cluster_p_ge_reopen": 0.0,
+      "registered": true
+    },
+    "15m": {
+      "signal": {
+        "n": 13078,
+        "mean_mfe": 1.084609110624242,
+        "mean_mae": 1.4291735844068254,
+        "median_mfe": 0.7622835363327571,
+        "median_mae": 0.8407159645633704,
+        "ratio": 0.7589064914563237,
+        "win_share": 46.42147117296223
+      },
+      "control": {
+        "n": 10402,
+        "mean_mfe": 0.7512645535981844,
+        "mean_mae": 0.7766340830132423,
+        "median_mfe": 0.3182745591300805,
+        "median_mae": 0.33109264477043276,
+        "ratio": 0.9673339994085409,
+        "win_share": 49.25975773889636
+      },
+      "edge_vs_control": -0.2084275079522172,
+      "coins_measured": 46,
+      "hhi": 0.19766280035738373,
+      "top_coin_share": 0.2774889126777795,
+      "top_coin": "ZEC",
+      "cluster_p_ge_1": 0.0434,
+      "cluster_p_ge_reopen": 0.0001,
+      "registered": true
+    },
+    "30m": {
+      "signal": {
+        "n": 13553,
+        "mean_mfe": 1.3699285020091565,
+        "mean_mae": 1.735012134322853,
+        "median_mfe": 0.9905119382754732,
+        "median_mae": 1.1415336256100739,
+        "ratio": 0.7895786288225686,
+        "win_share": 45.93079023094518
+      },
+      "control": {
+        "n": 10998,
+        "mean_mfe": 1.1082921146738598,
+        "mean_mae": 1.166861873370288,
+        "median_mfe": 0.47041825783818636,
+        "median_mae": 0.4981085290798207,
+        "ratio": 0.9498057481925781,
+        "win_share": 48.79068921622113
+      },
+      "edge_vs_control": -0.16022711937000955,
+      "coins_measured": 46,
+      "hhi": 0.1903602020796509,
+      "top_coin_share": 0.2677635947760643,
+      "top_coin": "ZEC",
+      "cluster_p_ge_1": 0.0677,
+      "cluster_p_ge_reopen": 0.0,
+      "registered": true
+    },
+    "60m": {
+      "signal": {
+        "n": 13645,
+        "mean_mfe": 2.0266228626328466,
+        "mean_mae": 2.3390587871078936,
+        "median_mfe": 1.1489947805915353,
+        "median_mae": 1.369281270803204,
+        "ratio": 0.8664266472492744,
+        "win_share": 46.23671674606083
+      },
+      "control": {
+        "n": 11271,
+        "mean_mfe": 1.6549196295249322,
+        "mean_mae": 1.8106580733637931,
+        "median_mfe": 0.6891876624110265,
+        "median_mae": 0.777444735856143,
+        "ratio": 0.91398793282404,
+        "win_share": 47.34273800017745
+      },
+      "edge_vs_control": -0.04756128557476558,
+      "coins_measured": 46,
+      "hhi": 0.19067527221766511,
+      "top_coin_share": 0.2659582264565775,
+      "top_coin": "ZEC",
+      "cluster_p_ge_1": 0.0422,
+      "cluster_p_ge_reopen": 0.0,
+      "registered": false
+    }
+  },
+  "data_audit": {
+    "total_in_table": 38016,
+    "treatment_rows": 13645,
+    "control_rows": 13645,
+    "first_event_utc": "2026-09-01T03:59:03.823000Z",
+    "last_event_utc": "2026-09-06T15:43:31.895000Z",
+    "measurable_at_decision_horizon": 13553,
+    "note": "one source only; trade_flow rows are a different event class and are not pooled"
+  }
+}

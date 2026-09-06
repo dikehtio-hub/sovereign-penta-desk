@@ -229,7 +229,8 @@ def _gate(value: float, bar: float, op: str) -> dict[str, Any]:
     return {"value": value, "bar": bar, "pass": bool(value >= bar) if op == ">=" else bool(value <= bar)}
 
 
-def event_gates(reqs: dict[str, Any], *, n: int, coins: int, top_share: float, span_days: float) -> dict[str, Any]:
+def event_gates(reqs: dict[str, Any], *, n: int, coins: int, top_share: float, span_days: float,
+                hhi: float | None = None) -> dict[str, Any]:
     """Ruling R112-1.C, corrected: `ready` means EVERY sample requirement the registration wrote down
     passes, not that one count crossed its floor.
 
@@ -246,6 +247,8 @@ def event_gates(reqs: dict[str, Any], *, n: int, coins: int, top_share: float, s
         out["max_single_coin_share"] = _gate(round(top_share, 4), float(reqs["max_single_coin_share"]), "<=")
     if isinstance(reqs.get("window_days"), (int, float)):
         out["window_days"] = _gate(round(span_days, 2), float(reqs["window_days"]), ">=")
+    if isinstance(reqs.get("max_hhi"), (int, float)) and hhi is not None:
+        out["max_hhi"] = _gate(round(hhi, 4), float(reqs["max_hhi"]), "<=")
     return out
 
 
@@ -289,6 +292,7 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
         return {"accumulated": n, "target": n, "unit": "closed_trades", "status": "completed",
                 "measured_at": iso(at)}
     gates: dict[str, Any] = {}
+    population = "pooled"
     if isinstance(bar.get("min_closed_trades"), (int, float)):
         unit, target = "closed_trades", int(bar["min_closed_trades"])
         state = dev_root / PAPER_STATE
@@ -306,22 +310,36 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
             try:
                 import sqlite3
                 conn = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, timeout=8)
-                where = "FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%'"
+                pop = data.get("population") if isinstance(data.get("population"), dict) else {}
+                source = pop.get("source")
+                if source:      # Round 114: the registration names its population; one source, never pooled
+                    where, params = "FROM cascade_excursions WHERE source = ?", (str(source),)
+                else:           # no population named: every treatment row (the cascade-replay engine pools)
+                    where, params = "FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%'", ()
                 n, coins, lo, hi = conn.execute(
-                    f"SELECT COUNT(*), COUNT(DISTINCT coin), MIN(timestamp_utc), MAX(timestamp_utc) {where}").fetchone()
-                top = conn.execute(f"SELECT COUNT(*) {where} GROUP BY coin ORDER BY 1 DESC LIMIT 1").fetchone()
+                    f"SELECT COUNT(*), COUNT(DISTINCT coin), MIN(timestamp_utc), MAX(timestamp_utc) {where}", params).fetchone()
+                counts = [int(r[0]) for r in conn.execute(f"SELECT COUNT(*) {where} GROUP BY coin", params)]
                 conn.close()
                 accumulated = int(n)
                 gates = event_gates(reqs, n=int(n), coins=int(coins or 0),
-                                    top_share=(top[0] / n) if (top and n) else 0.0,
-                                    span_days=((hi - lo) / 86_400_000.0) if (lo is not None and hi is not None) else 0.0)
+                                    top_share=(max(counts) / n) if (counts and n) else 0.0,
+                                    span_days=((hi - lo) / 86_400_000.0) if (lo is not None and hi is not None) else 0.0,
+                                    hhi=(sum((c / n) ** 2 for c in counts) if n else 0.0))
+                population = str(source) if source else "pooled"
             except Exception:  # noqa: BLE001 - a missing table is "unmeasured", not a crash
                 accumulated = None
     else:
         return None
+    verdict_page = load_page(vault / "wiki" / "experiments" / f"{page_stem(path).removesuffix('_meta')}_verdict.md")
+    last_verdict: dict[str, Any] | None = None
+    if verdict_page is not None:
+        vdev = verdict_page.meta.get("dev") or {}
+        last_verdict = {"grade": vdev.get("grade"), "page": verdict_page.path.stem,
+                        "at": vdev.get("observed_at") or (verdict_page.meta.get("generated") or {}).get("at")}
+    terminal = verdict_page is not None and last_verdict.get("grade") != "INSUFFICIENT"
     if parked_note(data):
         status = "parked"
-    elif (vault / "wiki" / "experiments" / f"{page_stem(path).removesuffix('_meta')}_verdict.md").is_file():
+    elif terminal:
         status = "evaluated"
     elif accumulated is None:
         status = "unmeasured"
@@ -333,6 +351,10 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
            "measured_at": iso(at)}
     if gates:
         out["gates"] = gates
+    if unit == "events" and accumulated is not None:
+        out["population"] = population
+    if last_verdict:
+        out["last_verdict"] = last_verdict
     return out
 
 
@@ -410,6 +432,16 @@ def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, 
                          f"> **READY (since {str(progress.get('ready_since', ''))[:10]})**: every sample gate passes "
                          f"({gates_txt}) and no verdict page exists. Evaluate it under the registered bar or retire "
                          f"it; lint L11 warns once this has stood for {STALL_DAYS} days.", ""]
+        elif progress.get("status") == "accumulating" and progress.get("gates"):
+            gts = progress["gates"]
+            failing = [f"{k} {g['value']} vs {g['bar']}" for k, g in gts.items() if not g.get("pass")]
+            lv = progress.get("last_verdict") or {}
+            tail = (f" Last evaluation {str(lv.get('at', ''))[:10]}: **{lv.get('grade')}** ([[{lv.get('page')}]]) - "
+                    "an insufficient sample is never a verdict, so the question stays open." if lv else "")
+            body[3:3] = ["> [!NOTE]",
+                         f"> **ACCUMULATING** - {sum(1 for g in gts.values() if g.get('pass'))}/{len(gts)} sample gates pass "
+                         f"over population `{progress.get('population', 'pooled')}`."
+                         + (f" Failing: {'; '.join(failing)}." if failing else "") + tail, ""]
     if params:
         dev["parameters"] = params
     if requires:
@@ -424,6 +456,10 @@ def compile_generic_registration(data: dict[str, Any], path: Path, vault: Path, 
 
 def compile_registration(path: Path, vault: Path, dev_root: Path, at, by: str = GENERATED_BY) -> Page | None:
     data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, dict) and "_artifact" in data:
+        # An engine ARTIFACT (Ruling R104-2 envelope) beside the registrations, e.g. *.verdict.json. Its own
+        # adapter compiles it; compiling it here too made two writers of one page (Round 114 finding).
+        return None
     if not isinstance(data, dict) or "experiment" not in data:
         return None
     if isinstance(data.get("rules"), list) and "release_utc" in data:
@@ -505,7 +541,7 @@ def main(argv: list[str] | None = None, out=None) -> int:
     for r in report.skipped:
         print("[KEEP]  " + r, file=out)
     for r in report.ignored:
-        print("[SKIP]  " + r + " (sample, data file or unrecognised)", file=out)
+        print("[SKIP]  " + r + " (sample, engine artifact, data file or unrecognised)", file=out)
     print(f"experiments: {len(report.written)} written, {len(report.skipped)} kept, {len(report.ignored)} ignored", file=out)
     return EXIT_OK
 
