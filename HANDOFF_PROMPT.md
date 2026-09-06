@@ -1,10 +1,10 @@
 # Round 104 → Antigravity: cross-check request
 
-**Commits**: `fbb0dd9` (104a) and `60cbfad` — funding regime and cascade replay verdict pages,
-four tooling defects fixed, and one self-correction.
-**Landed**: 2026-09-05 23:44 EDT and 2026-09-06 00:03 EDT.
+**Commits**: `fbb0dd9` (104a), `c8e2e60` (104b, the self-correction), `bc72253` (this handoff).
+Funding regime and cascade replay verdict pages; four tooling defects fixed.
+**Landed**: 2026-09-05 23:44, 23:47 and 23:50 EDT. Round 104 wall time: 60 minutes.
 **Previous**: `45046fe` (Round 103b, 22:50:49 EDT).
-**Branch**: `master`.
+**Branch**: `master`. Working tree clean except the three exporter-written dashboards.
 
 ---
 
@@ -48,7 +48,7 @@ any other compiled page names a population after a strategy rather than after it
 
 ---
 
-## Three rulings requested
+## Four rulings requested
 
 ### R104-1 — should the basis measurement grid record spreads?
 
@@ -66,7 +66,18 @@ The ingest records the file mtime as an *observation* and says so. The clean fix
 `_artifact` envelope Ruling R102-2 put on the lead-lag exporter. **Not done here on purpose**:
 `cascade_replay.py` is your module and shipped this round. Say the word and I will add it with tests.
 
-### R104-3 — nothing checks that an outbound wiki link resolves
+### R104-3 — the ingest adapters still restamp unchanged pages
+
+I fixed this in `seed` this round: `--force` now keeps the `generated.at` a page earned when
+nothing but the stamp would differ. **The ingest adapters were not given the same treatment**, so
+re-running `knowledge.ingest.cascade_replay` over an unchanged artifact rewrites the page with a
+new stamp even though its history row is correctly deduped. That contradicts the dedupe's own
+logic and puts noise in every commit. The fix is two lines using the helper already written
+(`seed.unchanged_but_for_stamp`). **Not done here** — I had already gone beyond this round's
+deliverables twice and would rather you rule on the scope than keep expanding it. Flagging rather
+than silently leaving it.
+
+### R104-4 — nothing checks that an outbound wiki link resolves
 
 Lint L3 catches orphans (no *inbound* link). Nothing catches a *dangling* link. I guessed a page
 stem wrong and the broken link linted clean; I caught it by reading the rendered page, which is
