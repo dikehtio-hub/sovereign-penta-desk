@@ -31,6 +31,7 @@ from ..registers import update_register
 from . import add_common_args, at_from, guard, rel_to
 
 DEFAULT_DIR = Path("knowledge") / "calendars"
+BOOKS_ROOT = "cross_market/data/clob_books"   # where the drill recorder writes (Ruling R108-1.D)
 REGISTER_FILE = "events_register"
 
 
@@ -50,13 +51,20 @@ def _fomc_pages(cal: dict[str, Any], rel: str, vault: Path, at: datetime, by: st
         if m.get("note"):
             body += ["## Note", "", str(m["note"]), ""]
         body += ["## After the print", "",
-                 "1. write event.json {kind fed_rate, payload.change_bps <int from the statement>, source, confidence >= 0.99, observed_at}",
-                 "2. `latency_sniper --survival-curve ... --json > curve.json`",
+                 "1. write ./event.json {kind fed_rate, payload.change_bps <int from the statement>, source, confidence >= 0.99, observed_at}",
+                 f"2. `latency_sniper --survival-curve --event ./event.json --books {BOOKS_ROOT}/{eid} --json > curve.json`",
                  f"3. `knowledge.ingest.clob --result curve.json --event {eid}` (enriches this page, adds Reaction Profiles)", "",
                  "## Related", "", f"- [[{REGISTER_FILE}|Events register]]", "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
                  "- [[Item_12_Polymarket_Breaking_News_Oracle_Latency_Sniper|Item 12: Polymarket Breaking News & Oracle Latency Sniper]]", ""]
         dev: dict[str, Any] = {"desk": 3, "item": 12, "kind": "fed_rate", "meeting": str(m.get("meeting")),
                                "release_utc": iso(release), "sep": bool(m.get("sep", False)), "calendar": rel,
+                               # Ruling R108-1.D: the EVENT declares where its recorder writes, so the
+                               # drill card reads it instead of guessing. Round 108 found the guess is
+                               # wrong twice over - latency_sniper's own default is the clob_books ROOT,
+                               # and the directive proposed a clob_drill/ path that does not exist. A
+                               # survival curve aimed at an empty directory reports an empty RESULT, not
+                               # an error, one minute after the print.
+                               "books_dir": f"{BOOKS_ROOT}/{eid}",
                                "window": {"start": iso(release - before), "end": iso(release + after)}}
         meta = make_meta("Event", f"Event: {eid}",
                          f"FOMC statement {iso(release)} ({'SEP meeting' if m.get('sep') else 'no SEP'}); window T-2..T+5 registered.",

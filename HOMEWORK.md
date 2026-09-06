@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 03:05 EDT (Round 108).
+Last updated: 2026-09-06 03:20 EDT (Round 109).
 
 ---
 
@@ -46,7 +46,7 @@ Last updated: 2026-09-06 03:05 EDT (Round 108).
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 108 handoff prompt to Antigravity.**
+- [ ] **Send the Round 109 handoff prompt to Antigravity.**
 - [ ] **Decide when the collector restarts** so the new spread gate takes effect.
       Ruling R104-1 is implemented but collector `38548` is still running the old
       code, which samples only 5 candidates per pass. Until it restarts, no new

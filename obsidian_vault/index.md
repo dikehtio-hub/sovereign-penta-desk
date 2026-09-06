@@ -191,6 +191,7 @@
 * [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
+* [Digests register](wiki/concepts/digests_register.md) - Every round of the work chain as its own page: 64 compiled from AGENTS.md.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 9 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
@@ -232,6 +233,72 @@
 * [Thesis: cross_market/latency_sniper.py](wiki/concepts/thesis_cross_market_latency_sniper.md) - No orders, no sockets except one read-only GET when the operator asks it to record order books.
 * [Thesis: cross_market/lead_lag.py](wiki/concepts/thesis_cross_market_lead_lag.md) - When a Polymarket market's implied probability moves, does the HyperLiquid perp for the related asset move before it, with it, or after it - and by how many minutes? The answer is a lag: the offset tau at which the cross-correlation between the minute series of probability change…
 * [Thesis: cross_market/matcher.py](wiki/concepts/thesis_cross_market_matcher.md) - A pricing error in a hedge costs a few basis points. A MATCHING error costs the whole position, because the two legs stop being a hedge and become the same bet placed twice. If "Kansas City Chiefs" is matched to a Kansas City ROYALS market, or a YES on "Chiefs win" is paired with…
+
+# Digest
+* [Round 100 digest](wiki/digests/round_100.md) - Round 100 (2026-09-05): KNOWLEDGE PHASE 3 - JOURNAL + CALIBRATION LEDGER (B10), TYPED RELATIONS (B11, lint L6), STALENESS POLICY (B14, lint L7), UNIVERSAL CARRY-OVER (Ruling 99-2)
+* [Round 101 digest](wiki/digests/round_101.md) - Round 101 (2026-09-05): KNOWLEDGE PHASE 4 - BASES VIEWS + TEMPLATES (B13), DASHBOARD SHELL TWINS + DESK BACKLINKS (F1), DOCSTRING THESES (B12), RECEIPT EDGE/HURDLE (Ruling 100-b) + Rulings 100-a/c/e/f
+* [Round 102 digest](wiki/digests/round_102.md) - Round 102 (2026-09-06): THE ITEM 18 MAIDEN RUN HAPPENED AND THE VERDICT IS IN THE WIKI
+* [Round 103 digest](wiki/digests/round_103.md) - Round 103 (2026-09-06): MAIDEN NIGHT CLOSED, ALL FOUR ENTRIES GREEN; THE LEAD-LAG TOOLING DEFECT IS FIXED
+* [Round 104 digest](wiki/digests/round_104.md) - Round 104 (2026-09-06, corrected in 104b): TWO NEW COMPILED PAGES ON DESK 1, AND FOUR REAL DEFECTS FOUND IN OUR OWN TOOLING WHILE BUILDING THEM
+* [Round 105 digest](wiki/digests/round_105.md) - Round 105 (2026-09-06): ALL FOUR R104 RULINGS IMPLEMENTED, AND LINT L8 FOUND 86 BROKEN LINKS THE MOMENT IT WAS SWITCHED ON
+* [Round 106 digest](wiki/digests/round_106.md) - Round 106 (2026-09-06): THE ADAPTER LIFECYCLE INVARIANT ENFORCED, DESK 1 SPREAD SAMPLING GATED ON THE ENTRY BAR, AND GIT PROVENANCE NOW CHECKED
+* [Round 107 digest](wiki/digests/round_107.md) - Round 107 (2026-09-06): THE OPERATOR CAN NOW ASK THE VAULT A QUESTION
+* [Round 108 digest](wiki/digests/round_108.md) - Round 108 (2026-09-06): LINT L9 CLOSES THE HOLE ROUND 107 OPENED, AND THE DRILL CARD IS NOW COPY-PASTEABLE
+* [Round 109 digest](wiki/digests/round_109.md) - Round 109 (2026-09-06): THE WORK CHAIN IS ADDRESSABLE, AND THE PRE-REGISTERED RULES NOW HAVE A GUARD ON BOTH COPIES
+* [Round 31 digest](wiki/digests/round_31.md) - Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings
+* [Round 33 digest](wiki/digests/round_33.md) - Round 33: DATA GROUNDING
+* [Round 34 digest](wiki/digests/round_34.md) - Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION
+* [Round 35 digest](wiki/digests/round_35.md) - Round 35: SPREAD ALIGNMENT, L2 SPREAD SAMPLING & SUPERVISOR HARDENING
+* [Round 36 digest](wiki/digests/round_36.md) - Round 36: READ-ONLY DASHBOARD, POSITION-FIRST SAMPLING & REPO CLEANUP
+* [Round 37 digest](wiki/digests/round_37.md) - Round 37: STALLED-SERVICE DETECTION, CANDIDATE SPREAD SAMPLING & REPO UNTRACKING
+* [Round 38 digest](wiki/digests/round_38.md) - Round 38: SPOT-GROUNDED CANDIDATES, SPREAD CEILING & CONCENTRATION GUARD
+* [Round 39 digest](wiki/digests/round_39.md) - Round 39: SPOT LIQUIDITY GROUNDING & NET-APR CANDIDATE RANKING
+* [Round 40 digest](wiki/digests/round_40.md) - Round 40: SPOT ALIASES, LIQUIDITY-MAXIMISING HEDGE SELECTION & SPOT DECIMALS FIX
+* [Round 41 digest](wiki/digests/round_41.md) - Round 41: SYNTHETIC EQUITY QUARANTINE, DYNAMIC SPOT FLOOR, ILLIQUID-LEG REPORTING & UNMAPPED-SPOT TELEMETRY
+* [Round 42 digest](wiki/digests/round_42.md) - Round 42: PERP-LEVEL TRADFI QUARANTINE, ILLIQUID-LEG SWEEP & 10x ADV FLOOR
+* [Round 43 digest](wiki/digests/round_43.md) - Round 43: DEX-LEVEL TRADFI QUARANTINE, CANONICAL DUPLICATE GUARD, ONE VOLUME MAP PER CYCLE, VAULT FIX & HOT-RELOADED THRESHOLDS
+* [Round 44 digest](wiki/digests/round_44.md) - Round 44: TRADFI_DEXES GAINS mkts AND io; CONFIG CLAMP FLOOR $10k; MALFORMED FIELDS FALL BACK WITH A WARNING
+* [Round 45 digest](wiki/digests/round_45.md) - Round 45: PER-FIELD CONFIG FALLBACK FOR EVERY FIELD & UNCLASSIFIED-DEX FAIL-CLOSED
+* [Round 46 digest](wiki/digests/round_46.md) - Round 46: vntl CLASSIFIED TRADFI, hyna DOCUMENTED MIXED, PRESET-AWARE CONFIG FALLBACK
+* [Round 47 digest](wiki/digests/round_47.md) - Round 47: STRUCTURAL DEX FAIL-CLOSED, HOURLY DRIFT DETECTOR, ONE CANDIDATE SLOT PER UNDERLYING
+* [Round 48 digest](wiki/digests/round_48.md) - Round 48: MIXED-DEX CRYPTO ALLOW-LIST, NOVEL-DEX DASHBOARD BADGE, CANDIDATE ROTATION LOG
+* [Round 49 digest](wiki/digests/round_49.md) - Round 49: DASHBOARD LIFECYCLE LOG, 2-HOUR STATUS WINDOW, PERPDEXS CHECK AT START-UP
+* [Round 50 digest](wiki/digests/round_50.md) - Round 50: MILESTONE
+* [Round 51 digest](wiki/digests/round_51.md) - Round 51: MEASURED MACRO SIGNALS & ITEM 18 LEAD-LAG (OFFLINE)
+* [Round 52 digest](wiki/digests/round_52.md) - Round 52: STAMPED POLYMARKET DROPS, MULTI-TAG WATCHER, LEAK FIX, VAULT TRACKED
+* [Round 53 digest](wiki/digests/round_53.md) - Round 53: DETACHED SUPERVISOR, DASHBOARD WATCHDOG + ALERTS, TAG-FAMILY DROPS, LIVE WATCHER WIRED
+* [Round 54 digest](wiki/digests/round_54.md) - Round 54: WATCHDOG CEILING + ABANDONMENT ALERT, USER-LEVEL WEBHOOK FALLBACK, LAUNCHER DETACHMENT ROOT CAUSE FIXED
+* [Round 55 digest](wiki/digests/round_55.md) - Round 55: WATCHER PID LOCK, WATCHDOG GAVE UP BADGE
+* [Round 56 digest](wiki/digests/round_56.md) - Round 56: WATCHER --status, SYNC-BAT GUARD, LEAD-LAG READINESS SENTINEL
+* [Round 57 digest](wiki/digests/round_57.md) - Round 57: SENTINEL CARD IN Cross_Market_Titans.md, LEAD-LAG LIVE GATE
+* [Round 58 digest](wiki/digests/round_58.md) - Round 58: ITEM 19 MULTI-DESK MONTE CARLO RISK-OF-RUIN SIMULATOR
+* [Round 59 digest](wiki/digests/round_59.md) - Round 59: RISK SENTINEL AUTO-REFRESH, SYSTEMIC STRESS FACTOR
+* [Round 60 digest](wiki/digests/round_60.md) - Round 60: STRESS CALIBRATION FROM REALIZED VOL, SPORTS SETTLEMENT HISTORY, FRACTIONAL CADENCE
+* [Round 61 digest](wiki/digests/round_61.md) - Round 61: PER-COIN SHOCK MEDIANS, CALENDAR-DAY CADENCE, ARB RECEIPT HISTORY, --calibration-report
+* [Round 62 digest](wiki/digests/round_62.md) - Round 62: CROSS-MARKET DUTCH RECORDER, RECEIPT READER TOLERANCE, COMPACT CALIBRATION REPORT
+* [Round 63 digest](wiki/digests/round_63.md) - Round 63: MONARCH SHARK CROSS-MARKET STAKING WIRED TO THE DUTCH RECORDER, PAPER MODE, PATH REFUSAL, ARB LEGS OUT OF SPORTS HISTORY
+* [Round 64 digest](wiki/digests/round_64.md) - Round 64: PAPER ARB CLOSED-LOOP DRILL, STALE-QUOTE ENGINE GROUNDWORK
+* [Round 65 digest](wiki/digests/round_65.md) - Round 65: STALE-QUOTE PANEL IN THE MONARCH SHARK (display only)
+* [Round 66 digest](wiki/digests/round_66.md) - Round 66: STALE-PANEL FEED LIVENESS, --json, Sports_Desk.md SECTION
+* [Round 67 digest](wiki/digests/round_67.md) - Round 67: FEED LIVENESS IN THE Sports_Desk.md HEADER, SECTION CAP WITH OVERFLOW, KNOBS DOCUMENTED
+* [Round 68 digest](wiki/digests/round_68.md) - Round 68: TICKING AGES ARE VOLATILE IN Sports_Desk.md
+* [Round 69 digest](wiki/digests/round_69.md) - Round 69: CLOCK FRAGMENTS VOLATILE IN THE HL COCKPIT NOTES
+* [Round 70 digest](wiki/digests/round_70.md) - Round 70: OPTIONAL WRITE THROTTLE FOR HyperLiquid_Monarch.md
+* [Round 71 digest](wiki/digests/round_71.md) - Round 71: THE 24/7 LAUNCHERS THROTTLE THE MARKET DASHBOARD
+* [Round 73 digest](wiki/digests/round_73.md) - Round 73: ITEM 18 MAIDEN RUN AUTOMATED BEHIND THE SENTINEL GATE
+* [Round 74 digest](wiki/digests/round_74.md) - Round 74 (2026-09-05): ONE EXPORTER LOOP, TIER 2 PRE-REGISTERED
+* [Round 85 digest](wiki/digests/round_85.md) - Round 85 (2026-09-05): ITEM 10 PHASE 1 BUILT AS RATIFIED (5d39bf6)
+* [Round 87 digest](wiki/digests/round_87.md) - Round 87 (2026-09-05): ITEM 12 PHASE 1 - OFFLINE ENGINE + MEASUREMENT INSTRUMENT (registry line 273, not 181 as the prompt said)
+* [Round 90 digest](wiki/digests/round_90.md) - Round 90 (2026-09-05): ITEM 13 PHASE 1 - AMM QUOTING ENGINE + REWARDS SIMULATOR (registry line 279)
+* [Round 91 digest](wiki/digests/round_91.md) - Round 91 (2026-09-05): RULING R6 - COMPETITOR Q MEASURED FROM RECORDED BOOKS
+* [Round 92 digest](wiki/digests/round_92.md) - Round 92 (2026-09-05): OPTION 2 - DEPTH REPORT OVER REAL BOOKS
+* [Round 93 digest](wiki/digests/round_93.md) - Round 93 (2026-09-05): RULING R2 INSTRUMENT + FOMC RULES REGISTERED
+* [Round 94 digest](wiki/digests/round_94.md) - Round 94 (2026-09-05): SURVIVAL-CURVE HARNESS + FOMC DRILL SCHEDULED
+* [Round 95 digest](wiki/digests/round_95.md) - Round 95 (2026-09-05): RESEARCH ROUND - LLM WIKI x DEV SYNTHESIS BLUEPRINT (no code, no daemon, no dashboard touched)
+* [Round 96 digest](wiki/digests/round_96.md) - Round 96 (2026-09-05): PHASE 1 - WIKI CONSTITUTION, SEED PAGES, MASTER MODULE 23 (Ratification R95-A..G)
+* [Round 97 digest](wiki/digests/round_97.md) - Round 97 (2026-09-05): KNOWLEDGE PHASE 2 - CONSTITUTION RATIFIED, INGEST ADAPTERS, RAW MANIFEST, LINT C2/C3 (Antigravity rulings 1-13 on Round 96 applied)
+* [Round 98 digest](wiki/digests/round_98.md) - Round 98 (2026-09-05): KNOWLEDGE - COMPILE WHAT EXISTS (backlog B3, B4, B6, B7, B9; Antigravity's Round 97/97b rulings applied)
+* [Round 99 digest](wiki/digests/round_99.md) - Round 99 (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1)
 
 # Attested Computation
 * [knowledge.computations](wiki/computations/knowledge_computations.md) - This page's own writer: the Attested Computation catalogue.

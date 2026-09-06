@@ -96,7 +96,11 @@ def _local_path(resource: str, dev_root: Path) -> Path | None:
         return Path(raw)
     if "://" in resource or resource.startswith("git:"):
         return None
-    p = Path(resource)
+    # Round 109: a `#fragment` names a SECTION of the file, not a different file. A digest citing
+    # `AGENTS.md#round-109-findings` is citing AGENTS.md; resolving the whole string as a path would
+    # report a missing file that is sitting right there. extract_links already strips anchors for
+    # markdown links, so this brings sources into line with them.
+    p = Path(resource.split("#", 1)[0])
     return p if p.is_absolute() else dev_root / p
 
 
@@ -429,6 +433,62 @@ def check_l9(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]
     return out
 
 
+RULE_FIELDS = ("label", "condition", "market", "outcome", "neg_risk")
+
+
+def rules_from_raw(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    """The registration JSON's rules in the shape the page stores them.
+
+    ONE function, imported by the compiler, so the page and the check cannot disagree about what
+    "the same rules" means. Two independent transcriptions of the same mapping would drift exactly
+    the way this check exists to catch.
+    """
+    out = []
+    for r in raw.get("rules") or []:
+        if isinstance(r, dict):
+            out.append({"label": r.get("label"),
+                        "condition": f"{r.get('field')} {r.get('op')} {r.get('value')}".strip(),
+                        "market": str(r.get("market", "")),
+                        "outcome": r.get("outcome_if_true"),
+                        "neg_risk": bool(r.get("neg_risk", False))})
+    return out
+
+
+def check_rules_drift(meta: dict[str, Any], rel: str, dev_root: Path) -> list[Finding]:
+    """C1 over `dev.rules` (Round 109, Ruling R108-1.E).
+
+    Round 108 copied the registration's rules into the page's frontmatter so the drill card could
+    show whole token ids without parsing a rendered table. That created a SECOND COPY of the one
+    thing in this repository that must never quietly change - the pre-registered mapping from a Fed
+    decision to a market - and nothing checked the two agreed. This does.
+
+    A token id that drifts here is not a formatting bug: it is the card telling an operator to trade
+    a different market than the one that was registered before the data was seen.
+    """
+    dev = meta.get("dev") or {}
+    if dev.get("kind") != "sniper_rules" or not dev.get("registration"):
+        return []
+    src = dev_root / str(dev["registration"])
+    if not src.is_file():
+        return [Finding("C1", "error", rel, f"dev.registration missing on disk: {dev['registration']}")]
+    try:
+        raw = json.loads(src.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        return [Finding("C1", "error", rel, f"dev.registration unreadable ({e.__class__.__name__}): {dev['registration']}")]
+    want, have = rules_from_raw(raw), [dict(r) for r in (dev.get("rules") or []) if isinstance(r, dict)]
+    if len(want) != len(have):
+        return [Finding("C1", "error", rel,
+                        f"dev.rules drift: page has {len(have)} rule(s), {dev['registration']} has {len(want)}")]
+    out = []
+    for i, (w, h) in enumerate(zip(want, have)):
+        for field in RULE_FIELDS:
+            if w.get(field) != h.get(field):
+                out.append(Finding("C1", "error", rel,
+                                   f"dev.rules[{i}].{field} drift: page says {h.get(field)!r}, "
+                                   f"{dev['registration']} says {w.get(field)!r}"))
+    return out
+
+
 def check_c1(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]:
     out: list[Finding] = []
     cache: dict[Path, str | None] = {}
@@ -445,6 +505,7 @@ def check_c1(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]
         if dev is None:
             continue
         rel = _rel(d.path, vault)
+        out += check_rules_drift(d.meta, rel, dev_root)
         for i, a in enumerate(dev.get("asserts") or []):
             if not isinstance(a, dict) or not isinstance(a.get("file"), str) or not isinstance(a.get("pattern"), str):
                 continue

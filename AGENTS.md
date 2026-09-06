@@ -5,6 +5,18 @@ the detail.
 
 ## Status
 
+Round 109 complete (2026-09-06): THE WORK CHAIN IS ADDRESSABLE, AND THE PRE-REGISTERED RULES
+NOW HAVE A GUARD ON BOTH COPIES. B5: knowledge/ingest/digests.py compiles one Digest page per
+round from this log - 63 of them - so answering "what happened in Round 97?" is a lookup
+rather than a scan of 210 KB. THE LOG REMAINS THE RECORD; the digests cite it and lose to it.
+R108-1.E: lint C1 now compares `dev.rules` against the raw registration JSON field by field, so
+the second copy Round 108 created cannot drift - a token id that slips there is the card
+telling an operator to trade a different market than the one registered before the data was
+seen. The compiler and the checker SHARE one transform, because two transcriptions would drift
+exactly the way the check exists to catch. R108-1.D: Event pages declare `dev.books_dir` and
+the card reads it instead of constructing a path. Tests: knowledge 202 (+26), all green
+offline. Vault 487 pages (+64), lint CLEAN. NO DAEMON RESTARTED.
+
 Round 108 complete (2026-09-06): LINT L9 CLOSES THE HOLE ROUND 107 OPENED, AND THE DRILL CARD
 IS NOW COPY-PASTEABLE. L9 (Ruling R107-1.D): a wikilink whose only target is a git-ignored file
 is an error - it lints clean locally and fails L8 on a FRESH CLONE, the worst shape of bug
@@ -1158,6 +1170,44 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 109 findings
+
+### The digest regex silently covered a third of the log
+
+- The first version parsed 22 rounds. `grep -c '^Round [0-9]+ complete'` says 63. **The log has
+  three entry formats**, written at different times: rounds 74+ carry a date
+  (`Round 104 complete (2026-09-06): ...`), rounds 31-73 carry none
+  (`Round 73 complete: ...`), and Round 50 uses a dash. A regex for only the newest shape looks
+  exactly like a working one - it produces pages, they lint clean, nothing errors.
+- Caught by counting what the log contains against what parsed, BEFORE shipping. That check
+  cost one command and is the same discipline that caught L9's three failures last round: a
+  compiler that silently drops two thirds of its input is indistinguishable from a correct one
+  unless you count both sides.
+- Undated rounds record `date: null` and render `date not recorded in the log`, rather than a
+  guessed or inferred date. 41 of the 63 are undated.
+
+### The log quotes wikilink syntax, and quoting is not linking
+
+- AGENTS.md discusses link syntax as subject matter: `[[Whales/<addr>]]`, `[[page\\|alias]]`,
+  `[[wikilinks]]`, `[[Cross_Market_Titans]]`. Copied verbatim into a page, four of those become
+  dangling links (L8) and one points at a git-ignored dashboard (L9) - the digests would have
+  tripped the exact rules the rounds they describe were spent building. They are neutralised
+  into code spans, which both checks correctly skip.
+- A digest's only real outbound link is its register. Asserted by a test.
+
+### Two small things the directive did not anticipate
+
+- **`Source Summary` could not be the type.** The directive asks for type `Source Summary` at
+  path `wiki/digests/`, but s.4 maps that type to `wiki/sources`, so `page_path` and the
+  constitution would have disagreed. A Source Summary condenses an EXTERNAL document; a Digest
+  condenses one round of this project's own work chain. A new `Digest` type was added instead -
+  which s.3 explicitly anticipates ("new types may be added here") - and the s.4 vocabulary
+  addition is flagged for ratification rather than assumed.
+- **L5 would have rejected the source anchor.** `AGENTS.md#round-109-complete` was resolved as
+  a whole filename, reporting a missing file that is sitting in the repo root. A `#fragment`
+  names a SECTION, not a different file; `_local_path` now strips it, which brings `sources`
+  into line with `extract_links`, which already did.
 
 ## Round 108 findings
 

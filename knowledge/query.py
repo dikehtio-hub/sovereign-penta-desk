@@ -109,14 +109,18 @@ BOOKS_ROOT = "cross_market/data/clob_books"
 def books_dir(event: Page) -> str:
     """Where the drill's recorder actually put the stamps.
 
-    Read off fomc_drill_2026-09-16.bat, which runs `--record-loop ... --books
+    Ruling R108-1.D: the EVENT PAGE declares it (`dev.books_dir`) and this reads that first; the
+    constructed path below is the fallback for events compiled before Round 109.
+
+    Originally read off fomc_drill_2026-09-16.bat, which runs `--record-loop ... --books
     cross_market\\data\\clob_books\\fomc_2026-09-16`. Worth stating because the obvious guess is
     wrong twice over: latency_sniper's own default is the clob_books ROOT (no event subdirectory),
     and the Round 108 directive proposed `clob_drill/<event>`, which does not exist. Either would
     send the operator's survival curve at a directory with no stamps in it, one minute after the
     print, and report an empty result rather than an error.
     """
-    return f"{BOOKS_ROOT}/{event.path.stem}"
+    declared = (event.meta.get("dev") or {}).get("books_dir")
+    return str(declared) if declared else f"{BOOKS_ROOT}/{event.path.stem}"
 
 
 def rule_lines(rules: Page) -> list[str]:

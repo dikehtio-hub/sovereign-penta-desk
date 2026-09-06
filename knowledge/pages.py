@@ -44,6 +44,7 @@ PAGE_TYPES: tuple[str, ...] = (
     "Market",
     "Concept",
     "Source Summary",
+    "Digest",
     "Attested Computation",
     "Entity/Whale",
     "Entity/Sharp Trader",
@@ -69,6 +70,11 @@ TYPE_FOLDERS: dict[str, str] = {
     "Market": "wiki/markets",
     "Concept": "wiki/concepts",
     "Source Summary": "wiki/sources",
+    # Round 109 (backlog B5). Constitution s.3 anticipates this: "OKF consumers must not reject
+    # unknown types, so new types may be added here." A digest is not a Source Summary - a Source
+    # Summary condenses an external document, a Digest condenses one round of THIS project's own
+    # work chain - so it gets its own type rather than overloading one that means something else.
+    "Digest": "wiki/digests",
     "Attested Computation": "wiki/computations",
     "Entity/Whale": "crm/whales",
     "Entity/Sharp Trader": "crm/sharps",

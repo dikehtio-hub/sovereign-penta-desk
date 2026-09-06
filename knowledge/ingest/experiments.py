@@ -34,6 +34,7 @@ from typing import Any
 
 from .. import EXIT_OK, GENERATED_BY
 from ..frontmatter import parse_iso8601
+from ..lint import rules_from_raw
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
 from ..registers import update_register as _update_register
@@ -197,12 +198,10 @@ def compile_rules_registration(data: dict[str, Any], path: Path, vault: Path, de
     # them back out of the rendered markdown table, which truncates token ids to 12 characters for
     # readability - so at T-2 the card showed `561528276087…`, a token nobody can paste. Reading
     # structured data is also proof against a future edit to the table's column layout.
-    dev["rules"] = [{"label": r.get("label"),
-                     "condition": f"{r.get('field')} {r.get('op')} {r.get('value')}".strip(),
-                     "market": str(r.get("market", "")),
-                     "outcome": r.get("outcome_if_true"),
-                     "neg_risk": bool(r.get("neg_risk", False))}
-                    for r in rules if isinstance(r, dict)]
+    # ONE transform, shared with lint.check_rules_drift (Ruling R108-1.E). Two independent
+    # transcriptions of the same mapping would drift exactly the way that check exists to catch,
+    # and the check would be comparing its own idea of the rules against the page's.
+    dev["rules"] = rules_from_raw(data)
     tokens = [str(r["market"]) for r in rules if isinstance(r, dict) and r.get("market")]
     if tokens:
         dev["tokens"] = tokens

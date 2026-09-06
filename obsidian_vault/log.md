@@ -52,6 +52,14 @@
 * **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
 * **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 7 Experiment page(s) written, 0 kept; [index](index.md) rebuilt.
 * **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: calendars from `knowledge/calendars`: 5 Event page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 7 Experiment page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: work-chain digests: 22 round(s) from `AGENTS.md`; 22 page(s) written -> [[digests_register]].
+* **Ingest**: work-chain digests: 63 round(s) from `AGENTS.md`; 42 page(s) written -> [[digests_register]].
+* **Ingest**: work-chain digests: 63 round(s) from `AGENTS.md`; 0 page(s) written -> [[digests_register]].
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 5 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 5 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: work-chain digests: 64 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

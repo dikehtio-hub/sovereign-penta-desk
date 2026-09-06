@@ -2653,5 +2653,174 @@ class CardErgonomicsTests(QueryCardTests):
         self.assertIn("matched 2 pages on substring", sub)
 
 
+
+# --------------------------------------------------------------------------------------
+# Round 109: C1 over dev.rules (R108-1.E), dev.books_dir (R108-1.D), work-chain digests (B5)
+# --------------------------------------------------------------------------------------
+from knowledge.ingest import digests as ingest_dg  # noqa: E402
+
+AGENTS_DIGEST_FIXTURE = """# DEV
+
+## Status
+
+Round 109 complete (2026-09-06): THE NEWEST FORMAT, WITH A DATE.
+A second line of the same entry.
+
+Round 73 complete: AN OLDER ENTRY WITH NO DATE AT ALL.
+The log changed shape somewhere around round 74.
+
+Round 50 complete - MILESTONE. A third shape, with a dash.
+It mentions [[Whales/0xabc]] and [[wikilinks]] as SYNTAX, not as links.
+
+## Round 109 findings
+
+Not part of any round entry.
+"""
+
+
+class RulesDriftTests(IngestFixture):
+    """Ruling R108-1.E: dev.rules is a second copy of the pre-registered mapping. C1 guards it."""
+
+    def setUp(self):
+        super().setUp()
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        self.page = self.vault / "wiki/experiments/fomc_2026-09-16_rules.md"
+        self.raw = self.exp_dir / "fomc_2026-09-16.rules.json"
+
+    def _findings(self):
+        return [f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "C1"]
+
+    def test_a_faithful_page_is_clean(self):
+        self.assertEqual(self._findings(), [])
+
+    def test_editing_the_page_copy_trips_c1(self):
+        meta, body = fm.parse(self.page.read_text(encoding="utf-8"))
+        meta["dev"]["rules"][0]["market"] = "TAMPERED"
+        pages.write_page(pages.Page(self.page, meta, body), self.vault, now=NOW)
+        found = self._findings()
+        self.assertTrue(found)
+        self.assertIn("dev.rules[0].market drift", found[0].message)
+
+    def test_editing_the_raw_registration_trips_c1(self):
+        raw = json.loads(self.raw.read_text(encoding="utf-8"))
+        raw["rules"][0]["value"] = 999
+        self.raw.write_text(json.dumps(raw), encoding="utf-8")
+        found = self._findings()
+        self.assertTrue(found)
+        self.assertIn("condition drift", found[0].message)
+
+    def test_a_removed_rule_trips_c1_on_the_count(self):
+        raw = json.loads(self.raw.read_text(encoding="utf-8"))
+        raw["rules"].pop()
+        self.raw.write_text(json.dumps(raw), encoding="utf-8")
+        found = self._findings()
+        self.assertTrue(found)
+        self.assertIn("page has 2 rule(s)", found[0].message)
+
+    def test_a_missing_registration_is_reported_not_ignored(self):
+        self.raw.unlink()
+        found = self._findings()
+        self.assertTrue(any("dev.registration missing on disk" in f.message for f in found), found)
+
+    def test_the_compiler_and_the_checker_share_one_transform(self):
+        """Two transcriptions of the same mapping would drift the way C1 exists to catch."""
+        from knowledge.ingest.experiments import rules_from_raw as compiler_side
+        self.assertIs(compiler_side, lint.rules_from_raw)
+
+
+class BooksDirTests(QueryCardTests):
+    def test_the_event_declares_where_its_recorder_writes(self):
+        meta, _ = fm.parse((self.vault / "wiki/events/fomc_2026-09-16.md").read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["books_dir"], "cross_market/data/clob_books/fomc_2026-09-16")
+
+    def test_the_card_reads_the_declaration_over_the_constructed_path(self):
+        path = self.vault / "wiki/events/fomc_2026-09-16.md"
+        meta, body = fm.parse(path.read_text(encoding="utf-8"))
+        meta["dev"]["books_dir"] = "somewhere/else/entirely"
+        pages.write_page(pages.Page(path, meta, body), self.vault, now=NOW)
+        _, text = self.card("--drill-card", self.event)
+        self.assertIn("--books somewhere/else/entirely", text)
+
+    def test_an_event_without_the_field_falls_back(self):
+        path = self.vault / "wiki/events/fomc_2026-09-16.md"
+        meta, body = fm.parse(path.read_text(encoding="utf-8"))
+        meta["dev"].pop("books_dir")
+        pages.write_page(pages.Page(path, meta, body), self.vault, now=NOW)
+        _, text = self.card("--drill-card", self.event)
+        self.assertIn("--books cross_market/data/clob_books/fomc_2026-09-16", text)
+
+
+class DigestTests(IngestFixture):
+    def setUp(self):
+        super().setUp()
+        self.agents = self.dev_root / "AGENTS.md"
+        self.agents.write_text(AGENTS_DIGEST_FIXTURE, encoding="utf-8")
+
+    def test_all_three_log_formats_are_parsed(self):
+        """A regex for only the newest format silently covered a third of the real log."""
+        rounds = ingest_dg.parse_rounds(AGENTS_DIGEST_FIXTURE)
+        self.assertEqual([r["round"] for r in rounds], [50, 73, 109])
+        by_n = {r["round"]: r for r in rounds}
+        self.assertEqual(by_n[109]["date"], "2026-09-06")
+        self.assertIsNone(by_n[73]["date"])                       # undated, not guessed
+        self.assertIsNone(by_n[50]["date"])
+        self.assertIn("A second line", by_n[109]["summary"])       # the whole entry, not just line 1
+        self.assertNotIn("Not part of any round", by_n[50]["summary"])   # the ## heading ends it
+
+    def test_quoted_wikilinks_are_neutralised(self):
+        """The log discusses link syntax; copied bare it would trip L8 and L9."""
+        self.assertEqual(ingest_dg.neutralise("see [[Whales/0xabc]] here"), "see `[[Whales/0xabc]]` here")
+        self.assertEqual(ingest_dg.neutralise("`[[already]]`"), "`[[already]]`")   # not double-wrapped
+        total, _ = ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW)
+        self.assertEqual(total, 3)
+        body = (self.vault / "wiki/digests/round_50.md").read_text(encoding="utf-8")
+        self.assertIn("`[[Whales/0xabc]]`", body)
+        self.assertNotIn("\n- [[Whales/0xabc]]", body)
+        self.assertEqual(pages.wikilink_targets(fm.parse(body)[1]), {"digests_register"})
+
+    def test_pages_register_and_lint_clean(self):
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW)
+        reg = self.vault / "wiki/concepts/digests_register.md"
+        self.assertTrue(reg.is_file())
+        meta, body = fm.parse(reg.read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["count"], 3)
+        self.assertIn("Round 109", body)
+        self.assertIn("| - |", body)                              # an undated round shows a dash, not None
+        seed.seed(self.vault, self.dev_root, self.dev_root / "MASTER_COMMAND_LIST.txt", at=NOW, force=True)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
+
+    def test_the_source_cites_the_log_with_an_anchor(self):
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW)
+        meta, _ = fm.parse((self.vault / "wiki/digests/round_109.md").read_text(encoding="utf-8"))
+        self.assertEqual(meta["sources"][0]["resource"], "AGENTS.md#round-109-complete")
+        # L5 must resolve the FILE and ignore the fragment; the whole string is not a filename
+        self.assertEqual([f for f in lint.check_l5(pages.load_documents(self.vault), self.vault,
+                                                   self.dev_root) if "agents" in f.message.lower()], [])
+
+    def test_reingesting_an_unchanged_log_writes_nothing(self):
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW)
+        def snap():
+            return {p.as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in sorted(self.vault.rglob("*.md"))}
+        before = snap()
+        total, written = ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents,
+                                                  at=NOW + timedelta(hours=2))
+        self.assertEqual((total, written), (3, 0))
+        self.assertEqual(snap(), before)
+
+    def test_since_limits_the_range(self):
+        total, _ = ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, since=100, at=NOW)
+        self.assertEqual(total, 1)
+        self.assertTrue((self.vault / "wiki/digests/round_109.md").is_file())
+        self.assertFalse((self.vault / "wiki/digests/round_50.md").is_file())
+
+    def test_a_log_with_no_round_entries_refuses(self):
+        self.agents.write_text("# nothing here\n", encoding="utf-8")
+        out = io.StringIO()
+        code = ingest_dg.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)], out=out)
+        self.assertEqual(code, 3)
+        self.assertIn("[REFUSE]", out.getvalue())
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

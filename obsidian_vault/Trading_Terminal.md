@@ -5,19 +5,19 @@ tags:
   - trading-terminal
   - hurdle-tracker
   - execution-telemetry
-last_synced: "2026-09-06 02:10:04 UTC"
+last_synced: "2026-09-06 07:18:23 UTC"
 ---
 
 # 📈 Monarch Trading Terminal & 50-Trade Hurdle Tracker
 
 > [!INFO] **Live Delta-Neutral Harvester Telemetry**
 > - **Total Account Equity**: **`$100.4K`** (Starting: `$100.0K`)
-> - **Available Cash Balance**: **`$60.4K`** • Deployed Collateral: **`$40.0K`**
-> - **Net Realized Yield / PnL**: **`+$400.60`**
-> - **Accrued Funding Yield**: **`+$441.60`** (77 accrual cycles)
-> - **Total Execution Fees Paid**: `$41.00` (Net of maker/taker accounting)
-> - **Active Basis Pairs**: `2 pairs deployed`
-> - **Last Synchronized**: `2026-09-06 02:10:04 UTC`
+> - **Available Cash Balance**: **`$80.4K`** • Deployed Collateral: **`$20.0K`**
+> - **Net Realized Yield / PnL**: **`+$402.94`**
+> - **Accrued Funding Yield**: **`+$445.94`** (82 accrual cycles)
+> - **Total Execution Fees Paid**: `$43.00` (Net of maker/taker accounting)
+> - **Active Basis Pairs**: `1 pairs deployed`
+> - **Last Synchronized**: `2026-09-06 07:18:23 UTC`
 
 ---
 
@@ -46,8 +46,7 @@ last_synced: "2026-09-06 02:10:04 UTC"
 
 | Asset | Spot Pair | Leg Notional | Spot Entry | Perp Entry | Entry APR | Realised APR | Funding Accrued | Duration |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`para:ANSEM`** | `UANSEM` | $10.0K | `$0.2996` | `$0.2996` | `+2924.75%` | `+466.72%` | **`+$410.25`** | `115.4h` |
-| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+15.44%` | **`+$7.40`** | `72.5h` |
+| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+14.96%` | **`+$8.03`** | `77.6h` |
 
 ---
 
@@ -66,6 +65,7 @@ last_synced: "2026-09-06 02:10:04 UTC"
 | **`xyz:HOOD`** | 🟢 **$4.09** | `51.0h` | `ILLIQUID_SPOT_LEG: HOOD is synthetic TradFi (quarantined)` |
 | **`para:AVGO`** | 🟢 **$0.15** | `16.0h` | `ILLIQUID_SPOT_LEG: AVGO is synthetic TradFi (quarantined)` |
 | **`xyz:AVGO`** | 🔴 **-$7.28** | `16.0h` | `ILLIQUID_SPOT_LEG: AVGO is synthetic TradFi (quarantined)` |
+| **`para:ANSEM`** | 🟢 **$404.96** | `79.0h` | `funding turned adverse (-66.5% < 0.0%)` |
 
 ---
 

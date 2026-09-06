@@ -9,7 +9,7 @@ tags:
 - desk-2
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:06Z'
+  at: '2026-09-06T01:10:25Z'
 status: draft
 sources:
 - id: top20-registry

@@ -2360,6 +2360,32 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 109 - WORK-CHAIN DIGESTS, C1 OVER dev.rules, EVENT-DECLARED BOOKS DIR
+     python -m knowledge.ingest.digests [--agents AGENTS.md] [--since N]
+         AGENTS.md -> one Digest page per round under wiki/digests/, plus digests_register. 63
+         rounds out of a 210 KB log, so "what happened in Round 97?" is a lookup and not a scan.
+         THE LOG REMAINS THE RECORD: nothing is deleted, every digest cites its section, and the log
+         wins wherever they disagree. Parses all THREE entry formats the log actually uses (dated
+         from round 74, undated 31-73, one dash form at round 50) - a regex for only the newest
+         covered 22 of 63 and looked perfectly healthy doing it. Undated rounds record date: null.
+         Wikilinks in the log's prose are SYNTAX being discussed, so they are neutralised into code
+         spans; left bare they would trip L8 and L9 on the pages themselves.
+         New page type `Digest` -> wiki/digests (constitution s.3 anticipates new types; the s.4
+         vocabulary addition is flagged for ratification).
+     python -m knowledge.lint          # C1 now also guards dev.rules
+         Ruling R108-1.E: for an Experiment page with dev.kind == "sniper_rules", every field of
+         every rule in `dev.rules` is compared against the raw registration JSON named by
+         dev.registration. Round 108 made that a SECOND COPY of the pre-registered mapping; a token
+         id drifting there is the drill card telling an operator to trade a different market than
+         the one registered before the data was seen. lint.rules_from_raw is the ONE transform, and
+         knowledge.ingest.experiments imports it - two transcriptions would drift exactly the way
+         this check exists to catch.
+         L5 also now strips a `#fragment` before resolving a source path: `AGENTS.md#round-109` is a
+         section of AGENTS.md, not a file with that name.
+     python -m knowledge.ingest.calendar --force
+         Ruling R108-1.D: FOMC Event pages declare `dev.books_dir`, and knowledge.query reads it
+         before falling back to a constructed path. The event now says where its own recorder writes.
+
      ROUND 108 - LINT L9, STRUCTURED dev.rules, COPY-PASTEABLE DRILL CARD
      python -m knowledge.lint          # now also reports L9
          L9 (Ruling R107-1.D): a wikilink whose ONLY target is a file git ignores. The page lints

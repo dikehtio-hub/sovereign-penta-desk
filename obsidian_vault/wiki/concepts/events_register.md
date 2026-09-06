@@ -9,7 +9,7 @@ tags:
 - event
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-05T21:27:23Z'
+  at: '2026-09-06T07:12:54Z'
 status: draft
 dev:
   register_for: Event
@@ -28,9 +28,9 @@ dev:
 
 | Page | kind | release utc | Status | Generated |
 |---|---|---|---|---|
-| [[fomc_2026-09-16\|Event: fomc_2026-09-16]] | fed_rate | 2026-09-16T18:00:00Z | draft | 2026-09-05T21:27:23Z |
-| [[fomc_2026-10-28\|Event: fomc_2026-10-28]] | fed_rate | 2026-10-28T18:00:00Z | draft | 2026-09-05T21:27:23Z |
-| [[fomc_2026-12-09\|Event: fomc_2026-12-09]] | fed_rate | 2026-12-09T19:00:00Z | draft | 2026-09-05T21:27:23Z |
+| [[fomc_2026-09-16\|Event: fomc_2026-09-16]] | fed_rate | 2026-09-16T18:00:00Z | draft | 2026-09-06T07:12:54Z |
+| [[fomc_2026-10-28\|Event: fomc_2026-10-28]] | fed_rate | 2026-10-28T18:00:00Z | draft | 2026-09-06T07:12:54Z |
+| [[fomc_2026-12-09\|Event: fomc_2026-12-09]] | fed_rate | 2026-12-09T19:00:00Z | draft | 2026-09-06T07:12:54Z |
 | [[tax_estimated_2026_q3\|Event: tax_estimated_2026_q3]] | estimated_tax | - | draft | 2026-09-05T21:27:23Z |
 | [[tax_estimated_2026_q4\|Event: tax_estimated_2026_q4]] | estimated_tax | - | draft | 2026-09-05T21:27:23Z |
 
