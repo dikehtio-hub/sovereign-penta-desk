@@ -3,18 +3,18 @@ type: Concept
 title: Digests register
 description: Every round of the sovereign work chain as its own page, compiled from
   AGENTS.md. The log stays the record; a digest loses to it wherever they disagree.
-  70 page(s) today.
+  71 page(s) today.
 tags:
 - concept
 - register
 - digest
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T22:51:24Z'
+  at: '2026-09-06T23:22:45Z'
 status: draft
 dev:
   register_for: Digest
-  count: 70
+  count: 71
   pages:
   - round_100
   - round_101
@@ -32,6 +32,7 @@ dev:
   - round_113
   - round_114
   - round_115
+  - round_116
   - round_31
   - round_33
   - round_34
@@ -110,6 +111,7 @@ dev:
 | [[round_113\|Round 113 digest]] | 113 | 2026-09-06 | Round 113 (2026-09-06): THE FOMC DRILL HAS A PRE-FLIGHT, THE HUB CAN NO LONGER LAG A REGISTER, AND `ready` MEANS EVERY GATE | draft | 2026-09-06T18:39:16Z |
 | [[round_114\|Round 114 digest]] | 114 | 2026-09-06 | Round 114 (2026-09-06): THE REOPENING QUESTION WAS ASKED OF THE RIGHT POPULATION AND THE ANSWER IS INSUFFICIENT; THE DRILL'S ENTRY POINT IS UNDER VERSION CONTROL; THE PRE-FLIGHT CHECKS THE CLOCK | draft | 2026-09-06T22:21:25Z |
 | [[round_115\|Round 115 digest]] | 115 | 2026-09-06 | Round 115 (2026-09-06): THE WHALE-SWEEPER REPLAY WAS RE-RUN AND IS STILL INSUFFICIENT - BY 0.20 POINTS, ON THE ROWS THE ENGINE ACTUALLY COUNTS; THE ENGINE GATE NOW CHECKS THE COVERED SPAN; DESK 4 CONSTRUCTS FROM ANY DIRECTORY | draft | 2026-09-06T22:51:24Z |
+| [[round_116\|Round 116 digest]] | 116 | 2026-09-06, SELF-DIRECTED - the operator said "proceed on your own"; no Antigravity prompt | Round 116 (2026-09-06, SELF-DIRECTED - the operator said "proceed on your own"; no Antigravity prompt): THE FOMC DRILL HAS BEEN REHEARSED LIVE, END TO END, INTO SCRATCH | draft | 2026-09-06T23:22:45Z |
 | [[round_31\|Round 31 digest]] | 31 | - | Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings | draft | 2026-09-06T08:12:49Z |
 | [[round_33\|Round 33 digest]] | 33 | - | Round 33: DATA GROUNDING | draft | 2026-09-06T08:12:49Z |
 | [[round_34\|Round 34 digest]] | 34 | - | Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION | draft | 2026-09-06T08:12:49Z |
@@ -165,7 +167,7 @@ dev:
 | [[round_98\|Round 98 digest]] | 98 | 2026-09-05 | Round 98 (2026-09-05): KNOWLEDGE - COMPILE WHAT EXISTS (backlog B3, B4, B6, B7, B9; Antigravity's Round 97/97b rulings applied) | draft | 2026-09-06T08:12:49Z |
 | [[round_99\|Round 99 digest]] | 99 | 2026-09-05 | Round 99 (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1) | draft | 2026-09-06T08:12:49Z |
 
-70 page(s).
+71 page(s).
 
 ## Related
 

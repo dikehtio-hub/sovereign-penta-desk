@@ -30,7 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .. import EXIT_OK, GENERATED_BY
+from .. import DEV_ROOT, EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
 from . import add_common_args, at_from, fmt_s, fmt_usd, guard, rel_to
@@ -153,6 +153,17 @@ def _render_concept(history: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _profiles_resource(vault: Path) -> str:
+    """The profiles folder OF THE VAULT BEING WRITTEN, relative to the dev root when it sits inside it.
+    Round 116: hard-coding obsidian_vault/wiki/profiles made lint L5 fail on any relocated vault - the live
+    rehearsal writes into a scratch copy - and would have pointed a second vault at the wrong folder."""
+    target = vault / "wiki" / "profiles"
+    try:
+        return target.resolve().relative_to(DEV_ROOT.resolve()).as_posix()
+    except ValueError:
+        return target.as_posix()
+
+
 def update_concept(vault: Path, profiles: list[Page], event_id: str, *, at: datetime, by: str = GENERATED_BY) -> Page:
     path = page_path(vault, "Concept", CONCEPT_FILE)
     existing = load_page(path)
@@ -168,7 +179,7 @@ def update_concept(vault: Path, profiles: list[Page], event_id: str, *, at: date
     meta = make_meta("Concept", "Latency decay across events",
                      "Seconds of resting depth that survive a scheduled print, per recorded event and market; the cross-event table for the sniper thesis.",
                      tags=["concept", "desk-3", "item-12", "latency-decay"], generated_by=by, at=at, status="draft",
-                     sources=[{"id": "profiles", "resource": "obsidian_vault/wiki/profiles", "title": "Reaction Profile pages", "author": by}],
+                     sources=[{"id": "profiles", "resource": _profiles_resource(vault), "title": "Reaction Profile pages", "author": by}],
                      dev={"desk": 3, "item": 12, "history": history})
     return Page(path, meta, _render_concept(history))
 

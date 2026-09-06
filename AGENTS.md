@@ -5,6 +5,31 @@ the detail.
 
 ## Status
 
+Round 116 complete (2026-09-06, SELF-DIRECTED - the operator said "proceed on your own"; no Antigravity
+prompt): THE FOMC DRILL HAS BEEN REHEARSED LIVE, END TO END, INTO SCRATCH. New module
+knowledge/drills/fomc_live_rehearsal.py: the pre-flight must show 0 FAIL; then latency_sniper.record_loop
+stamps the three registered tokens against the REAL public CLOB books for --seconds into
+cross_market/data/rehearsals/<stamp>/books (git-ignored); a SYNTHETIC event (fed_rate, change_bps 0,
+source "REHEARSAL ... NOT a Federal Reserve statement") is written to scratch, anchored mid-recording;
+survival_curve runs exactly as the drill card's step 2; knowledge.ingest.clob compiles the Reaction
+Profiles, the Event page and the latency-decay concept into a scratch COPY of the vault, which is then
+linted. The real vault, the real books directory and the repo-root event.json are hashed before and
+after; a difference is a FAIL. Real 60 s run at 23:11Z: 60 polls, 180/180 stamps (100%), 0 fetch
+failures, 0 rate limits, largest gap 1.001 s; three markets resolved from change_bps=0 (no change->YES;
+hike 25->NO and hike 50+->NO deferred under Ruling R4 as neg_risk NO sides); 60-point series on the live
+market; Tax Reserve Agent after-tax economics loaded; 3 profiles + event + concept compiled; nothing real
+moved. Findings: (1) a bare urllib GET of the CLOB gets HTTP 403 - the recorder's browser-style
+User-Agent (Round 87) is load-bearing and the rehearsal exercises it; (2) a token with an underscore
+records fine and loads back as NOTHING (the stamp regex splits on "_") - now an explicit check, and
+the fixture tokens were made realistic; (3) the latency-decay concept hard-coded its source as
+obsidian_vault/wiki/profiles - now derived from the vault being written; (4) two lint rules are
+meaningless on a relocated copy (L2 raw/index.md vault-relative paths; L9 on a git-ignored tree) and
+are reported, not judged - the pages the drill produces are judged on every other rule and lint clean.
+Also closed: Round 115 cross-check item 6 - only two registrations carry sample_requirements and the
+mirror applies every filter both name. Tests: knowledge 318 (+15: 5 new, 10 inherited card tests).
+Real vault lint CLEAN. NO DAEMON RESTARTED; operator decisions (W32Time, battery flags, collector,
+Desk 4 packages) deliberately untouched.
+
 Round 115 complete (2026-09-06): THE WHALE-SWEEPER REPLAY WAS RE-RUN AND IS STILL INSUFFICIENT - BY
 0.20 POINTS, ON THE ROWS THE ENGINE ACTUALLY COUNTS; THE ENGINE GATE NOW CHECKS THE COVERED SPAN;
 DESK 4 CONSTRUCTS FROM ANY DIRECTORY. D1 (R114-1.B/D): analytics/cascade_replay.py re-run over
@@ -1291,6 +1316,47 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 116 findings
+
+### The path works. Here is what it took to prove it without writing anything real
+
+- Every write goes under `cross_market/data/rehearsals/<stamp>/` (git-ignored): the books, a copy of the
+  vault, the synthetic event, the curve. The three things the drill card would touch for real - the vault,
+  the books directory, `./event.json` - are hashed before and after and must not move.
+- The synthetic event carries confidence 0.995 because the curve and the pages gate on it. That is why
+  its `source` says in words that it is not a statement, and why it never leaves scratch.
+- One live market, two deferred: with change_bps 0 the hike markets resolve to NO, and both are neg_risk
+  books, so Ruling R4 defers their NO side. On the 16th, if the Fed holds, the drill will produce exactly
+  this shape: one curve, two deferrals. If it hikes 25, the shape flips. Worth knowing in advance.
+
+### Three things the rehearsal caught that the pre-flight could not
+
+- **The User-Agent is load-bearing.** A plain Python GET of `clob.polymarket.com/book` returns 403; the
+  recorder's browser-style header gets 43 bids and 46 asks in 0.22 s. The pre-flight is offline by
+  design, so only the live path exercises this. It is the Round 87 finding, re-confirmed on the day.
+- **Stamp filenames cannot carry a token with an underscore.** `clob_<token>_<stamp>Z.json` is parsed with
+  `[^_]+` for the token. The fixture tokens (`TOK_NOCHANGE`) recorded 30 stamps and loaded 0. Real tokens
+  are 76-digit decimals, so the drill is safe - and the rehearsal now FAILs on any non-numeric token
+  before recording, so a future registration cannot walk into it.
+- **A hard-coded source path.** `knowledge.ingest.clob.update_concept` cited `obsidian_vault/wiki/profiles`
+  regardless of the vault it wrote into. Derived from the target vault now; identical in production.
+
+### What lint means on a relocated vault
+
+- The copy sits three directories deeper than the real vault: `raw/index.md`'s entries are
+  vault-relative (`../../HyperLiquid/...`) and stop resolving - ~1,540 L2 findings. And the scratch root
+  is git-ignored, so L9 (link to an ignored file) fires on every link in the copy. Neither says anything
+  about the drill. The rehearsal lints the whole copy (link rules need the graph) but JUDGES only the
+  pages it wrote, on every rule but L9, and reports the rest as relocation findings. The real vault is
+  linted in place every round and is CLEAN.
+
+### Self-direction, and where its edge is
+
+- Chosen because it was the top Round 116 candidate in the Round 115 handoff and needs nothing but a
+  network read. NOT done, because they are the operator's: starting W32Time, clearing the battery flags,
+  restarting the collector, installing Desk 4 packages. The live recording is 60 s of public GETs, the
+  same call the collector makes all day.
 
 ## Round 115 findings
 

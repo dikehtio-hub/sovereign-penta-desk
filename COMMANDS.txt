@@ -2360,6 +2360,22 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 116 (self-directed) - LIVE DRESS REHEARSAL OF THE FOMC DRILL, INTO SCRATCH
+     python -m knowledge.drills.fomc_live_rehearsal [--seconds 60] [--interval 1] [--no-task] [--assume-defaults]
+         The whole post-print path, live, with nothing real written: pre-flight (must be 0 FAIL) -> record the
+         three registered tokens against the real CLOB for --seconds into cross_market/data/rehearsals/<stamp>/books
+         -> synthetic event (fed_rate, change_bps 0, source says NOT a statement) anchored mid-recording -> survival
+         curve exactly as the drill card's step 2 -> Reaction Profiles + Event + latency-decay concept into a scratch
+         COPY of the vault -> lint. 20 checks; the real vault, the real books dir and ./event.json are hashed before
+         and after. Run it on Sep 13 or 14 and again the morning of the 16th (takes --seconds plus ~10 s).
+         Real 60 s run 2026-09-06 23:11Z: 180/180 stamps, 0 failures, largest gap 1.001 s, 1 live market + 2
+         deferred (R4), 3 profiles compiled, rehearsal pages lint clean, nothing real moved.
+         Refuses when: HALT.flag exists; the pre-flight has any FAIL; a registered token is not all digits (the
+         stamp filename regex would load it back as nothing). Scratch is disposable and git-ignored.
+     Findings kept: a bare urllib GET of the CLOB is HTTP 403 - latency_sniper.default_fetch's browser User-Agent
+         (Round 87) is what gets the book; lint L2/L9 are relocation artefacts on a copied vault and are reported,
+         not judged; knowledge.ingest.clob's concept page now cites the profiles folder of the vault it writes.
+
      ROUND 115 - WHALE REPLAY RE-RUN (INSUFFICIENT BY 0.20 pts), ENGINE SPAN GATE, DESK 4 FROM ANY DIRECTORY
      python -m HyperLiquid.HL_Monarch.analytics.cascade_replay --json --out HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.verdict.json
      python -m knowledge.ingest.cascade_replay          (default --result is now that tracked path)

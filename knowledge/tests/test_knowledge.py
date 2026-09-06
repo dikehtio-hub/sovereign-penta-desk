@@ -3682,5 +3682,119 @@ class FadeRebenchmarkIngestTests(IngestFixture):
         self.assertFalse(p["gates"]["max_hhi"]["pass"])           # WHALE alone contributes (100/600)^2 = 0.0278
 
 
+
+# --------------------------------------------------------------------------------------
+# Round 116 (self-directed): the live dress rehearsal, run offline through injected fetch/clock/wall
+# --------------------------------------------------------------------------------------
+
+class FomcLiveRehearsalTests(QueryCardTests):
+    class FakeClock:
+        def __init__(self, base):
+            self.t, self.base = 0.0, base
+
+        def clock(self):
+            return self.t
+
+        def sleep(self, s):
+            self.t += max(0.0, s)
+
+        def wall(self):
+            return self.base + timedelta(seconds=self.t)
+
+    def setUp(self):
+        super().setUp()
+        from knowledge.drills import fomc_live_rehearsal as live
+        self.live = live
+        self.calls = 0
+        self.scratch = self.dev_root / "scratch"
+        self.fc = self.FakeClock(datetime(2026, 9, 13, 15, 0, tzinfo=timezone.utc))
+        # the live drop's tokens are 76-digit decimals; the fixture's TOK_* names would not survive the stamp
+        # filename regex (no underscores in a token), which is exactly what the rehearsal now checks
+        rules_page = self.vault / "wiki/experiments/fomc_2026-09-16_rules.md"
+        meta, body = fm.parse(rules_page.read_text(encoding="utf-8"))
+        raw_path = self.exp_dir / "fomc_2026-09-16.rules.json"
+        raw = json.loads(raw_path.read_text(encoding="utf-8"))
+        for i, (pr, rr) in enumerate(zip(meta["dev"]["rules"], raw["rules"])):
+            pr["market"] = rr["market"] = str(5615282760875985231868508008056959876238536896643315063916840237042205273720 + i)
+        pages.write_page(pages.Page(rules_page, meta, body), self.vault, now=NOW)
+        raw_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    def fetch(self, token):
+        self.calls += 1
+        k = self.calls
+        return {"hash": f"h{k}", "neg_risk": False,
+                "bids": [{"price": "0.44", "size": str(100 + k)}, {"price": "0.43", "size": "300"}],
+                "asks": [{"price": "0.46", "size": str(100 + k)}, {"price": "0.47", "size": "300"}]}
+
+    def run_live(self, **kw):
+        args = dict(seconds=10, interval=1.0, scratch=self.scratch, fetch=self.fetch, clock=self.fc.clock,
+                    sleep=self.fc.sleep, wall=self.fc.wall, checks=[], assume_defaults=True, now=NOW)
+        args.update(kw)
+        return self.live.run_live(self.vault, self.dev_root, self.event, **args)
+
+    @staticmethod
+    def levels(checks):
+        return {c.name: c.level for c in checks}
+
+    def test_the_whole_post_print_path_runs_into_scratch_and_nothing_real_moves(self):
+        before = self.live.hash_vault(self.vault)
+        checks, summary = self.run_live()
+        lv = self.levels(checks)
+        self.assertEqual([c.name + ": " + c.detail for c in checks if c.level == "FAIL"], [])
+        n_rules = len(query_mod.rules_for(self.vault, query_mod.find_event(self.vault, self.event)).meta["dev"]["rules"])
+        self.assertEqual(summary["stats"]["stamps"], 10 * n_rules)          # ten polls, every token, every poll
+        self.assertEqual(summary["markets"], n_rules)
+        self.assertTrue((self.scratch / "event.json").exists())
+        self.assertIn("NOT a Federal Reserve statement", json.loads((self.scratch / "event.json").read_text(encoding="utf-8"))["source"])
+        self.assertTrue((self.scratch / "curve.json").exists())
+        self.assertEqual(len(summary["profiles"]), n_rules)
+        self.assertTrue(any((self.scratch / "vault" / "wiki" / "profiles").glob("*.md")))
+        self.assertEqual(lv["rehearsal pages lint without errors"], "PASS")
+        self.assertEqual(self.live.hash_vault(self.vault), before)           # the REAL vault
+        self.assertFalse((self.dev_root / "event.json").exists())          # the drill card's file was not written
+        self.assertFalse(any((self.vault / "wiki" / "profiles").glob("*.md")) if (self.vault / "wiki" / "profiles").exists() else False)
+
+    def test_a_failing_pre_flight_records_nothing(self):
+        checks, summary = self.run_live(checks=[self.live.Check("batch tokens == registered tokens", "FAIL", "drifted")])
+        self.assertEqual(self.levels(checks)["pre-flight"], "FAIL")
+        self.assertIsNone(summary["stats"])
+        self.assertEqual(self.calls, 0)
+        self.assertFalse((self.scratch / "books").exists())
+
+    def test_the_halt_flag_stops_it_before_the_first_fetch(self):
+        (self.dev_root / "HALT.flag").write_text("stop", encoding="utf-8")
+        checks, summary = self.run_live()
+        self.assertEqual(self.levels(checks)["HALT flag"], "FAIL")
+        self.assertEqual(self.calls, 0)
+
+    def test_a_flaky_fetch_is_a_warning_and_a_dead_one_is_a_failure(self):
+        attempts = {"n": 0}
+
+        def flaky(token):
+            attempts["n"] += 1
+            if attempts["n"] % 5 == 0:                     # one fetch in five fails: 80% yield, the floor
+                raise OSError("timeout")
+            return self.fetch(token)
+        lv = self.levels(self.run_live(fetch=flaky)[0])
+        self.assertEqual(lv["fetch failures"], "WARN")
+        self.assertEqual(lv["stamp yield"], "PASS")                         # 80% of polls still stamped
+        def dead(token):
+            raise OSError("403")
+        self.calls = 0
+        lv = self.levels(self.run_live(fetch=dead, scratch=self.dev_root / "scratch2")[0])
+        self.assertEqual(lv["stamp yield"], "FAIL")
+        self.assertEqual(lv["every token stamped"], "FAIL")
+
+    def test_the_cli_is_read_only_on_the_real_vault(self):
+        """--no-task in a fixture with no batch file: the pre-flight FAILS and the CLI refuses to record."""
+        before = self.live.hash_vault(self.vault)
+        out = io.StringIO()
+        code = self.live.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--event", self.event,
+                               "--seconds", "1", "--no-task", "--assume-defaults", "--scratch", str(self.scratch)], out=out)
+        self.assertEqual(code, self.live.EXIT_FINDINGS)
+        self.assertIn("[FAIL] pre-flight", out.getvalue())
+        self.assertEqual(self.live.hash_vault(self.vault), before)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

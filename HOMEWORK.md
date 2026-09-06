@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 19:05 EDT (Round 115; whale replay re-run, still insufficient by 0.20 pts).
+Last updated: 2026-09-06 19:25 EDT (Round 116; the drill has been rehearsed live, end to end, into scratch).
 
 ---
 
@@ -53,7 +53,8 @@ Last updated: 2026-09-06 19:05 EDT (Round 115; whale replay re-run, still insuff
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 115 handoff prompt to Antigravity.**
+- [ ] **Send the Round 116 handoff prompt to Antigravity.** (Round 116 was self-directed on your
+      "proceed on your own"; Antigravity has not seen it yet.)
 - [ ] **Start the Windows Time service.** The pre-flight found W32Time STOPPED. The clock is only
       +0.37 s off today, but nothing corrects it between now and the 16th, and a scheduler on a slow
       clock records the print as history. Two commands in an elevated PowerShell:
@@ -77,16 +78,12 @@ Last updated: 2026-09-06 19:05 EDT (Round 115; whale replay re-run, still insuff
 
 ## 🟡 RECOMMENDED BEFORE 2026-09-16
 
-- [ ] **Authorise the LIVE dress rehearsal of the FOMC drill (Sep 13-14).** The
-      offline pre-flight now exists and passes on the real setup (Round 113:
-      `python -m knowledge.drills.fomc_rehearsal`, 0 FAIL, 2 WARN). What it cannot
-      do is record real order books: the Round 94 dry run recorded 9 stamps over 3
-      seconds; the real thing is ~1,260 stamps over 420 seconds across three tokens,
-      and stamps → survival curve → Reaction Profile page has only ever run against a
-      fixture. A live 60-second recording into a scratch books dir, then the curve and
-      ingest over it, is the step that needs your go-ahead (network, and it exercises
-      the same code the 16th will). Round 102/103 found two components that looked
-      fine and were not; the pre-flight found a third in its own regex on first run.
+- [ ] **Run the live dress rehearsal yourself on Sep 13 or 14, and again the morning of
+      the 16th**: `python -m knowledge.drills.fomc_live_rehearsal` (60 s of real order
+      books into a scratch folder, then the whole post-print path into a scratch copy of
+      the vault; nothing real is written). It ran clean on Sep 6 (Round 116). If any line
+      says FAIL, send me the output. It also tells you, in advance, that a hold produces
+      one curve and two deferrals.
 - [ ] **Decide on Desk 4's missing packages.** fastapi is installed (Round 113, after a
       clean dry run). The webhook path is STILL untested: `main.py` imports the
       Hyperliquid adapter at module level, so `test_webhook_server`,
@@ -118,6 +115,12 @@ Last updated: 2026-09-06 19:05 EDT (Round 115; whale replay re-run, still insuff
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 — **The FOMC drill was rehearsed live, end to end** (Round 116, self-directed).
+  60 s of real order books for the three registered markets, 180 of 180 stamps, no gaps;
+  a clearly-labelled synthetic event; the survival curve; the Reaction Profile pages -
+  all into a scratch folder and a scratch copy of the vault. The real vault, the real
+  books folder and ./event.json were untouched, and the pages the drill produces lint clean.
 
 - 2026-09-06 — **Whale-sweeper cascade replay re-run: still INSUFFICIENT** (Round 115). Over the rows
   the engine counts (complete 60-minute forward series) the top coin ZEC is ZEC 20.20% against a 20%

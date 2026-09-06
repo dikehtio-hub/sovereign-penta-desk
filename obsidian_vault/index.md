@@ -192,7 +192,7 @@
 * [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
-* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 70 page(s) today.
+* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 71 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 10 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
@@ -254,6 +254,7 @@
 * [Round 113 digest](wiki/digests/round_113.md) - Round 113 (2026-09-06): THE FOMC DRILL HAS A PRE-FLIGHT, THE HUB CAN NO LONGER LAG A REGISTER, AND `ready` MEANS EVERY GATE
 * [Round 114 digest](wiki/digests/round_114.md) - Round 114 (2026-09-06): THE REOPENING QUESTION WAS ASKED OF THE RIGHT POPULATION AND THE ANSWER IS INSUFFICIENT; THE DRILL'S ENTRY POINT IS UNDER VERSION CONTROL; THE PRE-FLIGHT CHECKS THE CLOCK
 * [Round 115 digest](wiki/digests/round_115.md) - Round 115 (2026-09-06): THE WHALE-SWEEPER REPLAY WAS RE-RUN AND IS STILL INSUFFICIENT - BY 0.20 POINTS, ON THE ROWS THE ENGINE ACTUALLY COUNTS; THE ENGINE GATE NOW CHECKS THE COVERED SPAN; DESK 4 CONSTRUCTS FROM ANY DIRECTORY
+* [Round 116 digest](wiki/digests/round_116.md) - Round 116 (2026-09-06, SELF-DIRECTED - the operator said "proceed on your own"; no Antigravity prompt): THE FOMC DRILL HAS BEEN REHEARSED LIVE, END TO END, INTO SCRATCH
 * [Round 31 digest](wiki/digests/round_31.md) - Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings
 * [Round 33 digest](wiki/digests/round_33.md) - Round 33: DATA GROUNDING
 * [Round 34 digest](wiki/digests/round_34.md) - Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION

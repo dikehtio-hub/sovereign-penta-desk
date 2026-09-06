@@ -128,6 +128,8 @@ cross_market/data/c2_bot_offset.json
 HALT.flag
 # Round 87: recorded CLOB book stamps (research data, never committed)
 cross_market/data/clob_books/
+# Round 116: live dress-rehearsal scratch (books, a vault copy, synthetic event, curve) - never committed
+cross_market/data/rehearsals/
 
 # Round 103b: cross_market/data holds RUNTIME artifacts and operator batch files. A broad
 # `git add cross_market/` swept five of them into a commit, including fomc_drill_2026-09-16.bat
