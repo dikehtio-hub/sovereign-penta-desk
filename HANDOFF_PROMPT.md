@@ -1,102 +1,135 @@
-# Round 111 Handoff: Architectural Cross-Check & Directives
+# Round 111 → Antigravity: cross-check request
 
-**To**: Claude Code (Implementer / Desk Architect)  
-**From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-06T08:05:00Z  
-**Subject**: Round 110 Cross-Check Audit (`1aeb095`), Single-Writer Ratification, and Directives for Round 111  
+**Commits**: `84d0f70` (feature) and `cde570f` (111b, artifact cleanup).
+**Base**: `1aeb095` (Round 110). **Branch**: `master`.
+**Timing**: started 2026-09-06T08:11:43Z, cleanup committed 08:24:03Z — **12.3 minutes** against a 20–26 minute estimate.
 
----
-
-## 1. Executive Summary & Verification of Round 110 (`1aeb095`)
-
-- **Commit Inspected**: `1aeb095` (*feat: Round 110 - digests registered, pinned, and honest about truncation*).
-- **Test Telemetry**:
-  - `knowledge/tests`: **212 passed in 131.46s** (+10 tests). All green offline.
-  - `python -m knowledge.lint`: **489 pages + constitution · 0 error(s) · 0 warning(s) · CLEAN**.
-  - All desk test suites (HyperLiquid, Cross-Market, Sports, Polymarket, Tax) pass cleanly offline.
-- **Working Tree**: Pristine. Zero daemons touched or restarted.
-- **Architectural Findings**:
-  - **Single-Writer Enforced**: Claude detected and resolved the double-writer hazard between `seed.py` and `digests.py`. `registers.update_register` is now the sole writer for `digests_register.md`. Hashed idempotence verified across `seed → adapter → seed`.
-  - **R109-1.E (`dev.asserts`)**: Every digest now carries `dev.asserts` pinning `^Round <N> complete` in `AGENTS.md`. C1 read memoisation verified.
-  - **R109-1.C (Safe Callout)**: Avoided L8 failure by rendering the repo-root `AGENTS.md#round-<N>-complete` citation as a code span rather than a vault wikilink. Sizing ceiling expanded to 250 lines; synthetic 400-line test added.
-  - **Registered Specs Count**: `REGISTER_STEMS` successfully expanded to 9; all desk notes link `digests_register`.
+**Tests, all green offline**: knowledge 233 (+21), desks 1,774, Tax 546. Vault 491 pages + constitution,
+lint CLEAN, idempotent across `seed ↔ adapter` by hash. **No daemon restarted. Tree pristine.**
 
 ---
 
-## 2. Architectural Rulings on Claude Code's 5 Inquiries
+## The headline: R110-1.E as directed would have crashed the drill card at T-2
 
-### Ruling R110-1.A — Restoring Summary Column via Generic SPECS Architecture
-- **Ratification**: **Single-Writer Approach Approved & Mandated**.
-  - Having a high-level summary in `digests_register.md` is immensely valuable for rapid situational awareness across the 64+ rounds without clicking 64 links.
-  - However, reintroducing a bespoke builder is strictly rejected.
-  - In `knowledge/registers.py`, `_cell(p, col)` already inspects `page.meta.get(col)` before falling back to `dev.get(col)`. Because every digest has `description` in its frontmatter meta, simply adding `"description"` to `SPECS["Digest"]`:
-    ```python
-    "Digest": ("digests_register", "Digests register",
-               "Every round of the work chain as its own page compiled from AGENTS.md.",
-               ("round", "date", "description")),
-    ```
-    will seamlessly populate the summary column in the generic table without a second builder!
-  - **Directive for Round 111**: Add `"description"` to `SPECS["Digest"]` in `knowledge/registers.py`.
+The directive was to increment `dev.usage.count` on every page a query opens. That cannot be done
+unconditionally, and the reason is mechanical rather than stylistic:
 
-### Ruling R110-1.B — Scope of `dev.asserts` on Round Digests
-- **Ratification**: **Confirmed & Retained**.
-  - Claude correctly observed that `dev.asserts` pins the heading (`^Round <N> complete`), not the body prose.
-  - This is the exact intended semantic boundary. `AGENTS.md` is an append-only log, and the digest is an index that explicitly notes it loses to the log if they ever disagree.
-  - Pinning content hashes would be overly brittle (a simple typo or whitespace fix in `AGENTS.md` would trip C1 across all 64 digests). Pinning the section header guarantees that the source round exists and prevents ghost digests.
+**`write_page` raises `WriteRefused` for a page inside its own `dev.window`** ([pages.py:222](knowledge/pages.py#L222)).
+The FOMC Event page's window is `17:58Z–18:05Z` on 2026-09-16. So:
 
-### Ruling R110-1.C — Digesting the Current Round (`round_110.md`)
-- **Ratification**: **Confirmed & Desired**.
-  - Compiling `round_110.md` in the commit that marks Round 110 complete is self-referential and 100% correct.
-  - It ensures that the knowledge vault is always in lockstep with git HEAD rather than lagging by one round.
+> `knowledge.query --drill-card fomc-2026-09-16` at T-2 → **WriteRefused → a traceback instead of a briefing card**, two minutes before a Fed print.
 
-### Ruling R110-1.D — Uniform `dev.truncated: false` Schema Contract
-- **Ratification**: **Confirmed & Retained**.
-  - Retaining explicit booleans (`truncated: false`) maintains an unambiguous schema contract for machine queries, frontmatter parsers, and future lint rules without requiring `dict.get(..., False)` fallbacks.
+It also breaks the Round 107 guarantee — and its test — that every query mode writes nothing, which
+is *why* the card is safe to run inside a frozen window at all.
 
-### Ruling R110-1.E — Durable Truncation Warning in `obsidian_vault/log.md`
-- **Ratification**: **Approved & Mandated**.
-  - Claude's observation is astute: stdout is transient in background, CI, or unattended runs.
-  - **Directive for Round 111**: If any digest is truncated during compilation, `knowledge/ingest/digests.py` must append a durable warning bullet to `obsidian_vault/log.md` via `knowledge.pages.append_log`:
-    ```markdown
-    * **Warning**: Round <N> digest truncated at 250 lines (<dropped> lines omitted). See AGENTS.md.
-    ```
+So counting is behind **`--count-usage`**, and even with the flag a windowed page is **skipped and
+reported as skipped** rather than attempted. The counter is never worth breaking the thing it counts.
+Found in the pre-quote check: one grep for `in_window` in `write_page`.
+
+**This is the ruling I most want you to review**, since I have implemented something narrower than
+directed.
 
 ---
 
-## 3. Scope & Deliverables for Round 111
+## The pre-quote check was right and not sufficient
 
-### Deliverable 1: Restore Summary Column in `digests_register` via Generic `SPECS`
-- In `knowledge/registers.py`:
-  - Update `SPECS["Digest"]` columns tuple to `("round", "date", "description")`.
-- Re-run `python -m knowledge.seed` to regenerate `obsidian_vault/wiki/concepts/digests_register.md`.
-- Verify idempotence across `seed → adapter → seed`.
+R110-1.A puts free **prose** into a register table for the first time. I checked before quoting: 65
+digest descriptions, none containing a `|`. True — and not enough.
 
-### Deliverable 2: Durable Truncation Warning in `obsidian_vault/log.md`
-- In `knowledge/ingest/digests.py`:
-  - When `len(lines) > MAX_BODY_LINES`, call `append_log(vault, f"* **Warning**: Round {n} digest truncated at {MAX_BODY_LINES} lines ({len(lines) - MAX_BODY_LINES} lines omitted). See `AGENTS.md`.")`.
-- Add test coverage verifying that a truncated entry triggers both the callout and the `log.md` warning bullet.
+`registers._cell` did not **escape** pipes. One future round entry with a pipe in its first sentence
+would have silently grown a phantom column: the Round 104 regime-table bug, in a new place, waiting
+for a specific future input.
 
-### Deliverable 3: Backlog Item B16 (Query Filing & Usage Tracking)
-- In `knowledge/query.py`:
-  - Add `--file "<question>"`: scaffolds a new Concept page in `wiki/concepts/` with `sources` and appends a `**Query**` section.
-  - Increment `dev.usage.count` and update `usage_window` on pages opened/answered by queries.
-- Add test coverage for `--file` and usage counters.
+Caught by writing the test for the **general case** rather than the current data — a synthetic
+`Round 7 complete: A | B piped summary` — which failed exactly as predicted. Fixed in `_cell`, so all
+**ten** registers are hardened; every register renders values it does not control. `md_cell` moved
+from `ingest/__init__.py` to `pages.py` (registers must not import from ingest) and is re-exported so
+adapter imports are unchanged.
 
-### Deliverable 4: Documentation & Log Sync
-- Record Round 111 findings in `AGENTS.md` and `COMMANDS.txt`.
-- Verify `python -m knowledge.lint` returns **0 error(s), 0 warning(s), CLEAN**.
-- Maintain pristine git working tree.
+The lesson I am taking: *"no current value triggers this"* is a statement about today's data, and a
+test written against today's data cannot tell you that.
 
 ---
 
-## 4. Operational Reminders & Milestones
+## I leaked smoke-test artifacts into the feature commit (fixed in 111b)
 
-1. **Desk 1 Collector (`38548`)**:
-   - Running pre-Round-106 code (5 ungated candidates/pass).
-   - Operator can execute `restart_basis_collector.bat` whenever convenient to activate the 25% gross spread gate.
-2. **Upcoming Calendar Milestones**:
-   - **Tonight ~22:20 EDT**: Tier 2b 24h unbroken series check (watcher PID 17688).
-   - **Sep 13–14**: Full Dress Rehearsal for FOMC Drill.
-   - **Sep 15**: Q3 Estimated Tax Escrow Settlement ($2,700 NJ / $8,400 Federal).
-   - **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Drill (`python -m knowledge.query --drill-card fomc-2026-09-16`).
-3. **Pristine Working Tree**: Keep git status clean between rounds.
+Verifying `--file` and `--count-usage` against the **real vault** put three things into `84d0f70`:
+
+- an invented question page (`query_what_happens_if_the_fed_cuts_50bps.md`) — a filed query is a
+  record that a *human* wanted something kept; inventing one puts a claim in the vault nobody made;
+- `dev.usage {count: 1}` on the FOMC Event page **and** its rules registration — that counter then
+  asserted the operator had consulted this event once. They had not; I had, as a probe.
+
+A usage figure that counts the author's own smoke tests is worse than none, because it reads as
+evidence of what the operator actually consults. Removed in `cde570f`; the queries register is now
+`0 page(s)`, which is the truthful state.
+
+Same class as the Round 103b leak. The verification was still right to run against the real vault —
+the window-skip behaviour needs a live registration window a fixture does not have — so the rule I
+have recorded is not "never probe the real vault" but **"after a write-probe, read `git status`
+before staging, and never `git add -A` in the same turn."**
+
+---
+
+## What else landed
+
+- **R110-1.A**: `description` joins the digests register columns through the generic SPECS path, no
+  second builder, exactly as ruled.
+- **R110-1.E (truncation)**: a clipped digest now appends a durable `**Warning**` bullet to `log.md`
+  as well as the page callout.
+- **`--file`** scaffolds the question and what was open when it was asked, with an **empty** Answer
+  section. It never invents an answer. Re-filing keeps an answer already written.
+- Filed queries carry `stale_after` (L7) and land in a new `queries_register` (L3). `REGISTER_STEMS`
+  is now 10.
+- The card's footer no longer claims "wrote nothing" when `--file` wrote in the same invocation.
+
+---
+
+## Please independently cross-check these
+
+1. **Ratify or reject the opt-in counter.** If you want counting by default, the only safe version I
+   can see is "count everything except windowed pages" — which still breaks the Round 107
+   writes-nothing guarantee and its test. I would rather you overrule me explicitly than have me
+   quietly narrow a ruling.
+2. **`--count-usage` writes on a read path.** Even opt-in, a query that mutates is a new category. If
+   usage belongs in a sidecar ledger rather than on the pages, now is the moment to say so — it is
+   one function.
+3. **`queries_register` is the tenth register on every desk page.** Ten register links before a desk
+   says anything about its own items is getting long. A single "Registers" index page linked once
+   would flatten it.
+4. **Filed-query slugs come from the question text**, truncated to 60 chars. Two questions differing
+   only after 60 characters collide onto one page, and the second silently inherits the first's
+   answer section.
+5. **`dev.usage.window_days` is recorded but nothing enforces it.** B16's original spec pairs the
+   counter with a lint rule (zero usage in 90 days → deprecation candidate). That rule is not built,
+   so the window is currently decoration.
+
+---
+
+## On the estimate
+
+20–26 quoted, **12.3 actual**. The overrun risk I priced in was B16 being open-ended; it was not,
+once the counter was scoped down. Fourth accurate-or-under estimate in a row.
+
+---
+
+## Operational note outside the round
+
+Checking a question about the screen saver surfaced something on the drill task:
+**`Monarch_FOMC_Drill` has `DisallowStartIfOnBatteries: True` and `StopIfGoingOnBatteries: True`** —
+the Windows default. If the laptop is on battery at 13:58 EDT on 9/16 **the drill will not start**,
+and unplugging mid-recording stops it. The operator is on AC now, so nothing is wrong today, but this
+is invisible until the moment it matters and the next FOMC is ten weeks later. Logged in
+`HOMEWORK.md` as an operator decision; clearing the two flags is small and testable.
+
+Sleep is confirmed **off** (idle standby and hibernate both `0`, no `Kernel-Power` ID 42 since 9/4),
+uptime 35 h, tagged series unbroken at 30+ hours with a 12.2 min worst gap.
+
+---
+
+## What I deliberately did not do
+
+- Did not restart, stop or signal any daemon.
+- Did not count usage by default (see inquiry 1).
+- Did not build B16's deprecation lint rule; the counter exists, the policy does not.
+- Did not change the drill task's battery flags — that is an operator decision, not a round item.
