@@ -9,7 +9,7 @@ tags:
 - ruling
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T01:05:13Z'
+  at: '2026-09-06T01:33:00Z'
 status: draft
 dev:
   register_for: Ruling
@@ -87,7 +87,7 @@ dev:
 | [[Ruling_74-2\|Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json (counts only, no…]] | ruling | 74 | stable | 2026-09-06T00:57:10Z |
 | [[Ruling_79-3\|Ruling 79-3: applied: poll() in both fetchers defaults sleep to a call-time _sleep helper (as log defaults to _emit); a tr…]] | ruling | 79 | stable | 2026-09-06T00:57:10Z |
 | [[Ruling_98-1\|Ruling 98-1: Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4]] | ruling | 98 | stable | 2026-09-06T00:57:10Z |
-| [[Ruling_99-2\|Ruling 99-2: Round 100 complete (2026-09-05): KNOWLEDGE PHASE 3 - JOURNAL + CALIBRATION LEDGER (B10), TYPED RELATIONS (B11…]] | ruling | 99 | draft | 2026-09-06T00:57:10Z |
+| [[Ruling_99-2\|Ruling 99-2: Round 100 complete (2026-09-05): KNOWLEDGE PHASE 3 - JOURNAL + CALIBRATION LEDGER (B10), TYPED RELATIONS (B11…]] | ruling | 99 | stable | 2026-09-06T00:57:10Z |
 | [[Ruling_R01\|R1 - never issued (deprecated placeholder)]] | - | 97 | deprecated | 2026-09-06T00:57:06Z |
 | [[Ruling_R02\|R2 - record the CLOB around a scheduled print]] | - | 93 | stable | 2026-09-06T00:57:06Z |
 | [[Ruling_R03\|R3 - never issued (deprecated placeholder)]] | - | 97 | deprecated | 2026-09-06T00:57:06Z |

@@ -5,6 +5,26 @@ the detail.
 
 ## Status
 
+Round 102 complete (2026-09-06): THE ITEM 18 MAIDEN RUN HAPPENED AND THE VERDICT IS IN
+THE WIKI. The 24 h gate opened at 01:40:33Z (21:40:33 EDT); the exporter's own cycle ran
+the analysis two seconds later and wrote Cross_Market_Titans.md. `python -m
+cross_market.maiden_protocol` at 01:41:00Z returned ALL SIX CHECKS PASS, exit 0:
+loop_running (pid 56412), series_ready, status_last_run, log_ran_line,
+note_run_at_inside_block, cooldown_observed. TIER 1 VERDICT: **no measurable lead-lag**
+(peak |corr| 0.07 < the registered 0.20 bar; best lag -45 min, n=1497, 1,465 probability
+shifts over 617 markets against 8,927 BTC price points). Tier 2 diagnostics under the
+registered bars agree: crypto -45 min +0.07, fed-rates -10 min +0.08, both below the bar.
+The 24-hour series therefore says Polymarket macro repricing does not lead HyperLiquid
+BTC at any lag inside an hour. Ingested with knowledge.ingest.lead_lag --tier 1 ->
+wiki/experiments/lead_lag_tier1_macro_20260906T0142Z.md (class `no-lead`, tests_run 1)
+and wiki/regimes/btc_macro_regime.md (history 1 row; regime_consensus_3
+insufficient-history until three runs). Ruling 99-2 ratified (status stable, verified
+antigravity/architect at 01:33:00Z, dev.ratified_by 99-2); the other 28 extracted rulings
+kept their 98-1 verification, as the Round 101 round-guard intends. REAL VAULT: 417 pages
++ constitution, lint CLEAN. Tests: 1,093 + 1,036 + 546 = 2,675, all green offline.
+NOTHING WAS RESTARTED: daemons 49812/56412/46740/38548 hold their original start times and
+no desk module was modified tonight (see the findings).
+
 Round 101 complete (2026-09-05): KNOWLEDGE PHASE 4 - BASES VIEWS + TEMPLATES (B13),
 DASHBOARD SHELL TWINS + DESK BACKLINKS (F1), DOCSTRING THESES (B12), RECEIPT EDGE/HURDLE
 (Ruling 100-b) + Rulings 100-a/c/e/f. NEW knowledge/views.py: seven wiki/_views/*.base
@@ -993,6 +1013,32 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 102 findings
+
+- **DEFECT, not fixed tonight: `lead_lag --json` does not cover the analysis branch.**
+  The flag's own help says "with --check-data: print JSON instead of lines", and main()
+  ends with an unconditional `print(format_report(...))`. So the pipeline this project has
+  documented since Round 97 - in WIKI_SCHEMA.md s.9, COMMANDS.txt, MASTER_COMMAND_LIST.txt
+  and every handoff prompt - `lead_lag --coin BTC --family macro --json > verdict.json`
+  CANNOT WORK; it writes the human report and the ingest adapter rejects it. The adapter
+  was only ever exercised against a fixture, so nothing caught it. TONIGHT IT WAS NOT
+  PATCHED: four scheduled tasks import cross_market/lead_lag.py in fresh processes between
+  21:50 and 22:35 EDT, and the maiden-night record is not the place to mutate that module.
+  The verdict JSON was produced read-only by calling lead_lag.run() with main()'s exact
+  defaults. The one-line fix (print json.dumps(result) when args.json) plus a test is a
+  Round 103 item and needs Antigravity's ruling on the flag's contract.
+- The wiki verdict and the dashboard verdict come from two different runs a minute apart
+  (exporter 01:40:34Z n=1495, this run 01:42:14Z n=1497) because the watcher added stamps
+  in between. Same class, same peak lag, same interpretation; the difference is honest
+  sampling, not disagreement. A future ingest should read the exporter's own result rather
+  than re-running the correlation.
+- The protocol passed on the first attempt, which the Round 95 handoff did not expect: it
+  predicted series_ready PASS with the other five WAITing for the exporter cycle. The
+  exporter's 15 s loop closed that gap in two seconds, so the cooldown line was already
+  present by 01:41:00Z.
+- Zero titans, zero receipts, no-lead: three honest nulls in a row. The knowledge layer
+  now records all three as measurements rather than as absences.
 
 ## Round 101 findings
 

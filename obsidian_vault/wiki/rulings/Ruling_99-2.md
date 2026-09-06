@@ -13,7 +13,7 @@ tags:
 generated:
   by: claude-code/fable-5.1
   at: '2026-09-06T00:57:10Z'
-status: draft
+status: stable
 stale_after: '2027-03-05T00:57:10Z'
 sources:
 - id: agents-md
@@ -34,6 +34,10 @@ dev:
   - file: AGENTS.md
     pattern: Ruling\s+99-2\b
     claim: the citation still exists in the handoff log
+  ratified_by: 99-2
+verified:
+- by: antigravity/architect
+  at: '2026-09-06T01:33:00Z'
 ---
 # Ruling 99-2
 

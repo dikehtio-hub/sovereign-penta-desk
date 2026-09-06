@@ -68,6 +68,7 @@
 # Experiment
 * [Experiment: baseline_unfiltered](wiki/experiments/baseline_unfiltered_N12_2026-09-01_meta.md) - TERMINATED EARLY at N=12 of a pre-registered N=50
 * [Experiment: latency_sniper_fomc_2026-09-16](wiki/experiments/fomc_2026-09-16_rules.md) - PRE-REGISTERED (Ruling R2c).
+* [Lead-lag verdict: Tier 1, macro, 2026-09-06 01:42Z](wiki/experiments/lead_lag_tier1_macro_20260906T0142Z.md) - Tier 1 lead-lag verdict for macro: no-lead.
 * [Experiment: lead_lag_tier2_subfamilies](wiki/experiments/lead_lag_tier2_meta.md) - PRE-REGISTERED - runs only AFTER the Tier 1 maiden run has written its verdict to Cross_Market_Titans.md
 * [Experiment: lead_lag_tier2b_dual_tag_membership](wiki/experiments/lead_lag_tier2b_meta.md) - PRE-REGISTERED - runs only after (1) the Tier 1 maiden verdict is in Cross_Market_Titans.md, (2) the watcher has been restarted with the Round 76 code, and (3) the TAGGED macro series clears the readiness bar on its own
 * [Experiment: passive_fade_rebenchmark](wiki/experiments/passive_fade_rebenchmark_meta.md) - PASSIVE - the fade does not trade; sweeps accumulate with execution disabled
@@ -79,6 +80,9 @@
 * [Event: fomc_2026-12-09](wiki/events/fomc_2026-12-09.md) - FOMC statement 2026-12-09T19:00:00Z (SEP meeting); window T-2..T+5 registered.
 * [Event: tax_estimated_2026_q3](wiki/events/tax_estimated_2026_q3.md) - Estimated tax Q3 2026 due 2026-09-15.
 * [Event: tax_estimated_2026_q4](wiki/events/tax_estimated_2026_q4.md) - Estimated tax Q4 2026 due 2027-01-15.
+
+# Regime
+* [BTC macro regime](wiki/regimes/btc_macro_regime.md) - Rolling classification of the Polymarket macro / Hyperliquid BTC lead-lag verdicts, per tier and scope, with the full history.
 
 # Market
 * [Fed emergency rate cut before 2027?](wiki/markets/fed-emergency-rate-cut-before-2027.md) - Polymarket market (FED-RATES): Fed emergency rate cut before 2027?
@@ -184,7 +188,7 @@
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 183 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
-* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 6 page(s) today.
+* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 7 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
 * [Rulings register](wiki/concepts/rulings_register.md) - Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log. 36 page(s) today.

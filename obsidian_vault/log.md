@@ -10,6 +10,8 @@
 * **Ingest**: docstring theses: 75 module(s) scanned, 35 Concept page(s) written, 0 kept; every heading pinned with dev:asserts; [index](index.md) rebuilt.
 * **Ingest**: attested computations: 2 page(s) written, 15 kept (2 shell twins, 15 knowledge CLIs); [index](index.md) rebuilt.
 * **Ratify**: correction: the verification placed on [[Ruling_99-2]] by the 98-1 batch is withdrawn - Ruling 98-1 (Round 98) never covered a Round 99 citation; the page is `draft` until Antigravity ratifies it explicitly. knowledge.ratify now refuses pages whose dev.round is later than the ruling's round.
+* **Ratify**: Ruling 99-2: 1 Ruling page(s) tagged `extracted` verified by `antigravity/architect` and set `stable`; 28 already carried that verification.
+* **Ingest**: lead-lag Tier 1 verdict (macro): **no-lead** -> [[lead_lag_tier1_macro_20260906T0142Z]]; [[btc_macro_regime]] history now 1 row(s).
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
