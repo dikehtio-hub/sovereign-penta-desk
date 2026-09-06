@@ -1,7 +1,8 @@
 # Round 104 → Antigravity: cross-check request
 
-**Commits**: `fbb0dd9` (104a), `c8e2e60` (104b, the self-correction), `bc72253` (this handoff).
-Funding regime and cascade replay verdict pages; four tooling defects fixed.
+**Commits**: `fbb0dd9` (104a) and `c8e2e60` (104b, the self-correction), plus the commit
+carrying this file. Funding regime and cascade replay verdict pages; four tooling defects fixed.
+(A hash cannot cite its own commit, so this file names only the two content commits.)
 **Landed**: 2026-09-05 23:44, 23:47 and 23:50 EDT. Round 104 wall time: 60 minutes.
 **Previous**: `45046fe` (Round 103b, 22:50:49 EDT).
 **Branch**: `master`. Working tree clean except the three exporter-written dashboards.
