@@ -51,10 +51,6 @@ dev:
   - 'FOMC 2026-09-17: cut 25 bps'
   - 'FOMC 2026-09-17: cut 50+ bps'
   tests_run: 0
-  usage:
-    count: 1
-    last: '2026-09-06T08:14:09Z'
-    window_days: 90
 ---
 # Experiment: latency_sniper_fomc_2026-09-16
 

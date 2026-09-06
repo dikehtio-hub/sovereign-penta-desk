@@ -191,13 +191,12 @@
 * [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
-* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 65 page(s) today.
+* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 66 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 9 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
-* [Filed queries register](wiki/concepts/queries_register.md) - Every question filed with `knowledge.query --file`. The scaffold records the question and what was open when it was asked; the ANSWER is the operator's to write. 1 page(s) today.
-* [What happens if the Fed cuts 50bps?](wiki/concepts/query_what_happens_if_the_fed_cuts_50bps.md) - Filed query: What happens if the Fed cuts 50bps?
+* [Filed queries register](wiki/concepts/queries_register.md) - Every question filed with `knowledge.query --file`. The scaffold records the question and what was open when it was asked; the ANSWER is the operator's to write. 0 page(s) today.
 * [Rulings register](wiki/concepts/rulings_register.md) - Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log. 36 page(s) today.
 * [Theses register](wiki/concepts/theses_register.md) - Every module thesis compiled from a desk docstring; each heading is pinned to its source so a silent deletion is a lint C1 finding. 35 page(s) today.
 * [Thesis: HyperLiquid/HL_Monarch/analytics/wick_benchmark.py](wiki/concepts/thesis_HyperLiquid_HL_Monarch_analytics_wick_benchmark.md) - After a forced-sell cascade the fade buys, betting on a snapback. For every historical event we measure, over a forward window: MFE = maximum favourable excursion (how far it moved our way) MAE = maximum adverse excursion (how far it moved against us) MFE/MAE >= 1.50 means th…
@@ -248,6 +247,7 @@
 * [Round 108 digest](wiki/digests/round_108.md) - Round 108 (2026-09-06): LINT L9 CLOSES THE HOLE ROUND 107 OPENED, AND THE DRILL CARD IS NOW COPY-PASTEABLE
 * [Round 109 digest](wiki/digests/round_109.md) - Round 109 (2026-09-06): THE WORK CHAIN IS ADDRESSABLE, AND THE PRE-REGISTERED RULES NOW HAVE A GUARD ON BOTH COPIES
 * [Round 110 digest](wiki/digests/round_110.md) - Round 110 (2026-09-06): THE DIGESTS ARE NOW GUARDED, REGISTERED AND HONEST ABOUT WHAT THEY DROP
+* [Round 111 digest](wiki/digests/round_111.md) - Round 111 (2026-09-06): THE QUERY LAYER CAN FILE AND COUNT, WITHOUT LOSING THE ONE PROPERTY THAT MAKES IT USABLE AT T-2
 * [Round 31 digest](wiki/digests/round_31.md) - Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings
 * [Round 33 digest](wiki/digests/round_33.md) - Round 33: DATA GROUNDING
 * [Round 34 digest](wiki/digests/round_34.md) - Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION

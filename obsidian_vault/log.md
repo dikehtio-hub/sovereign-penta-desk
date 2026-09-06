@@ -67,6 +67,7 @@
 * **Query**: filed **What happens if the Fed cuts 50bps?** -> [[query_what_happens_if_the_fed_cuts_50bps]]; 2 page(s) open when asked.
 * **Query**: filed **What happens if the Fed cuts 50bps?** -> [[query_what_happens_if_the_fed_cuts_50bps]]; 0 page(s) open when asked.
 * **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 5 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: work-chain digests: 66 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

@@ -3,7 +3,7 @@ type: Concept
 title: Filed queries register
 description: Every question filed with `knowledge.query --file`. The scaffold records
   the question and what was open when it was asked; the ANSWER is the operator's to
-  write. 1 page(s) today.
+  write. 0 page(s) today.
 tags:
 - concept
 - register
@@ -14,9 +14,8 @@ generated:
 status: draft
 dev:
   register_for: Filed Query
-  count: 1
-  pages:
-  - query_what_happens_if_the_fed_cuts_50bps
+  count: 0
+  pages: []
 ---
 # Filed queries register
 
@@ -25,9 +24,8 @@ dev:
 
 | Page | question | Status | Generated |
 |---|---|---|---|
-| [[query_what_happens_if_the_fed_cuts_50bps\|What happens if the Fed cuts 50bps?]] | What happens if the Fed cuts 50bps? | draft | 2026-09-06T08:15:09Z |
 
-1 page(s).
+0 page(s).
 
 ## Related
 
