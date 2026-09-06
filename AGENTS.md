@@ -5,6 +5,30 @@ the detail.
 
 ## Status
 
+Round 115 complete (2026-09-06): THE WHALE-SWEEPER REPLAY WAS RE-RUN AND IS STILL INSUFFICIENT - BY
+0.20 POINTS, ON THE ROWS THE ENGINE ACTUALLY COUNTS; THE ENGINE GATE NOW CHECKS THE COVERED SPAN;
+DESK 4 CONSTRUCTS FROM ANY DIRECTORY. D1 (R114-1.B/D): analytics/cascade_replay.py re-run over
+38,016 rows into data/experiments/whale_sweeper_cascade_replay.verdict.json (tracked, beside the
+registration; the knowledge adapter's default and its test fixture moved with it). Qualifying rows
+(complete 60-minute forward series) 18,669 on 62 coins, top coin ZEC 20.20% against a 20%
+ceiling, HHI 0.1334 - SAMPLE_TOO_NARROW; ratio_30m 0.9029, P(>= 1.25) = 0.1167 had it qualified
+(RETUNE band, stated, not a verdict). Page and engine agree: INSUFFICIENT. THE LESSON: Round 114's
+mirror counted every treatment row (ZEC 19.84%, `ready`); the registration requires
+min_samples_60m_per_event >= 1 and its engine filters on it; over those rows ZEC is over the line.
+The mirror now applies that requirement, so the whale page reads ACCUMULATING (share 20.08%)
+and names the blocker instead of promising a re-run L11 would have demanded. The whale registration
+also carries a dated `population: pooled` block (R114-1.A brainstorm item 8) and the mirror treats
+`pooled`/`all` as pooled. D2 (R114-1.F): wick_benchmark.benchmark() reports `span_days` and
+_reopening_sample_gate fails closed without it and fails on a span under the window; the fade
+runner passes its span in and no longer duplicates the check; cascade_replay.py was NOT changed -
+its registration binds no window, so a span gate there would be unregistered. D3: RiskSentinel's
+two constructor defaults anchored to the desk root; committed in the nested repo from a blob built
+from HEAD plus those lines only (the other agent's three uncommitted hunks in the same file stay
+theirs). From the workspace root Desk 4 goes 73 failed -> 2 failed, both in the other agent's
+UNTRACKED tests/test_tax_bankroll_integration.py, which hard-codes a relative config path itself.
+Tests: knowledge 303, HL 1110, Desk 4 151 from its directory. Lint CLEAN, idempotent.
+NO DAEMON RESTARTED.
+
 Round 114 complete (2026-09-06): THE REOPENING QUESTION WAS ASKED OF THE RIGHT POPULATION AND THE
 ANSWER IS INSUFFICIENT; THE DRILL'S ENTRY POINT IS UNDER VERSION CONTROL; THE PRE-FLIGHT CHECKS THE
 CLOCK. D2 (Ruling R113-1.C option 3): a new engine runner, analytics/fade_rebenchmark.py, asks the
@@ -1267,6 +1291,46 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 115 findings
+
+### Two populations that differ by 0.36 points, and the rule that follows
+
+- The whale registration's sample_requirements include `min_samples_60m_per_event: 1`; the engine
+  filters to rows with a complete forward series (data_audit: 339 truncated of 19,008). Over ALL
+  treatment rows ZEC is 19.84% (Round 114: `ready`); over qualifying rows it is ZEC 20.20% - over the
+  20% ceiling. Round 114's `ready` was therefore wrong for the same reason Round 113's was: the
+  mirror counted a population the registration does not define. Rule: every requirement in
+  `sample_requirements` that names a row filter is part of the population, and the mirror applies
+  it (population.source; min_samples_60m_per_event). Anything the mirror cannot apply must be
+  reported as `unmeasured`, never approximated.
+- This is not a case for hysteresis (rejected in R113-1.C): the registration says >20% is not a
+  qualifying sample, and 20.08% is over 20%. The page now says so and names the coin.
+
+### R114-1.F was implemented in one engine, declined in the other
+
+- `_reopening_sample_gate` reads `span_days` from the result; `benchmark()` now reports it from
+  the events' timestamps; a result without it fails closed (`covered span not reported`). Four HL
+  gate tests updated to carry a span; two added (short span; missing span).
+- `cascade_replay.py` untouched: `whale_sweeper_cascade_replay.meta.json` has no window requirement.
+  A span gate there would be a gate the registration never wrote, applied after the data was seen.
+
+### Committing one hunk out of a file another agent is editing
+
+- `engine/risk_sentinel.py` carries three uncommitted hunks from the other agent, the first on the
+  very signature D3 changes. `git add` would have committed their work under my name. Instead:
+  `git show HEAD:file` (as BYTES - a text-mode pipe on Windows rewrote every line ending and
+  produced a 520-line diff on the first attempt), apply only my replacement, `git hash-object -w`,
+  `git update-index --cacheinfo`. The commit diff is +4/-2; the working tree still carries their
+  33 lines against the new HEAD.
+
+### Smaller things
+
+- The replay engine's own verdict string and the page's independent grade agree (INSUFFICIENT);
+  the page's History table gains its second row (`_artifact.written_at` 2026-09-06T22:39:27.484923Z), keyed by the
+  artifact, not by the ingest run.
+- The old artifact in cross_market/data/ (git-ignored) is left in place; the page no longer reads
+  it and nothing else does.
 
 ## Round 114 findings
 

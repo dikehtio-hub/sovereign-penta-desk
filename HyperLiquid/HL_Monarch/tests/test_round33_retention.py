@@ -32,7 +32,8 @@ META = Path(__file__).resolve().parents[1] / "data" / "experiments" / "passive_f
 
 
 def _benchmark(n=800, coins=25, share=0.10, confidence=0.95):
-    return {"horizons": {"30m": {
+    return {"span_days": 8.0,   # Round 115: the gate also checks the covered span
+            "horizons": {"30m": {
         "signal": {"ratio": 1.40, "n": n}, "control": {"ratio": 1.00},
         "coins_measured": coins, "top_coin_share": share, "cluster_p_ge_1": confidence}}}
 

@@ -274,8 +274,8 @@ class TestReopeningGate(unittest.TestCase):
     back must cost more than leaving did.
     """
 
-    def gate_input(self, n=600, coins=25, share=0.15):
-        return {"horizons": {30.0: {
+    def gate_input(self, n=600, coins=25, share=0.15, span=8.0):
+        return {"span_days": span, "horizons": {30.0: {
             "signal": {"ratio": 1.30, "n": n},
             "coins_measured": coins, "top_coin_share": share,
         }}}
@@ -300,6 +300,17 @@ class TestReopeningGate(unittest.TestCase):
     def test_the_live_sample_that_produced_the_verdict_is_too_narrow(self):
         g = reopening_gate(self.gate_input(n=482, coins=14, share=0.43))
         self.assertEqual(g["status"], "SAMPLE_TOO_NARROW")
+
+    def test_a_short_covered_span_is_not_eligible(self):
+        """Round 115: retention could hold 7 days, but the rows only span 5.5 - not a qualifying sample."""
+        g = reopening_gate(self.gate_input(span=5.5))
+        self.assertEqual(g["status"], "SAMPLE_TOO_NARROW")
+        self.assertIn("span", g["detail"])
+
+    def test_an_unreported_span_fails_closed(self):
+        r = self.gate_input()
+        r.pop("span_days")
+        self.assertFalse(reopening_gate(r)["eligible"])
 
     def test_no_data_is_reported_rather_than_raising(self):
         self.assertFalse(reopening_gate({"horizons": {}})["eligible"])

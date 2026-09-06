@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 18:20 EDT (Round 114; batch tracked, verdict INSUFFICIENT, clock unattended).
+Last updated: 2026-09-06 19:05 EDT (Round 115; whale replay re-run, still insufficient by 0.20 pts).
 
 ---
 
@@ -53,7 +53,7 @@ Last updated: 2026-09-06 18:20 EDT (Round 114; batch tracked, verdict INSUFFICIE
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 114 handoff prompt to Antigravity.**
+- [ ] **Send the Round 115 handoff prompt to Antigravity.**
 - [ ] **Start the Windows Time service.** The pre-flight found W32Time STOPPED. The clock is only
       +0.37 s off today, but nothing corrects it between now and the 16th, and a scheduler on a slow
       clock records the print as history. Two commands in an elevated PowerShell:
@@ -118,6 +118,13 @@ Last updated: 2026-09-06 18:20 EDT (Round 114; batch tracked, verdict INSUFFICIE
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 — **Whale-sweeper cascade replay re-run: still INSUFFICIENT** (Round 115). Over the rows
+  the engine counts (complete 60-minute forward series) the top coin ZEC is ZEC 20.20% against a 20%
+  ceiling. Round 114 had read the sample as ready by counting rows the registration excludes; the
+  page now counts the same rows the engine does and says which coin blocks. Item 14 stays gated.
+- 2026-09-06 — **Desk 4 builds its risk sentinel from any directory** (Round 115). 73 root-run test
+  failures gone; the 2 left are in another agent's uncommitted test file.
 
 - 2026-09-06 — **The drill's batch file is under version control and the task points at it**
   (Round 114). `cross_market/scripts/fomc_drill_2026-09-16.bat`; a fresh clone now has the drill.

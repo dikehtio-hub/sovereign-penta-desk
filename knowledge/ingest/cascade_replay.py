@@ -1,6 +1,6 @@
 """Whale sweeper cascade replay -> the Item 14 verdict page (Round 104, backlog B1/F3).
 
-    python -m HyperLiquid.HL_Monarch.analytics.cascade_replay --json --out cross_market/data/whale_sweeper_cascade_replay_verdict.json
+    python -m HyperLiquid.HL_Monarch.analytics.cascade_replay --json --out HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.verdict.json
     python -m knowledge.ingest.cascade_replay [--result PATH] [--registration PATH]
 
 WHY THIS ADAPTER EXISTS AND WHY IT RE-GRADES. Round 103 recorded the replay's numbers by
@@ -43,7 +43,10 @@ from . import add_common_args, at_from, guard, item_link, link_if_exists, md_cel
 from ..registers import write_register
 
 STEM = "whale_sweeper_cascade_replay_verdict"
-DEFAULT_RESULT = Path("cross_market") / "data" / f"{STEM}.json"
+# Ruling R114-1.D (Round 115): the artifact lives beside its registration, under version control, so a
+# clone can reproduce this page. Until Round 114 it sat in cross_market/data/, which is git-ignored.
+DEFAULT_RESULT = (Path("HyperLiquid") / "HL_Monarch" / "data" / "experiments"
+                  / "whale_sweeper_cascade_replay.verdict.json")
 DEFAULT_REGISTRATION = (Path("HyperLiquid") / "HL_Monarch" / "data" / "experiments"
                         / "whale_sweeper_cascade_replay.meta.json")
 GRADES = ("PASS", "RETUNE", "FAIL", "INSUFFICIENT")

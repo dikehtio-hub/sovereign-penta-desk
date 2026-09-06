@@ -7,7 +7,7 @@
 Round 114 (Ruling R113-1.C, option 3). The registration passive_fade_rebenchmark.meta.json asks
 one question - may the retired passive fade be reconsidered? - and binds the answer to
 `wick_benchmark.reopening_gate()` (the sample gate: >=500 events, >=20 coins, no coin over 20%,
-retention covering a 7-day window) and to the bar `P(ratio >= 1.25) > 0.90` under a CLUSTER
+retention covering a 7-day window and, since Round 115, rows that actually span it) and to the bar `P(ratio >= 1.25) > 0.90` under a CLUSTER
 bootstrap resampling coins. This module runs exactly that over the rows the collector has
 persisted into `cascade_excursions`, and writes a JSON artifact for the knowledge layer to grade
 INDEPENDENTLY (knowledge.ingest.fade_rebenchmark). Numbers reach the vault from this file only;
@@ -110,16 +110,15 @@ def run(db: Path, source: str = DEFAULT_SOURCE, resamples: int = 20_000, seed: i
 
     # The gate exactly as the engine defines it, over the REGISTERED horizons only (it reads the
     # longest usable one), retention checked first.
-    gate = reopening_gate({"horizons": {h: horizons[h] for h in REGISTERED_HORIZONS}}, window_days=window_days)
     span_days = ((float(hi) - float(lo)) / MS_PER_DAY) if (lo is not None and hi is not None) else 0.0
+    gate = reopening_gate({"horizons": {h: horizons[h] for h in REGISTERED_HORIZONS}, "span_days": round(span_days, 4)},
+                          window_days=window_days)      # Round 115: the engine checks the covered span itself
     window_ok = span_days >= window_days
     d = horizons[DECISION_HORIZON]
     p = d["cluster_p_ge_reopen"]
     reasons: List[str] = []
     if not gate.get("eligible"):
         reasons.append(f"engine gate {gate.get('status')}: {gate.get('detail')}")
-    if not window_ok:
-        reasons.append(f"window {span_days:.2f} d < {window_days:g} d required (the rows span less than the registered window)")
     if reasons:
         verdict = "INSUFFICIENT"
     elif p is not None and p > REOPEN_CONFIDENCE:

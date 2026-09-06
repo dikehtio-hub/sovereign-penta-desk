@@ -2360,6 +2360,27 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 115 - WHALE REPLAY RE-RUN (INSUFFICIENT BY 0.20 pts), ENGINE SPAN GATE, DESK 4 FROM ANY DIRECTORY
+     python -m HyperLiquid.HL_Monarch.analytics.cascade_replay --json --out HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.verdict.json
+     python -m knowledge.ingest.cascade_replay          (default --result is now that tracked path)
+         Re-run 2026-09-06 over 38,016 rows: qualifying events 18,669 on 62 coins, top coin ZEC 20.20% vs 20%,
+         HHI 0.1334 -> INSUFFICIENT (page and engine agree). ratio_30m 0.9029, P(>= 1.25) 0.1167 - the RETUNE band,
+         stated for completeness, not a verdict. Engine artifacts beside the registrations are skipped by the
+         experiments ingest (they carry `_artifact`), so one adapter owns each verdict page.
+     python -m knowledge.ingest.experiments --force
+         The progress mirror now applies `sample_requirements.min_samples_60m_per_event` (AND samples_60m >= n) when a
+         registration names it, and treats `population.source` of `pooled` / `all` as pooled. The whale registration
+         declares `population: pooled` (its engine pools by construction). Over the rows the engine counts, ZEC is
+         20.08% today: the whale page reads ACCUMULATING with that gate named, not `ready`.
+     wick_benchmark.reopening_gate(result, window_days)   (Ruling R114-1.F)
+         `result["span_days"]` is required: benchmark() reports it from the events' timestamps; a result without it
+         fails closed ("covered span not reported"); a span under the window is SAMPLE_TOO_NARROW. The fade runner
+         passes its span in. cascade_replay.py has NO span gate: its registration binds no window.
+     cd quant_trading_lab && python -m pytest tests -q   (151 passed, 10 skipped)   |   from the workspace root: 149 passed, 2 failed
+         RiskSentinel's default config paths are anchored to the desk root (nested commit). The two remaining root-run
+         failures are in tests/test_tax_bankroll_integration.py - another agent's UNTRACKED module that hard-codes
+         'config/portfolio_config.yaml' itself; not touched.
+
      ROUND 114 - REOPENING VERDICT (INSUFFICIENT), TRACKED DRILL BATCH, PRE-FLIGHT CLOCK + WRITABILITY + CONCURRENCY
      cd HyperLiquid/HL_Monarch && python -m analytics.fade_rebenchmark [--resamples 20000] [--source trade_sweep]
          Asks passive_fade_rebenchmark's reopening question of the PERSISTED excursions (mode=ro) and writes

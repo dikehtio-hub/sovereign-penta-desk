@@ -14,7 +14,20 @@
   "data": {
     "source": "HyperLiquid/HL_Monarch/data/hyperliquid_data.db table cascade_excursions, opened file:...?mode=ro",
     "written_by": "HyperLiquid/HL_Monarch/storage/incremental_persistence.py (NOT analytics/excursions.py - the Top 20 registry's Item 14 Primary Code line cites a path that does not exist; see corrections)",
-    "columns_used": ["event_id", "coin", "timestamp_utc", "cascade_side", "fade_is_long", "notional_usd", "event_px", "entry_px", "mfe_30m", "mae_30m", "samples_60m", "regime_tag"],
+    "columns_used": [
+      "event_id",
+      "coin",
+      "timestamp_utc",
+      "cascade_side",
+      "fade_is_long",
+      "notional_usd",
+      "event_px",
+      "entry_px",
+      "mfe_30m",
+      "mae_30m",
+      "samples_60m",
+      "regime_tag"
+    ],
     "state_at_registration": {
       "rows": 28544,
       "coins": 58,
@@ -38,6 +51,12 @@
     "min_samples_60m_per_event": 1,
     "rationale": "Inherited from passive_fade_rebenchmark. The 2026-09-01 retirement verdict came from a window in which two microcaps supplied 83% of all events (HHI 0.360); the sample gates exist so that cannot happen again. A run failing any gate produces NO verdict, not a weak one."
   },
+  "population": {
+    "recorded_utc": "2026-09-06T22:39:01.924775Z",
+    "source": "pooled",
+    "basis": "The cascade sweeper reacts to a liquidation cascade regardless of the event source that recorded it; analytics/cascade_replay.py loads event_id > 0 AND source NOT LIKE 'control:%' by construction. Recorded Round 115 (Ruling R114-1.A) so this page names its population explicitly instead of relying on the default. Bars unchanged.",
+    "bars_unchanged": true
+  },
   "acceptance_bar": {
     "PASS": "P(fade_ratio_30m >= 1.25) > 0.90 under a CLUSTER bootstrap resampling COINS",
     "RETUNE": "0.50 <= P(fade_ratio_30m >= 1.25) <= 0.90",
@@ -49,7 +68,19 @@
   "statistical_method": {
     "bootstrap": "CLUSTER bootstrap resampling coins with replacement, 10,000 draws, seed 7",
     "why_not_event_level": "Forward windows on the same coin overlap, so events are not independent. An event-level bootstrap would understate the variance and manufacture significance. This is the standing auditing standard from passive_fade_rebenchmark.",
-    "must_report": ["rows_at_run", "events_qualifying", "coins", "top_coin_share", "hhi", "fade_ratio_30m", "fade_ratio_5m", "fade_ratio_15m", "fade_ratio_60m", "cluster_p_ge_1_25", "seed"]
+    "must_report": [
+      "rows_at_run",
+      "events_qualifying",
+      "coins",
+      "top_coin_share",
+      "hhi",
+      "fade_ratio_30m",
+      "fade_ratio_5m",
+      "fade_ratio_15m",
+      "fade_ratio_60m",
+      "cluster_p_ge_1_25",
+      "seed"
+    ]
   },
   "commitments": [
     "The bar above is not changed after any data is seen. A change requires a dated amendment naming what was already known when it was made.",

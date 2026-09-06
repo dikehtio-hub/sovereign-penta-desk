@@ -196,6 +196,14 @@ def _aggregate(rows: List[Dict[str, float]]) -> Dict[str, Any]:
     }
 
 
+def _span_days(times) -> float:
+    """Days between the earliest and latest event, from millisecond timestamps; 0.0 below two events.
+    Round 115 (Ruling R114-1.F): the gate checks the span the rows actually COVER, not only that
+    retention could hold the window."""
+    ts = [float(t) for t in times if t is not None]
+    return (max(ts) - min(ts)) / 86_400_000.0 if len(ts) >= 2 else 0.0
+
+
 def benchmark(repo: Optional[MarketRepository] = None,
               source: Optional[str] = "trade_sweep",
               horizons: Sequence[float] = DEFAULT_HORIZONS,
@@ -222,6 +230,7 @@ def benchmark(repo: Optional[MarketRepository] = None,
         "events": len(events),
         "coins": len(series),
         "min_notional": min_notional,
+        "span_days": _span_days([e.get("time") for e in events]),
         "horizons": {},
     }
 
@@ -353,7 +362,7 @@ def reopening_gate(result: Dict[str, Any], window_days: float = 7.0) -> Dict[str
     misleading status this function could return.
     """
     retention = retention_covers_window(window_days)
-    out = _reopening_sample_gate(result)
+    out = _reopening_sample_gate(result, window_days)
     out["retention"] = retention
     if not retention["covers"]:
         out.update({"status": "RETENTION_TOO_SHORT", "eligible": False,
@@ -361,13 +370,15 @@ def reopening_gate(result: Dict[str, Any], window_days: float = 7.0) -> Dict[str
     return out
 
 
-def _reopening_sample_gate(result: Dict[str, Any]) -> Dict[str, Any]:
+def _reopening_sample_gate(result: Dict[str, Any], window_days: float = 7.0) -> Dict[str, Any]:
     """
     Whether the sample is broad enough to reconsider the retired fade at all.
 
     Deliberately asymmetric. Retiring took a p of 0.024 on a narrow sample;
     RE-OPENING requires >=500 events across >=20 coins with no coin over 20% of
-    the sample, and then 90% confidence that the ratio clears 1.25. A strategy
+    the sample, and then 90% confidence that the ratio clears 1.25. Since Round 115
+    the rows must also COVER the registered window (`span_days` on the result; a
+    result that does not report its span fails closed). A strategy
     already measured as sub-random should have to clear a higher bar to come
     back than it did to leave.
     """
@@ -385,6 +396,11 @@ def _reopening_sample_gate(result: Dict[str, Any]) -> Dict[str, Any]:
         fails.append(f"{coins} coins < {REOPEN_MIN_COINS}")
     if share > REOPEN_MAX_COIN_SHARE:
         fails.append(f"top coin {share * 100:.0f}% > {REOPEN_MAX_COIN_SHARE * 100:.0f}%")
+    span = result.get("span_days")
+    if span is None:
+        fails.append("covered span not reported (span_days)")
+    elif float(span) < float(window_days):
+        fails.append(f"span {float(span):.2f} d < {window_days:g} d window")
     if fails:
         return {"status": "SAMPLE_TOO_NARROW", "detail": "; ".join(fails),
                 "eligible": False}

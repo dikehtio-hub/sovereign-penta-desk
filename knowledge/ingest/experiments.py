@@ -312,10 +312,17 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
                 conn = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, timeout=8)
                 pop = data.get("population") if isinstance(data.get("population"), dict) else {}
                 source = pop.get("source")
-                if source:      # Round 114: the registration names its population; one source, never pooled
+                pooled = source in (None, "", "pooled", "all")
+                if not pooled:  # Round 114: the registration names its population; one source, never pooled
                     where, params = "FROM cascade_excursions WHERE source = ?", (str(source),)
-                else:           # no population named: every treatment row (the cascade-replay engine pools)
+                else:           # pooled - either declared so (Round 115) or unnamed: every treatment row
                     where, params = "FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%'", ()
+                msm = reqs.get("min_samples_60m_per_event")
+                if isinstance(msm, (int, float)):
+                    # Round 115: the registration counts only events with a complete forward series, and so
+                    # does its engine (cascade_replay filters samples_60m). The raw count put ZEC at 19.84%;
+                    # the engine's qualifying rows put it at 20.20% - the mirror must count the same rows.
+                    where, params = where + " AND samples_60m >= ?", params + (float(msm),)
                 n, coins, lo, hi = conn.execute(
                     f"SELECT COUNT(*), COUNT(DISTINCT coin), MIN(timestamp_utc), MAX(timestamp_utc) {where}", params).fetchone()
                 counts = [int(r[0]) for r in conn.execute(f"SELECT COUNT(*) {where} GROUP BY coin", params)]
@@ -325,7 +332,7 @@ def measure_progress(data: dict[str, Any], path: Path, vault: Path, dev_root: Pa
                                     top_share=(max(counts) / n) if (counts and n) else 0.0,
                                     span_days=((hi - lo) / 86_400_000.0) if (lo is not None and hi is not None) else 0.0,
                                     hhi=(sum((c / n) ** 2 for c in counts) if n else 0.0))
-                population = str(source) if source else "pooled"
+                population = "pooled" if pooled else str(source)
             except Exception:  # noqa: BLE001 - a missing table is "unmeasured", not a crash
                 accumulated = None
     else:

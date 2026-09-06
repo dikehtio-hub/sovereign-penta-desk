@@ -9,7 +9,7 @@ tags:
 - experiment
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T22:15:50Z'
+  at: '2026-09-06T22:41:52Z'
 status: draft
 dev:
   register_for: Experiment
@@ -41,8 +41,8 @@ dev:
 | [[passive_fade_rebenchmark_meta\|Experiment: passive_fade_rebenchmark]] | registration | 13,645/500 (100%) · accumulating | draft | 2026-09-06T22:11:22Z |
 | [[passive_fade_rebenchmark_verdict\|Passive fade rebenchmark - verdict]] | rebenchmark_verdict | - | draft | 2026-09-06T22:15:50Z |
 | [[regime_filtered_v1_meta\|Experiment: regime_filtered_v1]] | registration | 0/50 (0%) · parked | draft | 2026-09-06T18:33:57Z |
-| [[whale_sweeper_cascade_replay_meta\|Experiment: whale_sweeper_cascade_replay]] | registration | 19,008/500 (100%) · ready | stable | 2026-09-06T22:11:22Z |
-| [[whale_sweeper_cascade_replay_verdict\|Whale sweeper cascade replay - verdict]] | cascade_replay_verdict | - | draft | 2026-09-06T05:21:48Z |
+| [[whale_sweeper_cascade_replay_meta\|Experiment: whale_sweeper_cascade_replay]] | registration | 18,782/500 (100%) · accumulating | stable | 2026-09-06T22:41:52Z |
+| [[whale_sweeper_cascade_replay_verdict\|Whale sweeper cascade replay - verdict]] | cascade_replay_verdict | - | draft | 2026-09-06T22:41:49Z |
 
 10 page(s).
 

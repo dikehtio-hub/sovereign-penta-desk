@@ -1911,7 +1911,7 @@ class Round104Fixture(IngestFixture):
         self.exp_dir_hl.mkdir(exist_ok=True)
         self.registration = self.exp_dir_hl / "whale_sweeper_cascade_replay.meta.json"
         self.registration.write_text(json.dumps(REPLAY_REG), encoding="utf-8")
-        self.artifact = self.dev_root / "cross_market" / "data" / "whale_sweeper_cascade_replay_verdict.json"
+        self.artifact = self.exp_dir_hl / "whale_sweeper_cascade_replay.verdict.json"   # beside the registration (R114-1.D)
         self.artifact.parent.mkdir(parents=True, exist_ok=True)
         self.artifact.write_text(json.dumps(REPLAY_ART), encoding="utf-8")
 
@@ -3646,6 +3646,29 @@ class FadeRebenchmarkIngestTests(IngestFixture):
         self.registration.write_text(json.dumps(reg), encoding="utf-8")
         p, _ = self._progress()
         self.assertEqual((p["population"], p["accumulated"], p["status"]), ("pooled", 1200, "ready"))
+        # Round 115: a registration may SAY it pools (the cascade-replay engine does by construction)
+        reg["population"] = {"source": "pooled", "recorded_utc": "2026-09-06T22:40:00Z"}
+        self.registration.write_text(json.dumps(reg), encoding="utf-8")
+        p, _ = self._progress()
+        self.assertEqual((p["population"], p["accumulated"]), ("pooled", 1200))
+
+    def test_the_forward_series_requirement_narrows_the_counted_population(self):
+        """Round 115: min_samples_60m_per_event is part of the registered population, as in the engine."""
+        import sqlite3
+        if self.db.exists():
+            self.db.unlink()
+        start = int((NOW - timedelta(days=8)).timestamp() * 1000)
+        c = sqlite3.connect(self.db)
+        c.execute("CREATE TABLE cascade_excursions (event_id INTEGER, coin TEXT, timestamp_utc INTEGER, source TEXT, samples_60m INTEGER)")
+        c.executemany("INSERT INTO cascade_excursions VALUES (?,?,?,?,?)",
+                      [(i + 1, f"S{i % 30}", start + i * 1_000_000, "trade_sweep", 0 if i < 100 else 5) for i in range(600)])
+        c.commit()
+        c.close()
+        reg = json.loads(json.dumps(self.REG))
+        reg["sample_requirements"]["min_samples_60m_per_event"] = 1
+        self.registration.write_text(json.dumps(reg), encoding="utf-8")
+        p, _ = self._progress()
+        self.assertEqual(p["accumulated"], 500)          # the 100 truncated events do not count
 
     def test_max_hhi_is_a_gate_when_the_registration_names_one(self):
         start = int((NOW - timedelta(days=8)).timestamp() * 1000)

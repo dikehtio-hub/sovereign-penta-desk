@@ -70,13 +70,15 @@ class TestFadeRebenchmark(unittest.TestCase):
         self.assertEqual(r["sample_gates"]["metrics"]["top_coin"], "WHALE")
         self.assertGreater(r["primary_metric"]["cluster_p_ge_1_25"], 0.9)    # the number is there; it is not a verdict
 
-    def test_a_short_window_is_insufficient_even_when_the_engine_gate_passes(self):
+    def test_a_short_window_is_insufficient_and_the_engine_gate_says_so(self):
+        """Round 115 (R114-1.F): the engine gate checks the covered span; runner and page can no longer disagree."""
         seed(self.db, rows("trade_sweep", 600, 25, 5.0, mfe=2.0, mae=1.0))
         r = run(self.db, source="trade_sweep", resamples=100)
         self.assertEqual(r["verdict"], "INSUFFICIENT")
-        self.assertTrue(r["sample_gates"]["engine"]["eligible"])              # n, coins, share all fine
+        self.assertFalse(r["sample_gates"]["engine"]["eligible"])             # n, coins, share fine; span is not
+        self.assertIn("span", r["sample_gates"]["engine"]["detail"])
         self.assertFalse(r["sample_gates"]["metrics"]["window_covered"])
-        self.assertTrue(any("window" in x for x in r["verdict_reasons"]))
+        self.assertTrue(any("span" in x for x in r["verdict_reasons"]))
 
     def test_an_adverse_sample_fails_the_bar(self):
         seed(self.db, rows("trade_sweep", 600, 25, 8.0, mfe=0.8, mae=1.0))

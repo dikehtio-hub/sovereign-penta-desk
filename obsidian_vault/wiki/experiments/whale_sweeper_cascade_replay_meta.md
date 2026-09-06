@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T22:11:22Z'
+  at: '2026-09-06T22:41:52Z'
 status: stable
 sources:
 - id: registration
@@ -24,14 +24,14 @@ dev:
   - 8
   registered_utc: '2026-09-06T02:06:00+00:00'
   progress:
-    accumulated: 19008
+    accumulated: 18782
     target: 500
     unit: events
-    status: ready
-    measured_at: '2026-09-06T22:11:22Z'
+    status: accumulating
+    measured_at: '2026-09-06T22:41:52Z'
     gates:
       min_events:
-        value: 19008
+        value: 18782
         bar: 500
         pass: true
       min_coins:
@@ -39,19 +39,18 @@ dev:
         bar: 20
         pass: true
       max_single_coin_share:
-        value: 0.1984
+        value: 0.2008
         bar: 0.2
-        pass: true
+        pass: false
       max_hhi:
-        value: 0.1328
+        value: 0.1336
         bar: 0.15
         pass: true
     population: pooled
     last_verdict:
       grade: INSUFFICIENT
       page: whale_sweeper_cascade_replay_verdict
-      at: '2026-09-06T04:54:00.462755Z'
-    ready_since: '2026-09-06T22:11:22Z'
+      at: '2026-09-06T22:39:27.484923Z'
   parameters:
   - name: whale_sweeper_cascade_replay_sample_requirements_min_events
     value: 500
@@ -83,7 +82,7 @@ verified:
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
 > [!NOTE]
-> **READY (since 2026-09-06)**: every sample gate passes (min_events 19008 vs 500; min_coins 62 vs 20; max_single_coin_share 0.1984 vs 0.2; max_hhi 0.1328 vs 0.15) and no verdict page exists. Evaluate it under the registered bar or retire it; lint L11 warns once this has stood for 3 days.
+> **ACCUMULATING** - 3/4 sample gates pass over population `pooled`. Failing: max_single_coin_share 0.2008 vs 0.2. Last evaluation 2026-09-06: **INSUFFICIENT** ([[whale_sweeper_cascade_replay_verdict]]) - an insufficient sample is never a verdict, so the question stays open.
 
 
 ## Registered utc
@@ -146,6 +145,15 @@ After a large liquidation cascade on HyperLiquid, does price mean-revert enough 
 | `max_hhi` | 0.15 |
 | `min_samples_60m_per_event` | 1 |
 | `rationale` | Inherited from passive_fade_rebenchmark. The 2026-09-01 retirement verdict came from a window in which two microcaps supplied 83% of all events (HHI 0.360); the sample gates exist so that cannot happen again. A run failing any gate produces |
+
+## Population
+
+| Key | Value |
+|---|---|
+| `recorded_utc` | 2026-09-06T22:39:01.924775Z |
+| `source` | pooled |
+| `basis` | The cascade sweeper reacts to a liquidation cascade regardless of the event source that recorded it; analytics/cascade_replay.py loads event_id > 0 AND source NOT LIKE 'control:%' by construction. Recorded Round 115 (Ruling R114-1.A) so thi |
+| `bars_unchanged` | true |
 
 ## Acceptance bar
 
