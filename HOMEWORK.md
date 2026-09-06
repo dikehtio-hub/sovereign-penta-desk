@@ -45,14 +45,16 @@ Last updated: 2026-09-05 23:55 EDT (Round 104).
 - [ ] **Send the Round 104 handoff prompt to Antigravity.** Three rulings are
       requested and one of them decides whether a live hurdle means anything:
       see the net-hurdle item directly below.
-- [ ] **Rule on the net funding hurdle, which currently cannot be enforced.**
-      `BASIS_MIN_NET_APR = 20.0` is the bar that is supposed to govern the basis
-      book after paying spread on both legs. It can be evaluated on **197 of
-      10,635 recorded windows (1.9%)** — every other row has `fee_basis` set to
-      `'unmeasured'`, because spreads were not recorded when the window closed.
-      So the stricter of the two hurdles is, on this data, decorative. Either the
-      window writer starts recording both legs' spreads, or the bar should stop
-      being described as governing anything. This is a decision, not a bug fix.
+- [ ] **Rule on whether the basis measurement grid should record spreads.**
+      `BASIS_MIN_NET_APR = 20.0` **is** enforced on every live entry — the live
+      scanner refuses any trade whose spread it could not measure. What cannot be
+      done is judging it *retrospectively*: only **197 of 10,635 recorded windows
+      (1.9%)** carry a measured spread, because the measurement grid opens a window
+      on a stride whether or not a spread was captured. The consequence is that we
+      cannot say what the harvester would actually have earned, only an upper bound
+      that has not paid a spread. Either the window writer starts recording both
+      legs' spreads, or every retrospective funding number stays an upper bound and
+      must be labelled one. This is a decision, not a bug fix.
 - [ ] **Rule on stamping the cascade replay artifact.** Its `--json` output carries
       no run timestamp, so two runs over a table that grows continuously cannot be
       ordered from their contents. Round 103 already recorded two figures from it

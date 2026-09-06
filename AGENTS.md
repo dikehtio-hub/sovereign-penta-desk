@@ -5,8 +5,8 @@ the detail.
 
 ## Status
 
-Round 104 complete (2026-09-06): TWO NEW COMPILED PAGES ON DESK 1, AND THREE REAL
-DEFECTS FOUND IN OUR OWN TOOLING WHILE BUILDING THEM. Deliverables 1-2 (the wall-clock
+Round 104 complete (2026-09-06, corrected in 104b): TWO NEW COMPILED PAGES ON DESK 1, AND
+FOUR REAL DEFECTS FOUND IN OUR OWN TOOLING WHILE BUILDING THEM. Deliverables 1-2 (the wall-clock
 test fix and the exporter --stop) landed earlier in the round at 25 green exporter tests.
 B2: knowledge/ingest/funding.py compiles wiki/regimes/hl_funding_regime.md from
 basis_realised_windows, read-only. B1/F3: knowledge/ingest/cascade_replay.py compiles
@@ -20,6 +20,24 @@ Sports 223, Polymarket 237, Tax 546, cross-market 211, Desk 4 151 (+6 skipped) =
 Desk 4 leaves 4 modules uncollectable for a missing `fastapi` - PRE-EXISTING, unrelated to
 this round and unchanged by it. Vault 420 pages + constitution, lint CLEAN. No daemon was
 touched and no desk module edited.
+
+104b (same round, second commit): THE FUNDING PAGE OVERSTATED ITS OWN SECOND POPULATION
+AND I CAUGHT IT BY READING THE HARVESTER INSTEAD OF ASSUMING IT. 104a labelled the 473
+windows clearing the gross bar 'entry-qualifying ... the ones the harvester's own entry rule
+would have taken'. That is false. `scan_basis_opportunities` requires the gross bar AND the
+net bar AND a spread ceiling, with check_spreads=True by default, and its own docstring says
+'a basis trade whose cost has not been measured has not been evaluated' - so the live rule
+REFUSES an unmeasured-spread trade, while the measurement grid opens a window on a stride
+regardless. The 28.05% median is therefore an UPPER BOUND on a superset, not a backtest, and
+the page now says so in a call-out. Renamed the key entry_qualifying -> gross_bar_only, with
+a compatibility reader so history rows written before the rename still render rather than
+KeyError-ing an existing page. Two more facts settled by reading the writer rather than
+guessing: realised_apr IS annualised (accrual_rate_hours/observed * HOURS_PER_YEAR * 100), so
+it compares directly against the bars; and the 3,839 NULL rows are NULL because coverage fell
+under MEASUREMENT_MIN_COVERAGE = 0.60, an observability exclusion, not an outcome one - so the
+distribution is not survivorship-biased in the way I had flagged as an open question.
+Module 23 = 120. The net bar is NOT decorative, as 104a's homework note wrongly implied: it is
+enforced live and merely unevaluable retrospectively. HOMEWORK.md corrected.
 
 Round 103 complete (2026-09-06): MAIDEN NIGHT CLOSED, ALL FOUR ENTRIES GREEN; THE
 LEAD-LAG TOOLING DEFECT IS FIXED. Committed in two halves on purpose: 103a (dbe37df)
@@ -1083,6 +1101,17 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
   window; console-only /resume.
 
 ## Round 104 findings
+
+### The correction that matters most (104b)
+
+- **I labelled a population by what I assumed the strategy did, then checked.** The gross-bar
+  subset is a SUPERSET of what the harvester would trade, because the live scanner also
+  requires the net bar and a measured spread under a ceiling. Calling it 'entry-qualifying'
+  would have put a 28.05% median in front of a desk decision as though it were achievable.
+  It is an upper bound. The lesson generalises: a compiled page that names a population after
+  a STRATEGY rather than after its FILTER is a copied-state violation in prose form.
+- Worth noting the shape of the error - it was not in the arithmetic, which was right, but in
+  the label on the arithmetic. Lint cannot catch that; only reading the source can.
 
 ### The measurements themselves
 

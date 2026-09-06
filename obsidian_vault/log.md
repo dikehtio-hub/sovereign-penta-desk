@@ -18,6 +18,9 @@
 * **Ingest**: basis funding windows: 10,635 row(s) from `HyperLiquid/HL_Monarch/data/hyperliquid_data.db` -> [[hl_funding_regime]]; entry-qualifying median 28.05% vs all-window 6.4%.
 * **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6124, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
 * **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
+* **Ingest**: basis funding windows: 10,635 row(s) from `HyperLiquid/HL_Monarch/data/hyperliquid_data.db` -> [[hl_funding_regime]]; gross-bar-only median 28.05% (upper bound) vs all-window 6.4%.
+* **Ingest**: cascade replay graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); ratio 0.6124, P 0.0000 -> [[whale_sweeper_cascade_replay_verdict]].
+* **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T01:10:25Z): 0 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

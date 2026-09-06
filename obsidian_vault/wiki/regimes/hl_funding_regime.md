@@ -2,8 +2,8 @@
 type: Regime
 title: HyperLiquid funding regime
 description: 'Realised basis funding across 10,635 windows: all-window median 6.4%,
-  entry-qualifying median 28.05% with 53.5% clearing the 25.0% bar; the net bar is
-  unmeasurable.'
+  gross-bar-only median 28.05% (an upper bound) with 53.5% clearing the 25.0% bar;
+  the net bar is unmeasurable.'
 tags:
 - regime
 - desk-1
@@ -12,7 +12,7 @@ tags:
 - basis
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T03:35:59Z'
+  at: '2026-09-06T03:47:00Z'
 status: draft
 sources:
 - id: basis-windows
@@ -42,7 +42,7 @@ dev:
       negative_pct: 10.9
       at_or_above_bar: 520
       at_or_above_bar_pct: 7.7
-    entry_qualifying:
+    gross_bar_only:
       n: 473
       median: 28.05
       mean: 46.65
@@ -53,7 +53,7 @@ dev:
       negative_pct: 12.3
       at_or_above_bar: 253
       at_or_above_bar_pct: 53.5
-    entry_qualifying_n: 473
+    gross_bar_only_n: 473
     net:
       measured_rows: 197
       measured_pct: 1.9
@@ -111,6 +111,14 @@ dev:
     qual_median: 28.05
     qual_at_bar_pct: 53.5
     net_measured_pct: 1.9
+  - at: '2026-09-06T03:47:00Z'
+    rows: 10635
+    assets: 441
+    all_median: 6.4
+    gross_n: 473
+    gross_median: 28.05
+    gross_at_bar_pct: 53.5
+    net_measured_pct: 1.9
 ---
 # HyperLiquid funding regime (Desk 1, Item 8)
 
@@ -119,25 +127,27 @@ dev:
 ## The two populations
 
 The table holds every candidate window the measurement grid opened on a stride, most of which the
-harvester would never have entered. Judging the strategy on all of them understates it; judging it
-only on the ones it would have taken hides how selective it has to be. Both are below.
+harvester would never have entered. Judging the strategy on all of them understates it. The second
+row below is NOT a backtest of the strategy - see the caveat under it - but an upper bound.
 
-Of the 10,635 windows, **6,796 carry a `realised_apr`**; the rest closed without one and are counted nowhere below. Percentages are shares of each population, not of the table.
+Of the 10,635 windows, **6,796 carry a `realised_apr`**; the rest are NULL because coverage fell below `MEASUREMENT_MIN_COVERAGE` (0.60) - an observability exclusion, not an outcome one. `realised_apr` is annualised, so it compares directly against the bars. Percentages below are shares of each population, not of the table.
 
 | Population | n | median APR | mean | p10 | p90 | >= 25.0 bar | negative |
 |---|---|---|---|---|---|---|---|
 | All recorded windows | 6,796 | 6.4 | 2.65 | -1.36 | 18.58 | 7.7% | 10.9% |
-| Entry-qualifying (quote_apr_entry >= 25.0) | 473 | 28.05 | 46.65 | -3.52 | 96.65 | 53.5% | 12.3% |
+| Clears the GROSS bar only (quote_apr_entry >= 25.0) | 473 | 28.05 | 46.65 | -3.52 | 96.65 | 53.5% | 12.3% |
 
 ## Reading
 
-- The entry rule is doing work: qualifying windows realise a median **28.05%** against **6.4%** across all windows.
-- But only **53.5%** of the windows that qualified on the quoted APR actually realised at or above the 25.0% bar, and **12.3%** went negative. Entering on a quoted rate is not the same as earning it.
-- Spread between p10 and p90 on qualifying windows: -3.52% to 96.65%.
+- Selecting on the quoted rate is doing real work: those windows realise a median **28.05%** against **6.4%** across all windows.
+- But only **53.5%** of the windows that cleared the quoted bar actually realised at or above 25.0%, and **12.3%** went negative. Entering on a quoted rate is not the same as earning it.
+- p10 to p90 on those windows: -3.52% to 96.65%. Wide and fat-tailed, not an annuity.
+
+> **This is an upper bound, not a backtest.** The live entry rule (`scan_basis_opportunities` in `execution/strategies/basis_strategy.py`) requires the gross bar **and** the net bar **and** a spread ceiling, and it refuses any trade whose spread it could not measure - "a basis trade whose cost has not been measured has not been evaluated". The measurement grid has no such scruple: it opens a window on a stride regardless. So these windows have neither paid a spread nor been filtered by the spread ceiling, and the real strategy would have taken a SUBSET of them at a LOWER realised rate.
 
 ## The net bar
 
-`BASIS_MIN_NET_APR = 20.0` is the bar that matters after paying spread on both legs. It is **UNMEASURABLE - the net bar cannot be judged on this data**: only 197 of 10,635 rows (1.9%) carry a measured `net_apr_after_fees`; the rest have `fee_basis = 'unmeasured'` because spreads were not recorded when the window closed. No net verdict is issued over a 2% sample, and the gross figure is NOT substituted for it.
+`BASIS_MIN_NET_APR = 20.0` is the bar that matters after paying spread on both legs. It IS enforced on every live entry; what cannot be done is judging it retrospectively here. It is **UNMEASURABLE - the net bar cannot be judged on this data**: only 197 of 10,635 rows (1.9%) carry a measured `net_apr_after_fees`; the rest have `fee_basis = 'unmeasured'` because spreads were not recorded when the window closed. No net verdict is issued over a 2% sample, and the gross figure is NOT substituted for it.
 
 ## Coverage and regimes
 
@@ -146,11 +156,12 @@ Of the 10,635 windows, **6,796 carry a `realised_apr`**; the rest closed without
 
 ## History
 
-| At | rows | assets | all median | qualifying n | qualifying median | >= bar | net measured |
+| At | rows | assets | all median | gross-bar n | gross-bar median | >= bar | net measured |
 |---|---|---|---|---|---|---|---|
 | 2026-09-06T03:25:51Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
 | 2026-09-06T03:28:03Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
 | 2026-09-06T03:35:59Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
+| 2026-09-06T03:47:00Z | 10,635 | 441 | 6.4 | 473 | 28.05 | 53.5% | 1.9% |
 
 ## Related
 

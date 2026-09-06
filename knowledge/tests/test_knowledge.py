@@ -1909,11 +1909,12 @@ class FundingIngestTests(Round104Fixture):
         self.assertEqual(m["assets"], 8)
         self.assertEqual(m["all_windows"]["n"], 8)
         self.assertEqual(m["all_windows"]["median"], 7.5)
-        # only the four whose QUOTED apr cleared the entry bar
-        self.assertEqual(m["entry_qualifying_n"], 4)
-        self.assertEqual(m["entry_qualifying"]["median"], 26.0)
-        self.assertEqual(m["entry_qualifying"]["at_or_above_bar"], 2)          # 30 and 28, not 24
-        self.assertEqual(m["entry_qualifying"]["negative_pct"], 25.0)          # the -5 window
+        # only the four whose QUOTED apr cleared the GROSS bar - a superset of what the live
+        # scanner would take, since it also requires the net bar and a measured spread
+        self.assertEqual(m["gross_bar_only_n"], 4)
+        self.assertEqual(m["gross_bar_only"]["median"], 26.0)
+        self.assertEqual(m["gross_bar_only"]["at_or_above_bar"], 2)          # 30 and 28, not 24
+        self.assertEqual(m["gross_bar_only"]["negative_pct"], 25.0)          # the -5 window
 
     def test_net_bar_is_declared_unmeasurable_on_thin_fee_coverage(self):
         m = ingest_fund.measure(ingest_fund.load_windows(self.db), ingest_fund.read_bars(self.dev_root))
@@ -1928,7 +1929,8 @@ class FundingIngestTests(Round104Fixture):
         names = {p["name"]: p["value"] for p in meta["dev"]["parameters"]}
         self.assertEqual(names, {"basis_min_funding_apr": 25.0, "basis_min_net_apr": 20.0})
         self.assertIn("UNMEASURABLE", body)
-        self.assertIn("Entry-qualifying", body)
+        self.assertIn("Clears the GROSS bar only", body)
+        self.assertIn("upper bound, not a backtest", body)
         self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW), [])
 
     def test_c1_fires_when_a_bar_is_edited_and_the_page_is_not_recompiled(self):
@@ -1943,6 +1945,22 @@ class FundingIngestTests(Round104Fixture):
         ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW + timedelta(hours=1))
         meta, _ = fm.parse((self.vault / "wiki/regimes/hl_funding_regime.md").read_text(encoding="utf-8"))
         self.assertEqual(len(meta["dev"]["history"]), 2)
+
+    def test_history_rows_written_before_the_104b_rename_still_render(self):
+        """A key rename that KeyErrors on an existing page is worse than the wording it fixed."""
+        ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db, at=NOW)
+        path = self.vault / "wiki/regimes/hl_funding_regime.md"
+        meta, body = fm.parse(path.read_text(encoding="utf-8"))
+        row = meta["dev"]["history"][0]
+        for new, old in (("gross_n", "qual_n"), ("gross_median", "qual_median"),
+                         ("gross_at_bar_pct", "qual_at_bar_pct")):
+            row[old] = row.pop(new)                      # as a page written before Round 104b holds it
+        pages.write_page(pages.Page(path, meta, body), self.vault, now=NOW)
+        report, page = ingest_fund.ingest_funding(self.vault, self.dev_root, db=self.db,
+                                                  at=NOW + timedelta(hours=1))
+        self.assertTrue(report.written)
+        self.assertEqual(len(page.meta["dev"]["history"]), 2)
+        self.assertIn("| 4 | 26.0 | 50.0% |", page.body)  # the pre-rename row still renders its values
 
     def test_missing_table_refuses_rather_than_writing_an_empty_page(self):
         out = io.StringIO()

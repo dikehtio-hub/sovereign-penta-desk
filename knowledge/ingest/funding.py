@@ -13,15 +13,29 @@ different questions:
   * ALL windows - every candidate the measurement grid opened on a stride, most of which the
     harvester would never have entered. Their median realised APR says what funding pays on
     average, which is not what the strategy earns.
-  * ENTRY-QUALIFYING windows - `quote_apr_entry >= BASIS_MIN_FUNDING_APR`, i.e. the ones the
-    harvester's own entry rule would have taken. This is the population the hurdle is about.
-Reporting only the first understates the strategy; reporting only the second hides how selective
-it has to be. The page carries both, side by side, and says which is which.
+  * GROSS-BAR windows - `quote_apr_entry >= BASIS_MIN_FUNDING_APR`. This is a SUPERSET of what
+    the harvester would trade, and the page must never call it "what the strategy earns".
+Reporting only the first understates the strategy; reporting only the second overstates it. The
+page carries both, side by side, and says exactly which is which.
 
-THE NET BAR IS MOSTLY UNMEASURABLE and the page says so rather than quietly falling back to
-gross: `net_apr_after_fees` is NULL wherever `fee_basis` is 'unmeasured', which is the large
-majority of rows, because spreads were not recorded for most windows. A net verdict is issued
-only over the measured subset, with its size stated.
+WHY THE SECOND POPULATION IS AN UPPER BOUND, NOT A BACKTEST (corrected in Round 104b). The live
+entry rule in execution/strategies/basis_strategy.py is `scan_basis_opportunities`, which requires
+the gross bar AND the net bar AND a spread ceiling, with `check_spreads=True` by default and this
+reasoning in its own docstring: "A basis trade whose cost has not been measured has not been
+evaluated." So the harvester REFUSES a trade whose spread it could not measure. The measurement
+grid has no such scruple - it opens a window on a stride regardless - and only 1.9% of recorded
+windows carry a measured spread at all. The gross-bar median is therefore an upper bound: those
+windows have not paid a spread and have not been filtered by the spread ceiling.
+
+THE NET BAR IS NOT DECORATIVE, IT IS UNEVALUABLE HERE. `BASIS_MIN_NET_APR` is enforced live on
+every entry. What cannot be done is judging it retrospectively on this table: `net_apr_after_fees`
+is NULL wherever `fee_basis` is 'unmeasured'. A net verdict is issued only over the measured
+subset, with its size stated, and the gross figure is never substituted for it.
+
+WHAT THE MISSING `realised_apr` ROWS ARE. `realised_apr` is annualised
+((accrual_rate_hours / observed) * HOURS_PER_YEAR * 100), so it IS directly comparable to the two
+bars. It is NULL when coverage < MEASUREMENT_MIN_COVERAGE (0.60): "a 40%-observed week is not a
+week's result". The exclusion is on observability, not on outcome.
 
 Read-only on the database. Never writes outside the vault.
 """
@@ -107,8 +121,8 @@ def measure(rows: list[dict[str, Any]], bars: dict[str, float]) -> dict[str, Any
         "assets": len({r["asset"] for r in rows}),
         "realised_present": len(realised),
         "all_windows": describe(realised, gross_bar),
-        "entry_qualifying": describe([r["realised_apr"] for r in qualifying], gross_bar),
-        "entry_qualifying_n": len(qualifying),
+        "gross_bar_only": describe([r["realised_apr"] for r in qualifying], gross_bar),
+        "gross_bar_only_n": len(qualifying),
         "net": {
             "measured_rows": len(net_measured),
             "measured_pct": round(100.0 * len(net_measured) / len(rows), 1) if rows else 0.0,
@@ -120,6 +134,16 @@ def measure(rows: list[dict[str, Any]], bars: dict[str, float]) -> dict[str, Any
         "regimes": {k: sum(1 for r in rows if r.get("regime_tag") == k)
                     for k in sorted({str(r.get("regime_tag")) for r in rows})},
     }
+
+
+def _h(row: dict[str, Any], field: str):
+    """Read a history row under the current key, falling back to the pre-104b name.
+
+    Round 104b renamed the second population from `qual_*` to `gross_*` because "entry-qualifying"
+    claimed more than the data supports. History rows already written carry the old names, and a
+    rename that silently KeyErrors on an existing page is a worse bug than the wording it fixed.
+    """
+    return row.get(f"gross_{field}", row.get(f"qual_{field}", "-"))
 
 
 def _table(name: str, d: dict[str, Any]) -> list[str]:
@@ -136,40 +160,51 @@ def build_page(m: dict[str, Any], bars: dict[str, float], vault: Path, dev_root:
     existing = load_page(path)
     history = [dict(r) for r in ((existing.meta.get("dev") or {}).get("history") or [])] if existing else []
     history.append({"at": iso(at), "rows": m["rows"], "assets": m["assets"],
-                    "all_median": m["all_windows"].get("median"), "qual_n": m["entry_qualifying_n"],
-                    "qual_median": m["entry_qualifying"].get("median"),
-                    "qual_at_bar_pct": m["entry_qualifying"].get("at_or_above_bar_pct"),
+                    "all_median": m["all_windows"].get("median"), "gross_n": m["gross_bar_only_n"],
+                    "gross_median": m["gross_bar_only"].get("median"),
+                    "gross_at_bar_pct": m["gross_bar_only"].get("at_or_above_bar_pct"),
                     "net_measured_pct": m["net"]["measured_pct"]})
-    aw, eq = m["all_windows"], m["entry_qualifying"]
+    aw, eq = m["all_windows"], m["gross_bar_only"]
     body = [
         "# HyperLiquid funding regime (Desk 1, Item 8)", "",
         f"> What the delta-neutral basis book ACTUALLY realised across {m['rows']:,} recorded windows on "
         f"{m['assets']} assets, against the harvester's own entry bars.", "",
         "## The two populations", "",
         "The table holds every candidate window the measurement grid opened on a stride, most of which the",
-        "harvester would never have entered. Judging the strategy on all of them understates it; judging it",
-        "only on the ones it would have taken hides how selective it has to be. Both are below.", "",
-        f"Of the {m['rows']:,} windows, **{m['realised_present']:,} carry a `realised_apr`**; the rest closed "
-        "without one and are counted nowhere below. Percentages are shares of each population, not of the table.", "",
+        "harvester would never have entered. Judging the strategy on all of them understates it. The second",
+        "row below is NOT a backtest of the strategy - see the caveat under it - but an upper bound.", "",
+        f"Of the {m['rows']:,} windows, **{m['realised_present']:,} carry a `realised_apr`**; the rest are NULL "
+        "because coverage fell below `MEASUREMENT_MIN_COVERAGE` (0.60) - an observability exclusion, not an "
+        "outcome one. `realised_apr` is annualised, so it compares directly against the bars. Percentages "
+        "below are shares of each population, not of the table.", "",
         f"| Population | n | median APR | mean | p10 | p90 | >= {gross_bar} bar | negative |",
         "|---|---|---|---|---|---|---|---|",
         *_table("All recorded windows", aw),
-        *_table(f"Entry-qualifying (quote_apr_entry >= {gross_bar})", eq),
+        *_table(f"Clears the GROSS bar only (quote_apr_entry >= {gross_bar})", eq),
         "",
         "## Reading", "",
     ]
     if eq.get("n") and aw.get("median") is not None:
         body += [
-            f"- The entry rule is doing work: qualifying windows realise a median **{eq['median']}%** against "
-            f"**{aw['median']}%** across all windows.",
-            f"- But only **{eq.get('at_or_above_bar_pct')}%** of the windows that qualified on the quoted APR "
-            f"actually realised at or above the {gross_bar}% bar, and **{eq['negative_pct']}%** went negative. "
+            f"- Selecting on the quoted rate is doing real work: those windows realise a median "
+            f"**{eq['median']}%** against **{aw['median']}%** across all windows.",
+            f"- But only **{eq.get('at_or_above_bar_pct')}%** of the windows that cleared the quoted bar "
+            f"actually realised at or above {gross_bar}%, and **{eq['negative_pct']}%** went negative. "
             "Entering on a quoted rate is not the same as earning it.",
-            f"- Spread between p10 and p90 on qualifying windows: {eq['p10']}% to {eq['p90']}%.",
+            f"- p10 to p90 on those windows: {eq['p10']}% to {eq['p90']}%. Wide and fat-tailed, not an annuity.",
+            "",
+            "> **This is an upper bound, not a backtest.** The live entry rule "
+            "(`scan_basis_opportunities` in `execution/strategies/basis_strategy.py`) requires the gross bar "
+            "**and** the net bar **and** a spread ceiling, and it refuses any trade whose spread it could not "
+            "measure - \"a basis trade whose cost has not been measured has not been evaluated\". The "
+            "measurement grid has no such scruple: it opens a window on a stride regardless. So these windows "
+            "have neither paid a spread nor been filtered by the spread ceiling, and the real strategy would "
+            "have taken a SUBSET of them at a LOWER realised rate.",
         ]
     body += [
         "", "## The net bar", "",
-        f"`{NET_BAR_NAME} = {net_bar}` is the bar that matters after paying spread on both legs. It is "
+        f"`{NET_BAR_NAME} = {net_bar}` is the bar that matters after paying spread on both legs. It IS "
+        "enforced on every live entry; what cannot be done is judging it retrospectively here. It is "
         f"**{m['net']['verdict']}**: only {m['net']['measured_rows']:,} of {m['rows']:,} rows "
         f"({m['net']['measured_pct']}%) carry a measured `net_apr_after_fees`; the rest have "
         "`fee_basis = 'unmeasured'` because spreads were not recorded when the window closed. No net verdict "
@@ -177,11 +212,11 @@ def build_page(m: dict[str, Any], bars: dict[str, float], vault: Path, dev_root:
         "## Coverage and regimes", "",
         f"- median window coverage: {m['median_coverage']}",
         "- windows by regime tag: " + ", ".join(f"`{k}` {v:,}" for k, v in m["regimes"].items()), "",
-        "## History", "", "| At | rows | assets | all median | qualifying n | qualifying median | >= bar | net measured |",
+        "## History", "", "| At | rows | assets | all median | gross-bar n | gross-bar median | >= bar | net measured |",
         "|---|---|---|---|---|---|---|---|",
     ]
-    body += [f"| {h['at']} | {h['rows']:,} | {h['assets']} | {h['all_median']} | {h['qual_n']} | "
-             f"{h['qual_median']} | {h['qual_at_bar_pct']}% | {h['net_measured_pct']}% |" for h in history]
+    body += [f"| {h['at']} | {h['rows']:,} | {h['assets']} | {h['all_median']} | {_h(h, 'n')} | "
+             f"{_h(h, 'median')} | {_h(h, 'at_bar_pct')}% | {h['net_measured_pct']}% |" for h in history]
     body += ["", "## Related", "", "- [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]",
              "- [[Item_08_Hyperliquid_Delta_Neutral_Funding_Rate_Harvester|Item 8: Delta-Neutral Funding Rate Harvester]]", ""]
 
@@ -195,7 +230,7 @@ def build_page(m: dict[str, Any], bars: dict[str, float], vault: Path, dev_root:
                            "requires_files": [settings_rel], "history": history}
     meta = make_meta("Regime", "HyperLiquid funding regime",
                      f"Realised basis funding across {m['rows']:,} windows: all-window median "
-                     f"{aw.get('median')}%, entry-qualifying median {eq.get('median')}% with "
+                     f"{aw.get('median')}%, gross-bar-only median {eq.get('median')}% (an upper bound) with "
                      f"{eq.get('at_or_above_bar_pct')}% clearing the {gross_bar}% bar; the net bar is "
                      f"{m['net']['verdict'].split(' - ')[0].lower()}.",
                      tags=["regime", "desk-1", "item-8", "funding", "basis"], generated_by=by, at=at, status="draft",
@@ -229,8 +264,8 @@ def ingest_funding(vault: Path, dev_root: Path, *, db: Path | None = None, at: d
     # link instead, via seed.COMPILED_PAGES, which is what keeps lint L3 quiet.
     write_index(vault, load_pages(vault))
     append_log(vault, "Ingest", f"basis funding windows: {len(rows):,} row(s) from `{rel_to(db, dev_root)}` -> "
-               f"[[{REGIME_FILE}]]; entry-qualifying median "
-               f"{page.meta['dev']['measurement']['entry_qualifying'].get('median')}% vs all-window "
+               f"[[{REGIME_FILE}]]; gross-bar-only median "
+               f"{page.meta['dev']['measurement']['gross_bar_only'].get('median')}% (upper bound) vs all-window "
                f"{page.meta['dev']['measurement']['all_windows'].get('median')}%.", when=at)
     return FundingReport(True, len(rows)), page
 
@@ -251,7 +286,7 @@ def main(argv: list[str] | None = None, out=None) -> int:
     m = page.meta["dev"]["measurement"]
     print(f"[WRITE] {page.path.relative_to(args.vault).as_posix()}", file=out)
     print(f"funding: {report.rows:,} window(s), {m['assets']} assets · all median {m['all_windows'].get('median')}% · "
-          f"entry-qualifying {m['entry_qualifying_n']} median {m['entry_qualifying'].get('median')}% · "
+          f"gross-bar-only {m['gross_bar_only_n']} median {m['gross_bar_only'].get('median')}% · "
           f"net {m['net']['measured_pct']}% measured", file=out)
     return EXIT_OK
 

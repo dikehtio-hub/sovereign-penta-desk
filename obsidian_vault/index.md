@@ -85,7 +85,7 @@
 
 # Regime
 * [BTC macro regime](wiki/regimes/btc_macro_regime.md) - Rolling classification of the Polymarket macro / Hyperliquid BTC lead-lag verdicts, per tier and scope, with the full history.
-* [HyperLiquid funding regime](wiki/regimes/hl_funding_regime.md) - Realised basis funding across 10,635 windows: all-window median 6.4%, entry-qualifying median 28.05% with 53.5% clearing the 25.0% bar; the net bar is unmeasurable.
+* [HyperLiquid funding regime](wiki/regimes/hl_funding_regime.md) - Realised basis funding across 10,635 windows: all-window median 6.4%, gross-bar-only median 28.05% (an upper bound) with 53.5% clearing the 25.0% bar; the net bar is unmeasurable.
 
 # Market
 * [Fed emergency rate cut before 2027?](wiki/markets/fed-emergency-rate-cut-before-2027.md) - Polymarket market (FED-RATES): Fed emergency rate cut before 2027?
