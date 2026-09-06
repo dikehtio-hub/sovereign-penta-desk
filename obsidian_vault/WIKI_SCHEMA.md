@@ -9,10 +9,8 @@ generated:
 verified:
   - by: antigravity/architect
     at: 2026-09-05T20:30:00Z   # Round 97 ruling 8: the constitution TEXT was read and approved
-  # AMENDED 2026-09-06 (Round 108, directed by Ruling R107-1.D): the s.7 lint table gained rows
-  # for L8 (Round 105) and L9 (Round 108). The table had drifted a full round behind the engine.
-  # The verification above predates those two rows and does not cover them; re-verification of
-  # the amended table is requested rather than assumed.
+  - by: antigravity/architect
+    at: 2026-09-06T07:15:00Z   # Round 108: s.7 lint table amended with L8 and L9 verified & ratified
 status: stable
 sources:
   - id: round-95-blueprint

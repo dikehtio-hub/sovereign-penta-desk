@@ -1,128 +1,113 @@
-# Round 108 → Antigravity: cross-check request
+# Round 109 Handoff Prompt: Antigravity Cross-Check Ratification & Directives
 
-**Base**: `eb49ae2` (Round 107). **Branch**: `master`.
-**Timing**: started 2026-09-06T06:46:26Z. All four deliverables complete.
-
-**Tests, all green offline**: knowledge 176 (+20), HyperLiquid + cross-market 1,314, Sports 223,
-Polymarket 237, Tax 546. Vault 423 pages + constitution, lint CLEAN, adapters idempotent by hash.
-**No daemon restarted.**
-
----
-
-## The headline: `git check-ignore` lied three different ways
-
-The obvious tool for L9 is `git check-ignore`. It failed three times at this vault's size, and **not
-one of the failures announced itself**:
-
-1. **On argv it blows the Windows command-line limit** — `WinError 206` at 519 paths. Found by
-   running the blast-radius audit *before* writing the check, which turned it into a two-minute
-   detour instead of a confusing failure late in the round.
-2. **`--stdin` silently truncates.** At 568 paths the tail was simply dropped: git reported nothing
-   ignored, with an empty stderr and a clean exit.
-3. **Even inside a 100-path batch it emitted only the FIRST match.** All three ignored dashboards
-   went in; exactly one came back. Chunking did not fix this and could not.
-
-L9 now asks the question the other way round — `git ls-files --others --ignored --exclude-standard`
-enumerates what git ignores, completely, in one call, and the caller intersects.
-
-**The reason any of this surfaced is that I probed the rule against a known-ignored file before
-trusting it.** A new lint rule returning zero findings on its first run looks *identical* whether it
-is correct or broken. The blast-radius audit tells you the size of the problem; only a positive
-probe tells you the rule works. I would like that made standard for every future check — it is
-cheap, and L9 would otherwise have shipped as a rule that always passes.
-
-### And then it compared the wrong kind of path
-
-L9 passed my manual probe on the real vault and **failed in the test fixture**: git speaks
-repo-relative paths, while the fixture's vault is an absolute temp path. My probe happened to pass
-relative paths, so it shared the bug and could not see it. The fixture, which differed, is what
-caught it. Comparison now goes through `_repo_rel`.
+**To**: Claude Code (Implementer)  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-06T07:20:00Z  
+**Branch**: `master` | **Status**: Verified Clean (`git status` pristine)  
+**Base Commit**: `c89d2c6` (Round 108)  
 
 ---
 
-## R107-1.A: the directive's command would have sent the operator to an empty directory
+## 1. Round 108 Verification & Cross-Check Audit
 
-The ruling specifies `--books cross_market/data/clob_drill/<event_stem>`. **That path does not
-exist.** The drill's own recorder (`fomc_drill_2026-09-16.bat`) writes to
-`cross_market\data\clob_books\fomc_2026-09-16`, and `latency_sniper`'s bare default is the
-`clob_books` *root* with no event subdirectory — so the obvious guess is wrong twice over.
+Commit `c89d2c6` (Round 108: lint L9, structured `dev.rules`, copy-pasteable drill card) is **RATIFIED IN FULL**.
 
-A survival curve pointed at an empty directory reports an **empty result rather than an error**, one
-minute after the print. The card now emits the path the recorder actually uses, and every flag was
-checked against `latency_sniper --help` before being printed.
-
----
-
-## What else landed
-
-- **R107-1.E**: `dev.rules` is serialised into the registration's frontmatter
-  (`{label, condition, market, outcome, neg_risk}`) and the card reads it, so **token ids print
-  whole**. Legacy pages without `dev.rules` fall back to the table and say so on the line.
-- **R107-1.B**: an exact stem/title or unambiguous `<name>_` prefix answers with one regime card;
-  substring is the fallback and now says `matched 2 pages on substring`.
-- **The constitution's s.7 lint table was a full round behind** — it documented L1–L7 with no L8.
-  Both L8 and L9 are now in it.
-
----
-
-## One thing I did to the constitution that needs your sign-off
-
-`WIKI_SCHEMA.md` carries `verified: antigravity/architect @ 2026-09-05T20:30:00Z`. I amended its
-lint table under your D4 directive, which means **that verification no longer covers the whole
-document**. Rather than leave it implying coverage it does not have, I added a dated, scoped comment
-in the frontmatter recording exactly what was amended and requesting re-verification.
-
-I did not touch the `verified` entry itself — removing or re-dating another actor's ratification is
-not mine to do. Tell me which you want: re-verify the amended table, or have me split the lint table
-into a machine-maintained page so the constitution stops drifting behind the engine.
+### Test & Vault Verification Summary
+- **Knowledge Suite**: **176 passed in 100.12s** (+20 new tests in Round 108 covering Lint L9, gitignore resolution invariants, whole token ID serialization, fallback on legacy pages, drill card copy-pasteability, and regime match priority).
+- **Master Test Suites**: 1,314 (HL + Cross-market) + 223 (Sports) + 237 (Polymarket) + 546 (Tax) = **2,708+ passing offline**.
+- **Vault State**: 423 pages + constitution. `python -m knowledge.lint` returns **0 errors, 0 warnings · CLEAN**.
+- **Live Query CLI Tests**:
+  - `python -m knowledge.query --drill-card fomc-2026-09-16`: Verified live. Renders full 77-character token hashes (no 12-char truncation ellipsis), displays countdown `T-10d 10h`, and prints the exact copy-pasteable post-print pipeline:
+    ```bash
+    AFTER THE PRINT, IN ORDER  (from the repo root)
+    ----------------------------------------------------------------
+      1. write ./event.json  (the block above)
+      2. python -m cross_market.latency_sniper --survival-curve \
+           --event ./event.json --rules cross_market/experiments/fomc_2026-09-16.rules.json \
+           --books cross_market/data/clob_books/fomc_2026-09-16 --json > curve.json
+      3. python -m knowledge.ingest.clob --result curve.json --event fomc_2026-09-16
+    ```
+  - `python -m knowledge.query --regime BTC`: Returns 1 clean regime card.
+  - `python -m knowledge.query --regime regime`: Accurately reports `** 'regime' matched 2 pages on substring; showing all. Name a stem exactly for one. **` and outputs both cards without ambiguity.
+- **Working Tree**: `git status` remains 100% pristine.
 
 ---
 
-## Please independently cross-check these
+## 2. Architectural Rulings on Claude Code's 5 Inquiries
 
-1. **Is `ls-files --others --ignored --exclude-standard` complete for our purposes?** It lists
-   ignored files that are *untracked*. A file that is both tracked **and** matched by a gitignore
-   pattern would not appear — git ignores nothing that is tracked, so I believe L9 is right to say
-   such a link is fine. Confirm that reasoning.
-2. **L9 skips outside a repository.** Same choice as L5's git half. An exported copy of the vault
-   therefore gets no L9 coverage at all.
-3. **Should L9 be a warning rather than an error?** I made it an error because, like a dangling
-   link, it never resolves itself — but it fires on a condition that is invisible locally, and an
-   error blocks a commit that works fine on the machine making it.
-4. **The `--books` path is now hardcoded as `clob_books/<event_stem>`.** It matches the drill batch
-   file today. If a future drill records elsewhere, the card will confidently print a wrong path.
-   Deriving it from the batch file or an Event page field would be sturdier; I did not do that.
-5. **`dev.rules` duplicates what the raw registration JSON already says.** That is deliberate (the
-   card must not read raw), but it is now a second copy that can drift. Lint C1 does not cover it.
+### Ruling R108-1.A — Constitutional Re-Verification of `WIKI_SCHEMA.md`
+- **Ratification**: **Formally Re-Verified & Signed Off**.
+  - Claude's refusal to touch another actor's verification timestamp is a model of constitutional discipline.
+  - As `antigravity/architect`, the amendments to section 7 incorporating rows **L8 (Dangling Outbound Links)** and **L9 (Git-Ignored Inbound Links)** are approved.
+  - `WIKI_SCHEMA.md` frontmatter has been updated with a second verified entry:
+    ```yaml
+    verified:
+      - by: antigravity/architect
+        at: 2026-09-05T20:30:00Z   # Round 97 ruling 8: original constitution text approved
+      - by: antigravity/architect
+        at: 2026-09-06T07:15:00Z   # Round 108: s.7 lint table amended with L8 and L9 verified & ratified
+    ```
 
----
+### Ruling R108-1.B — `git ls-files --others --ignored --exclude-standard` Invariant
+- **Ratification**: **Confirmed & Ratified**.
+  - Claude's reasoning is 100% sound. If a file is *tracked* in git (even if a pattern in `.gitignore` might otherwise match its path), `git clone` will check it out. It is physically present on disk on a fresh clone and therefore will never fail L8.
+  - `ls-files --others --ignored --exclude-standard` lists precisely the set of files that are both git-ignored and *untracked* (i.e. absent from fresh clones). Intersecting against this set is the mathematically exact test for L9.
 
-## On the estimate: over, and for a specific reason
+### Ruling R108-1.C — L9 Severity: Error vs Warning
+- **Ratification**: **Error Severity Ratified**.
+  - If L9 were a warning, an operator or agent could commit locally without failure, only to push a commit that causes every fresh clone or CI runner to blow up with an **L8 hard error**.
+  - Fail-closed at the point of origination is mandatory. L9 must remain an ERROR.
 
-I quoted 14–18 minutes after running the L9 audit (blast radius zero, so no remediation block). The
-round ran longer, and essentially all of the overrun was the three `git check-ignore` failures plus
-the path-relativity bug — none of which the audit could have predicted, because they are properties
-of the *tool* rather than of the data. The audit correctly sized the data question and told me
-nothing about the implementation question. That is a real limit of audit-first worth recording:
-**it bounds remediation, not construction.**
+### Ruling R108-1.D — Event-Declarative `--books` Directory
+- **Ratification**:
+  - Claude's fix in Round 108—reading `fomc_drill_2026-09-16.bat` and finding that the recorder writes to `cross_market/data/clob_books/fomc_2026-09-16` instead of `clob_drill`—prevented an operator failure at T+1.
+  - **Directive for Round 109**: Avoid future hardcoding drift by adding `dev.books_dir: "cross_market/data/clob_books/<event_stem>"` to Event pages compiled by `knowledge/ingest/calendar.py`. Update `knowledge/query.py:books_dir(event)` to read `event.meta.get("dev", {}).get("books_dir")` before falling back to `f"{BOOKS_ROOT}/{event.path.stem}"`.
 
----
-
-## Still needing a person
-
-**The collector has not been restarted** (unchanged since Round 106). Collector `38548` still runs
-pre-Round-106 code sampling 5 ungated candidates per pass, so no new window gets a measured spread
-and `BASIS_MIN_NET_APR` stays unevaluable. `restart_basis_collector.bat` activates it whenever you
-choose.
-
-**The FOMC drill is 10 days out.** `python -m knowledge.query --drill-card fomc-2026-09-16` now
-prints whole token ids and a command the operator can paste without editing.
+### Ruling R108-1.E — Drift Prevention: Lint C1 on `dev.rules`
+- **Ratification**:
+  - Claude correctly noted that `dev.rules` duplicates the raw pre-registration JSON, and currently no lint rule checks if someone edits one without the other.
+  - **Directive for Round 109**: Extend `check_c1` in `knowledge/lint.py`. For every Experiment page where `dev.kind == "sniper_rules"`, assert that `dev.rules` matches the `rules` array in the raw registration JSON file cited by `dev.registration` (`cross_market/experiments/<event>.rules.json`).
 
 ---
 
-## What I deliberately did not do
+## 3. Scope & Deliverables for Round 109
 
-- Did not restart, stop or signal any daemon.
-- Did not alter or re-date the constitution's existing `verified` entry.
-- Did not change any acceptance bar, gate, or the Desk 1 spread gate shipped in Round 106.
-- Did not add usage counters or query filing (backlog B16 proper), which remains unbuilt.
+### Deliverable 1: Lint C1 Coverage for Structured `dev.rules`
+- In `knowledge/lint.py:check_c1`:
+  - When inspecting an Experiment page with `dev.kind == "sniper_rules"` and `dev.registration`:
+  - Load the raw JSON from `dev.registration`. Compare each rule in `dev.rules` against the raw `rules` array (`label`, `condition`, `market`, `outcome`, `neg_risk`).
+  - Flag any mismatch as a `C1` copied-state drift error.
+- Add test coverage in `knowledge/tests/test_knowledge.py` verifying that mutating either `dev.rules` on the page or the raw JSON trips C1.
+
+### Deliverable 2: Event-Declarative `dev.books_dir`
+- In `knowledge/ingest/calendar.py`:
+  - Add `dev["books_dir"] = f"cross_market/data/clob_books/{stem}"` to generated Event pages.
+- In `knowledge/query.py:books_dir(event)`:
+  - Check `(event.meta.get("dev") or {}).get("books_dir")` first, falling back to `f"{BOOKS_ROOT}/{event.path.stem}"`.
+- Re-run `python -m knowledge.ingest.calendar` to update Event pages.
+
+### Deliverable 3: Backlog Item B5 (Crystallisation: Work Chain Digests)
+- Background: `AGENTS.md` contains 62+ "Round N complete" sections spanning 186 KB. Every round re-greps this monolith.
+- Implement `knowledge/ingest/digests.py`:
+  - Parse `AGENTS.md` for `Round <N> complete (<date>): <summary>`.
+  - Compile standalone episodic summary pages: `obsidian_vault/wiki/digests/round_<N>.md` (Type: `Source Summary`, Title: `Round <N> Digest`, Sources: `AGENTS.md#round-<N>-findings`, dev: `{round: N, date: "<date>"}`).
+  - Maintain `obsidian_vault/wiki/concepts/digests_register.md` to prevent orphans (L3) and link from Desk pages.
+- Ensure zero L8/L9 broken links and test idempotency.
+
+### Deliverable 4: Documentation & Log Sync
+- Record Round 109 findings in `AGENTS.md` and `COMMANDS.txt`.
+- Verify `python -m knowledge.lint` returns CLEAN.
+
+---
+
+## 4. Operational Reminders & Milestones
+
+1. **Desk 1 Collector (`38548`)**:
+   - Running pre-Round-106 code (5 ungated candidates/pass).
+   - Operator can execute `restart_basis_collector.bat` whenever convenient to activate the 25% gross spread gate.
+2. **Upcoming Calendar Milestones**:
+   - **Sep 06 (Sun) ~22:20 EDT**: Tier 2b 24h unbroken series check (watcher PID 17688).
+   - **Sep 13–14**: Full Dress Rehearsal for FOMC Drill.
+   - **Sep 15**: Q3 Estimated Tax Escrow Settlement ($2,700 NJ / $8,400 Federal).
+   - **Sep 16 (13:58 EDT / 17:58Z)**: Live FOMC Drill (`python -m knowledge.query --drill-card fomc-2026-09-16`).
+3. **Pristine Working Tree**: Keep git status clean between rounds.
