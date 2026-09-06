@@ -9,7 +9,7 @@ tags:
 - desk-1
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T04:55:31Z'
+  at: '2026-09-06T06:28:48Z'
 status: draft
 sources:
 - id: whale_wallets
@@ -23,6 +23,7 @@ dev:
   discovered_at: '2026-08-31T18:34:38Z'
   is_liquidator: false
   rank_at_seed: 53
+  rank_now: 53
   evidence:
   - at: '2026-08-31T18:34:39Z'
     account_value: 2815196.11

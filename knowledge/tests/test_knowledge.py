@@ -6,6 +6,7 @@ C1 has something to grep.
 """
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -2399,6 +2400,136 @@ class GitProvenanceTests(TempVault):
         self.assertTrue(cited, "no ruling cited a commit; the check would be vacuous")
         for stem, sha in cited:
             self.assertTrue(lint.commit_exists(sha, real), f"{stem} cites missing commit {sha}")
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 107: rank_at_seed freezing (R106-1.E) and the pre-baked query cards (s.Query)
+# --------------------------------------------------------------------------------------
+from knowledge import query as query_mod  # noqa: E402
+
+
+class RankAtSeedTests(CRMFixture):
+    def test_rank_at_seed_is_frozen_while_rank_now_tracks(self):
+        """AT SEED means at seed: Round 106 made these pages refreshable, which put the field in
+        the same trap `first_seen` fell into on markets."""
+        ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW)
+        path = self.vault / f"crm/whales/whale_{EOA_WHALE}.md"
+        first = fm.parse(path.read_text(encoding="utf-8"))[0]["dev"]
+        self.assertEqual(first["rank_at_seed"], 1)
+        self.assertEqual(first["rank_now"], 1)
+        # demote it: another whale overtakes on equity
+        conn = sqlite3.connect(self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db")
+        conn.execute("UPDATE whale_wallets SET account_value = 1.0 WHERE lower(address) = ?", (EOA_WHALE,))
+        conn.commit()
+        conn.close()
+        ingest_ent.ingest_entities(self.vault, self.dev_root, at=NOW + timedelta(hours=1))
+        after, body = fm.parse(path.read_text(encoding="utf-8"))
+        self.assertEqual(after["dev"]["rank_at_seed"], 1)            # frozen
+        self.assertGreater(after["dev"]["rank_now"], 1)              # and the live rank moved
+        # the body must agree with the frontmatter, or the page contradicts itself
+        self.assertIn(f"rank by equity at seed: 1 (now {after['dev']['rank_now']})", body)
+
+
+class QueryCardTests(IngestFixture):
+    def setUp(self):
+        super().setUp()
+        cal_dir = Path(knowledge_pkg.__file__).parent / "calendars"
+        ingest_cal.ingest_calendars(cal_dir, self.vault, self.dev_root, at=NOW)
+        ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
+        self.event = "fomc_2026-09-16"
+
+    def card(self, *argv, now=None):
+        out = io.StringIO()
+        code = query_mod.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root)]
+                              + list(argv) + (["--now", pages.iso(now)] if now else []), out=out)
+        return code, out.getvalue()
+
+    def test_the_card_fits_on_a_screen(self):
+        """WIKI_SCHEMA.md s.Query: under 60 lines. A card that scrolls loses its last line, which
+        is the one that says what NOT to do."""
+        code, text = self.card("--drill-card", self.event)
+        self.assertEqual(code, EXIT_OK)
+        self.assertLess(len(text.splitlines()), query_mod.MAX_LINES, text)
+
+    def test_the_countdown_is_computed_and_the_unit_matches_the_decision(self):
+        release = datetime(2026, 9, 16, 18, 0, tzinfo=timezone.utc)
+        self.assertEqual(query_mod.countdown(release, release - timedelta(minutes=2)), "T-2m")
+        self.assertEqual(query_mod.countdown(release, release - timedelta(hours=3, minutes=5)), "T-3h 05m")
+        self.assertEqual(query_mod.countdown(release, release - timedelta(days=10)), "T-10d 0h")
+        self.assertIn("the print has happened", query_mod.countdown(release, release + timedelta(minutes=5)))
+        self.assertIn("not recorded", query_mod.countdown(None, release))
+        _, text = self.card("--drill-card", self.event, now=datetime(2026, 9, 16, 17, 58, tzinfo=timezone.utc))
+        self.assertIn("T-2m", text)
+
+    def test_inside_the_window_the_card_says_the_pages_are_frozen(self):
+        _, text = self.card("--drill-card", self.event, now=datetime(2026, 9, 16, 18, 0, tzinfo=timezone.utc))
+        self.assertIn("INSIDE THE WINDOW", text)
+        _, before = self.card("--drill-card", self.event, now=datetime(2026, 9, 16, 17, 0, tzinfo=timezone.utc))
+        self.assertNotIn("INSIDE THE WINDOW", before)
+
+    def test_the_card_writes_nothing_at_all(self):
+        """Read-only is the property that lets this be run at T-2 inside a frozen window."""
+        def snap():
+            return {p.as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in sorted(self.vault.rglob("*.md"))}
+        before = snap()
+        self.card("--drill-card", self.event)
+        self.card("--regime", "BTC")
+        self.card("--list")
+        self.assertEqual(snap(), before)
+
+    def test_the_card_carries_the_rules_and_the_human_only_step(self):
+        _, text = self.card("--drill-card", self.event)
+        self.assertIn("THE ONE THING ONLY YOU CAN DO", text)
+        self.assertIn("change_bps", text)
+        self.assertIn(">= 0.99 ONLY from the statement", text)
+        self.assertIn("fomc_2026-09-16_rules", text)          # the registration, by link
+        self.assertIn("Ruling R4", text)                      # the neg_risk refusal
+
+    def test_a_standing_forecast_is_surfaced_from_the_journal(self):
+        day = self.vault / "journal" / "2026-09-06.md"
+        meta = pages.make_meta("Journal Entry", "Journal 2026-09-06", "A day.", at=NOW,
+                               dev={"date": "2026-09-06", "predictions": [
+                                   {"event": "fomc_2026-09-16", "field": "change_bps", "op": "==",
+                                    "value": 0, "p": 0.9, "outcome": None}]})
+        pages.write_page(pages.Page(day, meta, "# day\n\n- [[journal_register|Journal register]]\n"),
+                         self.vault, now=NOW)
+        _, text = self.card("--drill-card", self.event)
+        self.assertIn("YOUR STANDING FORECAST", text)
+        self.assertIn("p=0.9", text)
+        self.assertIn("change_bps == 0", text)                # claim built from field/op/value
+
+    def test_a_missing_event_refuses_and_names_what_exists(self):
+        code, text = self.card("--drill-card", "no-such-event")
+        self.assertEqual(code, EXIT_HALT)
+        self.assertIn("[REFUSE]", text)
+        self.assertIn("fomc_2026-09-16", text)                # the known events, so the operator can retry
+        self.assertIn("blank card", text)
+
+    def test_the_event_name_is_accepted_in_any_spelling(self):
+        self.assertEqual(query_mod.normalise("FOMC 2026-09-16"), "fomc_2026_09_16")
+        self.assertEqual(query_mod.normalise("fomc-2026-09-16"), query_mod.normalise("fomc_2026-09-16"))
+        for spelling in ("fomc-2026-09-16", "fomc_2026-09-16", "FOMC 2026 09 16"):
+            code, _ = self.card("--drill-card", spelling)
+            self.assertEqual(code, EXIT_OK, spelling)
+
+    def test_the_regime_card_reports_the_current_classification(self):
+        ingest_ll.ingest_verdict(VERDICT_JSON, self.vault, self.dev_root, tier="1",
+                                 source="verdict.json", at=NOW)
+        code, text = self.card("--regime", "BTC")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("btc_macro_regime", text)
+        self.assertIn("consensus(3)", text)
+        code, text = self.card("--regime", "nothing-like-this")
+        self.assertIn("no Regime page matches", text)
+        self.assertIn("btc_macro_regime", text)               # and says what there is
+
+    def test_halt_refuses_even_though_a_query_writes_nothing(self):
+        (self.dev_root / "HALT.flag").write_text("{}", encoding="utf-8")
+        code, text = self.card("--drill-card", self.event)
+        self.assertEqual(code, EXIT_HALT)
+        self.assertIn("[HALT]", text)
 
 
 if __name__ == "__main__":  # pragma: no cover

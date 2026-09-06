@@ -137,3 +137,16 @@ cross_market/data/*.json
 cross_market/data/*.bat
 cross_market/data/*.log
 cross_market/data/*.pid
+
+# Round 107 (Ruling R95-E): three EXPORTER-WRITTEN dashboards that a live daemon rewrites on a
+# 15-second cycle. They dirtied `git status` on every round and were never anyone's edit, so the
+# diffs carried no information - the durable record lives in wiki/regimes/, wiki/experiments/ and
+# wiki/desks/, which the knowledge layer owns and lints.
+#
+# ONLY THESE THREE. Monarch_Hub.md is also exporter-written but stays TRACKED: five wiki pages link
+# it, and lint L8 resolves wikilinks against files on disk, so untracking it would make a fresh
+# clone fail L8 with five dangling links. Verified before untracking: these three have zero inbound
+# links. Past versions remain in git history; only future churn is ignored.
+obsidian_vault/Cross_Market_Arb.md
+obsidian_vault/Cross_Market_Titans.md
+obsidian_vault/Risk_Sentinel.md

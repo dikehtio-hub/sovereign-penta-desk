@@ -48,6 +48,8 @@
 * **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
 * **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
 * **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: CRM entities: 0 titan(s) (identities present on both venues, cap 100), 102 whale(s) (top by equity, cap 100), 79 sharp(s), 4 book(s); 0 created, 102 updated (judgement kept, evidence appended); [index](index.md) rebuilt.
+* **Ingest**: markets: 97 token(s) from rules, Experiment pages and the newest macro drop (families FED-RATES); 97 page(s) written, 0 kept; [index](index.md) rebuilt.
 
 ## 2026-09-05
 * **Seed**: Round 96 seed from the Top 20 registry: 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

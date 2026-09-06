@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 02:45 EDT (Round 106).
+Last updated: 2026-09-06 02:55 EDT (Round 107).
 
 ---
 
@@ -17,6 +17,9 @@ Last updated: 2026-09-06 02:45 EDT (Round 106).
 - **If missed:** an underpayment penalty accrues from the deadline, not from April.
 
 ### 2026-09-16 (Wed) 13:58 EDT — FOMC drill. THE BIG ONE.
+- **Run this first:** `python -m knowledge.query --drill-card fomc-2026-09-16`.
+  It prints the countdown, the rules with their token ids, your standing forecast and the
+  exact commands, in under 60 lines. It writes nothing, so it is safe inside the window.
 - **Laptop ON and LOGGED IN at 13:58 EDT.** The task `Monarch_FOMC_Drill` fires
   at T-2 min and records 420 seconds of order-book depth on three Fed markets.
   It cannot run on a sleeping or logged-out machine.
@@ -42,7 +45,7 @@ Last updated: 2026-09-06 02:45 EDT (Round 106).
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 106 handoff prompt to Antigravity.**
+- [ ] **Send the Round 107 handoff prompt to Antigravity.**
 - [ ] **Decide when the collector restarts** so the new spread gate takes effect.
       Ruling R104-1 is implemented but collector `38548` is still running the old
       code, which samples only 5 candidates per pass. Until it restarts, no new

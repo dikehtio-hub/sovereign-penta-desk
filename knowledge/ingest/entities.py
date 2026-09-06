@@ -238,12 +238,23 @@ def build_whale(r: dict[str, Any], rank: int, cache: dict[str, dict[str, Any]], 
     equity = float(r.get("account_value") or 0.0)
     position = float(r.get("total_position_value") or 0.0)
     lev = round(position / equity, 2) if equity > 0 else None
+    # AT SEED MEANS AT SEED (Ruling R106-1.E). Round 106 made whale pages refreshable, which put this
+    # field in the same trap `first_seen` fell into on markets: a page rebuilt every run would have
+    # its "rank at seed" quietly rewritten to the CURRENT rank, so the one thing it records - where
+    # this whale stood when we first met it - would track the live ranking and mean nothing. The page
+    # on disk wins. `dev.evidence` carries the figures that are SUPPOSED to move.
+    # Resolved BEFORE the body is built, because the body prints it too: a frontmatter that says 7
+    # over a line that says 12 is worse than either number alone.
+    prior_rank = ((load_page(page_path(vault, "Entity/Whale", f"whale_{addr}")) or Page(Path("x"), {}))
+                  .meta.get("dev") or {}).get("rank_at_seed")
+    seed_rank = prior_rank if prior_rank is not None else rank
     identity = [f"- address: `{addr}`", f"- discovered: `{_ts(r.get('discovered_at'))}` via `{r.get('first_coin')}` (${float(r.get('first_notional') or 0):,.0f})",
-                f"- system liquidator: {bool(r.get('is_liquidator'))}", f"- rank by equity at seed: {rank}",
+                f"- system liquidator: {bool(r.get('is_liquidator'))}", f"- rank by equity at seed: {seed_rank}"
+                + (f" (now {rank})" if rank != seed_rank else ""),
                 exporter_note_line(vault, "Whales", addr, "whale note")]
     related = ["- [[Desk_01_HyperLiquid_Monarch|Desk 1: HyperLiquid Monarch]]"]
     dev: dict[str, Any] = {"desk": 1, "address": addr, "first_coin": r.get("first_coin"), "discovered_at": _ts(r.get("discovered_at")),
-                           "is_liquidator": bool(r.get("is_liquidator")), "rank_at_seed": rank}
+                           "is_liquidator": bool(r.get("is_liquidator")), "rank_at_seed": seed_rank, "rank_now": rank}
     if addr in cache:
         dev["titan"] = f"titan_{addr}"
         related.insert(0, f"- [[titan_{addr}|Titan {cache[addr].get('pseudonym') or short(addr)}]] (same name on Polymarket)")

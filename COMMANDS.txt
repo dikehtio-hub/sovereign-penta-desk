@@ -2360,6 +2360,37 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 107 - QUERY CARDS, rank_at_seed FROZEN, DASHBOARDS UNTRACKED
+     python -m knowledge.query --drill-card fomc-2026-09-16
+         The T-2 briefing card the constitution pre-baked (s.Query): computed countdown, the frozen
+         window banner, the ONE step only a human may take (read change_bps off the statement;
+         confidence >= 0.99 only from the statement itself), the registered rules with their token
+         ids, any standing forecast from the journal's calibration ledger, and the three post-print
+         commands in order. Under 60 lines, asserted by a test. Accepts any spelling of the event
+         name. A missing Event page REFUSES with the list of known events (exit 3) - a blank card
+         two minutes before a print is worse than no card.
+     python -m knowledge.query --regime BTC
+         The current classification per tier and scope from the Regime pages, with the trailing-3
+         consensus and the latest history row.
+     python -m knowledge.query --list
+         The events and regimes a card can be built for.
+         ALL THREE MODES WRITE NOTHING - no log bullet, no index rebuild, no usage counter. Inside
+         its own window the Event page and the rules registration are frozen, so a query that
+         mutated what it describes could not be run when it is most needed. A test hashes the vault
+         before and after. HALT.flag still refuses (exit 3): HALT means the pipeline behind the card
+         has stopped, and answering normally would imply it had not.
+     python -m knowledge.ingest.entities
+         Ruling R106-1.E: `rank_at_seed` is FROZEN at the value the page was first written with, and
+         a new `rank_now` carries the live rank. Round 106 made these pages refreshable, which put
+         the field in the same trap `first_seen` fell into on markets. Resolved before the body is
+         built so the body and the frontmatter cannot disagree.
+     .gitignore (Ruling R95-E)
+         obsidian_vault/{Cross_Market_Arb,Cross_Market_Titans,Risk_Sentinel}.md are untracked: a
+         daemon rewrites them every 15 s and the diffs never carried information. Verified first
+         that all three have ZERO inbound wikilinks - lint L8 resolves links against files on disk,
+         so untracking a LINKED dashboard would break a fresh clone. Monarch_Hub.md has five inbound
+         links and stays tracked.
+
      ROUND 106 - ADAPTER LIFECYCLE INVARIANT, DESK 1 SPREAD GATE, GIT PROVENANCE IN L5
      python -m knowledge.ingest.entities [--limit-whales N] [--limit-titans N]
          Ruling R105-2: titans below the cap are RE-ADMITTED so a page never freezes outside the

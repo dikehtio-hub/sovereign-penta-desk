@@ -5,6 +5,21 @@ the detail.
 
 ## Status
 
+Round 107 complete (2026-09-06): THE OPERATOR CAN NOW ASK THE VAULT A QUESTION.
+knowledge/query.py answers the two queries the constitution pre-baked in s.Query:
+`--drill-card <event>` and `--regime BTC`. The drill card is read at T-2 with a clock running,
+and every design choice follows from that: it NEVER WRITES (not a log bullet, not a usage
+counter - inside its own window the pages it describes are frozen), it fits in under 60 lines
+with a test asserting it, it COMPUTES the countdown rather than restating the release instant,
+and it assembles from compiled PAGES rather than going back to the raw JSON. A missing Event
+page refuses with the list of known events: a blank card two minutes before a print is worse
+than no card. R106-1.E: `rank_at_seed` is frozen and a new `rank_now` carries the live figure -
+Round 106 made whale pages refreshable, which put that field in the same trap `first_seen`
+fell into on markets. R95-E: the three volatile exporter-written dashboards are untracked;
+`git status` is now pristine between rounds. Tests: knowledge 156 (+11), HyperLiquid +
+cross-market 1,314, all green offline. Vault 423 pages, lint CLEAN, adapters idempotent by
+hash. NO DAEMON RESTARTED.
+
 Round 106 complete (2026-09-06): THE ADAPTER LIFECYCLE INVARIANT ENFORCED, DESK 1 SPREAD
 SAMPLING GATED ON THE ENTRY BAR, AND GIT PROVENANCE NOW CHECKED. R105-2: titans are
 re-admitted when they fall below the cap, and pages whose SOURCE ROW is gone (a pruned sharp)
@@ -1130,6 +1145,44 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 107 findings
+
+### What a card read under time pressure has to be
+
+- **The unit on the clock is the unit the decision is made in.** The first render said
+  `T-251h 29m`. Nobody converts that at 13:58 with a statement about to print. Past 48 hours
+  the card shows days; inside two days it shows hours and minutes; near the window it shows
+  minutes. The countdown is computed at run time, never restated from the page.
+- **A missing Event page is an ERROR, not an empty card.** An operator holding a blank sheet
+  two minutes before a print has been actively misled, so the refusal names every event that
+  does exist and exits 3.
+- **The card writes nothing, and that is a property rather than a mode.** Inside its own
+  window the Event page and the rules registration are frozen; a query that mutated what it
+  describes is one nobody should run at T-2. A test hashes the whole vault before and after
+  all three query modes and asserts nothing moved. HALT still refuses, because HALT means the
+  pipeline behind the card has stopped and answering normally would imply otherwise.
+- The standing forecast is surfaced from the journal's calibration ledger (p=0.90,
+  `change_bps == 0`), because it scores itself against the payload the operator is about to
+  write - T-2 is the last moment it can be checked against what they actually believe.
+
+### A field that had to be fixed in two places, not one
+
+- `rank_at_seed` was directed to be preserved in the frontmatter. The BODY printed the same
+  number from the live rank, so preserving only the metadata would have produced a page whose
+  frontmatter said 1 and whose text said 12 - worse than either number alone. The value is
+  resolved once, before the body is built, and both read from it. A new `rank_now` carries the
+  live figure, and the body shows `at seed: 1 (now 12)` when they differ.
+
+### Untracking the dashboards needed a check first
+
+- Lint L8 resolves wikilinks against files ON DISK, so untracking a dashboard would break a
+  fresh clone if anything linked it. Verified before running `git rm --cached`: the three named
+  files have ZERO inbound wikilinks. `Monarch_Hub.md` is also exporter-written and has FIVE,
+  so it stays tracked - Antigravity's list was exactly right, but the reason is worth recording
+  because the next dashboard added to that list has to pass the same test.
+- Past versions remain in git history; only future churn is ignored. The files stay on disk and
+  the exporter keeps writing them.
 
 ## Round 106 findings
 
