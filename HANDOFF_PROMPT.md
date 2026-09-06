@@ -1,77 +1,82 @@
-# Round 115 Handoff: Cross-Check Request & Inquiries for Round 116
+# Round 116 Handoff (self-directed): Cross-Check Request & Inquiries for Round 117
 
 **To**: Antigravity (System Architect & Quantitative Auditor)
 **From**: Claude Code (Senior Implementation Engineer / Test Master)
-**Date**: 2026-09-06 (DEV commit `6438b4b` at 18:52 EDT; nested quant_trading_lab commit `33ebe81`)
-**Subject**: Round 115 delivered in 17 minutes against a 50-minute estimate; the whale replay is INSUFFICIENT by 0.20 points on the rows the engine counts, and that corrects Round 114's `ready`
+**Date**: 2026-09-06 (commit `596cee0` at 19:23 EDT)
+**Subject**: Round 116 was run WITHOUT a prompt from you - the operator said "proceed on your own". It took the top Round 116 candidate from the Round 115 handoff: the live dress rehearsal of the FOMC drill. Please cross-check it as you would any round, and rule on the choices made without you.
 
 ---
 
-## 1. What was delivered
+## 1. What was delivered (commit `596cee0`, 12 files)
 
-**DEV `6438b4b`** (21 files) and **quant_trading_lab `33ebe81`** (one file, +4/-2).
+- **`knowledge/drills/fomc_live_rehearsal.py`** - the whole post-print path, live, with nothing real written:
+  1. the pre-flight (`fomc_rehearsal.run_checks`) must show 0 FAIL, or nothing is recorded;
+  2. `latency_sniper.record_loop` stamps the three registered tokens against the REAL public CLOB books for `--seconds` into `cross_market/data/rehearsals/<stamp>/books` (new `.gitignore` rule);
+  3. a SYNTHETIC event - `fed_rate`, `change_bps 0`, source "REHEARSAL ... synthetic event, NOT a Federal Reserve statement; scratch only", confidence 0.995 - is written to scratch, anchored at the middle of the recording so the curve has both sides;
+  4. `survival_curve` runs exactly as the drill card's step 2 does, with the same economics (`replay_economics(False)` -> Tax Reserve Agent after-tax breakeven);
+  5. `knowledge.ingest.clob.ingest_survival` compiles the Reaction Profiles, the Event page and the latency-decay concept into a scratch COPY of the vault, which is then linted.
+  The real vault, the real books directory and the repo-root `event.json` are hashed before and after; any difference is a FAIL. It refuses on `HALT.flag`, on any pre-flight FAIL, and on a registered token that is not all digits.
+- **Real 60 s run at 23:11Z**: 60 polls, **180/180 stamps**, 0 fetch failures, 0 rate limits, largest gap 1.001 s. Three markets resolved from `change_bps=0`: **no change -> YES (live, 60-point series); hike 25 -> NO and hike 50+ -> NO, both deferred under Ruling R4** (neg_risk NO sides). 3 profiles + event + concept compiled. Nothing real moved. 30 s re-run after the lint scoping: **20 checks, 0 FAIL, 0 WARN**.
+- **`knowledge/ingest/clob.py`**: `update_concept` hard-coded its source as `obsidian_vault/wiki/profiles` regardless of the vault written; it is now derived from the target vault (identical in production).
+- **Docs**: AGENTS.md status + "Round 116 findings", COMMANDS.txt, HOMEWORK.md (the dress-rehearsal item is now "run this command on the 13th/14th and the morning of the 16th"); digest `round_116.md`.
 
-- **D1 - whale-sweeper replay re-run (R114-1.B, R114-1.D)**. `analytics/cascade_replay.py --json` over 38,016 rows into `HyperLiquid/HL_Monarch/data/experiments/whale_sweeper_cascade_replay.verdict.json`, **tracked**, beside its registration; the knowledge adapter's default path and its test fixture moved with it. Qualifying rows (complete 60-minute forward series): **18,669 events, 62 coins, top coin ZEC 20.20% against a 20% ceiling**, HHI 0.1334 - `SAMPLE_TOO_NARROW`. `ratio_30m` 0.9029, P(>= 1.25) = 0.1167 had it qualified (the RETUNE band; stated on the page, not a verdict). Page grades **INSUFFICIENT** independently; the engine agrees. Item 14 stays gated. The page's History gains its second row, keyed by `_artifact.written_at` 2026-09-06T22:39:27Z.
-- **D2 - engine span gate (R114-1.F)**: `wick_benchmark.benchmark()` reports `span_days` from the events' millisecond timestamps; `_reopening_sample_gate(result, window_days)` fails closed when the span is missing (`covered span not reported`) and fails on a span under the window. The fade runner passes its span in and no longer duplicates the check. `cascade_replay.py` was **deliberately not changed** - see section 2c.
-- **D3 - Desk 4 from any directory**: `RiskSentinel`'s two constructor defaults anchored to the desk root. From the workspace root the suite goes **73 failed -> 2 failed**; from its own directory 151 passed, 10 skipped. See section 2d for the two, and for how the commit was made.
-- **D4 - docs**: AGENTS.md status + "Round 115 findings" (statistics filled from the artifact and the vault page by script), COMMANDS.txt, HOMEWORK.md; digest `round_115.md`.
+**Telemetry:** knowledge **318 passed** (+15: 5 new tests, 10 inherited from the card fixture). Real vault **498 pages, lint CLEAN**. No daemon touched. **Operator decisions deliberately untouched**: W32Time, battery flags, collector restart, Desk 4 packages.
 
-**Telemetry, all offline:** knowledge **303** (+1); HL **1,110** (+2); Desk 4 151 from its directory. Lint **497 pages, CLEAN**. Idempotent across `cascade_replay` / `fade_rebenchmark` / `experiments --force` / `digests` / `seed` by per-file sha256, in that order and again. No daemon touched.
-
-**Timing:** clock read 22:35:13Z; ~6 min audit; quoted 50 (40-60) for the build; commit 22:52:26Z = **17.2 min**. Over-estimated 3x: both named unknowns collapsed - the replay engine ran in 4 minutes in the background, and the nested-file overlap took one index operation. Recorded in the calibration memory.
-
----
-
-## 2. Where I deviated, and what the run found
-
-### (a) Round 114's `ready` on the whale registration was wrong, for a population reason again.
-The registration's `sample_requirements` include `min_samples_60m_per_event: 1`, and the engine filters to rows with a complete forward series (339 truncated of 19,008). Over ALL treatment rows ZEC is 19.84% (Round 114: `ready`, L11 due 2026-09-09). Over qualifying rows it is 20.20% at the engine's run and **20.08% on the page now** - over the ceiling. The mirror now applies that requirement (`AND samples_60m >= n`) when a registration names it, so the whale page reads **ACCUMULATING - 3/4 sample gates pass over population `pooled`. Failing: max_single_coin_share 0.2008 vs 0.2. Last evaluation 2026-09-06: INSUFFICIENT**. Rule adopted: every sample requirement that names a row filter is part of the population; the mirror applies it or reports `unmeasured`, never approximates.
-
-### (b) The whale registration now declares its population.
-A dated `population: {source: "pooled"}` block (bars unchanged) - the engine pools by construction, and Round 114's cross-check item 8 asked which registrations left this implicit. The mirror treats `pooled` / `all` as pooled; a named source still filters.
-
-### (c) R114-1.F implemented in one engine, declined in the other.
-`wick_benchmark` gained the span gate because `passive_fade_rebenchmark` registers `window_days: 7`. `cascade_replay.py` did not: `whale_sweeper_cascade_replay.meta.json` binds **no window requirement**, so a span gate there would be a gate the registration never wrote, applied after the data was seen. If you want one, it is a dated registration change to rule on, not an engine edit to make quietly.
-
-### (d) Committing two lines out of a file another agent is editing.
-`quant_trading_lab/engine/risk_sentinel.py` carries three uncommitted hunks from the other agent, the first on the very signature D3 changes. `git add` would have committed their work under my name. Instead the index was set from a blob built from `git show HEAD:file` (as **bytes** - a text-mode pipe on Windows rewrote every line ending and produced a 520-line diff on the first attempt) plus only my replacement. `33ebe81` is +4/-2; their 33 lines remain uncommitted against the new HEAD. **The two remaining root-run failures are theirs**: `tests/test_tax_bankroll_integration.py`, untracked, hard-codes `config/portfolio_config.yaml` itself. Not touched.
-
-### (e) One HL test outside the gate suite also fed the gate a span-less result.
-`test_round33_retention.py`'s `_benchmark()` helper - the retention-first test from Round 33. Given a span; the test still asserts retention is checked first. Six gate tests total now carry or omit a span on purpose.
+**Timing:** clock read 23:04:06Z; commit 23:23:31Z = **19.4 min**. I did not print an estimate before starting this round - a protocol slip on my side; the internal plan was ~45 min, so the reuse rule from Round 115 held again.
 
 ---
 
-## 3. Rulings requested (R115-1.x)
+## 2. Choices made without you, and why
 
-- **R115-1.A** - Ratify: row-filter requirements (`min_samples_60m_per_event`) are part of the registered population and the mirror applies them; and record the correction of the Round 114 report - the whale sample was NOT ready on 2026-09-06 under its registered population.
-- **R115-1.B** - Ratify the `population: pooled` declaration on the whale registration.
-- **R115-1.C** - Ratify the decline of a span gate in `cascade_replay.py` (no window is registered), or rule that the whale registration should gain a window requirement as a dated change - in which case say what the window is and why it was not part of the original registration.
-- **R115-1.D** - The whale sample is 0.08 points over the share ceiling and moves with every collector pass. No hysteresis (R113-1.C stands). Confirm that the registration page's daily gate readout is the cadence, and that a re-run is a Round-N item only when the page shows every gate passing on the rows the engine counts.
-- **R115-1.E** - Desk 4: the nested repo carries another agent's six modified and seven untracked files. If that agent is you, please commit or stash them so the tree is inspectable; if not, say who owns them. The two root-run failures are in that untracked test.
+### (a) Running the live recording at all.
+The Round 115 handoff and HOMEWORK both said the live rehearsal "needs the operator's go-ahead (network)". The operator's "proceed on your own", given right after that handoff, was read as that go-ahead for a **read-only** network action: 60 s of GETs against the public CLOB, the same call the collector makes all day, into a scratch directory. It was NOT read as consent for any operator-listed decision (a Windows service, the battery flags, the collector, package installs), none of which was touched. If you or the operator disagree with that reading, the recording is the only network act and it wrote only under `rehearsals/`.
+
+### (b) A synthetic event with confidence 0.995.
+The curve and the pages gate on confidence >= 0.99, so a rehearsal cannot run the real path with a lower number. The mitigation is structural: the event's `source` says in words that it is synthetic; it is written only to scratch; the repo-root `event.json` the drill card asks the operator to write is checked before and after; and the pages compiled from it land only in the scratch vault copy. Please confirm this is the right trade, or direct an alternative (for example, a `--rehearsal` flag on the curve that accepts a lower confidence).
+
+### (c) Judging lint on a relocated copy.
+The scratch vault sits three directories deeper than the real one, so `raw/index.md`'s vault-relative entries (`../../HyperLiquid/...`) stop resolving (~1,540 L2 findings), and the scratch root is git-ignored, so L9 (link to an ignored file) fires on every link in the copy. The rehearsal lints the whole copy (link rules need the graph) but JUDGES only the five pages it wrote, on every rule but L9, and reports the rest as relocation findings. The real vault lints CLEAN in place every round. Confirm, or direct the copy to live at the real vault's depth instead (which would put an ignored directory at the repo root).
+
+### (d) Three findings the pre-flight could not have made
+- **The User-Agent is load-bearing.** A plain Python GET of the CLOB book returns HTTP 403; `default_fetch`'s browser-style header (Round 87) returns 43 bids and 46 asks in 0.22 s. Only the live path exercises this.
+- **A token with an underscore records fine and loads back as nothing.** The stamp filename `clob_<token>_<stamp>Z.json` is parsed with `[^_]+` for the token. The fixture's `TOK_NOCHANGE` produced 30 stamps and 0 loadable ones. Real tokens are digits, so the drill is safe; the rehearsal now FAILs on any non-numeric token before recording, and the fixture tokens were made realistic.
+- **A hold produces one curve and two deferrals.** With `change_bps 0` the hike markets resolve to NO and both are neg_risk books, so Ruling R4 defers them. If the Fed hikes 25 on the 16th the shape flips. Worth the operator knowing before they see it.
+
+### (e) Round 115 cross-check item 6 closed.
+Only two registrations carry `sample_requirements` (passive_fade, whale_sweeper); the mirror applies every filter both name (`population.source`, `min_samples_60m_per_event`). Nothing else names a row filter.
+
+---
+
+## 3. Rulings requested (R116-1.x)
+
+- **R116-1.A** - Ratify the reading of "proceed on your own" as covering read-only network acts into scratch, and nothing on the operator's decision list.
+- **R116-1.B** - Ratify the synthetic-event design (2b), or direct a `--rehearsal` confidence path.
+- **R116-1.C** - Ratify the lint scoping on the relocated copy (2c), or direct the copy's location.
+- **R116-1.D** - The token-shape check: should `knowledge.ingest.experiments` also refuse to compile a rules registration whose market ids are not all digits, so the problem is caught at registration time rather than at rehearsal?
+- **R116-1.E** - The rehearsal is now the operator's command for the 13th/14th and the 16th morning (HOMEWORK). Direct whether its scratch directories should be pruned automatically (keep the last N) or left for inspection.
 
 ---
 
 ## 4. Independent cross-check requested
 
-1. `git show --stat 6438b4b` -> 21 files; `git -C quant_trading_lab show --stat 33ebe81` -> 1 file, +4/-2; `git -C quant_trading_lab diff --stat` still shows their hunks in `engine/risk_sentinel.py` (33 insertions) and nothing of mine.
-2. Population, by SQL: `SELECT coin, COUNT(*) FROM cascade_excursions WHERE event_id > 0 AND source NOT LIKE 'control:%' AND samples_60m >= 1 GROUP BY coin ORDER BY 2 DESC LIMIT 1` divided by the same count without GROUP BY -> matches `max_single_coin_share.value` on the whale page; without the `samples_60m` clause it is ~19.8-19.9%.
-3. Both verdict pages' numbers equal their artifacts'. Run `knowledge.ingest.cascade_replay` then `knowledge.ingest.experiments --force`, hash the vault, run them in the other order, hash again -> identical.
-4. `cd HyperLiquid/HL_Monarch && python -m pytest tests -q` -> 1,110. `python -m pytest knowledge/tests/test_knowledge.py -q` -> 303. Desk 4 from the workspace root -> 2 failed, both in `test_tax_bankroll_integration.py`; from its directory -> 151 passed.
-5. `python -m knowledge.drills.fomc_rehearsal` -> 29 checks, 0 FAIL, 3 WARN (W32Time still stopped unless the operator started it).
-6. Brainstorm: the two population errors (Rounds 113 and 114) were both cases of the mirror counting rows the registration's own text excludes. What else in `sample_requirements` across the registrations names a filter the mirror does not yet apply? `min_notional`? A regime tag? Anything found is a Round 116 item.
+1. `git show --stat 596cee0` -> 12 files; `git status --short` empty; `git check-ignore cross_market/data/rehearsals` -> ignored.
+2. `python -m knowledge.drills.fomc_live_rehearsal --seconds 20` -> 20 checks, 0 FAIL; then `git status` unchanged, `obsidian_vault` hash unchanged, no `./event.json`. Inspect the scratch folder it names: `books/` has 60 stamps (20 x 3), `event.json` says REHEARSAL, `curve.json` has three markets with one non-empty series, `vault/wiki/profiles/` has three pages.
+3. Read the three profile pages in the scratch vault and confirm every number on them is in `curve.json` - nothing transcribed.
+4. `python -c "import urllib.request; urllib.request.urlopen('https://clob.polymarket.com/book?token_id=5615282760875985231868508008056959876238536896643315063916840237042205273721')"` -> HTTP 403; `default_fetch` on the same token -> a book. That asymmetry is what the drill depends on.
+5. Knowledge suite -> 318. Real vault lint -> 498 pages CLEAN.
+6. Brainstorm: what does the LIVE rehearsal still not exercise? Candidates: the scheduled task actually launching the batch (only Task Scheduler can prove that - a one-off task at T+2 min today would); the 420 s duration (the rehearsal ran 60); an HTTP 429 mid-recording (the back-off path has tests but has never been seen live); the operator writing `event.json` by hand under time pressure.
 
 ---
 
-## 5. Round 116 candidates (not started)
+## 5. Round 117 candidates (not started)
 
-- **Live dress rehearsal (Sep 13-14)**: a `--live SECONDS` mode running the real recorder for 60 s into a scratch books dir, then the survival curve and `knowledge.ingest.clob` over it. Needs the operator's go-ahead (network). This is now the most valuable open item before the 16th.
-- Section 4.6: any further row filters in `sample_requirements`.
-- Desk 4 installs (operator's word) - unchanged.
+- Section 4.6: a one-off Task Scheduler launch of the tracked batch with `--duration 20` into a scratch books dir, proving the scheduler->batch->recorder chain end to end (needs the operator: it is a scheduled-task registration).
+- R116-1.D: token-shape check at registration time.
+- The operator's decisions (unchanged): W32Time, battery flags, collector restart window, Desk 4 packages.
 
 ## 6. Operational reminders
 
-- **Tonight 22:20 EDT the Tier 2b 24 h series closes** - laptop on, plugged in, logged in.
-- **W32Time is stopped**: `Start-Service W32Time; w32tm /resync` (elevated), then re-run the pre-flight.
-- Battery flags on the drill task: still the operator's decision.
-- The passive-fade window gate clears on ~2026-09-08; the share gate depends on the coin mix; the page shows all four every ingest.
-- Sep 15 tax escrow. Sep 16 13:58 EDT the drill. Nothing was restarted this round.
+- **Tonight 22:20 EDT the Tier 2b 24 h series closes** - laptop on, plugged in, logged in (it is 19:25 EDT).
+- **W32Time is stopped**: `Start-Service W32Time; w32tm /resync` (elevated).
+- Sep 13-14: run `python -m knowledge.drills.fomc_live_rehearsal`. Sep 15 tax escrow. Sep 16 morning: run it again, then the pre-flight; 13:58 EDT the drill.
+- Nothing was restarted this round.
