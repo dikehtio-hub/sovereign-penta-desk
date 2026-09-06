@@ -1,0 +1,76 @@
+{
+  "experiment": "whale_sweeper_cascade_replay",
+  "registered_utc": "2026-09-06T02:06:00+00:00",
+  "status": "PRE-REGISTERED (Round 103, backlog B15). The acceptance bar below is fixed BEFORE any replay is run. Item 14 (Hyperliquid Whale Cascade Sweeper) has been built and gated OFF since Round 31 for want of evidence; 28,544 cascade excursions have accumulated in the meantime. This registration says what would count as evidence, so the replay cannot be graded after the fact.",
+  "authored_by": "claude-code/fable-5.1 - NOT YET RATIFIED. Antigravity must verify this page before the replay runs (WIKI_SCHEMA.md s.2: an agent never verifies its own page).",
+  "item": 14,
+  "desk": 1,
+  "question": "After a large liquidation cascade on HyperLiquid, does price mean-revert enough that fading the cascade would have paid, on a sample wide enough to rule out one or two microcaps carrying the result?",
+  "grade_of_evidence": {
+    "kind": "RETROSPECTIVE REPLAY, NOT A FORWARD TEST",
+    "why_it_matters": "cascade_excursions was collected before this bar was written, and the sweeper's own thresholds were chosen by people who had already seen some of this regime. Pre-registration here binds the ANALYSIS, not the data collection, so a PASS is weaker evidence than the same PASS obtained forward. It is the strongest evidence available without waiting months, and it must be labelled as what it is wherever it is cited.",
+    "consequence": "A PASS is grounds to propose un-gating and to design a forward test. A PASS IS NOT AN UN-GATING. Item 14 stays gated off until a separate ruling, on separate evidence, says otherwise."
+  },
+  "data": {
+    "source": "HyperLiquid/HL_Monarch/data/hyperliquid_data.db table cascade_excursions, opened file:...?mode=ro",
+    "written_by": "HyperLiquid/HL_Monarch/storage/incremental_persistence.py (NOT analytics/excursions.py - the Top 20 registry's Item 14 Primary Code line cites a path that does not exist; see corrections)",
+    "columns_used": ["event_id", "coin", "timestamp_utc", "cascade_side", "fade_is_long", "notional_usd", "event_px", "entry_px", "mfe_30m", "mae_30m", "samples_60m", "regime_tag"],
+    "state_at_registration": {
+      "rows": 28544,
+      "coins": 58,
+      "cascade_side_A": 14012,
+      "cascade_side_B": 14532,
+      "counted_at_utc": "2026-09-06T02:04:00+00:00",
+      "note": "Counts only. NO ratio, correlation or excursion statistic of any kind was computed for this registration. The table grows continuously (27,916 rows at the Round 97b audit, 28,544 now), so the replay must record its own row count at run time rather than citing this one."
+    }
+  },
+  "primary_metric": {
+    "name": "fade_ratio_30m",
+    "definition": "median(mfe_30m) / median(mae_30m) over qualifying events, computed per the sign convention in fade_is_long, at the 30-minute horizon.",
+    "why_30m": "The passive_fade_rebenchmark registration found that of the 5m, 15m and 30m horizons only 30m cleared p < 0.05 under clustering (cluster_p_ge_1_by_horizon: 5m 0.0827, 15m 0.0772, 30m 0.0259). 30m is therefore the pre-committed horizon; 5m, 15m and 60m are REPORTED but do not decide.",
+    "definition_conflict_rule": "If wick_benchmark computes a differently-defined ratio, the replay MUST report both under both names. The registration's definition decides; the code is adapted to the registration, never the reverse."
+  },
+  "sample_requirements": {
+    "min_events": 500,
+    "min_coins": 20,
+    "max_single_coin_share": 0.2,
+    "max_hhi": 0.15,
+    "min_samples_60m_per_event": 1,
+    "rationale": "Inherited from passive_fade_rebenchmark. The 2026-09-01 retirement verdict came from a window in which two microcaps supplied 83% of all events (HHI 0.360); the sample gates exist so that cannot happen again. A run failing any gate produces NO verdict, not a weak one."
+  },
+  "acceptance_bar": {
+    "PASS": "P(fade_ratio_30m >= 1.25) > 0.90 under a CLUSTER bootstrap resampling COINS",
+    "RETUNE": "0.50 <= P(fade_ratio_30m >= 1.25) <= 0.90",
+    "FAIL": "P(fade_ratio_30m >= 1.25) < 0.50",
+    "INSUFFICIENT": "any sample requirement unmet - no verdict is issued",
+    "rationale": "Identical threshold and probability to passive_fade_rebenchmark's reopening bar, deliberately: the two experiments ask the same question of the same phenomenon on the same desk, and a bar that moves between them is a bar that was chosen to be cleared.",
+    "fixed_before_any_data": true
+  },
+  "statistical_method": {
+    "bootstrap": "CLUSTER bootstrap resampling coins with replacement, 10,000 draws, seed 7",
+    "why_not_event_level": "Forward windows on the same coin overlap, so events are not independent. An event-level bootstrap would understate the variance and manufacture significance. This is the standing auditing standard from passive_fade_rebenchmark.",
+    "must_report": ["rows_at_run", "events_qualifying", "coins", "top_coin_share", "hhi", "fade_ratio_30m", "fade_ratio_5m", "fade_ratio_15m", "fade_ratio_60m", "cluster_p_ge_1_25", "seed"]
+  },
+  "commitments": [
+    "The bar above is not changed after any data is seen. A change requires a dated amendment naming what was already known when it was made.",
+    "The replay is read-only: file:...?mode=ro, no writes to hyperliquid_data.db, no change to whale_sweeper.py, no change to any gate.",
+    "A PASS is written to the wiki as a verdict page and nothing else happens automatically.",
+    "If the run is INSUFFICIENT the page says INSUFFICIENT; an insufficient sample is never reported as a weak PASS or a FAIL.",
+    "Both cascade sides (A 14,012 / B 14,532 at registration) are reported separately as well as pooled, because a result carried by one side only is a different finding from a symmetric one."
+  ],
+  "known_defect_not_fixed": {
+    "issue": "The excursion windows were measured against asset_snapshots under a retention policy that changed during collection (Round 32 found SNAPSHOT_RETENTION_HOURS was 72 while a 7-day window was required).",
+    "consequence": "Events older than the retention window at the time of measurement may have truncated or absent forward series. The replay must report samples_60m per event and exclude events whose forward series is incomplete, rather than treating a short series as a small excursion.",
+    "not_fixed_because": "It is a historical property of the data; the fix is to exclude, not to reconstruct."
+  },
+  "corrections_to_the_registry": [
+    {
+      "what": "The Top 20 registry's Item 14 Primary Code cites HyperLiquid/HL_Monarch/analytics/excursions.py, which does not exist. cascade_excursions is written by storage/incremental_persistence.py and defined in storage/measurement_schema.py; the strategy itself is strategies/whale_sweeper.py, which does exist.",
+      "action": "Reported to Antigravity for a ruling. Registry lines 80-484 were NOT edited (they are held byte-identical by standing constraint)."
+    }
+  ],
+  "commands": [
+    "# NOT RUN in Round 103. The replay is a later round, and only after Antigravity verifies this page.",
+    "python -m knowledge.ingest.experiments   # compiles this registration into a wiki Experiment page"
+  ]
+}

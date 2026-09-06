@@ -39,6 +39,10 @@ from .experiments import update_register
 
 REGIME_FILE = "btc_macro_regime"
 DEFAULT_MIN_ABS_CORR = 0.2
+# Ruling R102-2: the exporter serialises its own run result here whenever it refreshes
+# Cross_Market_Titans.md, so the dashboard and the wiki describe the SAME run rather than two
+# runs seconds apart. `--result` still accepts any file (a `lead_lag --json` capture, a fixture).
+DEFAULT_RESULT = Path("cross_market") / "data" / "lead_lag_latest_verdict.json"
 CLASSES = ("insufficient", "no-lead", "contemporaneous", "polymarket-leads", "hyperliquid-leads", "coincident")
 
 
@@ -242,21 +246,26 @@ def main(argv: list[str] | None = None, out=None) -> int:
     out = out or sys.stdout
     ap = argparse.ArgumentParser(prog="knowledge.ingest.lead_lag", description=__doc__.split("\n\n")[0])
     add_common_args(ap)
-    ap.add_argument("--result", type=Path, required=True, help="file holding `cross_market.lead_lag --json` output")
+    ap.add_argument("--result", type=Path, default=None,
+                    help=f"file holding a lead_lag verdict dict; default <dev-root>/{DEFAULT_RESULT.as_posix()}, "
+                         "which the exporter writes whenever it refreshes Cross_Market_Titans.md (Ruling R102-2)")
     ap.add_argument("--tier", required=True, choices=["1", "2", "2b"])
     args = ap.parse_args(argv)
     code = guard(args, out)
     if code is not None:
         return code
-    if not args.result.is_file():
-        print(f"[REFUSE] result file not found: {args.result} (exit 3)", file=out)
+    result_path = args.result or (args.dev_root / DEFAULT_RESULT)
+    if not result_path.is_file():
+        hint = ("" if args.result else
+                " - the exporter writes it on each refresh (Ruling R102-2); pass --result to use another file")
+        print(f"[REFUSE] result file not found: {result_path}{hint} (exit 3)", file=out)
         return 3
-    result = json.loads(args.result.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
     if not isinstance(result, dict) or "sufficient" not in result:
         print("[REFUSE] not a lead_lag verdict JSON (no `sufficient` key) (exit 3)", file=out)
         return 3
     verdict, regime = ingest_verdict(result, args.vault, args.dev_root, tier=args.tier,
-                                     source=rel_to(args.result, args.dev_root), at=at_from(args))
+                                     source=rel_to(result_path, args.dev_root), at=at_from(args))
     print(f"[WRITE] {verdict.path.relative_to(args.vault).as_posix()}  class={verdict.meta['dev']['classification']}", file=out)
     print(f"[WRITE] {regime.path.relative_to(args.vault).as_posix()}  history={len(regime.meta['dev']['history'])}", file=out)
     return EXIT_OK

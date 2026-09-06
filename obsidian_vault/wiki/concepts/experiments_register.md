@@ -2,18 +2,18 @@
 type: Concept
 title: Experiments register
 description: 'Every Experiment page: pre-registrations (draft until a verdict lands),
-  archived controls, and verdicts as measured. 7 page(s) today.'
+  archived controls, and verdicts as measured. 8 page(s) today.'
 tags:
 - concept
 - register
 - experiment
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T01:42:14Z'
+  at: '2026-09-06T02:05:52Z'
 status: draft
 dev:
   register_for: Experiment
-  count: 7
+  count: 8
   pages:
   - baseline_unfiltered_N12_2026-09-01_meta
   - fomc_2026-09-16_rules
@@ -22,6 +22,7 @@ dev:
   - lead_lag_tier2b_meta
   - passive_fade_rebenchmark_meta
   - regime_filtered_v1_meta
+  - whale_sweeper_cascade_replay_meta
 ---
 # Experiments register
 
@@ -37,8 +38,9 @@ dev:
 | [[lead_lag_tier2b_meta\|Experiment: lead_lag_tier2b_dual_tag_membership]] | lead_lag | draft | 2026-09-06T00:28:49Z |
 | [[passive_fade_rebenchmark_meta\|Experiment: passive_fade_rebenchmark]] | registration | draft | 2026-09-06T00:28:49Z |
 | [[regime_filtered_v1_meta\|Experiment: regime_filtered_v1]] | registration | draft | 2026-09-06T00:28:49Z |
+| [[whale_sweeper_cascade_replay_meta\|Experiment: whale_sweeper_cascade_replay]] | registration | draft | 2026-09-06T02:05:52Z |
 
-7 page(s).
+8 page(s).
 
 ## Related
 

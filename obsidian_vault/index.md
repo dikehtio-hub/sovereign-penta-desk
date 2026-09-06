@@ -73,6 +73,7 @@
 * [Experiment: lead_lag_tier2b_dual_tag_membership](wiki/experiments/lead_lag_tier2b_meta.md) - PRE-REGISTERED - runs only after (1) the Tier 1 maiden verdict is in Cross_Market_Titans.md, (2) the watcher has been restarted with the Round 76 code, and (3) the TAGGED macro series clears the readiness bar on its own
 * [Experiment: passive_fade_rebenchmark](wiki/experiments/passive_fade_rebenchmark_meta.md) - PASSIVE - the fade does not trade; sweeps accumulate with execution disabled
 * [Experiment: regime_filtered_v1](wiki/experiments/regime_filtered_v1_meta.md) - regime_filtered_v1
+* [Experiment: whale_sweeper_cascade_replay](wiki/experiments/whale_sweeper_cascade_replay_meta.md) - PRE-REGISTERED (Round 103, backlog B15).
 
 # Event
 * [Event: fomc_2026-09-16](wiki/events/fomc_2026-09-16.md) - FOMC statement 2026-09-16T18:00:00Z (SEP meeting); window T-2..T+5 registered.
@@ -188,7 +189,7 @@
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 183 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
-* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 7 page(s) today.
+* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 8 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
 * [Rulings register](wiki/concepts/rulings_register.md) - Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log. 36 page(s) today.

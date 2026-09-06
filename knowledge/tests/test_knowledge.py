@@ -846,6 +846,23 @@ class LeadLagIngestTests(IngestFixture):
         self.assertEqual(st, {"latest_verdict": "hyperliquid-leads", "regime_consensus_3": "mixed", "runs": 4})
         self.assertEqual(ingest_ll.current_state(r.meta["dev"]["history"][:3])["tier 1 macro"]["regime_consensus_3"], "polymarket-leads")
 
+    def test_cli_defaults_to_the_exporter_artifact(self):
+        """Ruling R102-2: with no --result, read the file the exporter writes beside the dashboard."""
+        out = io.StringIO()
+        code = ingest_ll.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--tier", "1"], out=out)
+        self.assertEqual(code, EXIT_HALT)                       # not written yet -> refuse, with the reason
+        self.assertIn("lead_lag_latest_verdict.json", out.getvalue())
+        self.assertIn("the exporter writes it on each refresh", out.getvalue())
+        artifact = self.dev_root / ingest_ll.DEFAULT_RESULT
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_text(json.dumps(VERDICT_JSON), encoding="utf-8")
+        out = io.StringIO()
+        self.assertEqual(ingest_ll.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--tier", "1",
+                                         "--at", "2026-09-05T20:00:00Z"], out=out), EXIT_OK)
+        self.assertIn("class=polymarket-leads", out.getvalue())
+        page = pages.load_page(self.vault / "wiki/experiments/lead_lag_tier1_macro_20260905T2000Z.md")
+        self.assertEqual(page.meta["sources"][0]["resource"], "cross_market/data/lead_lag_latest_verdict.json")
+
     def test_cli_reads_file_and_refuses_non_verdicts(self):
         f = self.root / "verdict.json"
         f.write_text(json.dumps(VERDICT_JSON), encoding="utf-8")
