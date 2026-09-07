@@ -56,6 +56,13 @@ MAX_CLOCK_DRIFT_S = 1.0              # Round 114 D3: past this the stamps' own t
 MAX_STAMP_PATH = 240                 # under Windows MAX_PATH (260) with room for the recorder's temp names
 STAMP_EXAMPLE = "clob_" + "9" * 76 + "_20260916T175800_000000Z.json"   # latency_sniper's stamp filename shape
 NTP_HOST = "time.windows.com"
+# Round 121 (R119-1.B item 4 + brainstorm item 1): the four daemons' STREAMS, not their pids. A process that is
+# alive and writing nothing is what cost 9 h on 2026-09-06; the supervisor cannot see that, this can.
+DAEMON_STREAMS = {
+    "collector": ("HyperLiquid/HL_Monarch/data/hyperliquid_data.db", 900.0),        # newest asset_snapshots row; 10 s cadence
+    "watcher": ("Sports_Desk/data/polymarket_drops", 900.0),                       # newest drop file; 300 s cadence
+    "exporter": ("cross_market/data/cross_market_exporter.log", 300.0),            # log written every cycle; 15 s cadence
+}
 
 # Read by PowerShell via -EncodedCommand so no quoting survives the trip through argv. Probed live
 # in Round 113 against the real task before being trusted.
@@ -137,6 +144,29 @@ def git_tracked(path: Path, dev_root: Path, runner: Callable[..., Any] = subproc
     return r.returncode == 0
 
 
+def daemon_ages(dev_root: Path, now: datetime | None = None) -> dict[str, float | None]:
+    """Seconds since each daemon's stream last advanced; None when the stream cannot be read. Read-only."""
+    now = now or datetime.now(timezone.utc)
+    out: dict[str, float | None] = {}
+    for name, (rel, _limit) in DAEMON_STREAMS.items():
+        p = dev_root / rel
+        try:
+            if name == "collector":
+                import sqlite3
+                conn = sqlite3.connect(f"file:{p.as_posix()}?mode=ro", uri=True, timeout=8)
+                ms = conn.execute("SELECT MAX(timestamp) FROM asset_snapshots").fetchone()[0]
+                conn.close()
+                out[name] = None if ms is None else now.timestamp() - float(ms) / 1000.0
+            elif p.is_dir():
+                newest = max((f.stat().st_mtime for f in p.iterdir() if f.is_file()), default=None)
+                out[name] = None if newest is None else now.timestamp() - newest
+            else:
+                out[name] = now.timestamp() - p.stat().st_mtime
+        except Exception:  # noqa: BLE001 - unreadable is reported, not raised
+            out[name] = None
+    return out
+
+
 def probe_writable(directory: Path) -> tuple[bool, str]:
     """Create and remove one small file in the nearest EXISTING ancestor of `directory`.
 
@@ -160,7 +190,8 @@ def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
                task: dict[str, Any] | None, bat_text: str | None, bat_path: Path | None = None,
                recorder_text: str | None = None, bat_tracked: bool | None = None,
                writable: tuple[bool, str] | None = None,
-               online: Callable[[str], Any] | None = None) -> list[Check]:
+               online: Callable[[str], Any] | None = None,
+               ages: dict[str, float | None] | None = None) -> list[Check]:
     out: list[Check] = []
     ok = lambda name, cond, detail: out.append(Check(name, "PASS" if cond else "FAIL", detail))  # noqa: E731
     bat_path = bat_path or (dev_root / BAT)
@@ -235,6 +266,16 @@ def run_checks(vault: Path, dev_root: Path, event_name: str, now: datetime, *,
             except Exception as exc:                        # noqa: BLE001 - the failure is the finding
                 results.append((False, f"{t[:8]}.. {type(exc).__name__}: {str(exc)[:70]}"))
         ok("tokens resolve on the CLOB (--online)", all(r[0] for r in results), "; ".join(r[1] for r in results))
+
+    # 3c. --online (Round 121): are the four daemons' STREAMS advancing? Alive is not the same as working.
+    if online is not None or ages is not None:
+        ages = ages if ages is not None else daemon_ages(dev_root, now)
+        for name, (rel, limit) in DAEMON_STREAMS.items():
+            age = ages.get(name)
+            if age is None:
+                out.append(Check(f"{name} stream", "FAIL", f"{rel}: unreadable or empty - the stream cannot be judged"))
+            else:
+                ok(f"{name} stream", age <= limit, f"last advanced {age / 60:.1f} min ago (limit {limit / 60:.0f} min) - {rel}")
 
     # 4. the batch file the task runs
     if bat_text is None:

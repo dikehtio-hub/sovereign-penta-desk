@@ -5,6 +5,31 @@ the detail.
 
 ## Status
 
+Round 121 complete (2026-09-06 23:55 EDT, operator: "proceed" on Antigravity's Round 120 rulings + the
+operator's own five decisions): EVERYTHING AUTHORISED IS DONE; THE COLLECTOR HARDENING IS STAGED ON A BRANCH,
+NOT DEPLOYED. Operator decisions executed and verified field-by-field: Monarch_FOMC_Drill's two battery flags
+cleared (nothing else on the task changed); the four stale one-off tasks deleted (only Monarch_FOMC_Drill
+remains). The four permissioned items: (1) the pre-flight's --online now judges the four daemons' STREAMS -
+newest asset_snapshots row, newest watcher drop, exporter log write - against 15/15/5-minute limits (33
+checks, 0 FAIL, 1 WARN: W32Time); (2) knowledge.drills.event_json writes ./event.json from one number
+(--bps), refuses to overwrite without --force; (3) knowledge/data_gaps.json -> knowledge.ingest.data_gaps ->
+wiki/events/data_gap_2026-09-06_hl_asset_snapshots.md (9.32 h) + lint L12 (an Experiment whose measured
+span overlaps a gap it does not list under dev.data_gaps) + the fade adapter acknowledging gaps itself; (4)
+basis windows audited: none opened inside the gap, 1,764 overlapping ones carry coverage 0.61-0.99 - the
+schema already marks the hole. FINDING attached to Round 120: lead_lag takes BTC prices from asset_snapshots,
+so the Tier 2/2b window held a 9.3 h price hole; the registration's readiness bar covers tagged stamps only;
+readings stand with the caveat on the gap page. R119-1.B: hardening committed on feat/collector-hardening
+(worktree, nothing checked out in the live tree): periodic universe re-sync (every 60 polls, forced after a
+skip); insert_snapshots row-by-row fallback naming offenders; supervisor watchdog that RESTARTS on a stale
+stream (>15 min, once per hour) and only WARNS on coverage decay (DEVIATION: coverage stays low for 24 h
+after any gap - a restart on it would loop); 8 tests, HL suite 1,118 green on the branch. R120-1.C: the four
+lead-lag artifacts moved to cross_market/experiments/ and re-ingested at their ORIGINAL instants; pages and
+history rows unchanged in number; lead_lag --json now carries the R102-2 envelope. Three adapter defects
+found by the idempotence check and fixed: tests_run counted its own page (1 -> 2 on re-ingest); a --force
+recompile reset a registration's tests_run to 0 over a live value (two writers of one field - one owner
+now, lead_lag_verdict_count); the lead-lag ingest logged even when nothing moved. Knowledge 385, lint CLEAN
+507 pages, idempotent across lead_lag/experiments/data_gaps/seed. NO DAEMON RESTARTED this round.
+
 Round 120 complete (2026-09-06 22:30 EDT, operator: "lets do what we can"): THE TIER 2b GATE CLOSED AND THE
 PRE-REGISTERED TIER 2 / TIER 2b LEAD-LAG RUNS WERE EXECUTED, AS REGISTERED, NO --force. The tagged macro
 series cleared its bar at 22:25 EDT (286 stamps, 24.0 h, largest gap 5.1 min, 0 breaks; `lead_lag
@@ -1375,6 +1400,34 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 121 findings
+
+### The 9 h hole reaches Round 120
+
+- `cross_market.lead_lag` reads BTC marks from `asset_snapshots`. The Tier 2/2b window (02:20Z 09-06 to
+  02:22Z 09-07) contains the 15:46Z-01:05Z gap: ~39% of the price series was absent. The registration's
+  readiness bar (span, points, gap) is about the TAGGED STAMPS; nothing in it looks at the price side. The
+  readings stand as recorded; the gap page lists them under `affected_evaluations`, and R120-1.B's
+  3-run consensus is the right remedy - the next two windows will not have the hole.
+
+### Two writers of one field, found by hashing twice
+
+- `dev.tests_run` on a lead-lag registration was written by `knowledge.ingest.lead_lag` (count of verdict
+  pages) and reset to 0 by `knowledge.ingest.experiments --force` (`setdefault` on a fresh dict). Either
+  adapter alone looked right. One definition now: `lead_lag_verdict_count`, imported by both.
+- The verdict page's own `tests_run` counted itself once it existed: 1 became 2 on the first re-ingest.
+  Excluding the page's own stem fixes it; the relocation would have inflated all four.
+- The lead-lag ingest appended a log line on every run. Now only when the page moved (R104-3, the last
+  adapter still doing it).
+
+### The watchdog deviation, stated
+
+- R119-1.B item 3 asked for alert/restart on coverage decay (>5 pts drop or <60%). `coverage_pct` is a 24 h
+  window: after today's gap it read 62% while the restarted collector was healthy and will stay under 60%
+  for most of tomorrow. A restart trigger on it would have restarted a healthy collector hourly. The branch
+  therefore restarts on the DIRECT signal - newest snapshot older than 15 min while the child is alive -
+  and logs coverage decay as a warning. Antigravity to ratify (R121-1.A).
 
 ## Round 120 findings
 

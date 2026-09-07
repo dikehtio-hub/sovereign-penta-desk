@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T22:11:22Z'
+  at: '2026-09-07T03:34:31Z'
 status: draft
 sources:
 - id: registration
@@ -24,26 +24,26 @@ dev:
   - 8
   registered_utc: '2026-09-01T05:42:16.383702+00:00'
   progress:
-    accumulated: 13645
+    accumulated: 13892
     target: 500
     unit: events
     status: accumulating
-    measured_at: '2026-09-06T22:11:22Z'
+    measured_at: '2026-09-07T03:34:31Z'
     gates:
       min_events:
-        value: 13645
+        value: 13892
         bar: 500
         pass: true
       min_coins:
-        value: 46
+        value: 49
         bar: 20
         pass: true
       max_single_coin_share:
-        value: 0.266
+        value: 0.2643
         bar: 0.2
         pass: false
       window_days:
-        value: 5.49
+        value: 5.94
         bar: 7.0
         pass: false
     population: trade_sweep
@@ -110,7 +110,7 @@ dev:
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
 > [!NOTE]
-> **ACCUMULATING** - 2/4 sample gates pass over population `trade_sweep`. Failing: max_single_coin_share 0.266 vs 0.2; window_days 5.49 vs 7.0. Last evaluation 2026-09-06: **INSUFFICIENT** ([[passive_fade_rebenchmark_verdict]]) - an insufficient sample is never a verdict, so the question stays open.
+> **ACCUMULATING** - 2/4 sample gates pass over population `trade_sweep`. Failing: max_single_coin_share 0.2643 vs 0.2; window_days 5.94 vs 7.0. Last evaluation 2026-09-06: **INSUFFICIENT** ([[passive_fade_rebenchmark_verdict]]) - an insufficient sample is never a verdict, so the question stays open.
 
 
 ## Registered utc

@@ -104,6 +104,26 @@ def _render_value(val: Any, out: list[str]) -> None:
 
 # ---------------------------------------------------------------- lead-lag (Desk 3)
 
+def lead_lag_verdict_count(vault: Path, tier: str, exclude_stem: str | None = None) -> int:
+    """B14 multiple-testing counter: how many lead-lag verdict pages of this tier the vault holds. ONE definition
+    (Round 121): the registration page and the verdict pages both read it, so a --force recompile can no longer
+    reset a registration to 0 while the verdict adapter says 2, and a re-ingested verdict no longer counts itself.
+    """
+    n = 0
+    for p in load_pages(vault):
+        dev = p.meta.get("dev") or {}
+        if (p.type == "Experiment" and dev.get("kind") == "lead_lag_verdict"
+                and str(dev.get("tier")) == str(tier) and p.path.stem != exclude_stem):
+            n += 1
+    return n
+
+
+def _tier_of(path: Path) -> str:
+    """lead_lag_tier2b.meta.json -> 2b; lead_lag_tier2.meta.json -> 2."""
+    stem = path.name.split(".")[0]
+    return stem.split("tier", 1)[1] if "tier" in stem else stem
+
+
 def compile_lead_lag_registration(data: dict[str, Any], path: Path, vault: Path, dev_root: Path, at, by: str) -> Page:
     rel = rel_to(path, dev_root)
     name = str(data.get("experiment") or path.stem)
@@ -482,7 +502,11 @@ def compile_registration(path: Path, vault: Path, dev_root: Path, at, by: str = 
         page = compile_lead_lag_registration(data, path, vault, dev_root, at, by)
     else:
         page = compile_generic_registration(data, path, vault, dev_root, at, by)
-    page.meta.setdefault("dev", {}).setdefault("tests_run", 0)  # B14: a registration has seen no data yet
+    dev_ = page.meta.setdefault("dev", {})
+    if dev_.get("kind") == "lead_lag":      # Round 121: the counter is MEASURED, never defaulted to 0 over a live value
+        dev_["tests_run"] = lead_lag_verdict_count(vault, str(data.get("tier") or _tier_of(path)))
+    else:
+        dev_.setdefault("tests_run", 0)   # B14: a registration has seen no data yet
     carry_human_fields(load_page(page.path), page.meta)          # Ruling 99-2: --force never drops a ratification
     return page
 

@@ -38,6 +38,7 @@ from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_
 from ..registers import write_register
 from . import add_common_args, at_from, guard, link_if_exists, page_changed, rel_to
 from .cascade_replay import _f, written_at
+from .data_gaps import overlapping_gaps
 
 STEM = "passive_fade_rebenchmark_verdict"
 REGISTRATION_STEM = "passive_fade_rebenchmark_meta"
@@ -197,11 +198,15 @@ def build_page(art: dict[str, Any], reg: dict[str, Any], vault: Path, dev_root: 
                     f"{_f(d.get('cluster_p_ge_1'), '.4f')} | {_f(d.get('cluster_p_ge_reopen'), '.4f')} | "
                     f"{d.get('coins_measured', '-')} | {_f(d.get('top_coin_share'), '.4f')} |")
     env = art.get("_artifact") or {}
+    gaps = overlapping_gaps(vault, m.get("first_event_utc"), m.get("last_event_utc"))   # Round 121, lint L12
     body += ["", "## Data audit", "",
              f"- rows in `cascade_excursions` at run: **{(m['rows_at_run'] or 0):,}**; treatment rows for `{m['source']}`: "
              f"**{(m['treatment_rows'] or 0):,}**; matched control rows: {(m['control_rows'] or 0):,}",
              f"- events span {m['first_event_utc'] or '-'} .. {m['last_event_utc'] or '-'} ({_f(mt.get('span_days'), '.2f')} days)",
              f"- measurable at the decision horizon: {(m['n_30m'] or 0):,}",
+             ("- **data gaps inside this span**: " + ", ".join(f"[[{g}]]" for g in gaps) + " - no forward excursions were "
+              "measured there; the count above is what the stream recorded, not what happened") if gaps else
+             "- no known data gap inside this span",
              f"- artifact written at **{observed_at}** by `{env.get('writer', '-')}` (source: {observed_from}); "
              f"resamples {(m['resamples'] or 0):,}, seed {m['seed']}", "",
              "## What follows from this", "",
@@ -234,7 +239,7 @@ def build_page(art: dict[str, Any], reg: dict[str, Any], vault: Path, dev_root: 
         "gate_failures": g["gate_failures"], "bar_drift": g["bar_drift"], "bar": {"ratio": g["ratio_bar"], "confidence": g["confidence_bar"]},
         "measurement": m, "sample_metrics": mt, "grade_vocabulary": list(GRADES), "registration": REGISTRATION_STEM,
         "observed_at": observed_at, "observed_from": observed_from, "parameters": params,
-        "requires_files": [reg_rel, res_rel], "history": history,
+        "requires_files": [reg_rel, res_rel], "history": history, "data_gaps": gaps,
     }
     meta = make_meta("Experiment", "Passive fade rebenchmark - verdict",
                      f"Reopening question graded against the pre-registered bar: **{g['grade']}** over `{m['source']}` "

@@ -49,6 +49,9 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
   L11 the mirror of L10 (Round 113): an Experiment whose EVERY sample gate
       has passed for 3+ days (`dev.progress.ready_since`) with no verdict
       page. A warning, for the same reason: evaluate or retire is a decision.
+  L12 an evaluation over a hole (Round 121): an Experiment whose measured
+      span (`dev.measurement.first_event_utc`..`last_event_utc`) overlaps a
+      data_gap Event page it does not list under `dev.data_gaps`. Warning.
   L8  a dangling outbound wikilink (Round 105): `[[target]]` naming a page
       that does not exist. The mirror of L3, which catches the page nothing
       links to. Links inside code fences and code spans are not links, so
@@ -567,6 +570,45 @@ def check_l11(docs: list[Document], vault: Path, now: datetime) -> list[Finding]
     return out
 
 
+def check_l12(docs: list[Document], vault: Path) -> list[Finding]:
+    """L12 (Round 121): an evaluation whose measured span overlaps a known data gap must say so.
+
+    Round 119 left a 9 h 18 min hole in asset_snapshots. A verdict computed over a window containing that
+    hole is not wrong, but a page that does not mention it is: the reader would take the span as measured.
+    Gaps are Event pages with dev.kind data_gap and a dev.window; acknowledgement is dev.data_gaps listing
+    the gap page's stem. The verdict adapters write that list themselves via ingest.data_gaps.overlapping_gaps.
+    """
+    gaps: list[tuple[str, datetime, datetime]] = []
+    for d in docs:
+        dev = _dev(d) or {}
+        if d.meta is None or d.meta.get("type") != "Event" or dev.get("kind") != "data_gap":
+            continue
+        w = dev.get("window") or {}
+        try:
+            gaps.append((d.path.stem, parse_iso8601(str(w.get("start"))), parse_iso8601(str(w.get("end")))))
+        except ValueError:
+            continue
+    out: list[Finding] = []
+    if not gaps:
+        return out
+    for d in docs:
+        dev = _dev(d) or {}
+        if d.meta is None or d.meta.get("type") != "Experiment":
+            continue
+        m = dev.get("measurement") or {}
+        try:
+            s, e = parse_iso8601(str(m.get("first_event_utc"))), parse_iso8601(str(m.get("last_event_utc")))
+        except ValueError:
+            continue
+        acked = set(dev.get("data_gaps") or [])
+        for stem, gs, ge in gaps:
+            if gs < e and ge > s and stem not in acked:
+                out.append(Finding("L12", "warning", _rel(d.path, vault),
+                                   f"measured span {m.get('first_event_utc')}..{m.get('last_event_utc')} overlaps data gap "
+                                   f"[[{stem}]] and does not acknowledge it (dev.data_gaps)"))
+    return out
+
+
 def check_c1(docs: list[Document], vault: Path, dev_root: Path) -> list[Finding]:
     out: list[Finding] = []
     cache: dict[Path, str | None] = {}
@@ -866,6 +908,7 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     findings += check_l9(docs, vault, dev_root)
     findings += check_l10(docs, vault, now)
     findings += check_l11(docs, vault, now)
+    findings += check_l12(docs, vault)
     findings += check_c1(docs, vault, dev_root)
     findings += check_c2(docs, vault, drops)
     findings += check_c3(docs, vault)

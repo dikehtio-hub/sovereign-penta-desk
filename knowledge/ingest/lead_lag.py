@@ -34,7 +34,7 @@ from typing import Any
 from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
-from . import add_common_args, at_from, guard, item_link, rel_to
+from . import add_common_args, at_from, guard, item_link, rel_to, page_changed
 from ..registers import write_register
 
 REGIME_FILE = "btc_macro_regime"
@@ -105,9 +105,12 @@ def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier
     body += ["## Related", "", f"- [[{REGIME_FILE}|BTC macro regime]]",
              "- [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]]",
              item_link(vault, "Item_18_Cross_Market_Titan_Correlator_Macro_Crypto", "Item 18: Cross-Market Titan Correlator"), ""]
-    # B14: tests_run = how many verdicts this tier/scope has now been evaluated for (multiple-testing counter)
+    # B14: tests_run = how many verdicts this tier/scope has now been evaluated for (multiple-testing counter).
+    # Round 121: the page being written is excluded, so re-ingesting the same verdict does not inflate it.
+    own_stem = f"lead_lag_tier{tier}_{scope}_{stamp}"
     prior = sum(1 for p in load_pages(vault) if p.type == "Experiment" and (p.meta.get("dev") or {}).get("kind") == "lead_lag_verdict"
-                and str((p.meta.get("dev") or {}).get("tier")) == str(tier) and scope_of(p.meta.get("dev") or {}) == scope)
+                and str((p.meta.get("dev") or {}).get("tier")) == str(tier) and scope_of(p.meta.get("dev") or {}) == scope
+                and p.path.stem != own_stem)
     dev: dict[str, Any] = {
         "desk": 3, "item": 18, "kind": "lead_lag_verdict", "tier": str(tier),
         "family": result.get("family"), "subfamily": result.get("subfamily"),
@@ -195,9 +198,16 @@ def update_regime(vault: Path, verdict: Page, *, at: datetime, by: str = GENERAT
         dev = existing.meta.get("dev") or {}
         history = [dict(r) for r in dev.get("history", []) if isinstance(r, dict)]
     d = verdict.meta["dev"]
-    history.append({"at": iso(at), "tier": d["tier"], "scope": scope_of(d), "membership": d["membership"],
-                    "class": d["classification"], "lag": d["best_lag_minutes"], "corr": d["correlation"], "n": d["n"],
-                    "page": verdict.path.stem})
+    row = {"at": iso(at), "tier": d["tier"], "scope": scope_of(d), "membership": d["membership"],
+           "class": d["classification"], "lag": d["best_lag_minutes"], "corr": d["correlation"], "n": d["n"],
+           "page": verdict.path.stem}
+    # Round 121 (R120-1.C): the verdict PAGE is the unit of observation. Re-ingesting the same verdict (an
+    # artifact that moved, a fixed adapter) replaces its row in place; it must not append a second one.
+    idx = next((i for i, r in enumerate(history) if r.get("page") == row["page"]), None)
+    if idx is None:
+        history.append(row)
+    else:
+        history[idx] = row
     current = current_state(history)
     meta = make_meta("Regime", "BTC macro regime",
                      "Rolling classification of the Polymarket macro / Hyperliquid BTC lead-lag verdicts, per tier and scope, with the full history.",
@@ -220,9 +230,8 @@ def annotate_registration(vault: Path, tier: str, *, at: datetime) -> Page | Non
     reg = load_page(page_path(vault, "Experiment", stem))
     if reg is None:
         return None
-    runs = sum(1 for p in load_pages(vault) if p.type == "Experiment" and (p.meta.get("dev") or {}).get("kind") == "lead_lag_verdict"
-               and str((p.meta.get("dev") or {}).get("tier")) == str(tier))
-    reg.meta.setdefault("dev", {})["tests_run"] = runs
+    from .experiments import lead_lag_verdict_count      # one definition of the counter (Round 121)
+    reg.meta.setdefault("dev", {})["tests_run"] = lead_lag_verdict_count(vault, str(tier))
     write_page(reg, vault, now=at)
     return reg
 
@@ -231,14 +240,16 @@ def ingest_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier:
                    at: datetime | None = None, by: str = GENERATED_BY) -> tuple[Page, Page]:
     at = at or now_utc()
     verdict = compile_verdict(result, vault, dev_root, tier=tier, source=source, at=at, by=by)
+    changed = page_changed(verdict, vault)                 # Round 121 (R104-3): log only what moved
     write_page(verdict, vault, now=at)
     annotate_registration(vault, tier, at=at)
     regime = update_regime(vault, verdict, at=at, by=by)
     write_page(regime, vault, now=at)
     write_register(vault, "Experiment", at=at, by=by)
     write_index(vault, load_pages(vault))
-    append_log(vault, "Ingest", f"lead-lag Tier {tier} verdict ({scope_of(result)}): **{verdict.meta['dev']['classification']}** -> "
-               f"[[{verdict.path.stem}]]; [[{REGIME_FILE}]] history now {len(regime.meta['dev']['history'])} row(s).", when=at)
+    if changed:
+        append_log(vault, "Ingest", f"lead-lag Tier {tier} verdict ({scope_of(result)}): **{verdict.meta['dev']['classification']}** -> "
+                   f"[[{verdict.path.stem}]]; [[{REGIME_FILE}]] history now {len(regime.meta['dev']['history'])} row(s).", when=at)
     return verdict, regime
 
 

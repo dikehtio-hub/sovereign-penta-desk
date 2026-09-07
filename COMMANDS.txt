@@ -2360,6 +2360,24 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 121 - OPERATOR DECISIONS EXECUTED; STREAM HEALTH; event.json WRITER; DATA GAPS + L12; HARDENING BRANCH; ARTIFACTS MOVED
+     python -m knowledge.drills.fomc_rehearsal --online          (33 checks: + collector / watcher / exporter STREAM ages)
+         Limits 15 / 15 / 5 min; an unreadable stream is a FAIL, not a pass. Battery flags now read PASS (cleared 2026-09-06).
+     python -m knowledge.drills.event_json --bps <int> [--force]  (14:00 on the 16th: the ONE number, everything else fixed)
+         Writes ./event.json {kind fed_rate, payload.change_bps, source federalreserve.gov statement, confidence 0.995,
+         observed_at now}; refuses to overwrite without --force; prints the file. Never fetches, never decides.
+     python -m knowledge.ingest.data_gaps                         (knowledge/data_gaps.json -> wiki/events/data_gap_<id>.md)
+         Append a gap to the JSON, never edit a closed one. Lint L12 warns when an Experiment's measured span
+         (dev.measurement.first_event_utc..last_event_utc) overlaps a gap it does not list under dev.data_gaps; the
+         fade adapter writes that list itself. Gap on record: 2026-09-06 15:46:10Z - 2026-09-07 01:05:10Z (9.32 h).
+     git worktree add <dir> feat/collector-hardening              (R119-1.B, commit 70bd232; NOT merged, NOT deployed)
+         Deploy = merge + stop_collector.bat + start_collector.bat in an operator-authorised window. Watchdog restarts
+         on newest-snapshot age > 900 s while the child is alive (once/hour); coverage decay is WARN only.
+     cross_market/experiments/lead_lag_tier{2,2b}_{fed-rates,crypto}_verdict.json   (moved from data/, tracked; R120-1.C)
+         Re-ingested at the original instants (--at 2026-09-07T02:30:18/23/29/34Z): same page stems, same 5 history rows.
+         cross_market.lead_lag --json now carries the R102-2 _artifact envelope for every future run.
+     Monarch_FOMC_Drill: battery flags CLEARED 2026-09-06 (operator's decision); stale one-off tasks deleted; drill is the only Monarch task.
+
      ROUND 120 - TIER 2 / TIER 2b LEAD-LAG RUNS (the tagged series cleared its 24 h bar 2026-09-06 22:25 EDT)
      python -m cross_market.lead_lag --check-data --subfamily-from tags          -> READY (286 stamps, 24.0 h, gap 5.1 min)
      python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --json > cross_market/data/lead_lag_tier2_fed-rates_verdict.json

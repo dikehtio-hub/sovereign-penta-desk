@@ -591,6 +591,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     # was documented for the readiness check only, so the pipeline this repo has published since Round 97
     # (`lead_lag --coin BTC --family macro --json > verdict.json`) wrote the human report and every consumer
     # rejected it. `default=str` because the result carries datetimes on some paths.
+    if args.json:
+        # Ruling R102-2 envelope (Round 121): two runs over a growing series are otherwise indistinguishable
+        from datetime import datetime as _dt, timezone as _tz
+        result["_artifact"] = {"written_at": _dt.now(_tz.utc).isoformat().replace("+00:00", "Z"),
+                               "writer": "cross_market.lead_lag", "argv": list(argv) if argv is not None else sys.argv[1:]}
     print(json.dumps(result, indent=2, default=str) if args.json else format_report(result, args.coin.upper(), keys))
     return 0
 

@@ -3859,5 +3859,136 @@ class ScratchPruningTests(QueryCardTests):
         self.assertEqual(live.prune_scratch(self.dev_root / "nowhere", keep=3), [])
 
 
+
+# --------------------------------------------------------------------------------------
+# Round 121: event.json writer, data gaps + L12, daemon streams in the pre-flight, regime dedupe
+# --------------------------------------------------------------------------------------
+
+class EventJsonTests(unittest.TestCase):
+    def setUp(self):
+        from knowledge.drills import event_json as ej
+        self.ej = ej
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / "event.json"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_one_number_in_a_complete_event_out(self):
+        ev = self.ej.build_event(25, observed_at=NOW)
+        self.assertEqual(ev, {"kind": "fed_rate", "payload": {"change_bps": 25}, "source": "federalreserve.gov statement",
+                              "confidence": 0.995, "observed_at": pages.iso(NOW)})
+        self.assertTrue(self.ej.write_event(self.path, ev))
+        self.assertEqual(json.loads(self.path.read_text(encoding="utf-8")), ev)
+
+    def test_it_refuses_to_overwrite_without_force(self):
+        self.ej.write_event(self.path, self.ej.build_event(0, observed_at=NOW))
+        self.assertFalse(self.ej.write_event(self.path, self.ej.build_event(25, observed_at=NOW)))
+        self.assertEqual(json.loads(self.path.read_text(encoding="utf-8"))["payload"]["change_bps"], 0)
+        self.assertTrue(self.ej.write_event(self.path, self.ej.build_event(25, observed_at=NOW), force=True))
+        self.assertEqual(json.loads(self.path.read_text(encoding="utf-8"))["payload"]["change_bps"], 25)
+
+    def test_the_cli_writes_prints_and_refuses(self):
+        out = io.StringIO()
+        code = self.ej.main(["--bps", "-25", "--out", str(self.path), "--observed-at", pages.iso(NOW)], out=out)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn('"change_bps": -25', out.getvalue())
+        out = io.StringIO()
+        self.assertEqual(self.ej.main(["--bps", "0", "--out", str(self.path)], out=out), self.ej.EXIT_FINDINGS)
+        self.assertIn("[REFUSE]", out.getvalue())
+
+
+class DataGapTests(FadeRebenchmarkIngestTests):
+    GAP = {"gaps": [{"id": "test_gap", "desk": 1, "start_utc": "2026-09-03T00:00:00Z", "end_utc": "2026-09-03T09:00:00Z",
+                     "tables": ["asset_snapshots (none)"], "cause": "test", "affected_evaluations": ["x"], "round": 0,
+                     "detected_utc": "2026-09-03T09:00:00Z", "resolved_utc": "2026-09-03T09:00:00Z", "resolution": "r"}]}
+
+    def setUp(self):
+        super().setUp()
+        from knowledge.ingest import data_gaps as dg
+        self.dg = dg
+        (self.dev_root / "knowledge").mkdir(exist_ok=True)
+        (self.dev_root / "knowledge" / "data_gaps.json").write_text(json.dumps(self.GAP), encoding="utf-8")
+
+    def test_a_gap_becomes_an_event_page_in_the_events_register(self):
+        pages_ = self.dg.ingest_gaps(self.vault, self.dev_root, at=NOW)
+        self.assertEqual([p.path.stem for p in pages_], ["data_gap_test_gap"])
+        meta, body = fm.parse((self.vault / "wiki/events/data_gap_test_gap.md").read_text(encoding="utf-8"))
+        self.assertEqual((meta["type"], meta["dev"]["kind"], meta["dev"]["gap_hours"]), ("Event", "data_gap", 9.0))
+        self.assertIn("**9.0 h with no recording**", body)
+        self.assertIn("[[data_gap_test_gap\\|", registers.update_register(self.vault, "Event", at=NOW).body)
+        self.assertEqual(self.dg.overlapping_gaps(self.vault, "2026-09-02T20:00:00Z", "2026-09-03T01:00:00Z"), ["data_gap_test_gap"])
+        self.assertEqual(self.dg.overlapping_gaps(self.vault, "2026-09-03T10:00:00Z", "2026-09-04T00:00:00Z"), [])
+        self.assertEqual(self.dg.overlapping_gaps(self.vault, None, "2026-09-04T00:00:00Z"), [])
+
+    def test_l12_fires_on_an_unacknowledged_span_and_the_fade_adapter_acknowledges(self):
+        self.dg.ingest_gaps(self.vault, self.dev_root, at=NOW)
+        # a verdict whose measured span (first..last event) crosses the gap, compiled by the fade adapter
+        art = self.art()
+        art["data_audit"]["first_event_utc"] = "2026-09-01T05:00:00Z"
+        art["data_audit"]["last_event_utc"] = "2026-09-06T17:00:00Z"
+        self.ingest(art)
+        meta, body = self.page()
+        self.assertEqual(meta["dev"]["data_gaps"], ["data_gap_test_gap"])         # acknowledged by the adapter
+        self.assertIn("**data gaps inside this span**: [[data_gap_test_gap]]", body)
+        self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "L12"], [])
+        # strip the acknowledgement: L12 speaks
+        p = self.vault / "wiki/experiments/passive_fade_rebenchmark_verdict.md"
+        meta["dev"]["data_gaps"] = []
+        pages.write_page(pages.Page(p, meta, body), self.vault, now=NOW)
+        l12 = [f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "L12"]
+        self.assertEqual([(f.severity, f.path) for f in l12], [("warning", "wiki/experiments/passive_fade_rebenchmark_verdict.md")])
+        self.assertIn("data_gap_test_gap", l12[0].message)
+
+
+class DaemonStreamTests(FomcRehearsalTests):
+    def test_stream_ages_are_judged_only_when_asked_and_never_fail_closed_silently(self):
+        self.assertFalse(any(c.name.endswith(" stream") for c in self.checks()))                # offline: not judged
+        lv = self.levels(self.checks(ages={"collector": 12.0, "watcher": 200.0, "exporter": 20.0}))
+        self.assertEqual([lv[k] for k in ("collector stream", "watcher stream", "exporter stream")], ["PASS"] * 3)
+        lv = self.levels(self.checks(ages={"collector": 34000.0, "watcher": 200.0, "exporter": None}))
+        self.assertEqual(lv["collector stream"], "FAIL")                                          # the 9 h failure mode
+        self.assertEqual(lv["exporter stream"], "FAIL")                                           # unreadable is a FAIL, not a pass
+        self.assertEqual(lv["watcher stream"], "PASS")
+
+    def test_daemon_ages_reads_a_db_a_directory_and_a_file(self):
+        import sqlite3
+        db = self.dev_root / "HyperLiquid" / "HL_Monarch" / "data" / "hyperliquid_data.db"
+        db.parent.mkdir(parents=True, exist_ok=True)
+        c = sqlite3.connect(db)
+        c.execute("CREATE TABLE asset_snapshots (timestamp INTEGER)")
+        c.execute("INSERT INTO asset_snapshots VALUES (?)", (int((NOW.timestamp() - 120) * 1000),))
+        c.commit()
+        c.close()
+        drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
+        drops.mkdir(parents=True, exist_ok=True)
+        (drops / "d.json").write_text("{}", encoding="utf-8")
+        ages = self.rh.daemon_ages(self.dev_root, now=NOW)
+        self.assertAlmostEqual(ages["collector"], 120.0, places=1)
+        self.assertIsNotNone(ages["watcher"])
+        self.assertIsNone(ages["exporter"])                                                        # no log file in the fixture
+
+
+class RegimeHistoryDedupeTests(IngestFixture):
+    def test_re_ingesting_the_same_verdict_replaces_its_row(self):
+        from knowledge.ingest import lead_lag as ll
+        art = {"events": 7, "price_points": 100, "max_lag": 60, "sufficient": True, "reason": "", "best_lag_minutes": 38,
+               "correlation": -0.3, "n": 900, "interpretation": "x", "curve": [], "latency_minutes": 5.0,
+               "family": "macro", "subfamily": "crypto", "subfamily_from": "tags", "price_error": ""}
+        f = self.dev_root / "a.json"
+        f.write_text(json.dumps(art), encoding="utf-8")
+        at = datetime(2026, 9, 7, 2, 30, 34, tzinfo=timezone.utc)
+        ll.ingest_verdict(art, self.vault, self.dev_root, tier="2b", source="a.json", at=at)
+        ll.ingest_verdict(art, self.vault, self.dev_root, tier="2b", source="b.json", at=at)
+        meta, _ = fm.parse((self.vault / "wiki/regimes/btc_macro_regime.md").read_text(encoding="utf-8"))
+        rows = [r for r in meta["dev"]["history"] if r["page"].startswith("lead_lag_tier2b_macro_crypto_")]
+        self.assertEqual(len(rows), 1)
+        page = fm.parse((self.vault / "wiki/experiments" / (rows[0]["page"] + ".md")).read_text(encoding="utf-8"))[0]
+        self.assertEqual(page["dev"]["tests_run"], 1)                       # not inflated by the re-ingest
+        log1 = (self.vault / "log.md").read_text(encoding="utf-8")
+        ll.ingest_verdict(art, self.vault, self.dev_root, tier="2b", source="b.json", at=at)
+        self.assertEqual((self.vault / "log.md").read_text(encoding="utf-8"), log1)     # unchanged verdict, no log line
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

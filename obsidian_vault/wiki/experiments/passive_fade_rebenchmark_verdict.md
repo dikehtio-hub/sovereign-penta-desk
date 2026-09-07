@@ -13,7 +13,7 @@ tags:
 - rebenchmark
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T22:15:50Z'
+  at: '2026-09-07T03:24:48Z'
 status: draft
 sources:
 - id: artifact
@@ -103,6 +103,7 @@ dev:
     ratio_30m: 0.7895786288225686
     cluster_p: 0.0
     grade: INSUFFICIENT
+  data_gaps: []
 ---
 # Passive fade rebenchmark - verdict
 
@@ -161,6 +162,7 @@ Population `trade_sweep` - the registered population (registration names `trade_
 - rows in `cascade_excursions` at run: **38,016**; treatment rows for `trade_sweep`: **13,645**; matched control rows: 13,645
 - events span 2026-09-01T03:59:03.823000Z .. 2026-09-06T15:43:31.895000Z (5.49 days)
 - measurable at the decision horizon: 13,553
+- no known data gap inside this span
 - artifact written at **2026-09-06T19:44:26.500127Z** by `HyperLiquid.HL_Monarch.analytics.fade_rebenchmark` (source: the artifact's own `_artifact.written_at`); resamples 20,000, seed 7
 
 ## What follows from this

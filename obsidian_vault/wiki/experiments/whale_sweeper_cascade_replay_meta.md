@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T22:41:52Z'
+  at: '2026-09-07T03:34:31Z'
 status: stable
 sources:
 - id: registration
@@ -24,26 +24,26 @@ dev:
   - 8
   registered_utc: '2026-09-06T02:06:00+00:00'
   progress:
-    accumulated: 18782
+    accumulated: 19079
     target: 500
     unit: events
-    status: accumulating
-    measured_at: '2026-09-06T22:41:52Z'
+    status: ready
+    measured_at: '2026-09-07T03:34:31Z'
     gates:
       min_events:
-        value: 18782
+        value: 19079
         bar: 500
         pass: true
       min_coins:
-        value: 62
+        value: 65
         bar: 20
         pass: true
       max_single_coin_share:
-        value: 0.2008
+        value: 0.2
         bar: 0.2
-        pass: false
+        pass: true
       max_hhi:
-        value: 0.1336
+        value: 0.1319
         bar: 0.15
         pass: true
     population: pooled
@@ -51,6 +51,7 @@ dev:
       grade: INSUFFICIENT
       page: whale_sweeper_cascade_replay_verdict
       at: '2026-09-06T22:39:27.484923Z'
+    ready_since: '2026-09-07T03:34:31Z'
   parameters:
   - name: whale_sweeper_cascade_replay_sample_requirements_min_events
     value: 500
@@ -82,7 +83,7 @@ verified:
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
 > [!NOTE]
-> **ACCUMULATING** - 3/4 sample gates pass over population `pooled`. Failing: max_single_coin_share 0.2008 vs 0.2. Last evaluation 2026-09-06: **INSUFFICIENT** ([[whale_sweeper_cascade_replay_verdict]]) - an insufficient sample is never a verdict, so the question stays open.
+> **READY (since 2026-09-07)**: every sample gate passes (min_events 19079 vs 500; min_coins 65 vs 20; max_single_coin_share 0.2 vs 0.2; max_hhi 0.1319 vs 0.15) and no verdict page exists. Evaluate it under the registered bar or retire it; lint L11 warns once this has stood for 3 days.
 
 
 ## Registered utc

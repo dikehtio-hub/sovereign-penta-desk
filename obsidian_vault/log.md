@@ -6,6 +6,21 @@
 * **Ingest**: lead-lag Tier 2b verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2b_macro_fed-rates_20260907T0230Z]]; [[btc_macro_regime]] history now 4 row(s).
 * **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **polymarket-leads** -> [[lead_lag_tier2b_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
 * **Ingest**: work-chain digests: 75 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 1 page(s) -> [[events_register]].
+* **Ingest**: passive fade rebenchmark graded against its pre-registration: **INSUFFICIENT** (engine said `INSUFFICIENT`, agree); population `trade_sweep`, ratio_30m 0.7896, P 0.0000 -> [[passive_fade_rebenchmark_verdict]].
+* **Ingest**: lead-lag Tier 2 verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2_macro_fed-rates_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2 verdict (macro_crypto): **no-lead** -> [[lead_lag_tier2_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2b verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2b_macro_fed-rates_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **polymarket-leads** -> [[lead_lag_tier2b_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 4 Experiment page(s) written, 3 kept; [index](index.md) rebuilt.
+* **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **polymarket-leads** -> [[lead_lag_tier2b_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **polymarket-leads** -> [[lead_lag_tier2b_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2 verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2_macro_fed-rates_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2 verdict (macro_crypto): **no-lead** -> [[lead_lag_tier2_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2b verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2b_macro_fed-rates_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **polymarket-leads** -> [[lead_lag_tier2b_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
+* **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 2 Experiment page(s) written, 5 kept; [index](index.md) rebuilt.
+* **Ingest**: work-chain digests: 76 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
 
 ## 2026-09-06
 * **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T00:28:42Z): 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

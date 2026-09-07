@@ -16,7 +16,7 @@ generated:
 status: draft
 sources:
 - id: verdict-json
-  resource: cross_market/data/lead_lag_tier2_crypto_verdict.json
+  resource: cross_market/experiments/lead_lag_tier2_crypto_verdict.json
   title: cross_market.lead_lag --json output
   author: process:cross_market.lead_lag
 dev:

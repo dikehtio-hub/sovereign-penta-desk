@@ -11,7 +11,7 @@ tags:
 - pre-registered
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:28:49Z'
+  at: '2026-09-07T03:28:56Z'
 status: draft
 sources:
 - id: registration

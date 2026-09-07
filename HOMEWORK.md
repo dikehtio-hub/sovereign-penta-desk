@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 22:35 EDT (Tier 2 / 2b runs done; one disagreement is the finding).
+Last updated: 2026-09-06 23:55 EDT (Round 121: your five decisions executed; hardening staged; morning-of commands final).
 
 ---
 
@@ -17,18 +17,20 @@ Last updated: 2026-09-06 22:35 EDT (Tier 2 / 2b runs done; one disagreement is t
 - **If missed:** an underpayment penalty accrues from the deadline, not from April.
 
 ### 2026-09-16 (Wed) 13:58 EDT — FOMC drill. THE BIG ONE.
-- **Morning of the 16th, first:** `python -m knowledge.drills.fomc_rehearsal --online` (30 checks incl.
-  a live fetch of each token) and `python -m knowledge.drills.fomc_live_rehearsal` (60 s, scratch only).
-  Then at T-2: `python -m knowledge.query --drill-card fomc-2026-09-16`.
+- **Morning of the 16th, first:** `python -m knowledge.drills.fomc_rehearsal --online` (33 checks incl. a
+  live fetch of each token and the four daemons' streams) and `python -m knowledge.drills.fomc_live_rehearsal`
+  (60 s, scratch only). At T-2: `python -m knowledge.query --drill-card fomc-2026-09-16`.
+- **At 14:00, after you read the statement:** `python -m knowledge.drills.event_json --bps <number>`
+  (0 for a hold, 25 for a quarter-point hike, -25 for a cut). It writes `./event.json` correctly from that one
+  number and refuses to overwrite a wrong one unless you add `--force`. Then the survival curve, per the card.
   It prints the countdown, the rules with their FULL token ids, your standing forecast and
   the exact post-print commands ready to paste, in under 60 lines. It writes nothing, so it
   is safe to run inside the window as often as you like.
 - **Laptop ON and LOGGED IN at 13:58 EDT.** The task `Monarch_FOMC_Drill` fires
   at T-2 min and records 420 seconds of order-book depth on three Fed markets.
   It cannot run on a sleeping or logged-out machine.
-- **AC POWER REQUIRED (Battery Warning):** `Monarch_FOMC_Drill` has `DisallowStartIfOnBatteries: True`
-  and `StopIfGoingOnBatteries: True`. If the laptop is on battery at 13:58 EDT, the drill WILL NOT START,
-  and unplugging mid-recording stops it. Keep AC plugged in, or clear these flags in Task Scheduler.
+- **Power:** the battery flags were cleared on your word (Round 121), so the drill starts and keeps recording
+  on battery. Plugged in is still better; it is no longer required.
 - **At 14:00 the statement prints. A HUMAN must read the actual rate decision**
   and write `event.json`:
   `{"kind":"fed_rate","payload":{"change_bps":<int from the statement>},`
@@ -58,12 +60,6 @@ Last updated: 2026-09-06 22:35 EDT (Tier 2 / 2b runs done; one disagreement is t
       clock records the print as history. Two commands in an elevated PowerShell:
       `Start-Service W32Time; w32tm /resync` - then `python -m knowledge.drills.fomc_rehearsal` should
       show that WARN gone. I did not start it: starting a service is yours to do.
-- [ ] **Clear the FOMC drill's battery flags, or commit to staying on AC.** The condition
-      itself is described under the 2026-09-16 entry above. This line is the DECISION:
-      leave the flags and rely on remembering the charger, or have me clear them. Clearing
-      is small and testable. Either is fine; drifting into the 16th without choosing is not.
-      `python -m knowledge.drills.fomc_rehearsal` (29 checks now) reports this as a WARN every time you
-      run it, and will report PASS the moment the flags are cleared.
 
 ---
 
@@ -107,6 +103,13 @@ Last updated: 2026-09-06 22:35 EDT (Tier 2 / 2b runs done; one disagreement is t
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 23:15 — **Your five Round 121 decisions, executed** ("proceed"): battery flags cleared on
+  the drill task (only those two fields changed); the four stale one-off tasks deleted; the four
+  engineering items built (stream health in the pre-flight, the event.json writer, the data-gap page
+  and lint rule, the basis-window audit - nothing was measured from stale prices); the collector
+  hardening staged on branch `feat/collector-hardening` (deploys only at a restart you authorise); the
+  lead-lag artifacts moved beside their registrations.
 
 - 2026-09-06 22:25 — **Tier 2b 24 h gate CLOSED** (286 stamps, 24.0 h, largest gap 5.1 min, 0 breaks)
   and, on your "lets do what we can", **the Tier 2 and Tier 2b runs were executed as registered**.
