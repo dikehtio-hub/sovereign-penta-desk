@@ -5,6 +5,21 @@ the detail.
 
 ## Status
 
+Round 118 complete (2026-09-06): A BAD TOKEN IS NOW AN ERROR ON THE PAGE, NOT A MISSING PAGE; SCRATCH
+KEEPS THREE RUNS; THE SCHEDULER PROBE IS WRITTEN FOR THE OPERATOR. D1 (R116-1.D, DEVIATION): the directive
+said reject a rules registration whose market ids are not all digits. A refused registration is an absent
+page - the silence pattern of Rounds 108-116 - so the adapter compiles the page anyway, records the
+offenders under dev.invalid_tokens, and new lint C6 makes it an ERROR naming the token. The live rehearsal
+already refuses to record on the same condition. The fixture's four TOK_* tokens (27 uses) became 76-digit
+numerics, which is what let this be tested at all. D2 (R116-1.E): fomc_live_rehearsal prunes default
+run dirs under cross_market/data/rehearsals/ to the newest 3; probe_* and any --scratch are never touched;
+reported as a check. D3 (R116-1.F): cross_market/scripts/probe_scheduled_task.ps1 registers a one-off
+Monarch_Rehearsal_Probe with the drill task's shape (current user, interactive, default battery flags),
+fires in 2 min running the TRACKED batch with 20 s and a probe_<stamp> scratch books dir, waits, reports
+LastTaskResult and stamp count (~60), unregisters itself; -WhatIf registers nothing. Parsed clean and
+-WhatIf-run; the REAL run is the operator's (checklist). Tests: knowledge 342. Lint CLEAN. NO DAEMON
+RESTARTED.
+
 Round 117 complete (2026-09-06, SELF-DIRECTED addendum, stopped at the authorisation boundary): the
 pre-flight gained `--online` - one read-only fetch of each registered token's live book through
 latency_sniper.default_fetch (the browser User-Agent the CLOB requires), PASS only when the book echoes
@@ -1327,6 +1342,23 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 118 findings
+
+### Reject vs mark: the same argument as parking, as INSUFFICIENT, as the hub
+
+- Every silent failure this project has caught had the shape 'the thing looked fine because it was not
+  there'. A registration refused at compile time is not there. So a non-digit token compiles, is marked
+  (`dev.invalid_tokens`), and lint C6 reports an ERROR that names it - the page and the report both say
+  what is wrong. The drill-time guard stays too: the live rehearsal refuses to record.
+- The fixture refactor was the real cost, and it was worth it: `TOK_NOCHANGE` had passed through 15
+  assertions for many rounds while being a token the recorder could never load back.
+
+### The probe is the operator's to run, by construction
+
+- Registering even a temporary scheduled task is a system change on the operator's list. The script is
+  written so that `-WhatIf` proves its wiring without registering anything, and so that a failure is
+  informative: a probe that never runs on battery is the battery-flag decision made visible.
 
 ## Round 116 findings
 

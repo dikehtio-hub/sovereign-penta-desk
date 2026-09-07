@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import sys
 from dataclasses import asdict
@@ -45,6 +46,8 @@ from cross_market.latency_sniper import (Event, default_fetch, load_rules, load_
                                          record_loop, replay_economics, survival_curve)
 
 SCRATCH_ROOT = Path("cross_market") / "data" / "rehearsals"        # git-ignored
+KEEP_RUNS = 3                    # Ruling R116-1.E: the newest three default runs stay; older ones are pruned
+STAMP_DIR_RE = re.compile(r"^\d{8}T\d{6}Z$")                       # a default run dir; probe_* and anything else is left alone
 MIN_STAMP_YIELD = 0.8            # stamps / (polls x tokens) below this is a recorder problem, not weather
 MAX_GAP_FACTOR = 3.0             # a gap over 3 intervals between a token's stamps is a hole in the record
 SYNTHETIC_SOURCE = "REHEARSAL {at} - synthetic event, NOT a Federal Reserve statement; scratch only"
@@ -60,6 +63,23 @@ def snapshot_dir(directory: Path) -> str:
             h.update(p.relative_to(directory).as_posix().encode())
             h.update(str(p.stat().st_size).encode())
     return h.hexdigest()
+
+
+def prune_scratch(root: Path, keep: int = KEEP_RUNS) -> list[str]:
+    """Remove all but the newest `keep` stamped run directories under root (Ruling R116-1.E).
+
+    Only directories shaped like a default run stamp are candidates; probe_* directories, a caller's
+    --scratch, and anything else under the root are never touched.
+    """
+    if not root.is_dir():
+        return []
+    runs = sorted(p for p in root.iterdir() if p.is_dir() and STAMP_DIR_RE.match(p.name))
+    doomed = runs[:-keep] if keep > 0 else runs
+    removed: list[str] = []
+    for p in doomed:
+        shutil.rmtree(p, ignore_errors=True)
+        removed.append(p.name)
+    return removed
 
 
 def synthetic_event(anchor: datetime) -> dict[str, Any]:
@@ -128,6 +148,7 @@ def run_live(vault: Path, dev_root: Path, event_name: str, *, seconds: float, in
         return out, summary
 
     # scratch
+    default_scratch = scratch is None
     scratch = scratch or (dev_root / SCRATCH_ROOT / now.strftime("%Y%m%dT%H%M%SZ"))
     books = scratch / "books"
     svault = scratch / "vault"
@@ -210,6 +231,13 @@ def run_live(vault: Path, dev_root: Path, event_name: str, *, seconds: float, in
     ok("real books dir untouched", snapshot_dir(real_books) == before_books, f"{real_books} unchanged ({before_books[:12]})")
     ok("repo-root event.json untouched", root_event.exists() == root_event_before,
        f"{root_event} {'exists' if root_event_before else 'absent'} before and after")
+    if default_scratch:
+        root = dev_root / SCRATCH_ROOT
+        removed = prune_scratch(root, KEEP_RUNS)
+        kept = sorted(p.name for p in root.iterdir() if p.is_dir() and STAMP_DIR_RE.match(p.name))
+        out.append(Check("scratch pruned", "PASS", f"kept {len(kept)} run(s) {kept}; removed {removed or 'none'} "
+                         f"(Ruling R116-1.E: keep {KEEP_RUNS})"))
+        summary["pruned"] = removed
     return out, summary
 
 

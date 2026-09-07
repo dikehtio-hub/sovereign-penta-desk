@@ -681,11 +681,11 @@ RULES_JSON = {
     "reading": "All markets are neg_risk: Ruling R4.",
     "not_found_in_drop": ["FOMC 2026-09-17: cut 25 bps"],
     "rules": [
-        {"label": "FOMC 2026-09-16: no change", "market": "TOK_NOCHANGE", "kind": "fed_rate", "field": "change_bps", "op": "==",
+        {"label": "FOMC 2026-09-16: no change", "market": "7000000000000000000000000000000000000000000000000000000000000000000000000001", "kind": "fed_rate", "field": "change_bps", "op": "==",
          "value": 0, "outcome_if_true": "YES", "yes_price_at_registration": 0.5, "neg_risk": True,
          "question": "Will there be no change in Fed interest rates after the September 2026 meeting?",
          "market_slug": "will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615"},
-        {"label": "FOMC 2026-09-16: hike 25 bps", "market": "TOK_HIKE25", "kind": "fed_rate", "field": "change_bps", "op": "==",
+        {"label": "FOMC 2026-09-16: hike 25 bps", "market": "7000000000000000000000000000000000000000000000000000000000000000000000000002", "kind": "fed_rate", "field": "change_bps", "op": "==",
          "value": 25, "outcome_if_true": "YES", "yes_price_at_registration": 0.5, "neg_risk": True,
          "question": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
          "market_slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649"},
@@ -713,7 +713,7 @@ CURVE_JSON = {
     "anchor": "2026-09-16T18:00:00+00:00", "release_utc": "2026-09-16T18:00:00+00:00", "anchor_minus_release_s": 0.0,
     "event": {"kind": "fed_rate", "payload": {"change_bps": 0}, "confidence": 0.995}, "step_seconds": 1.0, "stamps": 12,
     "markets": [
-        {"market": "TOK_NOCHANGE", "rule": "FOMC 2026-09-16: no change", "outcome": "YES", "side": "BUY_YES", "stamps": 6,
+        {"market": "7000000000000000000000000000000000000000000000000000000000000000000000000001", "rule": "FOMC 2026-09-16: no change", "outcome": "YES", "side": "BUY_YES", "stamps": 6,
          "neg_risk": True, "deferred": None,
          "series": [
              {"delta_s": -2.0, "observed_at": "2026-09-16T17:59:58+00:00", "fillable_shares": 1000, "fillable_notional": 500.0, "vwap": 0.5, "clearing_levels": 4, "best_price": 0.5, "expected_profit": 490.0, "changed": False, "stamp": "a"},
@@ -725,7 +725,7 @@ CURVE_JSON = {
          ],
          "summary": {"baseline_notional": 500.0, "baseline_delta_s": -1.0, "pre_print_stamps": 2, "post_print_stamps": 4,
                      "first_change_s": 1.0, "half_s": 1.0, "tenth_s": 2.0, "gone_s": 3.0, "max_post_notional": 500.0, "notional_seconds": 785.0}},
-        {"market": "TOK_HIKE25", "rule": "FOMC 2026-09-16: hike 25 bps", "outcome": "NO", "side": "BUY_NO", "stamps": 6,
+        {"market": "7000000000000000000000000000000000000000000000000000000000000000000000000002", "rule": "FOMC 2026-09-16: hike 25 bps", "outcome": "NO", "side": "BUY_NO", "stamps": 6,
          "neg_risk": True, "deferred": "neg_risk market: NO side deferred to Phase 2 (Ruling R4)", "series": [], "summary": None},
     ],
 }
@@ -745,16 +745,16 @@ class IngestFixture(TempVault):
         drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
         drops.mkdir(parents=True)
         (drops / "polymarket_macro_20260905T000000_000000Z.json").write_text(json.dumps([
-            {"token_id": "TOK_NOCHANGE", "sport": "FED-RATES", "question": "Will there be no change in Fed interest rates after the September 2026 meeting?",
+            {"token_id": "7000000000000000000000000000000000000000000000000000000000000000000000000001", "sport": "FED-RATES", "question": "Will there be no change in Fed interest rates after the September 2026 meeting?",
              "market_slug": "will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615", "condition_id": "0xabc",
              "event_slug": "fed-decision-in-september-2026", "event_title": "Fed decision in September?", "fetched_at": "2026-09-05T19:25:36Z",
              "yes_price": 0.5, "yes_bid": 0.49},
-            {"token_id": "TOK_HIKE25", "sport": "FED-RATES", "question": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
+            {"token_id": "7000000000000000000000000000000000000000000000000000000000000000000000000002", "sport": "FED-RATES", "question": "Will the Fed increase interest rates by 25 bps after the September 2026 meeting?",
              "market_slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649", "condition_id": "0xdef",
              "fetched_at": "2026-09-05T19:25:36Z", "yes_price": 0.5},
-            {"token_id": "TOK_CUTS2026", "sport": "FED-RATES", "question": "Will no Fed rate cuts happen in 2026?",
+            {"token_id": "7000000000000000000000000000000000000000000000000000000000000000000000000003", "sport": "FED-RATES", "question": "Will no Fed rate cuts happen in 2026?",
              "market_slug": "will-no-fed-rate-cuts-happen-in-2026", "condition_id": "0x123", "fetched_at": "2026-09-05T19:25:36Z", "yes_price": 0.93},
-            {"token_id": "TOK_BTC78K", "sport": "CRYPTO", "question": "Will the price of Bitcoin be above $78,000 on September 6?",
+            {"token_id": "7000000000000000000000000000000000000000000000000000000000000000000000000004", "sport": "CRYPTO", "question": "Will the price of Bitcoin be above $78,000 on September 6?",
              "market_slug": "bitcoin-above-78k-on-september-6-2026", "fetched_at": "2026-09-05T19:25:36Z", "yes_price": 0.98},
         ]), encoding="utf-8")
 
@@ -768,7 +768,7 @@ class ExperimentsIngestTests(IngestFixture):
         self.assertEqual(meta["type"], "Experiment")
         self.assertEqual(meta["status"], "draft")
         self.assertEqual(meta["dev"]["window"], {"start": "2026-09-16T17:58:00Z", "end": "2026-09-16T18:05:00Z"})
-        self.assertEqual(meta["dev"]["tokens"], ["TOK_NOCHANGE", "TOK_HIKE25"])
+        self.assertEqual(meta["dev"]["tokens"], ["7000000000000000000000000000000000000000000000000000000000000000000000000001", "7000000000000000000000000000000000000000000000000000000000000000000000000002"])
         self.assertEqual(meta["dev"]["not_found_in_drop"], ["FOMC 2026-09-17: cut 25 bps"])
         self.assertEqual(meta["sources"][0]["resource"], "cross_market/experiments/fomc_2026-09-16.rules.json")
         self.assertIn("| FOMC 2026-09-16: no change | `change_bps == 0` | YES |", body)
@@ -800,10 +800,10 @@ class ExperimentsIngestTests(IngestFixture):
         with self.assertRaises(pages.WriteRefused):
             ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=inside, force=True)
         drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
-        (drops / "polymarket_macro_20260906T000000_000000Z.json").write_text(json.dumps([{"token_id": "TOK_NOCHANGE"}]), encoding="utf-8")
+        (drops / "polymarket_macro_20260906T000000_000000Z.json").write_text(json.dumps([{"token_id": "7000000000000000000000000000000000000000000000000000000000000000000000000001"}]), encoding="utf-8")
         c2 = [x for x in lint.lint_vault(self.vault, self.dev_root, now=NOW) if x.code == "C2"]
         self.assertEqual(len(c2), 1)
-        self.assertIn("TOK_HIKE25", c2[0].message)
+        self.assertIn("7000000000000000000000000000000000000000000000000000000000000000000000000002"[:12], c2[0].message)
 
     def test_experiments_skip_existing_unless_force_and_cli_guards(self):
         first = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
@@ -921,14 +921,14 @@ class ClobIngestTests(IngestFixture):
                                                                 source="curve.json", at=NOW)
         self.assertEqual(sorted(p.path.name for p in profiles),
                          ["fomc_2026-09-16__FOMC_2026_09_16_hike_25_bps.md", "fomc_2026-09-16__FOMC_2026_09_16_no_change.md"])
-        nc = next(p for p in profiles if p.meta["dev"]["token_id"] == "TOK_NOCHANGE")
+        nc = next(p for p in profiles if p.meta["dev"]["token_id"] == "7000000000000000000000000000000000000000000000000000000000000000000000000001")
         self.assertEqual(nc.meta["type"], "Reaction Profile")
         self.assertEqual(nc.meta["dev"]["summary"]["half_s"], 1.0)
         self.assertEqual(nc.meta["dev"]["summary"]["notional_seconds"], 785.0)
         self.assertIn("| half of baseline gone by | 1 s |", nc.body)
         self.assertIn("| +1 | $240 | 400 | 0.6 | 2 | yes |", nc.body)   # checkpoint row
         self.assertNotIn("17:59:58", nc.body)                             # the per-second series is not copied
-        deferred = next(p for p in profiles if p.meta["dev"]["token_id"] == "TOK_HIKE25")
+        deferred = next(p for p in profiles if p.meta["dev"]["token_id"] == "7000000000000000000000000000000000000000000000000000000000000000000000000002")
         self.assertIn("NO side deferred", deferred.body)
         self.assertIsNone(deferred.meta["dev"]["summary"]["half_s"])
         self.assertEqual(event.meta["type"], "Event")
@@ -1206,7 +1206,7 @@ class MarketsTests(IngestFixture):
     def test_market_pages_from_rules_experiments_and_family(self):
         ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW)
         report = ingest_mk.ingest_markets(self.vault, self.dev_root, at=NOW)
-        self.assertEqual(report.tokens, 3)  # two rule tokens + TOK_CUTS2026 (FED-RATES); the CRYPTO record is not in the family
+        self.assertEqual(report.tokens, 3)  # two rule tokens + 7000000000000000000000000000000000000000000000000000000000000000000000000003 (FED-RATES); the CRYPTO record is not in the family
         names = sorted(Path(r).name for r in report.written)
         self.assertEqual(names, ["will-no-fed-rate-cuts-happen-in-2026.md",
                                  "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649.md",
@@ -1214,9 +1214,9 @@ class MarketsTests(IngestFixture):
         m, body = fm.parse((self.vault / "wiki/markets/will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615.md")
                            .read_text(encoding="utf-8"))
         self.assertEqual(m["type"], "Market")
-        self.assertEqual(m["resource"], "polymarket:token:TOK_NOCHANGE")
+        self.assertEqual(m["resource"], "polymarket:token:7000000000000000000000000000000000000000000000000000000000000000000000000001")
         self.assertEqual((m["dev"]["token_id"], m["dev"]["family"], m["dev"]["neg_risk"], m["dev"]["rule_label"]),
-                         ("TOK_NOCHANGE", "FED-RATES", True, "FOMC 2026-09-16: no change"))
+                         ("7000000000000000000000000000000000000000000000000000000000000000000000000001", "FED-RATES", True, "FOMC 2026-09-16: no change"))
         self.assertEqual(m["dev"]["first_seen"], "2026-09-05T19:25:36Z")
         self.assertNotIn("yes_price", json.dumps(m))  # no copied prices
         self.assertNotIn("0.5", body.split("## Identity")[1].split("## Bound by")[0])
@@ -1230,10 +1230,10 @@ class MarketsTests(IngestFixture):
         ingest_mk.ingest_markets(self.vault, self.dev_root, at=NOW)
         drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
         (drops / "polymarket_macro_20260906T000000_000000Z.json").write_text(json.dumps([
-            {"token_id": "TOK_NOCHANGE", "sport": "FED-RATES"}, {"token_id": "TOK_HIKE25", "sport": "FED-RATES"}]), encoding="utf-8")
+            {"token_id": "7000000000000000000000000000000000000000000000000000000000000000000000000001", "sport": "FED-RATES"}, {"token_id": "7000000000000000000000000000000000000000000000000000000000000000000000000002", "sport": "FED-RATES"}]), encoding="utf-8")
         before = [x for x in lint.lint_vault(self.vault, self.dev_root, now=NOW) if x.code == "C2"]
         self.assertEqual(len(before), 1)
-        self.assertIn("TOK_CUTS2026", before[0].message)
+        self.assertIn("7000000000000000000000000000000000000000000000000000000000000000000000000003"[:12], before[0].message)
         out = io.StringIO()
         code = lint.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root), "--fix-safe"], out=out)
         self.assertEqual(code, EXIT_OK)  # after the fix the vault is clean again
@@ -2348,7 +2348,7 @@ class MarketWindowTests(IngestFixture):
         """The naive union writes a placeholder page at a NEW slug and orphans the good one."""
         self._ingest(NOW)
         page = next(p for p in pages.load_pages(self.vault) if p.type == "Market"
-                    and (p.meta.get("dev") or {}).get("token_id") == "TOK_NOCHANGE")
+                    and (p.meta.get("dev") or {}).get("token_id") == "7000000000000000000000000000000000000000000000000000000000000000000000000001")
         before_path, before_title = page.path, page.meta["title"]
         self.assertNotIn("Polymarket token", before_title)
         # every drop replaced by one that no longer carries this token
@@ -2361,12 +2361,12 @@ class MarketWindowTests(IngestFixture):
         self.assertIsNotNone(after, "the page was orphaned at its old path")
         self.assertEqual(after.meta["title"], before_title)          # not degraded to a placeholder
         self.assertEqual(len([p for p in pages.load_pages(self.vault) if p.type == "Market"
-                              and (p.meta.get("dev") or {}).get("token_id") == "TOK_NOCHANGE"]), 1)
+                              and (p.meta.get("dev") or {}).get("token_id") == "7000000000000000000000000000000000000000000000000000000000000000000000000001"]), 1)
 
     def test_first_seen_is_the_first_sighting_not_the_latest(self):
         self._ingest(NOW)
         path = next(p.path for p in pages.load_pages(self.vault) if p.type == "Market"
-                    and (p.meta.get("dev") or {}).get("token_id") == "TOK_NOCHANGE")
+                    and (p.meta.get("dev") or {}).get("token_id") == "7000000000000000000000000000000000000000000000000000000000000000000000000001")
         first = pages.load_page(path).meta["dev"]["first_seen"]
         drops = self.dev_root / "Sports_Desk" / "data" / "polymarket_drops"
         newest = json.loads(sorted(drops.glob("*.json"))[-1].read_text(encoding="utf-8"))
@@ -2624,7 +2624,7 @@ class StructuredRulesTests(IngestFixture):
         self.assertEqual(rules[0]["label"], "FOMC 2026-09-16: no change")
         self.assertEqual(rules[0]["condition"], "change_bps == 0")
         self.assertEqual(rules[0]["outcome"], "YES")
-        self.assertEqual(rules[0]["market"], "TOK_NOCHANGE")         # whole id, not truncated
+        self.assertEqual(rules[0]["market"], "7000000000000000000000000000000000000000000000000000000000000000000000000001")         # whole id, not truncated
         # the rendered table still truncates for readability - that is why the card stopped using it
         self.assertIn("|", body)
 
@@ -2632,8 +2632,8 @@ class StructuredRulesTests(IngestFixture):
 class CardErgonomicsTests(QueryCardTests):
     def test_the_card_shows_whole_token_ids_from_dev_rules(self):
         _, text = self.card("--drill-card", self.event)
-        self.assertIn("token TOK_NOCHANGE", text)
-        self.assertNotIn("TOK_NOCHANGE\u2026", text)                    # never the truncated form
+        self.assertIn("token 7000000000000000000000000000000000000000000000000000000000000000000000000001", text)
+        self.assertNotIn("7000000000000000000000000000000000000000000000000000000000000000000000000001\u2026", text)                    # never the truncated form
         self.assertNotIn("legacy page", text)
 
     def test_a_legacy_page_without_dev_rules_still_renders(self):
@@ -3814,6 +3814,49 @@ class FomcLiveRehearsalTests(QueryCardTests):
         self.assertEqual(code, self.live.EXIT_FINDINGS)
         self.assertIn("[FAIL] pre-flight", out.getvalue())
         self.assertEqual(self.live.hash_vault(self.vault), before)
+
+
+
+# --------------------------------------------------------------------------------------
+# Round 118: token shape at registration (compile + lint C6), scratch pruning
+# --------------------------------------------------------------------------------------
+
+class TokenShapeTests(QueryCardTests):
+    RULES_PAGE = "wiki/experiments/fomc_2026-09-16_rules.md"
+
+    def test_a_non_digit_market_id_compiles_with_a_c6_error_not_a_refusal(self):
+        raw_path = self.exp_dir / "fomc_2026-09-16.rules.json"
+        raw = json.loads(raw_path.read_text(encoding="utf-8"))
+        raw["rules"][0]["market"] = "TOK_BAD"
+        raw_path.write_text(json.dumps(raw), encoding="utf-8")
+        report = ingest_exp.ingest_experiments(self.exp_dir, self.vault, self.dev_root, at=NOW, force=True)
+        self.assertNotIn("fomc_2026-09-16.rules.json", report.ignored)          # compiled, not refused
+        meta, _ = fm.parse((self.vault / self.RULES_PAGE).read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["invalid_tokens"], ["TOK_BAD"])
+        c6 = [f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "C6"]
+        self.assertEqual([(f.severity, f.path) for f in c6], [("error", self.RULES_PAGE)])
+        self.assertIn("TOK_BAD", c6[0].message)
+
+    def test_digit_ids_carry_no_invalid_tokens_and_no_c6(self):
+        meta, _ = fm.parse((self.vault / self.RULES_PAGE).read_text(encoding="utf-8"))
+        self.assertNotIn("invalid_tokens", meta["dev"])
+        self.assertTrue(all(t.isdigit() for t in meta["dev"]["tokens"]))       # the fixture is realistic now
+        self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "C6"], [])
+
+
+class ScratchPruningTests(QueryCardTests):
+    def test_prune_keeps_the_newest_three_stamped_dirs_only(self):
+        from knowledge.drills import fomc_live_rehearsal as live
+        root = self.dev_root / live.SCRATCH_ROOT
+        for s in ("20260901T000000Z", "20260902T000000Z", "20260903T000000Z", "20260904T000000Z",
+                  "probe_20260905T000000Z", "notes"):
+            (root / s).mkdir(parents=True)
+            (root / s / "x.txt").write_text("x", encoding="utf-8")
+        self.assertEqual(live.prune_scratch(root, keep=3), ["20260901T000000Z"])
+        self.assertEqual(sorted(p.name for p in root.iterdir()),
+                         ["20260902T000000Z", "20260903T000000Z", "20260904T000000Z", "notes", "probe_20260905T000000Z"])
+        self.assertEqual(live.prune_scratch(root, keep=3), [])                  # idempotent
+        self.assertEqual(live.prune_scratch(self.dev_root / "nowhere", keep=3), [])
 
 
 if __name__ == "__main__":  # pragma: no cover

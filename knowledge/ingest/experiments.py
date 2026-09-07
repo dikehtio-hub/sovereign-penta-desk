@@ -205,6 +205,13 @@ def compile_rules_registration(data: dict[str, Any], path: Path, vault: Path, de
     tokens = [str(r["market"]) for r in rules if isinstance(r, dict) and r.get("market")]
     if tokens:
         dev["tokens"] = tokens
+        bad = [t for t in tokens if not t.isdigit()]
+        if bad:
+            # Round 118 (Ruling R116-1.D): latency_sniper's stamp filename is clob_<token>_<stamp>Z.json and its
+            # parser takes the token as [^_]+, so a market id that is not all digits records fine and loads back
+            # as NOTHING. The page is still compiled - a refused registration would be invisible, which is the
+            # silence pattern this project keeps catching - and lint C6 makes it an ERROR that names the token.
+            dev["invalid_tokens"] = bad
     if isinstance(nf, list) and nf:
         dev["not_found_in_drop"] = [str(x) for x in nf]
     meta = make_meta("Experiment", f"Experiment: {name}", first_sentence(str(data.get("status") or name)),

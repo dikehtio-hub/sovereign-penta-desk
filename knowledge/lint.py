@@ -31,6 +31,9 @@ WHAT EACH CHECK CATCHES (WIKI_SCHEMA.md section 7):
   C5  a page edited inside its own `dev.window`: `generated.at` inside the
       window is an error (the agent stamped it there); only the file mtime
       inside the window is a warning (a checkout can do that) - ruling 3.
+  C6  a market token that is not all digits (Round 118, Ruling R116-1.D):
+      the recorder's stamp filename splits on `_` after the token, so such
+      a token records and loads back as nothing. An error, named token.
   L6  typed relations (Round 100): a `supersedes` target must exist and be
       deprecated, and chains must be acyclic; `contradicts` needs a
       `resolved_by` relation to an existing Ruling page; `measured_by` must
@@ -722,6 +725,23 @@ def check_c3(docs: list[Document], vault: Path) -> list[Finding]:
     return out
 
 
+def check_c6(docs: list[Document], vault: Path) -> list[Finding]:
+    """C6 (Round 118, Ruling R116-1.D): a rules registration whose market ids are not all digits.
+
+    The experiments adapter compiles the page anyway and records the offenders under `dev.invalid_tokens`;
+    this turns that into an ERROR naming them, so the defect is on the page and in the lint report rather
+    than in the absence of a page. The live rehearsal refuses to record on the same condition.
+    """
+    out: list[Finding] = []
+    for d in docs:
+        bad = (_dev(d) or {}).get("invalid_tokens")
+        if isinstance(bad, list) and bad:
+            out.append(Finding("C6", "error", _rel(d.path, vault),
+                               f"{len(bad)} market token(s) not all digits ({', '.join(str(b)[:40] for b in bad[:3])}): "
+                               "latency_sniper stamps for these would not load back (the stamp filename splits on '_')"))
+    return out
+
+
 def check_c5(docs: list[Document], vault: Path) -> list[Finding]:
     out: list[Finding] = []
     for d in docs:
@@ -850,6 +870,7 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     findings += check_c2(docs, vault, drops)
     findings += check_c3(docs, vault)
     findings += check_c5(docs, vault)
+    findings += check_c6(docs, vault)
     order = {"error": 0, "warning": 1}
     findings.sort(key=lambda f: (order.get(f.severity, 9), f.code, f.path))
     return findings

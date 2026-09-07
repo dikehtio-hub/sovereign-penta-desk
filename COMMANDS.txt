@@ -2360,6 +2360,21 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 118 - TOKEN SHAPE AT REGISTRATION (C6), SCRATCH PRUNING, SCHEDULER PROBE (operator-run)
+     python -m knowledge.lint          # now also reports C6
+         C6 (Ruling R116-1.D): a rules registration whose market ids are not all digits compiles, carries
+         dev.invalid_tokens, and is an ERROR naming the token - the recorder's stamp filename splits on "_"
+         after the token, so such a token records fine and loads back as nothing. Not a refusal: an absent
+         page is the silence pattern. The live rehearsal refuses to record on the same condition.
+     python -m knowledge.drills.fomc_live_rehearsal
+         Default runs under cross_market/data/rehearsals/ are pruned to the newest 3 at the end of each run
+         (Ruling R116-1.E); probe_* dirs and an explicit --scratch are never touched; reported as a check.
+     powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1 [-WhatIf] [-Seconds 20] [-LeadMinutes 2]
+         OPERATOR-RUN. Registers Monarch_Rehearsal_Probe (drill task's shape: current user, interactive, default
+         battery flags), fires in 2 min running the tracked batch with 20 s into rehearsals\probe_<stamp>\books,
+         waits, reports LastTaskResult + stamps (~60), unregisters itself. -WhatIf registers nothing. Proves the
+         one link no rehearsal can: Task Scheduler -> .bat -> latency_sniper. Never touches Monarch_FOMC_Drill.
+
      ROUND 117 (self-directed addendum) - PRE-FLIGHT --online
      python -m knowledge.drills.fomc_rehearsal --online          (the morning-of command for Sep 16)
          Adds one check: each registered token fetched live through latency_sniper.default_fetch (read-only;

@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 19:40 EDT (Round 117 addendum; pre-flight --online; stopped at the authorisation boundary).
+Last updated: 2026-09-06 20:15 EDT (Round 118; C6, scratch pruning, scheduler probe written for you).
 
 ---
 
@@ -55,8 +55,13 @@ Last updated: 2026-09-06 19:40 EDT (Round 117 addendum; pre-flight --online; sto
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Rounds 116-117 handoff prompt to Antigravity.** (Both rounds were self-directed on
-      your "proceed on your own"; Antigravity has not seen either.)
+- [ ] **Send the Round 118 handoff prompt to Antigravity.**
+- [ ] **Run the scheduler probe** (any time before the 16th, logged in, on AC, ~3 minutes):
+      `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`
+      It registers a temporary task that fires in 2 minutes and runs the drill's batch for 20 s into
+      a scratch folder, then removes itself. PROBE OK means Task Scheduler -> batch -> recorder works
+      on this machine; PROBE FAILED with 'never ran' on battery is the battery-flag decision showing
+      itself. Add `-WhatIf` first if you want to see what it would do without doing it.
 - [ ] **Start the Windows Time service.** The pre-flight found W32Time STOPPED. The clock is only
       +0.37 s off today, but nothing corrects it between now and the 16th, and a scheduler on a slow
       clock records the print as history. Two commands in an elevated PowerShell:
