@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 21:15 EDT (Round 119; collector restarted after a 9 h snapshot outage).
+Last updated: 2026-09-06 22:26 EDT (Tier 2b gate closed; Tier 2b run awaits a go).
 
 ---
 
@@ -41,15 +41,6 @@ Last updated: 2026-09-06 21:15 EDT (Round 119; collector restarted after a 9 h s
   against the event payload once the drill data lands.
 - **If missed:** the next FOMC is Oct 27-28. Ten weeks of pipeline work sits idle
   until then, and the forecast never scores.
-
-### 2026-09-06 (Sun) ~22:20 EDT — Tier 2b gate (soft) — TODAY
-- Needs 24 unbroken hours of *tagged* stamps. The clock started at the 2026-09-05
-  22:20 EDT watcher restart, so it closes ~22:20 tonight.
-- **Verified 2026-09-06 04:00 EDT**: 30.3 h of unbroken tagged stamps, largest gap
-  12.2 min against a 60 min break threshold. Sleep is off (idle standby and
-  hibernate both 0); no `Kernel-Power` ID 42 since 2026-09-04. On track.
-- Just leave the laptop on. Closing the lid is the one path not ruled out.
-- **If missed:** nothing breaks; the clock restarts from the next boot.
 
 ---
 
@@ -116,6 +107,11 @@ Last updated: 2026-09-06 21:15 EDT (Round 119; collector restarted after a 9 h s
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 22:25 — **Tier 2b 24 h gate CLOSED**: 286 tagged stamps over 24.0 h, largest gap 5.1 min,
+  0 breaks. `lead_lag --check-data` says READY. The Tier 2b run itself (registered
+  `lead_lag_tier2b`, read-only over the recorded stamps, compiles a verdict page) is the next step;
+  it runs on Antigravity's or your word.
 
 - 2026-09-06 21:04 — **Collector restarted on your word** (Round 119). It had written no price
   snapshot since 11:46 EDT: a coin newly listed on the exchange (`para:CIFR`) had no row in the
