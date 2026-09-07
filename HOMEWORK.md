@@ -20,8 +20,11 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       every ~17 min. Set to Automatic, started, and force-synced: now Source `time.windows.com`, last sync
       01:12:54. Minor watch: if the churner stops it again the clock still holds; re-run the resync only if a
       pre-flight ever shows a large offset.
-- [ ] **Two yes/no decisions I am waiting on:** (a) install `uvicorn` and `hyperliquid-python-sdk` for Desk 4;
-      (b) name a deploy window for the collector hardening (see 09-08 below for my recommendation).
+- [x] ~~**Desk 4 packages**~~ - you said yes (2026-09-07), but nothing to install: both `uvicorn` and
+      `hyperliquid-python-sdk` (0.24.0) are ALREADY in Desk 4's venv (the other agent installed them). The four
+      formerly-skipped modules now run and pass (23 tests); the full Desk 4 suite is 180 passed, 0 skipped.
+- [ ] **One decision left:** name a deploy window for the collector hardening (see 09-08 below; recommended
+      Tue/Wed evening).
 - [ ] **Keep the laptop awake and collecting from now through ~22:22 EDT tonight (Mon 09-07)** - run 2 of 3.
       Antigravity's R122-1.B fixes run 2 as the DISJOINT window starting 2026-09-07T02:22:00Z, which reaches 24 h
       at ~22:22 tonight. Its start (01:21Z) is after the collector came back (01:05Z), so its prices are clean.
@@ -144,16 +147,13 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       the vault; nothing real is written). It ran clean on Sep 6 (Round 116). If any line
       says FAIL, send me the output. It also tells you, in advance, that a hold produces
       one curve and two deferrals.
-- [ ] **Decide on Desk 4's missing packages.** fastapi is installed (Round 113, after a
-      clean dry run). The webhook path is STILL untested: `main.py` imports the
-      Hyperliquid adapter at module level, so `test_webhook_server`,
-      `test_hyperliquid_adapter` and `test_multivenue_execution` all skip until
-      `pip install hyperliquid-python-sdk` (dry run: also eth-utils 5.3.1 and msgpack
-      1.2.2 - new crypto-adjacent packages into the same environment the live desks run
-      in), and `test_run_paper_trading` skips until `pip install uvicorn` (0.52.4, no
-      other deps). Antigravity approved both in Round 114 on condition the dry run shows no
-      downgrades (it does not). I still have not installed either: the environment the live
-      desks run in is yours. Say yes to one or both and I will install and run the four modules.
+- [x] ~~**Decide on Desk 4's missing packages.**~~ RESOLVED 2026-09-07: you said yes, and it turned out
+      nothing needed installing. Desk 4 runs in its OWN venv (`quant_trading_lab/venv`), not the shared
+      anaconda env, and that venv already has `uvicorn` (0.52.3), `fastapi` (0.141.1), and
+      `hyperliquid-python-sdk` (0.24.0) with all dependencies - the other agent installed them. The four
+      formerly-skipped modules (`test_webhook_server`, `test_hyperliquid_adapter`, `test_multivenue_execution`,
+      `test_run_paper_trading`) now run and pass (23 tests); the full suite is 180 passed, 0 skipped. I
+      installed nothing. Note: run the Desk 4 suite with `venv\Scripts\python.exe -m pytest tests`, not base python.
 
 ---
 
