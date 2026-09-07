@@ -35,6 +35,7 @@ from .. import EXIT_OK, GENERATED_BY
 from ..pages import (Page, append_log, carry_human_fields, iso, load_page, load_pages, make_meta, now_utc, page_path,
                      write_index, write_page)
 from . import add_common_args, at_from, guard, item_link, rel_to, page_changed
+from .data_gaps import overlapping_gaps
 from ..registers import write_register
 
 REGIME_FILE = "btc_macro_regime"
@@ -71,6 +72,18 @@ def scope_of(result: dict[str, Any]) -> str:
     return f"{fam}_{sub}" if sub else fam
 
 
+def measurement_of(result: dict[str, Any]) -> dict[str, Any]:
+    """dev.measurement for lint L12 (Round 122, R121-1.D): the window the engine sought prices in, plus the price
+    and shift spans it actually saw. Empty when the artifact predates Round 122 (no window_* keys): such a page
+    keeps its pre-122 shape exactly - no measurement key, no data_gaps key - so re-ingesting it changes nothing."""
+    first, last = result.get("window_first_utc"), result.get("window_last_utc")
+    if not first or not last:
+        return {}
+    return {"first_event_utc": str(first), "last_event_utc": str(last),
+            "price_first_utc": result.get("price_first_utc"), "price_last_utc": result.get("price_last_utc"),
+            "shift_first_utc": result.get("shift_first_utc"), "shift_last_utc": result.get("shift_last_utc")}
+
+
 def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier: str, source: str,
                     at: datetime | None = None, by: str = GENERATED_BY,
                     min_abs_corr: float = DEFAULT_MIN_ABS_CORR) -> Page:
@@ -96,6 +109,16 @@ def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier
             f"| classification | **{cls}** |", ""]
     if result.get("reason"):
         body += ["## Reason", "", str(result["reason"]), ""]
+    # Round 122 (R121-1.D): the span the engine measured over and the recorded data gaps inside it (lint L12).
+    measurement = measurement_of(result)
+    gaps = overlapping_gaps(vault, measurement.get("first_event_utc"), measurement.get("last_event_utc")) if measurement else []
+    if measurement:
+        body += ["## Measured span", "", "| Bound | UTC |", "|---|---|",
+                 f"| window first (prices sought from) | {measurement['first_event_utc']} |",
+                 f"| window last (prices sought to) | {measurement['last_event_utc']} |",
+                 f"| price coverage | {measurement.get('price_first_utc') or '-'} .. {measurement.get('price_last_utc') or '-'} |",
+                 f"| probability shifts | {measurement.get('shift_first_utc') or '-'} .. {measurement.get('shift_last_utc') or '-'} |", "",
+                 "**data gaps inside this span**: " + (", ".join(f"[[{g}]]" for g in gaps) if gaps else "none recorded"), ""]
     curve = [c for c in (result.get("curve") or []) if isinstance(c, dict) and c.get("correlation") is not None]
     if curve:
         top = sorted(curve, key=lambda c: -abs(float(c["correlation"])))[:5]
@@ -120,6 +143,9 @@ def compile_verdict(result: dict[str, Any], vault: Path, dev_root: Path, *, tier
         "latency_minutes": result.get("latency_minutes"), "min_abs_corr": min_abs_corr, "classification": cls,
         "tests_run": prior + 1,
     }
+    if measurement:                                        # Round 122: absent on pre-122 artifacts, by design
+        dev["measurement"] = measurement
+        dev["data_gaps"] = gaps
     meta = make_meta("Experiment", title,
                      f"Tier {tier} lead-lag verdict for {scope.replace('_', ' / ')}: {cls}.",
                      tags=["experiment", "desk-3", "item-18", "lead-lag", "verdict", f"tier-{tier}", cls],

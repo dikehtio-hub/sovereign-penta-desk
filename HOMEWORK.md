@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-07 00:05 EDT (Round 121: your five decisions executed; hardening staged; the date-ordered calendar at the top is new).
+Last updated: 2026-09-07 00:50 EDT (Round 122: lead-lag pages carry their measured span; disjoint replication windows possible; no new operator actions).
 
 ---
 
@@ -20,6 +20,8 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       (b) name a deploy window for the collector hardening (see 09-08 below for my recommendation).
 - [ ] **Keep the laptop awake through 22:20** - the second tagged 24 h window (run 2 of 3 for Antigravity's
       R120-1.B consensus) closes about then. The run itself is mine; the laptop staying awake is yours.
+      Round 122 found the engine would have re-used run 1's data; it can now run the fresh window alone.
+      Antigravity picks which (R122-1.B) - nothing for you to do beyond relaying its answer.
 
 ### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
 - [ ] Say "deploy the hardening" on one of these two evenings. That gives the watchdog a full week of soak

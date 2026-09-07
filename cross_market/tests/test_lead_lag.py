@@ -184,6 +184,14 @@ class TestLeadLag(LeadLagCase):
         self.assertIn("Polymarket leads HyperLiquid by 10 min", payload["interpretation"])
         self.assertIsInstance(payload["curve"], list)
         self.assertNotIn("LEAD-LAG: Polymarket probability shifts", out.getvalue())   # no human report mixed in
+        # Round 122 (R121-1.D): the measured span travels with the verdict, as ISO Z text
+        for key in ("shift_first_utc", "shift_last_utc", "price_first_utc", "price_last_utc",
+                    "window_first_utc", "window_last_utc"):
+            self.assertRegex(payload[key], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+        self.assertLess(payload["window_first_utc"], payload["shift_first_utc"])         # padded by max_lag+1 min
+        self.assertGreater(payload["window_last_utc"], payload["shift_last_utc"])
+        self.assertLessEqual(payload["window_first_utc"], payload["price_first_utc"])   # prices only inside the window
+        self.assertGreaterEqual(payload["window_last_utc"], payload["price_last_utc"])
 
     def test_cli_json_still_returns_the_readiness_dict_with_check_data(self):
         """The flag's original meaning is unchanged: --check-data --json is still the readiness dict."""
@@ -197,6 +205,27 @@ class TestLeadLag(LeadLagCase):
         self.assertIn("ready", payload)
         self.assertIn("reasons", payload)
         self.assertNotIn("best_lag_minutes", payload)                          # readiness, not a verdict
+        self.assertEqual(payload["bounds"], {"since_utc": None, "until_utc": None})   # Round 122: unbounded by default
+
+    def test_check_data_with_since_judges_only_the_windows_own_stamps(self):
+        """Round 122: the readiness gate for a disjoint replication window counts that window's stamps, no others."""
+        import contextlib
+        import io
+        for hour in range(10):                                                  # ten hourly stamped macro drops
+            (self.drops / f"polymarket_macro_20260905T{hour:02d}0000_000000Z.json").write_text("[]", encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            ll.main(["--check-data", "--json", "--drops", str(self.drops), "--family", "macro"])
+        full = json.loads(out.getvalue())
+        self.assertEqual(full["points_total"], 10)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            ll.main(["--check-data", "--json", "--drops", str(self.drops), "--family", "macro",
+                     "--since", "2026-09-05T05:00:00Z", "--until", "2026-09-05T08:00:00Z"])
+        part = json.loads(out.getvalue())
+        self.assertEqual(part["bounds"], {"since_utc": "2026-09-05T05:00:00Z", "until_utc": "2026-09-05T08:00:00Z"})
+        self.assertEqual(part["points_total"], 4)                                # 05, 06, 07, 08 - both edges inclusive
+        self.assertEqual(ll._clip_stamps([], 1, 2), [])                          # nothing to clip is not an error
 
 
 if __name__ == "__main__":
@@ -404,6 +433,43 @@ class TestTier2Subfamily(LeadLagCase):
         self.assertEqual(meta["bars"]["latency_minutes_crypto"], ll.POLL_INTERVAL_MINUTES)
         self.assertEqual(sorted(meta["subfamilies"]), ["crypto", "fed-rates"])
         self.assertIn("counts only", meta["state_at_registration"]["note"])
+
+
+class TestReplicationBounds(LeadLagCase):
+    def test_since_and_until_trim_the_event_series_and_the_window_follows(self):
+        """Round 122: --since/--until make a disjoint replication window; the default is the whole series."""
+        self.plant(lag_minutes=10)
+        full, _ = ll.run("BTC", [self.drops], self.db, max_lag=30, min_shift=0.02, min_events=5, min_points=10)
+        self.assertEqual(full["bounds"], {"since_utc": None, "until_utc": None})
+        first, last = ll._epoch_ms(full["shift_first_utc"]), ll._epoch_ms(full["shift_last_utc"])
+        mid = (first + last) // 2
+        late, _ = ll.run("BTC", [self.drops], self.db, max_lag=30, min_shift=0.02, min_events=1, min_points=1,
+                         since_ms=mid)
+        early, _ = ll.run("BTC", [self.drops], self.db, max_lag=30, min_shift=0.02, min_events=1, min_points=1,
+                          until_ms=mid)
+        self.assertEqual(late["bounds"]["since_utc"], ll.iso_utc(mid))
+        self.assertEqual(early["bounds"]["until_utc"], ll.iso_utc(mid))
+        self.assertGreaterEqual(ll._epoch_ms(late["shift_first_utc"]), mid)              # nothing before the bound
+        self.assertLessEqual(ll._epoch_ms(early["shift_last_utc"]), mid)                # nothing after it
+        self.assertEqual(late["events"] + early["events"], full["events"])         # a clean partition
+        self.assertLess(full["window_first_utc"], late["window_first_utc"])         # the window follows the bound
+        self.assertGreater(full["window_last_utc"], early["window_last_utc"])
+        self.assertEqual(full["events"], ll.run("BTC", [self.drops], self.db, max_lag=30, min_shift=0.02,
+                                                min_events=5, min_points=10)[0]["events"])   # default unchanged
+
+    def test_cli_refuses_an_unreadable_bound(self):
+        with self.assertRaises(SystemExit):
+            ll.main(["--coin", "btc", "--drops", str(self.drops), "--db", str(self.db), "--since", "yesterday"])
+
+
+class TestMeasuredSpanWithoutShifts(LeadLagCase):
+    def test_no_shifts_means_every_span_bound_is_none(self):
+        """Round 122: an empty event series has no window; the keys are present and None, never a crash."""
+        report, _ = ll.run("BTC", [self.drops], self.db, max_lag=30, min_shift=0.02, min_events=5, min_points=10)
+        for key in ("shift_first_utc", "shift_last_utc", "price_first_utc", "price_last_utc",
+                    "window_first_utc", "window_last_utc"):
+            self.assertIn(key, report)
+            self.assertIsNone(report[key])
 
 
 class TestPriceReadFailure(LeadLagCase):

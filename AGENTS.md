@@ -5,6 +5,24 @@ the detail.
 
 ## Status
 
+Round 122 complete (2026-09-07 00:50 EDT, Antigravity's R121-1.D directive + a cross-check finding): LINT L12 NOW
+COVERS LEAD-LAG VERDICTS, AND THE ENGINE CAN RUN A DISJOINT WINDOW. cross_market.lead_lag --json records the span
+it measured: shift_first/last_utc (event series), price_first/last_utc (what the database returned),
+window_first/last_utc (the interval prices were SOUGHT in: shifts padded by max_lag+1 min) and bounds
+(what the caller asked for). DEVIATION from the directive, reasoned: the span sits in the result body (it is a
+measurement, the _artifact envelope is provenance) and dev.measurement is the WINDOW, not the price span (a hole
+at the edge shrinks the price span and hides itself). knowledge.ingest.lead_lag writes dev.measurement, a
+'Measured span' section and dev.data_gaps via the one gap helper (the directive omitted acknowledgement; without
+it every lead-lag page over a known gap is a permanent WARNING). Pre-122 artifacts carry no window: their pages
+keep their exact pre-122 shape - the four pinned pages re-ingested BYTE-IDENTICAL - so L12 stays blind on those
+four by design; the gap page names them. FINDING: the engine evaluated 'every tagged stamp from the first on',
+so R120-1.B's 'run 2 on the next 24 h window' would have been a 48 h CUMULATIVE sample still containing the 9 h
+hole and run 1's data, not the clean window Antigravity's ruling describes. Added --since/--until (event-series
+bounds, default unchanged) to both the verdict run and --check-data, so run 2 can be the disjoint window
+[2026-09-07T02:22Z, +24 h] judged on its own stamps. Scratch probes (nothing recorded): cumulative 1,958
+shifts; disjoint since 02:22Z 241 shifts after 2 h, padded window starts 01:21Z (after the gap closed 01:05Z).
+Cross-market 215, knowledge 386, lint CLEAN. Which definition run 2 uses is Antigravity's call (R122-1.B).
+
 Round 121 complete (2026-09-06 23:55 EDT, operator: "proceed" on Antigravity's Round 120 rulings + the
 operator's own five decisions): EVERYTHING AUTHORISED IS DONE; THE COLLECTOR HARDENING IS STAGED ON A BRANCH,
 NOT DEPLOYED. Operator decisions executed and verified field-by-field: Monarch_FOMC_Drill's two battery flags
@@ -1400,6 +1418,23 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 122 findings
+
+### 'The next 24 h window' was not a window
+
+- `cross_market.lead_lag` had no start bound: a run at 22:20 EDT 09-07 would have correlated every tagged
+  stamp since 02:25Z 09-06 (48 h), overlapping run 1 by construction and still containing the 9.3 h price
+  hole. A 3-run consensus over nested samples is not three observations. `--since`/`--until` filter the
+  shifts AFTER detection (a shift is stamped at its later observation, so the first shift inside the bound
+  still sees its predecessor); `--check-data` clips its stamps the same way and reports `bounds`.
+
+### What the measurement span is
+
+- The engine loads prices only inside [first shift - (max_lag+1) min, last shift + (max_lag+1) min]. That
+  interval is what was MEASURED; the first/last price row is what was FOUND. A gap at the interval's edge
+  removes rows without moving the interval, so `dev.measurement` carries the interval and the page shows
+  price coverage beside it. On the live probe the two differ by an hour at each end - the padding.
 
 ## Round 121 findings
 

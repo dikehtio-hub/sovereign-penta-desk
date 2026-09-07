@@ -230,6 +230,34 @@ def load_mark_series(db_path: Path, coin: str, start_ms: int, end_ms: int) -> Li
 
 # ------------------------------------------------------------------ maths
 
+def iso_utc(ms: Optional[int]) -> Optional[str]:
+    """ISO-8601 Z text (second precision) for a millisecond epoch; None stays None. Round 122 (R121-1.D)."""
+    if ms is None:
+        return None
+    return datetime.fromtimestamp(int(ms) / 1000.0, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _bound(text: Optional[str]) -> Optional[int]:
+    """--since/--until text -> epoch ms, or None. Refuses silently-wrong input by raising (Round 122)."""
+    if text in (None, ""):
+        return None
+    ms = _epoch_ms(text)
+    if ms is None:
+        raise SystemExit("unreadable --since/--until: %r (want ISO-8601, e.g. 2026-09-07T02:22:00Z)" % (text,))
+    return int(ms)
+
+
+def _clip_stamps(stamps: List[datetime], since_ms: Optional[int], until_ms: Optional[int]) -> List[datetime]:
+    """Keep the stamps inside [since, until] (either side open when None). Naive stamps are read as UTC."""
+    def _edge(ms: Optional[int]) -> Optional[datetime]:
+        if ms is None:
+            return None
+        edge = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+        return edge.replace(tzinfo=None) if stamps and stamps[0].tzinfo is None else edge
+    lo, hi = _edge(since_ms), _edge(until_ms)
+    return [s for s in stamps if (lo is None or s >= lo) and (hi is None or s <= hi)]
+
+
 def minute_bins(points: Iterable[Tuple[int, float]]) -> Dict[int, float]:
     """{minute_index: last value observed in that minute}."""
     out: Dict[int, float] = {}
@@ -366,13 +394,23 @@ def format_report(result: Dict[str, Any], coin: str, keys: int) -> str:
 def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_shift: float,
         min_events: int, min_points: int, events_csv: Optional[Path] = None,
         family: Optional[str] = None, subfamily: Optional[str] = None,
-        latency_minutes: float = 0.0, subfamily_from: str = "label") -> Tuple[Dict[str, Any], int]:
+        latency_minutes: float = 0.0, subfamily_from: str = "label",
+        since_ms: Optional[int] = None, until_ms: Optional[int] = None) -> Tuple[Dict[str, Any], int]:
     records = (load_event_csv(events_csv) if events_csv
                else load_drop_records(drop_dirs, family=family, subfamily=subfamily, subfamily_from=subfamily_from))
     series = probability_series(records)
     shifts = probability_shifts(series, min_shift=min_shift)
+    # Round 122: optional bounds on the EVENT series, so a replication run can be a disjoint window rather than
+    # 'everything since the first tagged stamp'. Shifts are filtered after detection (a shift is stamped at its
+    # later observation, so the first shift inside the bound still sees its predecessor). None = unchanged behaviour.
+    if since_ms is not None:
+        shifts = [s for s in shifts if s["ts_ms"] >= int(since_ms)]
+    if until_ms is not None:
+        shifts = [s for s in shifts if s["ts_ms"] <= int(until_ms)]
     marks: List[Tuple[int, float]] = []
     price_error = ""
+    start: Optional[int] = None
+    end: Optional[int] = None
     if shifts:
         start = min(s["ts_ms"] for s in shifts) - (max_lag + 1) * MINUTE_MS
         end = max(s["ts_ms"] for s in shifts) + (max_lag + 1) * MINUTE_MS
@@ -383,6 +421,17 @@ def run(coin: str, drop_dirs: Sequence[Path], db_path: Path, max_lag: int, min_s
             price_error = "%s: %s" % (type(exc).__name__, exc)
     report = lead_lag_report(shifts, marks, max_lag=max_lag, min_events=min_events, min_points=min_points,
                              latency_minutes=latency_minutes)
+    # Round 122 (R121-1.D): the span this run MEASURED, so knowledge.lint L12 can see a data gap inside it.
+    # window_* is the interval prices were SOUGHT in (shifts padded by max_lag+1 min on each side); a hole at its
+    # edge would shrink the price span and hide itself, so the window - not the price coverage - is the measurement
+    # span. price_* is what the database actually returned inside it; shift_* is the event series. None without shifts.
+    report["shift_first_utc"] = iso_utc(min(s["ts_ms"] for s in shifts)) if shifts else None
+    report["shift_last_utc"] = iso_utc(max(s["ts_ms"] for s in shifts)) if shifts else None
+    report["price_first_utc"] = iso_utc(marks[0][0]) if marks else None
+    report["price_last_utc"] = iso_utc(marks[-1][0]) if marks else None
+    report["window_first_utc"] = iso_utc(start)
+    report["window_last_utc"] = iso_utc(end)
+    report["bounds"] = {"since_utc": iso_utc(since_ms), "until_utc": iso_utc(until_ms)}   # Round 122: what the caller asked for
     report["family"], report["subfamily"] = family, subfamily
     report["subfamily_from"] = subfamily_from if subfamily else None
     # Round 75: a database that could not be read is a failed run, not an "insufficient data" verdict.
@@ -532,6 +581,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--events", default=None, help="Flat CSV of ts,key,probability instead of drops")
     parser.add_argument("--db", default=None, help="hyperliquid_data.db path (read-only)")
     parser.add_argument("--max-lag", type=int, default=60, help="Lag window in minutes each side (default 60)")
+    parser.add_argument("--since", default=None, metavar="ISO",
+                        help="Round 122: keep only probability shifts stamped at or after this UTC instant "
+                             "(a disjoint replication window). Default: every tagged stamp from the first on.")
+    parser.add_argument("--until", default=None, metavar="ISO",
+                        help="Round 122: keep only probability shifts stamped at or before this UTC instant.")
     parser.add_argument("--min-shift", type=float, default=0.02, help="Probability move that counts as an event (default 0.02)")
     parser.add_argument("--min-events", type=int, default=5, help="Shifts required before a lag is reported (default 5)")
     parser.add_argument("--min-points", type=int, default=60, help="Overlapping minutes required at a lag (default 60)")
@@ -569,8 +623,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.check_data:
         family = args.family or "macro"
         stamps = tagged_stamped_moments(drop_dirs, family) if tagged else stamped_moments(drop_dirs, family)
+        # Round 122: a disjoint replication window is judged on ITS OWN stamps, with the same bar.
+        since_ms, until_ms = _bound(args.since), _bound(args.until)
+        stamps = _clip_stamps(stamps, since_ms, until_ms)
         info = data_readiness(stamps, min_span_hours=args.min_span_hours,
                               min_points=args.min_ready_points, max_gap_minutes=args.max_gap_minutes)
+        info["bounds"] = {"since_utc": iso_utc(since_ms), "until_utc": iso_utc(until_ms)}
         print(json.dumps(info, indent=2) if args.json else format_readiness(info, family + (" (tagged stamps)" if tagged else "")))
         return 0 if info["ready"] else EXIT_NOT_READY
     if not args.drops and not args.events and not args.force:
@@ -586,7 +644,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                        args.min_shift, args.min_events, args.min_points,
                        events_csv=Path(args.events) if args.events else None, family=args.family,
                        subfamily=args.subfamily, latency_minutes=args.latency_minutes,
-                       subfamily_from=args.subfamily_from)
+                       subfamily_from=args.subfamily_from, since_ms=_bound(args.since), until_ms=_bound(args.until))
     # Ruling R102-1 (Round 103): --json covers THIS branch too, not just --check-data. Until now the flag
     # was documented for the readiness check only, so the pipeline this repo has published since Round 97
     # (`lead_lag --coin BTC --family macro --json > verdict.json`) wrote the human report and every consumer

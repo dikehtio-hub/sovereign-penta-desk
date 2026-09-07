@@ -21,6 +21,7 @@
 * **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **polymarket-leads** -> [[lead_lag_tier2b_macro_crypto_20260907T0230Z]]; [[btc_macro_regime]] history now 5 row(s).
 * **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 2 Experiment page(s) written, 5 kept; [index](index.md) rebuilt.
 * **Ingest**: work-chain digests: 76 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
+* **Ingest**: work-chain digests: 77 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
 
 ## 2026-09-06
 * **Seed**: seed from the Top 20 registry (generated.at 2026-09-06T00:28:42Z): 32 page(s) written, 0 kept (5 desks, 20 items, 7 rulings); [index](index.md) rebuilt.

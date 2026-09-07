@@ -2360,6 +2360,19 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 122 - LEAD-LAG MEASURED SPAN (L12 COVERAGE) AND DISJOINT REPLICATION WINDOWS (R121-1.D + cross-check)
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily <fed-rates|crypto> --subfamily-from tags [--latency-minutes 5] --json
+         Result now carries shift_first/last_utc, price_first/last_utc, window_first/last_utc (prices sought from/to:
+         shifts padded by max_lag+1 min) and bounds {since_utc, until_utc}. The adapter turns window_* into
+         dev.measurement + a 'Measured span' section + dev.data_gaps (recorded gaps inside it); lint L12 then covers
+         lead-lag verdicts. Pre-122 artifacts (no window_*) compile to exactly their pre-122 pages.
+     ... --since 2026-09-07T02:22:00Z [--until ISO]                  (Round 122: a DISJOINT window - shifts at/after the bound only)
+         Default (no bounds) = every tagged stamp from the first on, i.e. cumulative. For R120-1.B run 2 the bound is
+         run 1's last stamp; run 3 = run 2's end. Unreadable bound -> exit with a message, never a silent full run.
+     python -m cross_market.lead_lag --check-data --json --family macro --subfamily-from tags --since ISO
+         The readiness gate judged on the window's own stamps (same bar: 24 h, 200 points, no gap > 60 min); prints bounds.
+     python -m knowledge.ingest.lead_lag --result <verdict.json> --tier 2|2b [--at ISO]   (unchanged CLI; new pages carry the span)
+
      ROUND 121 - OPERATOR DECISIONS EXECUTED; STREAM HEALTH; event.json WRITER; DATA GAPS + L12; HARDENING BRANCH; ARTIFACTS MOVED
      python -m knowledge.drills.fomc_rehearsal --online          (33 checks: + collector / watcher / exporter STREAM ages)
          Limits 15 / 15 / 5 min; an unreadable stream is a FAIL, not a pass. Battery flags now read PASS (cleared 2026-09-06).

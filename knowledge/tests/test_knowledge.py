@@ -3989,6 +3989,41 @@ class RegimeHistoryDedupeTests(IngestFixture):
         ll.ingest_verdict(art, self.vault, self.dev_root, tier="2b", source="b.json", at=at)
         self.assertEqual((self.vault / "log.md").read_text(encoding="utf-8"), log1)     # unchanged verdict, no log line
 
+    def test_l12_covers_lead_lag_verdicts_once_the_engine_records_its_window(self):
+        """Round 122 (R121-1.D): window_* on the artifact -> dev.measurement + dev.data_gaps on the page; L12 sees it.
+        An artifact without the window (pre-122) keeps the pre-122 page shape exactly."""
+        from knowledge.ingest import data_gaps as dg
+        from knowledge.ingest import lead_lag as ll
+        (self.dev_root / "knowledge").mkdir(parents=True, exist_ok=True)
+        (self.dev_root / "knowledge" / "data_gaps.json").write_text(json.dumps(DataGapTests.GAP), encoding="utf-8")
+        dg.ingest_gaps(self.vault, self.dev_root, at=NOW)
+        at = datetime(2026, 9, 7, 2, 30, 34, tzinfo=timezone.utc)
+        art = {"events": 7, "price_points": 100, "max_lag": 60, "sufficient": True, "reason": "", "best_lag_minutes": 38,
+               "correlation": -0.3, "n": 900, "interpretation": "x", "curve": [], "latency_minutes": 5.0,
+               "family": "macro", "subfamily": "crypto", "subfamily_from": "tags", "price_error": "",
+               "shift_first_utc": "2026-09-02T03:00:00Z", "shift_last_utc": "2026-09-03T02:00:00Z",
+               "price_first_utc": "2026-09-02T01:59:00Z", "price_last_utc": "2026-09-03T03:01:00Z",
+               "window_first_utc": "2026-09-02T01:59:00Z", "window_last_utc": "2026-09-03T03:01:00Z"}
+        ll.ingest_verdict(art, self.vault, self.dev_root, tier="2b", source="a.json", at=at)
+        stem = "lead_lag_tier2b_macro_crypto_20260907T0230Z"
+        p = self.vault / "wiki/experiments" / f"{stem}.md"
+        meta, body = fm.parse(p.read_text(encoding="utf-8"))
+        self.assertEqual(meta["dev"]["measurement"]["first_event_utc"], "2026-09-02T01:59:00Z")   # the WINDOW, not the price span
+        self.assertEqual(meta["dev"]["data_gaps"], ["data_gap_test_gap"])                        # acknowledged by the adapter
+        self.assertIn("**data gaps inside this span**: [[data_gap_test_gap]]", body)
+        self.assertEqual([f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "L12"], [])
+        meta["dev"]["data_gaps"] = []                                                             # strip it: L12 speaks
+        pages.write_page(pages.Page(p, meta, body), self.vault, now=NOW)
+        l12 = [f for f in lint.lint_vault(self.vault, self.dev_root, now=NOW) if f.code == "L12"]
+        self.assertEqual([(f.severity, f.path) for f in l12], [("warning", f"wiki/experiments/{stem}.md")])
+        # a pre-122 artifact (no window): no measurement key, no data_gaps key, no section - the page keeps its shape
+        old = {k: v for k, v in art.items() if not k.endswith("_utc")}
+        ll.ingest_verdict(old, self.vault, self.dev_root, tier="2", source="b.json", at=at)
+        meta2, body2 = fm.parse((self.vault / "wiki/experiments/lead_lag_tier2_macro_crypto_20260907T0230Z.md").read_text(encoding="utf-8"))
+        self.assertNotIn("measurement", meta2["dev"])
+        self.assertNotIn("data_gaps", meta2["dev"])
+        self.assertNotIn("Measured span", body2)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
