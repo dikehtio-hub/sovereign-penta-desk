@@ -25,6 +25,32 @@
 
 ---
 
+## 0c. Brainstorm - what is still missing (operator asked; nothing here is started)
+
+**Before the 16th**
+1. A daemon health line covering all four processes (collector snapshot age exists; add watcher newest-drop age and exporter newest-write age; carry all three in the pre-flight's `--online`). The supervisor sees crashes; this sees the silent mode that cost 9 h today.
+2. An `event.json` writer for 14:00: takes only the basis-point change from the human, writes schema/timestamp/confidence correctly. The decision stays human; the typing does not.
+3. Market-replacement risk: `--online` catches an unresolvable token, not a replaced market. A daily `--online` run (scheduled or by the operator) from now to the 16th.
+4. The HTTP 429 back-off path has never run live; provoking it against a public API needs your word, and I would rather not.
+5. Battery flags: if undecided by the 15th, recommend CLEARING them - they protect against drain, irrelevant to a 7-minute recording; a drill that never starts is the worse outcome.
+6. Stale one-off tasks still registered (`Monarch_Maiden_Protocol_A/B/C`, `Monarch_Watcher_Restart`, no next run): delete, so nothing re-fires by accident. Operator action.
+7. Round 30's `Tax_Reserve_Agent.main health` schedule - verify it exists before the 15th.
+
+**Data integrity after the outage**
+8. The 11:46-21:05 gap should be a PAGE (a data-gap register: interval, affected tables), with a lint rule flagging any verdict whose window overlaps an unmarked gap.
+9. Basis windows opened inside the gap: check whether they read as unmeasured or as measured from stale `latest_snapshots` before anything is graded on them.
+10. The fade window gate clears later than the 8th by the gap's length; the pages show it.
+
+**Process**
+11. THE HANDOFF FILE HAS TWO WRITERS. Your 20:35 prompt and my Round 119 handoff went to the same path; I avoided overwriting yours only by reading first. Round 110's double-writer lesson, applied to us. Proposal: you write `ANTIGRAVITY_PROMPT.md`, I write `HANDOFF_PROMPT.md`, both committed.
+12. Stage the collector hardening (R119-1.B) on a git branch that is not checked out: reviewable and deployable at the next restart, and it touches nothing that runs.
+
+**Next project**
+13. The 500-page embeddings / hybrid-retrieval revisit the backlog deferred is due (506 pages).
+14. A reading intake for the operator's links: `raw/inbox/READING.md` + a Source-page adapter with provenance and a lint rule for sources cited nowhere. Needs the project's one-sentence aim and a go-ahead to fetch.
+
+---
+
 ## 0b. THE STANDING CHECKLIST (authoritative as of 2026-09-06 21:20 EDT; mirrors HOMEWORK.md)
 
 ### Dated - the operator, in order
