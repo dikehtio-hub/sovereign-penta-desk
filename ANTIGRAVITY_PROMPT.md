@@ -1,83 +1,71 @@
-# Round 122 Response & Rulings: Full Cross-Check Verification, R122-1.A Ratification, and Disjoint Window Definition for Tonight's Run 2
+# Round 123 Directive: Telemetry Layer Supervision, Exporter Resilience, and Pre-Flight Hash Scoping
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master)  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-07 00:40 EDT  
-**Subject**: All Round 122 cross-checks verified green; R122-1.A deviations ratified; R122-1.B Disjoint Window protocol adopted for Run 2 tonight; R122-1.C historical immutability affirmed.
+**Date**: 2026-09-07 12:50 EDT  
+**Subject**: Status update received; workspace health sweep and probe results commended; **Ruling R123-1.A approved** (Telemetry Supervision & Exporter Resilience); **Critical Root-Cause Finding & Directive on `hash_vault` in Pre-Flights**; Run 2 remains on track for ~22:22 EDT tonight (14.4h accumulated, 0 breaks).
 
 ---
 
-## 1. Cross-Check Audits (Independent Live Verification)
+## 1. Status Update Review & Quantitative Telemetry Audit
 
-Every item in Section 3 of the Round 122 handoff was independently audited and verified against the live environment:
-
-1. **Span Keys & Ordering in Result Body:**
-   - Executed: `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --json`.
-   - Output confirmed: 6 ISO-8601 UTC timestamp strings and `bounds`.
-   - Structural ordering strictly verified:
-     - Start: `window_first_utc` (01:24:08Z) $<$ `price_first_utc` (01:25:05Z) $<$ `shift_first_utc` (02:25:08Z).
-     - End: `shift_last_utc` (04:34:04Z) $<$ `price_last_utc` (04:34:27Z) $<$ `window_last_utc` (05:35:04Z).
-2. **`--since` Filter & Window Padding:**
-   - Executed with `--since 2026-09-07T02:22:00Z`.
-   - Result: `shift_first_utc` is `2026-09-07T02:22:37Z` ($\ge$ `02:22:00Z`).
-   - `bounds.since_utc` echoed cleanly.
-   - `window_first_utc` is `2026-09-07T01:21:37Z` (exactly 61 minutes before the first shift, correctly seeking pre-lag prices).
-3. **Data Readiness with `--since` & Parameter Validation:**
-   - `lead_lag --check-data --json --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z`:
-     - Returned `ready: false`, `points_total: 27`, `span_hours: 2.19`, `largest_gap_min: 5.1`, `breaks: 0`.
-     - Estimated gate closure (ETA): `2026-09-08T02:22:37Z` ($\approx$ **22:22 EDT tonight**).
-   - `--since yesterday`: exited cleanly with code 1 and printed `unreadable --since/--until: 'yesterday' (want ISO-8601, e.g. 2026-09-07T02:22:00Z)`.
-4. **Byte-Identical Re-Ingest of Pre-122 Pinned Artifacts:**
-   - Executed `knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2b_crypto_verdict.json --tier 2b --at 2026-09-07T02:30:34Z`.
-   - Checked `git status --porcelain obsidian_vault/`: **completely empty**.
-   - Verified that pre-122 artifacts compile without synthetic `measurement` or `data_gaps` keys, preserving byte-identity across all 8 hashes.
-5. **Test Suites & Vault Telemetry:**
-   - Unit test `RegimeHistoryDedupeTests.test_l12_covers_lead_lag_verdicts_once_the_engine_records_its_window`: **PASSED in 1.92s**.
-   - Cross-market test suite: **215 tests ran, 0 failures, OK**.
-   - Knowledge test suite: **386 tests ran, 0 failures, OK**.
-   - Real vault lint: **509 pages + constitution · 0 errors · 0 warnings · CLEAN**.
-6. **Log Verification:**
-   - Confirmed `AGENTS.md` Round 122 summary and findings match architectural intent.
+1. **Replication Run 2 Data Accumulation (12:47 EDT Live Audit):**
+   - Executed `lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z`.
+   - **Segment:** `2026-09-07T02:22:37Z` $\to$ `2026-09-07T16:46:04Z` (span **14.4h**, 172 points, rate 11.88/h).
+   - **Continuity:** Largest gap **5.1 min**, **0 breaks > 60 min**. Flawless continuity overnight.
+   - **Gate Closure ETA:** `2026-09-08T02:22:37Z` ($\approx$ **22:22 EDT tonight**). Exactly on schedule.
+2. **Workspace Health Sweep:** All core suites verified green (Knowledge 386, Cross-Market 215, HyperLiquid 1,110, Sports 223, Polymarket 237, Tax 546, Desk 4 180). Secondary suites (Dexter, STRATS) compiling cleanly.
+3. **Scheduler Probe & W32Time:** Verified (`PROBE OK`, 60/60 stamps). W32Time is locked to `time.windows.com` (`+0.107s` offset).
+4. **Telemetry Exporters Active:** All 5 exporters are actively streaming. Real vault lint: **509 pages · 0 errors · 0 warnings · CLEAN**.
 
 ---
 
-## 2. Formal Rulings
+## 2. Architectural Rulings & Directives for Round 123
 
-### Ruling R122-1.A: Ratification of R121-1.D Deviations & Additions
-* **Verdict:** **RATIFIED AS SUPERIOR ARCHITECTURE**.
-* **Reasoning:**
-  1. *Measurement Body vs. Artifact Envelope:* Measurements (`shift_*`, `price_*`, `window_*`, `bounds`) belong in the result payload, while `_artifact` strictly maintains execution provenance.
-  2. *Sought Window vs. Price Span:* Using the sought window (`[shift_first - max_lag - 1, shift_last + max_lag + 1]`) as `dev.measurement` is essential. A data hole at the start/end shrinks the returned price span; using the price span would allow edge gaps to conceal themselves from Lint L12. Using the sought window guarantees full detection.
-  3. *Adapter Acknowledgment:* Wiring `dev.data_gaps` through `ingest.data_gaps.overlapping_gaps` resolves false-positive warnings on intentional historical gap overlaps.
+### Ruling R123-1.A: Telemetry Layer Supervision, Exporter Resilience, and Pre-Flight Hash Scoping
+* **Verdict:** **APPROVED AS PRIMARY OBJECTIVE FOR ROUND 123**.
+* **Problem Statement:**
+  1. The five per-desk Obsidian telemetry exporters experienced a silent, multi-day presentation-layer outage (dashboards stale up to ~2 days) while the data collection pipeline continued unaffected.
+  2. `resume_all.bat` relies on "watcher running" as a proxy for "ecosystem running," meaning a surviving watcher causes `resume_all.bat` to skip recovering dead telemetry exporters.
+  3. **New Pre-Flight Incident Diagnosed at 12:48 EDT:** `python -m knowledge.drills.fomc_rehearsal --online` failed with:
+     `[FAIL] card wrote nothing: vault sha256 identical before and after the card`.
 
-### Ruling R122-1.B: Definition of Replication Run 2 of 3 (Tonight ~22:22 EDT)
-* **Verdict:** **ADOPT DISJOINT WINDOW PROTOCOL**.
-* **Quantitative Rationale:**
-  - Cumulative windows ($[0, 24]$, $[0, 48]$, $[0, 72]$) are nested and statistically collinear. Running Run 2 cumulatively would contaminate the sample with Run 1's data and the 9.3h collector hole, violating the core purpose of a 3-run independent replication.
-  - A disjoint window $[2026-09-07\text{T}02:22\text{Z}, +24\text{h}]$ tests the macro/crypto hypothesis on an independent sample of shifts.
-  - Because Run 2's sought window begins at `01:21:37Z` (strictly after the collector restart at `01:05Z`), Run 2's price series is **100% clean and free of data holes**.
-* **Execution Protocol for Tonight:**
-  1. **Readiness Gate:** Run `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z` at ~22:20 EDT. Confirm `ready: true` (24h span, $\ge 200$ points, no gap $> 60$ min).
-  2. **Execution:** Run the four registered commands with `--since 2026-09-07T02:22:00Z --json` into `cross_market/experiments/lead_lag_tier{2,2b}_{fed-rates,crypto}_verdict_run2.json`.
-  3. **Ingestion:** Ingest into vault via `knowledge.ingest.lead_lag --tier 2|2b`. This will append Run 2 to `btc_macro_regime.md` and populate `dev.measurement` and `dev.data_gaps`.
-  4. **Run 3 Boundary:** Run 3 will subsequently bind `--since <Run 2's shift_last_utc>`.
+### Architectural Directives & Implementation Constraints:
 
-### Ruling R122-1.C: Pre-122 Verdict Pages & Historical Immutability
-* **Verdict:** **PRESERVE HISTORICAL IMMUTABILITY (LEAVE AS IS)**.
-* **Reasoning:**
-  - Pinned historical artifacts must not be modified retroactively.
-  - The 9.3h data hole during Round 120 is already fully acknowledged and documented in `wiki/events/data_gap_2026-09-06_hl_asset_snapshots.md`.
-  - The pre-122 pages will remain byte-identical; all future runs (starting with Run 2 tonight) will carry `dev.measurement` and benefit from automated L12 enforcement.
+1. **Pre-Flight Scoping Gotcha — Fix `hash_vault()` in `fomc_rehearsal.py` & `fomc_live_rehearsal.py` (URGENT):**
+   - **Root Cause:** `hash_vault(vault)` computes a single SHA-256 hash over *every* `.md` file in `obsidian_vault/` (`vault.rglob("*.md")`).
+   - Why it passed previously: When the 5 telemetry exporters were dead, the vault root was completely static.
+   - Why it failed today: Now that the exporters were restarted, they write active updates every 15s to `HyperLiquid_Monarch.md`, `Quant_Trading_Lab.md`, `Bot_Config.md`, `Tax_Reserve_*.md`, etc. Between `before = hash_vault(vault)` and `hash_vault(vault) == before`, an exporter ticked, causing `card wrote nothing` to fail!
+   - In `fomc_live_rehearsal.py` (which runs a 60s loop), `ok("real vault untouched", hash_vault(vault) == before_vault)` is **guaranteed to fail 100% of the time** because live exporters tick ~4 times during the test.
+   - **Directive:** Scope `hash_vault` so it does not hash files managed by live telemetry exporters. It should hash `vault / "wiki"` (where knowledge pages, event pages, rules, and drill artifacts live), or explicitly filter out root dashboards and exporter directories (`Whales/`, `Trading_Taxes/`, `Canvases/`).
+
+2. **Separation of Drill Pre-Flight vs. Telemetry Monitoring:**
+   - `fomc_rehearsal --online` is an operational execution gate for the September 16 FOMC rate print drill. It tests the latency sniper, CLOB liquidity depth, target Fed market tokens, NTP synchronization, and core execution data daemons (`collector`, `watcher`, `exporter`).
+   - Telemetry exporters generate Markdown dashboards for human viewing; they are non-critical to order-book depth recording at T-2.
+   - **Directive:** A dead or lagging telemetry exporter must never trigger a blocking FAIL on the FOMC drill. Telemetry health checks should live in a dedicated module (e.g., `python -m knowledge.drills.telemetry_health` or `pipeline_health.py`), or be checked in `resume_all.bat`, keeping `fomc_rehearsal --online` focused on the drill.
+
+3. **Liveness vs. File Modification Times (`write_note_if_changed`):**
+   - Quantitative & Systems Gotcha: Exporters for `Quant_Trading_Lab`, `Sports_Desk`, and `Tax_Reserve` use `write_note_if_changed()` with SHA-256 hash checking to prevent unnecessary disk wear.
+   - Consequently, notes for desks whose state does not tick on every pass **will not update their file modification timestamp (`mtime`) unless market or trade state changes**.
+   - **Directive:** A health check that measures markdown file `mtime` will emit false-positive staleness alerts overnight, on weekends, or during low-volatility periods. Exporter health MUST judge **process liveness** (PID lockfile, single-instance `--status` command, or process command-line inspection), not purely note file mtime.
+
+4. **Decouple Exporter Recovery in `resume_all.bat`:**
+   - `resume_all.bat` must not treat the Polymarket watcher as a proxy for the 5 telemetry exporters.
+   - Each exporter should either support a lightweight `--status` check (similar to Directive 74-1 for `cross_market.interfaces.obsidian_exporter`), or `resume_all.bat` should check per-exporter PID/liveness before launching detached processes via `Start-Process`, preventing duplicate instances.
 
 ---
 
-## 3. Operational Queue & Forward Guidance
+## 3. Forward Calendar & Execution Queue
 
-1. **Tonight ~22:20–22:25 EDT:**
-   - Laptop awake, on AC.
-   - Claude executes Disjoint Run 2 under Ruling R122-1.B.
-2. **Collector Hardening Deployment Window:**
-   - Staged on `feat/collector-hardening` (commit `70bd232`).
-   - Awaiting operator deployment window (recommended 09-08 or 09-09 evening).
-3. **Scheduled Task Drill Probe:**
-   - Operator can run `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1` at any time before the 16th to verify scheduler firing.
+1. **Round 123 (Daytime today, 2026-09-07):**
+   - Scope `hash_vault()` in `fomc_rehearsal.py` and `fomc_live_rehearsal.py` to `vault / "wiki"` to eliminate the live telemetry race condition.
+   - Implement Ruling R123-1.A (Telemetry health monitoring + `resume_all.bat` decoupling).
+   - Verify all tests and pre-flight (`--online`) are 100% clean.
+2. **Tonight (~22:20–22:25 EDT, 2026-09-07):**
+   - **Replication Run 2 of 3 (Ruling R122-1.B):**
+     - Verify readiness: `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z` $\to$ `ready: true`.
+     - Execute 4 pre-registered commands with `--since 2026-09-07T02:22:00Z --json` into `_run2.json`.
+     - Ingest into vault via `knowledge.ingest.lead_lag --tier 2|2b`.
+3. **Standing Operator Requirements:**
+   - Keep laptop awake on AC through ~22:25 EDT tonight (Run 2) and tomorrow night (Run 3).
+   - Collector hardening deployment scheduled for operator maintenance window (09-08 or 09-09 evening).

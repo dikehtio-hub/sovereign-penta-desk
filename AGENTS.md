@@ -5,6 +5,28 @@ the detail.
 
 ## Status
 
+Round 123 complete (2026-09-07 13:10 EDT, Antigravity's R123-1.A directive): TELEMETRY SUPERVISION + PRE-FLIGHT
+HASH RACE FIXED. (1) `hash_vault()` in fomc_rehearsal.py (imported by fomc_live_rehearsal.py) now hashes only
+`vault/wiki` instead of the whole vault, with a whole-vault fallback when wiki/ is absent. Root cause confirmed:
+the five telemetry exporters rewrite root dashboards every ~15 s, so the whole-vault hash made 'card wrote
+nothing' (and the 60 s live 'real vault untouched') an intermittent FAIL - one exporter tick between the before
+and after hash. Now PASSES reliably across repeats; the drill card and every artifact live under wiki/, which no
+exporter writes. (2) NEW knowledge.drills.telemetry_health: judges the five exporters by PROCESS liveness read
+from the OS table (psutil, else PowerShell), never by file mtime (write_note_if_changed leaves idle desks' mtimes
+stale). CLI --check (exit 1 if any down) / --json / --ensure (launch the down ones detached via Start-Process,
+one each, no duplicates). Kept OUT of fomc_rehearsal --online so a dead dashboard NEVER blocks the FOMC drill
+(R123-1.A.2). (3) resume_all.bat decoupled (R123-1.A.4): collector, watcher and cross-market exporter each gated
+on their OWN --status; telemetry recovered via `telemetry_health --ensure`. The old 'watcher up == ecosystem up'
+proxy is gone - it was the exact bug (watcher alive while tax/sports telemetry died silently). FINDINGS during
+implementation: tax + sports exporters were found DEAD (silent death since ~morning) and recovered; and a
+case-sensitivity bug in the matcher (mixed-case `Tax_Reserve_Agent.obsidian_sync` cmdline vs a lowercase
+signature) was caught and fixed - it would have kept tax/sports permanently 'down' and spawned duplicates on
+every --ensure; the test duplicates were cleaned to one per desk. Tests: HashVaultScopingTests +
+TelemetryHealthTests added (65 drill+telemetry pass); lint 509 CLEAN; pre-flight 33 checks 0 FAIL across repeats.
+Premises verified before coding: wiki/ holds the event/rules/card; telemetry writes root + Whales/Trading_Taxes/
+Canvases (all exist); cross-market exporter writes root dashboards, not wiki/. NO DAEMON on the data pipeline
+touched; the 5 telemetry exporters are one-per-desk and live.
+
 Round 122 complete (2026-09-07 00:50 EDT, Antigravity's R121-1.D directive + a cross-check finding): LINT L12 NOW
 COVERS LEAD-LAG VERDICTS, AND THE ENGINE CAN RUN A DISJOINT WINDOW. cross_market.lead_lag --json records the span
 it measured: shift_first/last_utc (event series), price_first/last_utc (what the database returned),
@@ -1418,6 +1440,28 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 123 findings
+
+### The pre-flight hash was whole-vault; telemetry made it a race
+
+- `hash_vault` hashed every `.md` under `obsidian_vault/`. While the 5 exporters were dead (Round 122 night)
+  the vault root was static and the guard passed. Once they were restarted, a root-dashboard write every ~15 s
+  landed between the before/after hash and failed 'card wrote nothing' intermittently - and the 60 s live loop
+  essentially always. Scoping to `wiki/` (no exporter writes there) makes it deterministic without weakening it:
+  the card and any accidental real-vault ingest write both land in wiki/.
+
+### Liveness, not mtime, and the case bug behind it
+
+- A dashboard's mtime is not liveness: `write_note_if_changed` skips the write when a desk is idle, so a healthy
+  exporter can leave an hours-old file. `telemetry_health` reads the process table instead. Building it surfaced
+  that tax and sports had died silently, and that matching a lowercase signature against a mixed-case Windows
+  cmdline needs both sides lower-cased - without it the two capitalised desks read as always-down.
+
+### resume_all's proxy was the reported bug, now removed
+
+- R123-1.A.4: each component is recovered on its own signal. The watcher being up says nothing about the five
+  telemetry exporters, which is exactly how tax/sports stayed dead behind a live watcher.
 
 ## Round 122 findings
 

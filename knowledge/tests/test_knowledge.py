@@ -4025,5 +4025,68 @@ class RegimeHistoryDedupeTests(IngestFixture):
         self.assertNotIn("Measured span", body2)
 
 
+class HashVaultScopingTests(FomcRehearsalTests):
+    """Round 123 (R123-1.A.1): hash_vault scopes to wiki/, so live telemetry writes at the vault root do
+    not make the read-only drill checks a race, while a real write under wiki/ still trips the guard."""
+
+    def test_root_dashboard_writes_are_ignored_but_wiki_writes_are_seen(self):
+        before = self.rh.hash_vault(self.vault)
+        (self.vault / "Risk_Sentinel.md").write_text("telemetry tick at " + "x" * 20, encoding="utf-8")
+        (self.vault / "Cross_Market_Arb.md").write_text("another tick", encoding="utf-8")
+        self.assertEqual(self.rh.hash_vault(self.vault), before)   # exporter root writes do NOT change the hash
+        (self.vault / "wiki" / "zzz_probe.md").write_text("a real vault write", encoding="utf-8")
+        self.assertNotEqual(self.rh.hash_vault(self.vault), before)   # a wiki write still does
+
+
+class TelemetryHealthTests(unittest.TestCase):
+    """Round 123 (R123-1.A.2/3/4): the five telemetry exporters are judged by PROCESS liveness (never mtime),
+    the match is case- and slash-insensitive, and ensure() launches only the down ones exactly once."""
+
+    def setUp(self):
+        from knowledge.drills import telemetry_health as th
+        self.th = th
+        self.all_names = [s["name"] for s in th.exporter_specs()]
+
+    def test_five_exporters_with_distinct_signatures(self):
+        self.assertEqual(self.all_names, ["hyperliquid", "polymarket", "tax", "sports", "quantlab"])
+        sigs = [s["signature"] for s in self.th.exporter_specs()]
+        self.assertEqual(len(sigs), len(set(sigs)))                 # unique
+
+    def test_liveness_case_insensitive_counts_and_no_cross_match(self):
+        th = self.th
+        cmdlines = [
+            r"C:\anaconda\pythonw.exe main.py obsidian --watch --vault X",
+            r"C:\anaconda\pythonw.exe obsidian_sync.py --watch --vault X",
+            r"C:\anaconda\pythonw.exe -m Tax_Reserve_Agent.obsidian_sync --watch --vault X",   # MIXED CASE
+            r"C:\venv\pythonw.exe telemetry\obsidian_exporter.py --interval 15",              # backslash + parent
+            r"C:\venv\pythonw.exe telemetry\obsidian_exporter.py --interval 15",              # + worker copy
+            r"C:\anaconda\pythonw.exe -m cross_market.interfaces.obsidian_exporter --watch",   # NOT one of the five
+        ]
+        rows = {r["name"]: r for r in th.liveness(cmdlines)}
+        self.assertTrue(rows["hyperliquid"]["up"])
+        self.assertTrue(rows["polymarket"]["up"])
+        self.assertTrue(rows["tax"]["up"])                          # matched despite capitals
+        self.assertFalse(rows["sports"]["up"])                      # sports absent from the list
+        self.assertTrue(rows["quantlab"]["up"])
+        self.assertEqual(rows["quantlab"]["running"], 2)           # parent + worker both counted
+        # the cross-market exporter line must not be mistaken for sports or quantlab
+        self.assertEqual(rows["sports"]["running"], 0)
+
+    def test_ensure_launches_only_down_once_and_dry_run_launches_nothing(self):
+        th = self.th
+        up_only = [r"x main.py obsidian --watch", r"x obsidian_sync.py --watch"]   # HL + Polymarket up; 3 down
+        launched = []
+        fake = lambda spec: (launched.append(spec["name"]), 999)[1]
+        out = {r["name"]: r for r in th.ensure(cmdlines=up_only, launcher=fake)}
+        self.assertEqual(out["hyperliquid"]["action"], "kept")
+        self.assertEqual(out["tax"]["action"], "launched")
+        self.assertEqual(out["tax"]["pid"], 999)
+        self.assertEqual(sorted(launched), ["quantlab", "sports", "tax"])          # exactly the down ones, once each
+        launched.clear()
+        out2 = {r["name"]: r for r in th.ensure(cmdlines=up_only, launcher=fake, dry_run=True)}
+        self.assertEqual(launched, [])                                             # dry run launches nothing
+        self.assertEqual(out2["sports"]["action"], "would-launch")
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

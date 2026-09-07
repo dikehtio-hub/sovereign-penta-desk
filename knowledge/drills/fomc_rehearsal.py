@@ -116,8 +116,22 @@ def collect_task(name: str = TASK_NAME, runner: Callable[..., Any] = subprocess.
 
 
 def hash_vault(vault: Path) -> str:
+    """SHA-256 over the KNOWLEDGE pages only (``vault/wiki``), never the whole vault.
+
+    Round 123 (R123-1.A): the five per-desk telemetry exporters rewrite root dashboards
+    (Cross_Market_Arb.md, Risk_Sentinel.md) and subtrees (Whales/, Trading_Taxes/, ...)
+    every ~15 s. Hashing the whole vault made "card wrote nothing" (and the live drill's
+    "real vault untouched") a race that a single exporter tick failed intermittently -
+    guaranteed to fail in the 60 s live loop. The drill card, event, rules and every drill
+    artifact live under wiki/, which no exporter writes, so scoping the guard to wiki/ keeps
+    it meaningful and race-free. Falls back to the whole vault when wiki/ is absent (a bare
+    fixture), so callers and tests that build a flat vault are unaffected.
+    """
+    root = vault / "wiki"
+    if not root.exists():
+        root = vault
     h = hashlib.sha256()
-    for p in sorted(vault.rglob("*.md")):
+    for p in sorted(root.rglob("*.md")):
         h.update(p.relative_to(vault).as_posix().encode())
         h.update(p.read_bytes())
     return h.hexdigest()

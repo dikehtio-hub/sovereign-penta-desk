@@ -1,36 +1,36 @@
 @echo off
-title Monarch - Resume Full Data Pipeline (collector + ecosystem)
+title Monarch - Resume Full Data Pipeline (collector + data ecosystem + telemetry)
 chcp 65001 >nul
 setlocal EnableDelayedExpansion
 
 rem ======================================================================
-rem  resume_all.bat  (Round 122, built for the "shut down tonight, resume
-rem  in the morning" case)  -  ONE command to bring the whole data pipeline
-rem  back after a reboot.  It is SAFE to run whether things are up or down:
-rem  every launch is gated on that daemon's own --status, so it never
-rem  double-starts and never forgets the price collector (the Saturday
-rem  09-06 failure was exactly that - the watcher came back, the collector
-rem  did not, and BTC prices stopped for 9 hours).
+rem  resume_all.bat  -  ONE command to bring the whole pipeline back after
+rem  a reboot (or after any component dies).  SAFE to run whether things are
+rem  up or down: EVERY component is gated on its OWN liveness, so it never
+rem  double-starts and never forgets the collector.
 rem
-rem  It brings back, in order:
-rem    1. the HL price collector + its supervisor   (run_collector_service.py)
-rem    2. the ecosystem: Polymarket watcher, cross-market exporter, and the
-rem       five Obsidian sync exporters               (start_all_ecosystem_sync.bat)
+rem  Round 123 (R123-1.A.4): the telemetry exporters are recovered by their
+rem  own per-process liveness (knowledge.drills.telemetry_health --ensure),
+rem  NOT by using "watcher up" as a proxy for "ecosystem up".  That proxy was
+rem  the bug: the watcher stayed up while tax/sports telemetry died silently,
+rem  and resume_all skipped them.  Each layer now stands on its own.
 rem
-rem  It writes nothing to the vault or the databases itself; it only starts
-rem  the same processes the canonical launchers do.
+rem  Layers, in order:
+rem    1. HL price collector + supervisor   (run_collector_service.py --status)
+rem    2. Data ecosystem: Polymarket watcher + cross-market exporter (each --status)
+rem    3. Telemetry: the 5 per-desk Obsidian exporters (telemetry_health --ensure)
 rem ======================================================================
 
 set "ROOT=%~dp0"
 set "HLDIR=%ROOT%HyperLiquid\HL_Monarch"
 
 echo ======================================================================
-echo  RESUME ALL - Monarch data pipeline
+echo  RESUME ALL - Monarch pipeline
 echo ======================================================================
 
 rem ---- 1. Price collector + supervisor ---------------------------------
 echo.
-echo [1/2] Price collector (run_collector_service.py)
+echo [1/3] Price collector (run_collector_service.py)
 pushd "%HLDIR%"
 python run_collector_service.py --status | python -c "import sys,json;d=json.load(sys.stdin);sys.exit(0 if d.get('running') else 3)"
 if errorlevel 3 (
@@ -41,20 +41,30 @@ if errorlevel 3 (
 )
 popd
 
-rem ---- 2. Ecosystem (watcher + exporters) ------------------------------
-rem The Polymarket watcher being up is our proxy for "ecosystem already
-rem running": if it is up we SKIP the ecosystem launcher, because that
-rem script starts the five Obsidian sync exporters unconditionally and we
-rem do not want duplicates.  After a reboot the watcher is down, so it runs.
+rem ---- 2. Data ecosystem: watcher + cross-market exporter --------------
+rem Each is checked on its OWN --status (exit 3 = stopped) and launched only if down.
 echo.
-echo [2/2] Ecosystem (Polymarket watcher + exporters)
+echo [2/3] Data ecosystem (Polymarket watcher + cross-market exporter)
 python -m cross_market.ingestors.polymarket_fetcher --status >nul 2>&1
 if errorlevel 3 (
-    echo   ecosystem watcher is DOWN - launching the full ecosystem...
-    call "%ROOT%start_all_ecosystem_sync.bat"
+    echo   watcher is DOWN - launching...
+    call "%ROOT%start_polymarket_watcher.bat"
 ) else (
-    echo   ecosystem watcher already running - kept. Skipping to avoid duplicate exporters.
+    echo   watcher already running - kept.
 )
+python -m cross_market.interfaces.obsidian_exporter --status >nul 2>&1
+if errorlevel 3 (
+    echo   cross-market exporter is DOWN - launching...
+    call "%ROOT%start_cross_market_exporter.bat"
+) else (
+    echo   cross-market exporter already running - kept.
+)
+
+rem ---- 3. Telemetry: the 5 per-desk Obsidian exporters -----------------
+rem Per-exporter process liveness; launches only the dead ones, detached, no duplicates.
+echo.
+echo [3/3] Telemetry exporters (per-desk dashboards)
+python -m knowledge.drills.telemetry_health --ensure
 
 rem ---- verify ----------------------------------------------------------
 echo.
@@ -73,6 +83,9 @@ if errorlevel 3 (echo   polymarket watcher   : DOWN) else (echo   polymarket wat
 
 python -m cross_market.interfaces.obsidian_exporter --status >nul 2>&1
 if errorlevel 3 (echo   cross-market export  : DOWN) else (echo   cross-market export  : RUNNING)
+
+echo   telemetry exporters  :
+python -m knowledge.drills.telemetry_health
 
 echo ----------------------------------------------------------------------
 echo  Done.  If any line says DOWN, re-run this script or check

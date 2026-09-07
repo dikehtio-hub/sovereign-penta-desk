@@ -2360,6 +2360,19 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 123 - TELEMETRY SUPERVISION; PRE-FLIGHT HASH SCOPED TO wiki/; resume_all DECOUPLED (R123-1.A)
+     python -m knowledge.drills.telemetry_health              (the 5 per-desk Obsidian exporters, by PROCESS liveness)
+         --check (default): one line each, exit 1 if any down.  --json: machine-readable.  --ensure: launch the
+         down ones detached (Start-Process, one each, never duplicates).  --ensure --dry-run: show the plan only.
+         Judges the PROCESS, never file mtime (write_note_if_changed leaves idle desks' dashboards stale). This is
+         NOT in fomc_rehearsal --online: a dead dashboard must never block the FOMC drill.
+     resume_all.bat                                           (reworked: per-component liveness, no watcher-proxy)
+         [1] collector via run_collector_service.py --status; [2] watcher + cross-market exporter each via --status;
+         [3] telemetry via telemetry_health --ensure. Each layer recovers on its OWN signal. Safe up or down.
+     hash_vault() in knowledge/drills/fomc_rehearsal.py now hashes ONLY vault/wiki (fallback: whole vault if no wiki/).
+         Fixes the intermittent '[FAIL] card wrote nothing' / live 'real vault untouched': the 5 exporters rewrite
+         root dashboards every 15 s, which used to land between the before/after hash. wiki/ holds the drill artifacts.
+
      ROUND 122 - LEAD-LAG MEASURED SPAN (L12 COVERAGE) AND DISJOINT REPLICATION WINDOWS (R121-1.D + cross-check)
      python -m cross_market.lead_lag --coin BTC --family macro --subfamily <fed-rates|crypto> --subfamily-from tags [--latency-minutes 5] --json
          Result now carries shift_first/last_utc, price_first/last_utc, window_first/last_utc (prices sought from/to:

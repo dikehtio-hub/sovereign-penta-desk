@@ -164,10 +164,11 @@ If you read nothing else, read this block. Each line is one thing, when to do it
 - **Shut down cleanly** — normal Windows shutdown, never the power button.
   `hyperliquid_data.db` is 4.9 GB with an open write-ahead log.
 - **After any shutdown or reboot, resume with ONE command:** `resume_all.bat` (DEV root).
-  It brings back the price collector AND the watcher/exporters, each gated on its own status so it
-  never double-starts and never forgets the collector, then prints a health check. The daemons do
-  NOT auto-start on login, so nothing collects until you run this (or ask me to). Built Round 122b,
-  tested live (all-kept when already up).
+  Round 123: it now recovers the collector, the watcher, the cross-market exporter, AND the five
+  telemetry exporters, each gated on its OWN liveness, so it never double-starts, never forgets the
+  collector, and no longer misses dead telemetry behind a live watcher. Prints a full health check.
+  The daemons do NOT auto-start on login, so nothing collects until you run this (or ask me to).
+  Dashboards only: `python -m knowledge.drills.telemetry_health` (exit 1 if any down; `--ensure` recovers them).
 - **Never kill the daemons by hand.** DATA pipeline (unchanged): watcher 17688, cross-market
   exporter 62760, supervisor 24504, collector 60756. TELEMETRY layer: the five per-desk Obsidian
   sync exporters were found DOWN 2026-09-07 02:00 EDT (dashboards stale up to ~2 days: Polymarket
@@ -175,10 +176,10 @@ If you read nothing else, read this block. Each line is one thing, when to do it
   02:10 EDT, one per desk (HyperLiquid, Polymarket, Sports, Tax, QuantLab+worker); HyperLiquid and
   Polymarket dashboards confirmed refreshing live; the rest write on change. The C2 bot is correctly
   DOWN - no token, no admin allowlist.
-- **Known gap in `resume_all.bat`:** it treats "watcher up" as "ecosystem up", so it will NOT relaunch
-  the five telemetry exporters if they are down while the watcher is up (the exact state found tonight).
-  It is correct after a full reboot. To restart ONLY the telemetry layer without a reboot, relaunch the
-  five via Start-Process (not the ecosystem .bat, which double-launched through the tool tonight). Fixable later.
+- **~~Known gap in `resume_all.bat`~~ FIXED (Round 123).** It no longer uses the watcher as a proxy; each
+  component (collector, watcher, cross-market exporter, and the five telemetry exporters) is recovered on
+  its own liveness. A watcher-up / telemetry-down state is now caught. Telemetry alone:
+  `python -m knowledge.drills.telemetry_health --ensure`.
 - **Quick collector health check** (any time): the one-liner under ROUND 119 in COMMANDS.txt
   prints minutes since the last price snapshot; over ~1 means look at `data\collector.log`.
 - **Never seed the live tax ledger.** `seed-bankroll` is paper-only.
