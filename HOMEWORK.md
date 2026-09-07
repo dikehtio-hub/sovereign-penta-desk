@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-07 00:50 EDT (Round 122: lead-lag pages carry their measured span; disjoint replication windows possible; no new operator actions).
+Last updated: 2026-09-07 13:40 EDT (Round 123 done; stale Blocking section cleared; only open item is the deploy-window decision).
 
 ---
 
@@ -124,18 +124,14 @@ If you read nothing else, read this block. Each line is one thing, when to do it
 
 ---
 
-## 🟠 BLOCKING — work is stopped until you do these
+## 🟠 BLOCKING — nothing is blocking right now
 
-- [ ] **Send the Round 121 handoff prompt to Antigravity.** (Four rulings requested; the watchdog deviation is one.)
-- [ ] **Run the scheduler probe** (any time before the 16th, logged in, on AC, ~3 minutes):
-      `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`
-      It registers a temporary task that fires in 2 minutes and runs the drill's batch for 20 s into
-      a scratch folder, then removes itself. PROBE OK means Task Scheduler -> batch -> recorder works
-      on this machine; PROBE FAILED with 'never ran' on battery is the battery-flag decision showing
-      itself. Add `-WhatIf` first if you want to see what it would do without doing it.
-- [x] ~~**Start the Windows Time service.**~~ DONE 2026-09-07 01:13 EDT. See the calendar entry above:
-      it was running but had never synced to the internet (Local CMOS Clock); now synced to time.windows.com,
-      startup Automatic. No longer a blocker.
+- [x] ~~**Send the Round 121/122/123 handoffs to Antigravity.**~~ All sent and answered.
+- [x] ~~**Run the scheduler probe.**~~ PROBE OK 2026-09-07 01:05 EDT (60/60 stamps; scheduler → batch → recorder verified).
+- [x] ~~**Start the Windows Time service.**~~ DONE 2026-09-07 01:13 EDT; synced to time.windows.com, startup Automatic.
+
+The only open item is a DECISION, not a blocker: name the deploy window for the collector hardening
+(Tue 09-08 or Wed 09-09 evening). Everything else is in the calendar at the top.
 
 ---
 
