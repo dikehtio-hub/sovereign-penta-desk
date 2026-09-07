@@ -168,10 +168,17 @@ If you read nothing else, read this block. Each line is one thing, when to do it
   never double-starts and never forgets the collector, then prints a health check. The daemons do
   NOT auto-start on login, so nothing collects until you run this (or ask me to). Built Round 122b,
   tested live (all-kept when already up).
-- **Never kill the daemons by hand.** As of 2026-09-06 21:07 EDT: watcher 17688, exporter
-  62760 (restarted 2026-09-06T02:44Z), supervisor **24504** and collector **60756** (both
-  restarted 21:04 EDT after the snapshot outage; the R104-1 spread gate is now live). The
-  C2 bot is correctly DOWN - it has no token and no admin allowlist.
+- **Never kill the daemons by hand.** DATA pipeline (unchanged): watcher 17688, cross-market
+  exporter 62760, supervisor 24504, collector 60756. TELEMETRY layer: the five per-desk Obsidian
+  sync exporters were found DOWN 2026-09-07 02:00 EDT (dashboards stale up to ~2 days: Polymarket
+  from 09-04, Sports from 09-05, HyperLiquid/Bot Control/Terminal from 09-06). Relaunched detached
+  02:10 EDT, one per desk (HyperLiquid, Polymarket, Sports, Tax, QuantLab+worker); HyperLiquid and
+  Polymarket dashboards confirmed refreshing live; the rest write on change. The C2 bot is correctly
+  DOWN - no token, no admin allowlist.
+- **Known gap in `resume_all.bat`:** it treats "watcher up" as "ecosystem up", so it will NOT relaunch
+  the five telemetry exporters if they are down while the watcher is up (the exact state found tonight).
+  It is correct after a full reboot. To restart ONLY the telemetry layer without a reboot, relaunch the
+  five via Start-Process (not the ecosystem .bat, which double-launched through the tool tonight). Fixable later.
 - **Quick collector health check** (any time): the one-liner under ROUND 119 in COMMANDS.txt
   prints minutes since the last price snapshot; over ~1 means look at `data\collector.log`.
 - **Never seed the live tax ledger.** `seed-bankroll` is paper-only.
