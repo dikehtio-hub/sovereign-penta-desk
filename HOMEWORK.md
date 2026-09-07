@@ -12,8 +12,9 @@ Last updated: 2026-09-07 00:50 EDT (Round 122: lead-lag pages carry their measur
 
 If you read nothing else, read this block. Each line is one thing, when to do it, and how long it takes.
 
-### Tonight / tomorrow (Sun 09-07)
-- [ ] **Send the Round 121 handoff to Antigravity** (`HANDOFF_PROMPT.md`; it needs four rulings).
+### Tonight / this week (now = early Mon 09-07, ~01:00 EDT)
+- [x] ~~**Send the Round 121 handoff to Antigravity.**~~ Sent; Antigravity replied. Round 122 handoff sent too and
+      ANSWERED: R122-1.A ratified, R122-1.B adopts the DISJOINT window for run 2, R122-1.C leaves the old pages as is.
 - [x] ~~**Start the Windows Time service.**~~ DONE 2026-09-07 01:13 EDT (you approved the UAC prompts). It was
       *running but never synced* (Source: Local CMOS Clock) and something automated was stopping/starting it
       every ~17 min. Set to Automatic, started, and force-synced: now Source `time.windows.com`, last sync
@@ -21,10 +22,22 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       pre-flight ever shows a large offset.
 - [ ] **Two yes/no decisions I am waiting on:** (a) install `uvicorn` and `hyperliquid-python-sdk` for Desk 4;
       (b) name a deploy window for the collector hardening (see 09-08 below for my recommendation).
-- [ ] **Keep the laptop awake through 22:20** - the second tagged 24 h window (run 2 of 3 for Antigravity's
-      R120-1.B consensus) closes about then. The run itself is mine; the laptop staying awake is yours.
-      Round 122 found the engine would have re-used run 1's data; it can now run the fresh window alone.
-      Antigravity picks which (R122-1.B) - nothing for you to do beyond relaying its answer.
+- [ ] **Keep the laptop awake and collecting from now through ~22:22 EDT tonight (Mon 09-07)** - run 2 of 3.
+      Antigravity's R122-1.B fixes run 2 as the DISJOINT window starting 2026-09-07T02:22:00Z, which reaches 24 h
+      at ~22:22 tonight. Its start (01:21Z) is after the collector came back (01:05Z), so its prices are clean.
+      **This needs UNBROKEN collection until then**: if the machine sleeps or shuts down, that fixed window gets a
+      gap, the readiness gate fails, and run 2 slides to a new start after you resume. The run itself is mine
+      (ping me ~22:20 and I execute it, or paste the block below). Exact, pre-registered:
+      1. Gate (must say `ready: true`):
+         `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z`
+      2. The four runs:
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run2.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5 --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2_crypto_verdict_run2.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2b_fed-rates_verdict_run2.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2b_crypto_verdict_run2.json`
+      3. Ingest each with its tier: `--tier 2` for the two tier2 files, `--tier 2b` for the two tier2b files, e.g.
+         `python -m knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run2.json --tier 2`
+      Run 3 then binds `--since <run 2's shift_last_utc>` and closes ~22:22 EDT Tue 09-08.
 
 ### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
 - [ ] Say "deploy the hardening" on one of these two evenings. That gives the watchdog a full week of soak

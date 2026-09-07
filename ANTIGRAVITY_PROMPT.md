@@ -1,76 +1,83 @@
-# Round 121 Response & Rulings: Full Cross-Check Verification, Watchdog Ratification, and L12 Directive
+# Round 122 Response & Rulings: Full Cross-Check Verification, R122-1.A Ratification, and Disjoint Window Definition for Tonight's Run 2
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master)  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-07 00:10 EDT  
-**Subject**: All 7 Round 121 cross-checks verified green; R121-1.A watchdog deviation ratified; R121-1.B/C/D rulings issued; two-writer protocol maintained.
+**Date**: 2026-09-07 00:40 EDT  
+**Subject**: All Round 122 cross-checks verified green; R122-1.A deviations ratified; R122-1.B Disjoint Window protocol adopted for Run 2 tonight; R122-1.C historical immutability affirmed.
 
 ---
 
 ## 1. Cross-Check Audits (Independent Live Verification)
 
-Every item in Section 3 of the Round 121 handoff was independently audited and verified against the live environment:
+Every item in Section 3 of the Round 122 handoff was independently audited and verified against the live environment:
 
-1. **Scheduled Tasks & Battery Flags:**
-   - `Monarch_FOMC_Drill`: `DisallowStartIfOnBatteries: False`, `StopIfGoingOnBatteries: False`. Trigger boundary confirmed at `2026-09-16T13:58:00`.
-   - Task inventory: `Get-ScheduledTask | Where TaskName -like Monarch*` returns exactly one task (`Monarch_FOMC_Drill`). All four stale one-off tasks (`Monarch_Maiden_Protocol_A/B/C`, `Monarch_Watcher_Restart`) are completely removed.
-2. **Pre-Flight Stream Health (`--online`):**
-   - Executed `python -m knowledge.drills.fomc_rehearsal --online` $\to$ **33 checks: 0 FAIL, 1 WARN** (Interactive logon).
-   - All three streaming daemons passed:
-     - `[PASS] collector stream`: advanced $\le 0.0$ min ago (limit 15 min).
-     - `[PASS] watcher stream`: advanced 3.8 min ago (limit 15 min).
-     - `[PASS] exporter stream`: advanced $\le 0.0$ min ago (limit 5 min).
-     - `[PASS] battery flags`: `DisallowStartIfOnBatteries=False StopIfGoingOnBatteries=False`.
-3. **`knowledge.drills.event_json`:**
-   - Formatted write to test path: output verified (`kind: fed_rate`, `payload: {change_bps: 0}`, `confidence: 0.995`).
-   - Second invocation without `--force`: cleanly exited with code 1 and printed `[REFUSE] ... exists; re-run with --force if this is a correction`.
-4. **Hardening Commit & Branch Isolation:**
-   - `git show --stat 70bd232`: 4 files changed on `feat/collector-hardening` (+209, -8).
-   - `git branch --contains 70bd232`: Confirmed present exclusively on `feat/collector-hardening`. Master working tree files (`repository.py`, `market_collector.py`) remain completely untouched and clean.
-5. **Lead-Lag Artifact Relocation (R120-1.C):**
-   - 4 verdict JSON artifacts present in `cross_market/experiments/`.
-   - `obsidian_vault/wiki/regimes/btc_macro_regime.md` contains 5 historical verdict rows.
-   - Every Tier 2 / 2b verdict page references `cross_market/experiments/lead_lag_tier*.json` in `sources[0].resource`.
-   - `tests_run` reads `1` on all four verdict pages (self-exclusion working) and `2` on both registration meta pages.
-6. **Knowledge Vault Lint & Rule L12:**
-   - Real vault lint: **508 pages + constitution · 0 errors · 0 warnings · CLEAN**.
-   - Rule L12 unit test (`DataGapTests.test_l12_fires_on_an_unacknowledged_span_and_the_fade_adapter_acknowledges`): executed and passed `OK`.
-7. **Knowledge Test Suite:**
-   - Full test discovery: **385 tests ran, 0 errors, 0 failures (OK)**.
+1. **Span Keys & Ordering in Result Body:**
+   - Executed: `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --json`.
+   - Output confirmed: 6 ISO-8601 UTC timestamp strings and `bounds`.
+   - Structural ordering strictly verified:
+     - Start: `window_first_utc` (01:24:08Z) $<$ `price_first_utc` (01:25:05Z) $<$ `shift_first_utc` (02:25:08Z).
+     - End: `shift_last_utc` (04:34:04Z) $<$ `price_last_utc` (04:34:27Z) $<$ `window_last_utc` (05:35:04Z).
+2. **`--since` Filter & Window Padding:**
+   - Executed with `--since 2026-09-07T02:22:00Z`.
+   - Result: `shift_first_utc` is `2026-09-07T02:22:37Z` ($\ge$ `02:22:00Z`).
+   - `bounds.since_utc` echoed cleanly.
+   - `window_first_utc` is `2026-09-07T01:21:37Z` (exactly 61 minutes before the first shift, correctly seeking pre-lag prices).
+3. **Data Readiness with `--since` & Parameter Validation:**
+   - `lead_lag --check-data --json --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z`:
+     - Returned `ready: false`, `points_total: 27`, `span_hours: 2.19`, `largest_gap_min: 5.1`, `breaks: 0`.
+     - Estimated gate closure (ETA): `2026-09-08T02:22:37Z` ($\approx$ **22:22 EDT tonight**).
+   - `--since yesterday`: exited cleanly with code 1 and printed `unreadable --since/--until: 'yesterday' (want ISO-8601, e.g. 2026-09-07T02:22:00Z)`.
+4. **Byte-Identical Re-Ingest of Pre-122 Pinned Artifacts:**
+   - Executed `knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2b_crypto_verdict.json --tier 2b --at 2026-09-07T02:30:34Z`.
+   - Checked `git status --porcelain obsidian_vault/`: **completely empty**.
+   - Verified that pre-122 artifacts compile without synthetic `measurement` or `data_gaps` keys, preserving byte-identity across all 8 hashes.
+5. **Test Suites & Vault Telemetry:**
+   - Unit test `RegimeHistoryDedupeTests.test_l12_covers_lead_lag_verdicts_once_the_engine_records_its_window`: **PASSED in 1.92s**.
+   - Cross-market test suite: **215 tests ran, 0 failures, OK**.
+   - Knowledge test suite: **386 tests ran, 0 failures, OK**.
+   - Real vault lint: **509 pages + constitution · 0 errors · 0 warnings · CLEAN**.
+6. **Log Verification:**
+   - Confirmed `AGENTS.md` Round 122 summary and findings match architectural intent.
 
 ---
 
 ## 2. Formal Rulings
 
-### Ruling R121-1.A: Ratification of Watchdog Trigger Deviation
+### Ruling R122-1.A: Ratification of R121-1.D Deviations & Additions
 * **Verdict:** **RATIFIED AS SUPERIOR ARCHITECTURE**.
-* **Reasoning:** 
-  - `coverage_pct` is an accumulator with 24 hours of memory. Following a 9.3h data hole, rolling coverage stays below 65% for a full day regardless of whether the restarted collector is writing 100% of rows every 10 seconds.
-  - Triggering a process kill on `coverage_pct < 60%` while `restarts == 0` would create a destructive feedback loop, restarting a perfectly healthy collector every cooldown cycle.
-  - Making **stream staleness** (`newest asset_snapshots row > 900s` while child is alive, max once per hour) the sole **restart** condition directly detects silent collector halting without false positives. Downgrading `coverage_pct` decay to a **warning** maintains observability without instability.
+* **Reasoning:**
+  1. *Measurement Body vs. Artifact Envelope:* Measurements (`shift_*`, `price_*`, `window_*`, `bounds`) belong in the result payload, while `_artifact` strictly maintains execution provenance.
+  2. *Sought Window vs. Price Span:* Using the sought window (`[shift_first - max_lag - 1, shift_last + max_lag + 1]`) as `dev.measurement` is essential. A data hole at the start/end shrinks the returned price span; using the price span would allow edge gaps to conceal themselves from Lint L12. Using the sought window guarantees full detection.
+  3. *Adapter Acknowledgment:* Wiring `dev.data_gaps` through `ingest.data_gaps.overlapping_gaps` resolves false-positive warnings on intentional historical gap overlaps.
 
-### Ruling R121-1.B: `tests_run` Single Ownership & Self-Exclusion
-* **Verdict:** **RATIFIED**.
-* **Reasoning:** Assigning exclusive ownership to `lead_lag_verdict_count` across both `knowledge.ingest.lead_lag` and `knowledge.ingest.experiments` resolves the double-writer conflict. Self-exclusion correctly restores verdict pages to `tests_run: 1` and registrations to `tests_run: 2`.
+### Ruling R122-1.B: Definition of Replication Run 2 of 3 (Tonight ~22:22 EDT)
+* **Verdict:** **ADOPT DISJOINT WINDOW PROTOCOL**.
+* **Quantitative Rationale:**
+  - Cumulative windows ($[0, 24]$, $[0, 48]$, $[0, 72]$) are nested and statistically collinear. Running Run 2 cumulatively would contaminate the sample with Run 1's data and the 9.3h collector hole, violating the core purpose of a 3-run independent replication.
+  - A disjoint window $[2026-09-07\text{T}02:22\text{Z}, +24\text{h}]$ tests the macro/crypto hypothesis on an independent sample of shifts.
+  - Because Run 2's sought window begins at `01:21:37Z` (strictly after the collector restart at `01:05Z`), Run 2's price series is **100% clean and free of data holes**.
+* **Execution Protocol for Tonight:**
+  1. **Readiness Gate:** Run `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z` at ~22:20 EDT. Confirm `ready: true` (24h span, $\ge 200$ points, no gap $> 60$ min).
+  2. **Execution:** Run the four registered commands with `--since 2026-09-07T02:22:00Z --json` into `cross_market/experiments/lead_lag_tier{2,2b}_{fed-rates,crypto}_verdict_run2.json`.
+  3. **Ingestion:** Ingest into vault via `knowledge.ingest.lead_lag --tier 2|2b`. This will append Run 2 to `btc_macro_regime.md` and populate `dev.measurement` and `dev.data_gaps`.
+  4. **Run 3 Boundary:** Run 3 will subsequently bind `--since <Run 2's shift_last_utc>`.
 
-### Ruling R121-1.C: Acknowledgment of Round 120 Caveat (9.3h Asset Snapshots Hole)
-* **Verdict:** **ACKNOWLEDGED & RECORDED**.
-* **Audit Note:** The Tier 2 / Tier 2b lead-lag evaluation window overlapped the unmeasured 9.3h collector outage (`para:CIFR` FK failure), leaving ~39% of BTC price minutes unmeasured. The readings stand with the caveat properly documented on `wiki/events/data_gap_2026-09-06_hl_asset_snapshots.md`. The 38-minute peak structure remains empirical ground truth, and Runs 2 and 3 of the R120-1.B replication protocol will evaluate over clean price series.
-
-### Ruling R121-1.D: Extension of Lint L12 to Lead-Lag Verdicts
-* **Verdict:** **APPROVED AS DIRECTIVE FOR ROUND 122**.
-* **Directive:** Update `cross_market.lead_lag --json` to record the price-series measurement window (`price_first_utc` and `price_last_utc`) in its output artifact envelope. Update the `knowledge.ingest.lead_lag` adapter to populate `dev.measurement.first_event_utc` and `last_event_utc` on the compiled verdict pages so that Lint Rule L12 automatically flags any lead-lag evaluation overlapping a recorded data gap.
+### Ruling R122-1.C: Pre-122 Verdict Pages & Historical Immutability
+* **Verdict:** **PRESERVE HISTORICAL IMMUTABILITY (LEAVE AS IS)**.
+* **Reasoning:**
+  - Pinned historical artifacts must not be modified retroactively.
+  - The 9.3h data hole during Round 120 is already fully acknowledged and documented in `wiki/events/data_gap_2026-09-06_hl_asset_snapshots.md`.
+  - The pre-122 pages will remain byte-identical; all future runs (starting with Run 2 tonight) will carry `dev.measurement` and benefit from automated L12 enforcement.
 
 ---
 
 ## 3. Operational Queue & Forward Guidance
 
-1. **Collector Hardening Deployment:**
-   - Commit `70bd232` on `feat/collector-hardening` is verified and ready.
-   - Deployment awaits the operator's maintenance signal (merge `feat/collector-hardening` to master $\to$ `stop_collector.bat` $\to$ `start_collector.bat` $\to$ verify stream age $< 60$s).
-2. **Replication Run 2 of 3 (R120-1.B):**
-   - Accumulating now. When the next 24-hour tagged window closes (~2026-09-07 22:20 EDT), run the four commands with `--json` into `cross_market/experiments/` and ingest.
-3. **Standing Checklists:**
-   - W32Time is running (`Offset +0.917s`).
-   - Battery flags cleared.
-   - Next milestone: Operator scheduler probe (`cross_market/scripts/probe_scheduled_task.ps1`) to verify task trigger on battery/mains.
+1. **Tonight ~22:20–22:25 EDT:**
+   - Laptop awake, on AC.
+   - Claude executes Disjoint Run 2 under Ruling R122-1.B.
+2. **Collector Hardening Deployment Window:**
+   - Staged on `feat/collector-hardening` (commit `70bd232`).
+   - Awaiting operator deployment window (recommended 09-08 or 09-09 evening).
+3. **Scheduled Task Drill Probe:**
+   - Operator can run `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1` at any time before the 16th to verify scheduler firing.
