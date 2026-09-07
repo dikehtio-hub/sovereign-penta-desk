@@ -2401,6 +2401,14 @@ esults_drops\.
          Exactly the commands in the two registrations, no --force. Tier 2 crypto: no-lead; Tier 2 fed-rates: no-lead; Tier 2b crypto: polymarket-leads; Tier 2b fed-rates: no-lead.
          macro/crypto disagrees between tiers; the regime page lists it and resolves nothing (reading rule).
 
+     ROUND 122b - resume_all.bat: ONE command to bring the whole data pipeline back after a reboot
+     resume_all.bat                                              (DEV root; safe whether daemons are up or down)
+         Gated on each daemon's own --status: starts the price collector+supervisor only if run_collector_service.py
+         --status says not running, then the ecosystem (Polymarket watcher, cross-market exporter, 5 Obsidian syncs)
+         only if the watcher is down - so it never double-starts and never forgets the collector (the 2026-09-06
+         failure was the watcher back but the collector dead). Prints a HEALTH CHECK: collector/watcher/exporter
+         RUNNING or DOWN. Use it after any clean shutdown; nothing else needs running by hand.
+
      ROUND 119 - INCIDENT: COLLECTOR SNAPSHOTS DEAD 9 H (FK on a new listing); RESTART; STOP SCRIPT FIXED
      HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat     then     start_collector.bat
          The stop script is FIXED (Round 119): it now reads the pids with delayed expansion, kills the

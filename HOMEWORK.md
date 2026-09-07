@@ -14,8 +14,11 @@ If you read nothing else, read this block. Each line is one thing, when to do it
 
 ### Tonight / tomorrow (Sun 09-07)
 - [ ] **Send the Round 121 handoff to Antigravity** (`HANDOFF_PROMPT.md`; it needs four rulings).
-- [ ] **Start the Windows Time service, 1 min, elevated PowerShell:** `Start-Service W32Time; w32tm /resync`
-      Then `python -m knowledge.drills.fomc_rehearsal --online` should show zero WARN.
+- [x] ~~**Start the Windows Time service.**~~ DONE 2026-09-07 01:13 EDT (you approved the UAC prompts). It was
+      *running but never synced* (Source: Local CMOS Clock) and something automated was stopping/starting it
+      every ~17 min. Set to Automatic, started, and force-synced: now Source `time.windows.com`, last sync
+      01:12:54. Minor watch: if the churner stops it again the clock still holds; re-run the resync only if a
+      pre-flight ever shows a large offset.
 - [ ] **Two yes/no decisions I am waiting on:** (a) install `uvicorn` and `hyperliquid-python-sdk` for Desk 4;
       (b) name a deploy window for the collector hardening (see 09-08 below for my recommendation).
 - [ ] **Keep the laptop awake through 22:20** - the second tagged 24 h window (run 2 of 3 for Antigravity's
@@ -30,9 +33,10 @@ If you read nothing else, read this block. Each line is one thing, when to do it
 - [ ] **Keep the laptop awake through 22:20 on 09-08** as well - run 3 of 3 closes then.
 
 ### Any day 09-07 to 09-14 — scheduler probe (~3 min, logged in)
-- [ ] `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`
-      Registers a temporary task that fires in 2 min, runs the drill's batch for 20 s into scratch, removes
-      itself. PROBE OK is the answer. Now that the battery flags are cleared it should pass unplugged too.
+- [x] `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`
+      DONE 2026-09-07 01:05 EDT — **PROBE OK**, last result 0, 60/60 stamps into scratch, task self-removed.
+      The scheduler → tracked batch → recorder chain fires correctly on this machine. Re-run only if the
+      machine or the drill files change before the 16th.
 
 ### Every day until 09-16 — two 10-second checks
 - [ ] `python -m knowledge.drills.fomc_rehearsal --online`   (33 checks; 0 FAIL is the answer; forward any FAIL line to me)
@@ -113,11 +117,9 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       a scratch folder, then removes itself. PROBE OK means Task Scheduler -> batch -> recorder works
       on this machine; PROBE FAILED with 'never ran' on battery is the battery-flag decision showing
       itself. Add `-WhatIf` first if you want to see what it would do without doing it.
-- [ ] **Start the Windows Time service.** The pre-flight found W32Time STOPPED. The clock is only
-      +0.37 s off today, but nothing corrects it between now and the 16th, and a scheduler on a slow
-      clock records the print as history. Two commands in an elevated PowerShell:
-      `Start-Service W32Time; w32tm /resync` - then `python -m knowledge.drills.fomc_rehearsal` should
-      show that WARN gone. I did not start it: starting a service is yours to do.
+- [x] ~~**Start the Windows Time service.**~~ DONE 2026-09-07 01:13 EDT. See the calendar entry above:
+      it was running but had never synced to the internet (Local CMOS Clock); now synced to time.windows.com,
+      startup Automatic. No longer a blocker.
 
 ---
 
@@ -148,6 +150,11 @@ If you read nothing else, read this block. Each line is one thing, when to do it
   60 minutes breaks the run and restarts the clock at zero.
 - **Shut down cleanly** — normal Windows shutdown, never the power button.
   `hyperliquid_data.db` is 4.9 GB with an open write-ahead log.
+- **After any shutdown or reboot, resume with ONE command:** `resume_all.bat` (DEV root).
+  It brings back the price collector AND the watcher/exporters, each gated on its own status so it
+  never double-starts and never forgets the collector, then prints a health check. The daemons do
+  NOT auto-start on login, so nothing collects until you run this (or ask me to). Built Round 122b,
+  tested live (all-kept when already up).
 - **Never kill the daemons by hand.** As of 2026-09-06 21:07 EDT: watcher 17688, exporter
   62760 (restarted 2026-09-06T02:44Z), supervisor **24504** and collector **60756** (both
   restarted 21:04 EDT after the snapshot outage; the R104-1 spread gate is now live). The
