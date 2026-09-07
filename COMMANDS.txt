@@ -2360,6 +2360,18 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 119 - INCIDENT: COLLECTOR SNAPSHOTS DEAD 9 H (FK on a new listing); RESTART; STOP SCRIPT FIXED
+     HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat     then     start_collector.bat
+         The stop script is FIXED (Round 119): it now reads the pids with delayed expansion, kills the
+         supervisor FIRST (else it relaunches the collector), and says 'no such process' rather than
+         success when taskkill fails. Before the fix it never killed anything. ALWAYS verify after stopping:
+             Get-Process -Id <old supervisor pid>,<old collector pid>    (expect errors = gone)
+         and only then run start_collector.bat; two collectors on one database is what the bug produced.
+     python -c "import sqlite3,time;c=sqlite3.connect('file:HyperLiquid/HL_Monarch/data/hyperliquid_data.db?mode=ro',uri=True);print(round((time.time()*1000-c.execute('SELECT MAX(timestamp) FROM asset_snapshots').fetchone()[0])/60000,1),'min since last snapshot')"
+         The one-line health check this incident lacked. Over ~1 min while the collector runs = look at
+         data\collector.log for `FOREIGN KEY constraint failed` (a coin listed since the last restart).
+     Current daemons (2026-09-06 21:05 EDT): watcher 17688, exporter 62760, supervisor 24504, collector 60756.
+
      ROUND 118 - TOKEN SHAPE AT REGISTRATION (C6), SCRATCH PRUNING, SCHEDULER PROBE (operator-run)
      python -m knowledge.lint          # now also reports C6
          C6 (Ruling R116-1.D): a rules registration whose market ids are not all digits compiles, carries

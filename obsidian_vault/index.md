@@ -192,7 +192,7 @@
 * [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
-* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 73 page(s) today.
+* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 74 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 10 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
@@ -257,6 +257,7 @@
 * [Round 116 digest](wiki/digests/round_116.md) - Round 116 (2026-09-06, SELF-DIRECTED - the operator said "proceed on your own"; no Antigravity prompt): THE FOMC DRILL HAS BEEN REHEARSED LIVE, END TO END, INTO SCRATCH
 * [Round 117 digest](wiki/digests/round_117.md) - Round 117 (2026-09-06, SELF-DIRECTED addendum, stopped at the authorisation boundary): the pre-flight gained `--online` - one read-only fetch of each registered token's live book through latency_sniper.default_fetch (the browser User-Agent the CLOB requires), PASS only when the book echoes the same asset_id and has depth; a…
 * [Round 118 digest](wiki/digests/round_118.md) - Round 118 (2026-09-06): A BAD TOKEN IS NOW AN ERROR ON THE PAGE, NOT A MISSING PAGE; SCRATCH KEEPS THREE RUNS; THE SCHEDULER PROBE IS WRITTEN FOR THE OPERATOR
+* [Round 119 digest](wiki/digests/round_119.md) - Round 119 (2026-09-06, INCIDENT, operator-authorised restart): THE HL COLLECTOR WROTE NO PRICE SNAPSHOT FOR 9 H 18 MIN AND NOTHING NOTICED
 * [Round 31 digest](wiki/digests/round_31.md) - Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings
 * [Round 33 digest](wiki/digests/round_33.md) - Round 33: DATA GROUNDING
 * [Round 34 digest](wiki/digests/round_34.md) - Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION

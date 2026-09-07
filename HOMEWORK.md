@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 20:15 EDT (Round 118; C6, scratch pruning, scheduler probe written for you).
+Last updated: 2026-09-06 21:15 EDT (Round 119; collector restarted after a 9 h snapshot outage).
 
 ---
 
@@ -55,7 +55,7 @@ Last updated: 2026-09-06 20:15 EDT (Round 118; C6, scratch pruning, scheduler pr
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 118 handoff prompt to Antigravity.**
+- [ ] **Send the Round 119 handoff prompt to Antigravity.** (Incident report inside; it needs rulings.)
 - [ ] **Run the scheduler probe** (any time before the 16th, logged in, on AC, ~3 minutes):
       `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`
       It registers a temporary task that fires in 2 minutes and runs the drill's batch for 20 s into
@@ -73,13 +73,6 @@ Last updated: 2026-09-06 20:15 EDT (Round 118; C6, scratch pruning, scheduler pr
       is small and testable. Either is fine; drifting into the 16th without choosing is not.
       `python -m knowledge.drills.fomc_rehearsal` (29 checks now) reports this as a WARN every time you
       run it, and will report PASS the moment the flags are cleared.
-- [ ] **Decide when the collector restarts** so the new spread gate takes effect.
-      Ruling R104-1 is implemented but collector `38548` is still running the old
-      code, which samples only 5 candidates per pass. Until it restarts, no new
-      window gets a measured spread and the net hurdle stays unevaluable. Per the
-      ruling's own daemon policy I did **not** restart it — the change takes effect
-      on the next maintenance restart, whenever you choose that. Nothing breaks if
-      you wait; the backlog of unmeasured windows simply keeps growing.
 
 ---
 
@@ -110,11 +103,12 @@ Last updated: 2026-09-06 20:15 EDT (Round 118; C6, scratch pruning, scheduler pr
   60 minutes breaks the run and restarts the clock at zero.
 - **Shut down cleanly** — normal Windows shutdown, never the power button.
   `hyperliquid_data.db` is 4.9 GB with an open write-ahead log.
-- **Never kill the daemons by hand.** All four verified healthy read-only at
-  2026-09-06 04:05 EDT: watcher 17688 (tags live, stamp 0.3 min old), exporter 62760
-  (restarted 2026-09-06T02:44Z), supervisor 46740, collector 38548 (30.5 h uptime,
-  writing `asset_snapshots` 0.2 min ago). The C2 bot is correctly DOWN - it has no
-  token and no admin allowlist, so it would fail closed anyway.
+- **Never kill the daemons by hand.** As of 2026-09-06 21:07 EDT: watcher 17688, exporter
+  62760 (restarted 2026-09-06T02:44Z), supervisor **24504** and collector **60756** (both
+  restarted 21:04 EDT after the snapshot outage; the R104-1 spread gate is now live). The
+  C2 bot is correctly DOWN - it has no token and no admin allowlist.
+- **Quick collector health check** (any time): the one-liner under ROUND 119 in COMMANDS.txt
+  prints minutes since the last price snapshot; over ~1 means look at `data\collector.log`.
 - **Never seed the live tax ledger.** `seed-bankroll` is paper-only.
 - **`DEV/HALT.flag`** is the kill switch: create it and every execution engine
   refuses with exit 3. Delete it to resume.
@@ -122,6 +116,13 @@ Last updated: 2026-09-06 20:15 EDT (Round 118; C6, scratch pruning, scheduler pr
 ---
 
 ## ✅ DONE (kept briefly, then deleted)
+
+- 2026-09-06 21:04 — **Collector restarted on your word** (Round 119). It had written no price
+  snapshot since 11:46 EDT: a coin newly listed on the exchange (`para:CIFR`) had no row in the
+  collector's asset table and one bad row failed every 10-second batch for nine hours. Your VPN
+  was not involved. The restart re-synced the assets and snapshots resumed within a minute; the
+  spread gate from Ruling R104-1 came live with it. The stop script turned out never to have
+  killed anything (it now does, and says so).
 
 - 2026-09-06 — **The FOMC drill was rehearsed live, end to end** (Round 116, self-directed).
   60 s of real order books for the three registered markets, 180 of 180 stamps, no gaps;

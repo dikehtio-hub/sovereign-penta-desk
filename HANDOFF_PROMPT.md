@@ -1,90 +1,83 @@
-# Round 118 Handoff: Cross-Check Request & Inquiries for Round 119
+# Round 119 Handoff: INCIDENT - collector snapshots dead 9 h; operator-authorised restart; rulings needed
 
 **To**: Antigravity (System Architect & Quantitative Auditor)
 **From**: Claude Code (Senior Implementation Engineer / Test Master)
-**Date**: 2026-09-06 (Round 118 commit `29b3572` at 20:20 EDT)
-**Subject**: Round 118 delivered with one deviation (D1 compiles-and-flags rather than rejects); the standing checklist is section 0b, updated; the operator now holds the scheduler probe.
+**Date**: 2026-09-06 21:20 EDT (commit in `git log -1`)
+**Subject**: Your 20:35 Round 119 prompt (R118-1.A/B ratified, holding directives) is acknowledged; this supersedes it with an incident. The HL collector wrote no `asset_snapshots` from 11:46:10 to 21:05:10 EDT. Root cause found, restart executed on the operator's word, one launcher bug fixed. Section 0b is the standing checklist. Section 3 asks for the hardening directives; this is daemon code and I did not change it without you.
 
 ---
 
-## 0b. THE STANDING CHECKLIST (authoritative as of 2026-09-06 20:25 EDT; mirrors HOMEWORK.md)
+## 0b. THE STANDING CHECKLIST (authoritative as of 2026-09-06 21:20 EDT; mirrors HOMEWORK.md)
 
 ### Dated - the operator, in order
-- [ ] **2026-09-06 ~22:20 EDT (tonight)** - Tier 2b 24 h gate closes. Laptop on, plugged in, logged in. Nothing to run.
-- [ ] **Any day before the 16th, ~3 min** - the scheduler probe (NEW): `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1` (logged in, on AC). PROBE OK proves Task Scheduler -> batch -> recorder on this machine; PROBE FAILED "never ran" on battery is the battery-flag decision showing itself. `-WhatIf` first to see it without doing it.
-- [ ] **2026-09-13 or 14** - `python -m knowledge.drills.fomc_live_rehearsal` (60 s of real books into scratch; nothing real written). Send the output to Claude if any line says FAIL.
+- [ ] **Tonight ~22:20 EDT** - Tier 2b gate closes (series verified unbroken at 20:55: 268 stamps, largest gap 5.1 min). Laptop on, plugged in, logged in.
+- [ ] **Any day before the 16th** - scheduler probe: `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`.
+- [ ] **2026-09-13 or 14** - `python -m knowledge.drills.fomc_live_rehearsal`.
 - [ ] **2026-09-15** - Q3 estimated tax: `python -m Tax_Reserve_Agent.main calendar`.
-- [ ] **2026-09-16 morning** - `python -m knowledge.drills.fomc_rehearsal --online` (30 checks), then `python -m knowledge.drills.fomc_live_rehearsal` once more.
-- [ ] **2026-09-16 13:58 EDT** - laptop on, logged in, ON AC (or flags cleared). T-2: `python -m knowledge.query --drill-card fomc-2026-09-16`. 14:00: a HUMAN reads the statement and writes `./event.json`. Then survival curve -> `knowledge.ingest.clob`, per the card.
+- [ ] **2026-09-16 morning** - `python -m knowledge.drills.fomc_rehearsal --online`, then the live rehearsal. **13:58 EDT** - the drill, per the card.
 
-### Operator decisions - one line each back to Claude, or two commands
-- [ ] **Start W32Time**: `Start-Service W32Time; w32tm /resync` (elevated). Pre-flight WARNs until done.
-- [ ] **Battery flags on `Monarch_FOMC_Drill`**: clear (Claude can, on your word) or commit to AC.
-- [ ] **Collector restart window** (R104-1 spread gate waits on it).
-- [ ] **Desk 4 packages**: `uvicorn` and/or `hyperliquid-python-sdk` - yes to one, both, or neither.
+### Operator decisions - still open
+- [ ] **Start W32Time**: `Start-Service W32Time; w32tm /resync` (elevated).
+- [ ] **Battery flags** on `Monarch_FOMC_Drill`: clear, or commit to AC.
+- [ ] **Desk 4 packages**: `uvicorn` / `hyperliquid-python-sdk` - yes or no.
 - [ ] **Send this handoff to Antigravity.**
+- [x] ~~Collector restart window~~ - DONE 21:04 EDT (this round); the R104-1 spread gate is now live.
 
 ### Antigravity - open
-- [ ] **Cross-check Round 118** (section 4).
-- [ ] **R118-1.A** - ratify the D1 deviation: compile + `dev.invalid_tokens` + lint C6 ERROR, instead of refusing the registration.
-- [ ] **R118-1.B** - ratify that the probe task copies the drill task's default settings (both battery flags TRUE) on purpose, so a probe that will not start on battery is the drill's own failure mode, not a probe artefact.
+- [ ] **Cross-check Round 119** (section 4).
+- [ ] **R119-1.A** - ratify the fix to `stop_collector.bat` (delayed expansion; supervisor first; honest failure line).
+- [ ] **R119-1.B** - direct the collector hardening (section 3). Daemon code: not touched without you.
+- [x] R118-1.A / R118-1.B - ratified in your 20:35 prompt. Nothing further.
 
 ### Engineering queue
-- [ ] Nothing unblocked. Everything remaining is on a line above.
-- [ ] Watching: passive_fade window gate clears ~2026-09-08 (ZEC 26.8% still fails); whale share gate 20.08% vs 20%. The registration pages show every gate on every ingest.
+- [ ] Collector hardening (after R119-1.B) - deploys at the next restart.
+- [ ] Snapshot-age health check in the pre-flight / a daily task (after R119-1.B item 4).
+- [ ] Watching: fade window gate now delayed by the 9 h gap; whale share gate 20.08%.
 
 ### Resolved this round
-- [x] D1 token shape at registration (R116-1.D) - as C6, see R118-1.A.
-- [x] D2 scratch pruning, keep 3 (R116-1.E).
-- [x] D3 scheduler probe written, parsed, `-WhatIf`-run (R116-1.F); the real run is the operator's.
-- [x] R115-1.A-E, R116-1.A-E - ratified by you in the Round 118 prompt; nothing further.
+- [x] Collector restarted; snapshots resumed; old pair killed by PID; one supervisor + one collector running (24504 / 60756).
+- [x] `stop_collector.bat` fixed and tested offline.
+- [x] VPN cleared as a cause.
 
-### Standing rules (unchanged)
-- Laptop awake while a 24 h series accumulates; clean shutdown only; never kill daemons by hand; never seed the live tax ledger; `DEV/HALT.flag` is the kill switch.
-
----
-
-## 1. What was delivered (Round 118 commit, 14 files)
-
-- **D1 - token shape (R116-1.D), with a deviation.** `knowledge.ingest.experiments` compiles a rules registration whose market ids are not all digits and records the offenders under `dev.invalid_tokens`; new **lint C6** turns that into an ERROR naming the token. The directive said "reject". A refused registration is an absent page, and every silent failure this project has caught had the shape "it looked fine because it was not there" (Rounds 108, 110, 112, 114, 116). The drill-time guard stays: the live rehearsal refuses to record on the same condition. **The fixture's four `TOK_*` tokens (27 uses) are now 76-digit numerics** - which is what made C6 testable, and also removed a fixture that had passed 15 assertions for many rounds while being a token the recorder could never load back. Two C2 assertions now compare the 12-digit prefix C2 prints.
-- **D2 - scratch pruning (R116-1.E).** `fomc_live_rehearsal` prunes default run dirs under `cross_market/data/rehearsals/` to the newest 3 at the end of a default run; `probe_*` dirs and an explicit `--scratch` are never touched; reported as a check (`scratch pruned: kept [...]; removed [...]`).
-- **D3 - scheduler probe (R116-1.F).** `cross_market/scripts/probe_scheduled_task.ps1`: registers `Monarch_Rehearsal_Probe` with the drill task's shape (current user, interactive logon, default settings - both battery flags TRUE, as the drill has), firing in 2 min and running the **tracked** batch with `20 "<probe_<stamp>>\books"`, waits, reports `LastTaskResult` and stamp count (~60 = 20 s x 3), unregisters itself. `-WhatIf` registers nothing. Parsed with the PowerShell parser (0 errors) and `-WhatIf`-run; the probe task does not exist; the drill task's action is unchanged. **The real run is the operator's** and sits on the checklist.
-- **D4 - docs**: AGENTS.md status + findings, COMMANDS.txt, HOMEWORK.md (probe line added), digest `round_118.md`.
-
-**Telemetry:** knowledge **342 passed** (+23: 4 new tests, the rest inherited card tests in two new fixture classes). Real vault **500 pages, lint CLEAN**; registrations idempotent (`--force`: 0 written). No daemon touched.
-
-**Timing:** clock read 23:50:55Z; quoted 35 (30-45); commit ~00:25Z = **~34 min**. One self-inflicted loop: an idempotence guard I added to the patch script re-applied any patch whose anchor was a prefix of its replacement, so C6 was registered twice (duplicate findings) until the three files were restored from HEAD and patched once. Caught by the test that asserts exactly one finding.
+### Standing rules (unchanged, one addition)
+- Laptop awake while a 24 h series accumulates; clean shutdown only; never kill daemons by hand; never seed the live tax ledger; `DEV/HALT.flag` is the kill switch. **New: after any stop script, verify the old PIDs are gone before starting a replacement.**
 
 ---
 
-## 2. The deviation, spelled out
+## 1. Incident report
 
-The directive: "add validation rejecting any rules registration where market token identifiers contain non-digit characters". Implemented instead: compile, mark, lint-error. Reasons:
-1. A rejected registration produces no page, no register row, no digest line - the operator reading the vault sees nothing wrong, only nothing at all.
-2. Lint is the vault's mechanism for "this exists and is wrong"; C6 is an ERROR (not a warning) because a registration with such a token cannot produce a recording that loads.
-3. The runtime guard (live rehearsal refuses; the pre-flight's `--online` would show the token failing to resolve) remains, so the drill itself is still protected twice.
-If you prefer the refusal, it is a two-line change in `compile_rules_registration` and the C6 test flips; say so in R118-1.A.
+**Timeline (EDT, 2026-09-06).** 11:46:10 last `asset_snapshots` row. 11:46:21 first `Error in market context polling loop: FOREIGN KEY constraint failed`; then one every ~10 s (83 in the first quarter hour, ~360/h, 3,300+ total). 16:12 the only network-profile event of the day (the operator's VPN) - five hours after onset, unrelated. 20:55 the operator asks for a check. 21:04 restart authorised and executed. 21:05:10 first `Persisted 442 market snapshots`. 21:06 old pair killed by PID. 21:07 zero FK errors in the trailing minute; newest snapshot 5 s old.
 
----
+**Root cause.** `asset_snapshots.coin` REFERENCES `assets.coin` and `storage/db.py` sets `PRAGMA foreign_keys = ON`. `MarketCollector._sync_universe_metadata` - the only call to `repo.upsert_assets` - is awaited once, in `run()`. A coin listed on the exchange after the collector started - **`para:CIFR`** on the tracked `para` DEX; its first snapshot ever is 2026-09-07T01:04:32Z, the first pass after the restart - was therefore in every REST context and never in `assets`. `insert_snapshots` writes the whole pass in one transaction, so SQLite rejected all 442 rows on the one violating row, every pass, for 9 h 18 min. The process never crashed, so the supervisor's restart-on-crash policy never fired; the only visible signal was `coverage_pct` sliding 66 -> 62 over the last hour.
 
-## 3. Independent cross-check requested
+**Not the cause.** The exchange universe today is 514 instruments across 11 DEXes; the collector tracks 442. The other 72 untracked (a whole new `hyna` DEX; new `mkts`, `vntl`, `io` listings) never enter its contexts. The VPN produced one disconnect event at 16:12 and nothing else; the Tier 2b series, the exporter and the watcher were untouched.
 
-1. `git show --stat 29b3572` -> 14 files; `git status --short` empty after the handoff commit.
-2. In a scratch copy of the fixture (or by editing `cross_market/experiments/fomc_2026-09-16.rules.json` in a throwaway clone), set one `market` to `TOK_BAD`, run `python -m knowledge.ingest.experiments --force` then `python -m knowledge.lint` -> exactly one C6 ERROR naming `TOK_BAD`, and the page still exists with `dev.invalid_tokens`. Do NOT do this in the real tree.
-3. `grep -c TOK_ knowledge/tests/test_knowledge.py` -> 4 (one `TOK_BAD` in the C6 test, one prose `TOK_*`, and the two in that test's assertions).
-4. `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1 -WhatIf` -> prints the plan, registers nothing; `Get-ScheduledTask Monarch_Rehearsal_Probe` -> not found; `Monarch_FOMC_Drill` action unchanged.
-5. `python -m knowledge.drills.fomc_live_rehearsal --seconds 20` -> 21 checks including `scratch pruned`; `ls cross_market/data/rehearsals` -> at most 3 stamped dirs plus any `probe_*`.
-6. Knowledge suite -> 342. Lint -> 500 pages CLEAN.
+**Consequences of the gap.** Incremental persistence measured no excursions for 9 h (`persisted 0 windows / 0 events` on every maintenance pass), so the whale and fade samples did not grow and the fade's window gate (expected ~09-08) slips by the gap. `latest_snapshots` was 9 h stale. Basis windows that opened in the gap have no price series.
 
----
+## 2. Actions taken, and one thing that went wrong
 
-## 4. Round 119 candidates
+- **Authorised by the operator** ("lets execute the restart"): `stop_collector.bat`, then `start_collector.bat`, per COMMANDS.txt.
+- **The stop script did not stop anything.** It printed `Terminating PID ...` with an EMPTY pid: `set /p PID=<file` inside an `if exist (...)` block followed by `%PID%` - cmd expands `%VAR%` when it parses the block, before `set /p` runs. `taskkill` failed under `>nul 2>&1`, the pid files were deleted, and `✓ Collector daemon stopped` printed. `start_collector.bat` then launched a **second** supervisor+collector pair against the same database; for ~90 s two collectors ran (the old one still failing every 10 s, the new one persisting). Caught because I checked the old PIDs after the stop rather than trusting the line; the old pair (46740 supervisor first, then 38548) was killed by PID.
+- **Fixed** `stop_collector.bat`: `setlocal EnableDelayedExpansion`, `!PID!`, supervisor killed first (else it relaunches its child), `(taskkill reported no such process)` instead of a success line. Tested offline in a temp tree against bogus pids 999998/999999: both named, both reported missing, pid files removed. NOT run against the live pair.
+- **Verified after**: exactly one `run_collector_service.py` (24504) and one `main.py collector` (60756); `assets` 441 -> 442; 442 snapshots per pass; 38 passes in the first six minutes; 0 FK errors; watcher 17688 and exporter 62760 untouched.
 
-- None are unblocked. When the operator runs the probe, its output decides whether anything follows (a PROBE FAILED on battery -> the battery-flag decision; a FAILED with stamps < 48 -> a recorder or path problem to chase).
-- After the 16th: R111-1.E (`dev.usage.window_days` deprecation lint) and the post-drill Reaction Profile review.
+## 3. Hardening requested (R119-1.B) - daemon code, so yours to direct
+
+1. `_sync_universe_metadata` on a schedule (each context poll, or every N minutes), not only at startup. A new listing must become an `assets` row before its first snapshot.
+2. `insert_snapshots`: upsert unknown coins before the batch, or on `IntegrityError` fall back to row-by-row and log the offenders **by name**. One new listing must never zero the stream again.
+3. Supervisor: alert, and optionally restart, when `coverage_pct` decays while `restarts == 0` and the child is alive - the failure mode the crash policy cannot see.
+4. A snapshot-age check: newest `asset_snapshots` age > 15 min is a FAIL, in the pre-flight (`--online`) and as a scheduled daily line. The one-liner is in COMMANDS.txt under Round 119.
+Each is small; all deploy at the next restart. I did not write them because they change a live daemon's behaviour and the collector is running.
+
+## 4. Independent cross-check requested
+
+1. `grep -c "FOREIGN KEY" HyperLiquid/HL_Monarch/data/collector.log` and the first/last timestamps -> onset 11:46:21, last before 21:06.
+2. `SELECT MIN(timestamp) FROM asset_snapshots WHERE coin='para:CIFR'` -> 1788743072280 (2026-09-07T01:04:32Z); no earlier row. `SELECT coin FROM assets WHERE coin='para:CIFR'` -> present now.
+3. `Get-Process -Id 24504,60756` alive; `Get-Process -Id 46740,38548` -> not found. `Get-CimInstance Win32_Process` shows exactly one `main.py collector`.
+4. The snapshot-age one-liner (COMMANDS.txt Round 119) -> under 1 minute.
+5. The stop script: read it; then, in a temp tree with bogus pid files, run it and confirm it names the pids and removes the files. Do NOT run it against the live pair.
+6. Brainstorm: what else in the four daemons has a "keeps running but stops doing its job" mode that the supervisor cannot see? The watcher's tagged stamps and the exporter's page writes are the analogous streams.
 
 ## 5. Operational reminders
-
-- **Tonight 22:20 EDT** the Tier 2b gate closes - laptop on, plugged in, logged in.
-- **W32Time is stopped**; battery flags undecided; the pre-flight WARNs on both until resolved.
-- Nothing was restarted in Rounds 112-118.
+- Tonight 22:20 EDT the Tier 2b gate closes. W32Time still stopped; battery flags undecided.
+- Daemons now: watcher 17688, exporter 62760, supervisor 24504, collector 60756. Only the collector pair was restarted, on the operator's word.
