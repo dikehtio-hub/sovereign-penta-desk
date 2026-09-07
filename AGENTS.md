@@ -5,6 +5,21 @@ the detail.
 
 ## Status
 
+Round 120 complete (2026-09-06 22:30 EDT, operator: "lets do what we can"): THE TIER 2b GATE CLOSED AND THE
+PRE-REGISTERED TIER 2 / TIER 2b LEAD-LAG RUNS WERE EXECUTED, AS REGISTERED, NO --force. The tagged macro
+series cleared its bar at 22:25 EDT (286 stamps, 24.0 h, largest gap 5.1 min, 0 breaks; `lead_lag
+--check-data` READY). All three preconditions in lead_lag_tier2b.meta.json held (Tier 1 verdict in
+Cross_Market_Titans.md; watcher on the Round 76 code since 2026-09-05 22:20; tagged series ready). The
+four registered commands ran with --json into cross_market/data/lead_lag_tier{2,2b}_{fed-rates,crypto}
+_verdict.json and were ingested with knowledge.ingest.lead_lag --tier 2 / 2b. RESULTS: Tier 2 crypto: no-lead; Tier 2 fed-rates: no-lead; Tier 2b crypto: polymarket-leads; Tier 2b fed-rates: no-lead.
+Per the registration's reading rule, Tier 2 and 2b are reported side by side and never resolved:
+macro/crypto DISAGREES (Tier 2 no-lead at lag 38 min, corr -0.138, n 2,389; Tier 2b polymarket-leads at
+lag 38 min, corr -0.325, n 910) - the dual-tagged markets (fetched under both crypto and fed-rates) carry
+the signal; neither tier is 'the' answer, and the Tier 1 bar and verdict are untouched. fed-rates agrees
+(no-lead both ways). Bars met on every subfamily (min_abs_corr 0.2, min_events 5, min_points 60). One 24 h
+window, one coin, not independent of Tier 2 (registration caveat): a reading, not an edge. Vault 505
+pages, lint CLEAN. NO DAEMON TOUCHED.
+
 Round 119 complete (2026-09-06, INCIDENT, operator-authorised restart): THE HL COLLECTOR WROTE NO PRICE
 SNAPSHOT FOR 9 H 18 MIN AND NOTHING NOTICED. The operator asked for a check after their VPN flapped; the
 VPN was innocent (one network event at 16:12 EDT; every daemon alive with its original start; Tier 2b
@@ -1360,6 +1375,31 @@ Registry line 179: "CENTRALIZED TELEGRAM / DISCORD COMMAND & CONTROL (C2) BOT".
 - Estimate: Phase 1 ~40 min in one round. Open for ratification: Telegram
   first; HALT.flag-only kill semantics; C2_ADMIN_IDS naming; 120 s stale
   window; console-only /resume.
+
+## Round 120 findings
+
+### The regime page's own table (compiled by knowledge.ingest.lead_lag, not transcribed)
+
+| tier | scope | from | class | regime | lag min | corr | n | at |
+|---|---|---|---|---|---|---|---|---|
+| 2b | macro_crypto | tags | **polymarket-leads** | insufficient-history | 38 | -0.325 | 910 | 2026-09-07T02:30:34Z |
+| 2b | macro_fed-rates | tags | **no-lead** | insufficient-history | 58 | +0.135 | 890 | 2026-09-07T02:30:29Z |
+| 2 | macro_crypto | label | **no-lead** | insufficient-history | 38 | -0.138 | 2389 | 2026-09-07T02:30:23Z |
+| 2 | macro_fed-rates | label | **no-lead** | insufficient-history | -10 | +0.052 | 2416 | 2026-09-07T02:30:18Z |
+
+### Disagreements (from the same page)
+
+- **macro_crypto**: Tier 2 says no-lead, Tier 2b says polymarket-leads
+
+- How to read it, in the registration's words: "Where they disagree, that disagreement IS the finding: the
+  dual-tagged markets carry it, and neither tier is 'the' answer. Tier 2b never overrides Tier 2." The
+  crypto subfamily under tag membership is 910 minutes of overlap against 2,389 under first-tag-wins, so
+  the dual-tagged markets are a minority of the crypto set and move the peak from -0.138 to -0.325.
+- Same lag (38 min) in both tiers for crypto; the sign is negative in both. That the lag survives the
+  membership change while the magnitude does not is the one structural detail worth a ruling.
+- Caveats that stand: one 24 h window; the crypto subfamily is endogenous to BTC by construction
+  (registration: 'the question is a function of the BTC price'); the 5-minute latency floor was applied
+  and 38 min clears it; B14's tests_run counter is now 2 per tier-scope.
 
 ## Round 119 findings (incident)
 

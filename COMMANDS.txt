@@ -2360,6 +2360,16 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 120 - TIER 2 / TIER 2b LEAD-LAG RUNS (the tagged series cleared its 24 h bar 2026-09-06 22:25 EDT)
+     python -m cross_market.lead_lag --check-data --subfamily-from tags          -> READY (286 stamps, 24.0 h, gap 5.1 min)
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --json > cross_market/data/lead_lag_tier2_fed-rates_verdict.json
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5 --json > .../lead_lag_tier2_crypto_verdict.json
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags --json > .../lead_lag_tier2b_fed-rates_verdict.json
+     python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --json > .../lead_lag_tier2b_crypto_verdict.json
+     python -m knowledge.ingest.lead_lag --result <file> --tier 2|2b            (one verdict page each + a regime history row)
+         Exactly the commands in the two registrations, no --force. Tier 2 crypto: no-lead; Tier 2 fed-rates: no-lead; Tier 2b crypto: polymarket-leads; Tier 2b fed-rates: no-lead.
+         macro/crypto disagrees between tiers; the regime page lists it and resolves nothing (reading rule).
+
      ROUND 119 - INCIDENT: COLLECTOR SNAPSHOTS DEAD 9 H (FK on a new listing); RESTART; STOP SCRIPT FIXED
      HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat     then     start_collector.bat
          The stop script is FIXED (Round 119): it now reads the pids with delayed expansion, kills the

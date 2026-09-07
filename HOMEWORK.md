@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 22:26 EDT (Tier 2b gate closed; Tier 2b run awaits a go).
+Last updated: 2026-09-06 22:35 EDT (Tier 2 / 2b runs done; one disagreement is the finding).
 
 ---
 
@@ -108,10 +108,11 @@ Last updated: 2026-09-06 22:26 EDT (Tier 2b gate closed; Tier 2b run awaits a go
 
 ## ✅ DONE (kept briefly, then deleted)
 
-- 2026-09-06 22:25 — **Tier 2b 24 h gate CLOSED**: 286 tagged stamps over 24.0 h, largest gap 5.1 min,
-  0 breaks. `lead_lag --check-data` says READY. The Tier 2b run itself (registered
-  `lead_lag_tier2b`, read-only over the recorded stamps, compiles a verdict page) is the next step;
-  it runs on Antigravity's or your word.
+- 2026-09-06 22:25 — **Tier 2b 24 h gate CLOSED** (286 stamps, 24.0 h, largest gap 5.1 min, 0 breaks)
+  and, on your "lets do what we can", **the Tier 2 and Tier 2b runs were executed as registered**.
+  Tier 2 crypto: no-lead; Tier 2 fed-rates: no-lead; Tier 2b crypto: polymarket-leads; Tier 2b fed-rates: no-lead. The crypto subfamily
+  disagrees between tiers and the registration says that disagreement is the finding, not a verdict
+  to pick. Four verdict pages and the regime page carry the numbers. Nothing trades on this.
 
 - 2026-09-06 21:04 — **Collector restarted on your word** (Round 119). It had written no price
   snapshot since 11:46 EDT: a coin newly listed on the exchange (`para:CIFR`) had no row in the

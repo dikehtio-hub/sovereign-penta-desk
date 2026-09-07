@@ -69,7 +69,11 @@
 * [Experiment: baseline_unfiltered](wiki/experiments/baseline_unfiltered_N12_2026-09-01_meta.md) - TERMINATED EARLY at N=12 of a pre-registered N=50
 * [Experiment: latency_sniper_fomc_2026-09-16](wiki/experiments/fomc_2026-09-16_rules.md) - PRE-REGISTERED (Ruling R2c).
 * [Lead-lag verdict: Tier 1, macro, 2026-09-06 01:42Z](wiki/experiments/lead_lag_tier1_macro_20260906T0142Z.md) - Tier 1 lead-lag verdict for macro: no-lead.
+* [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260907T0230Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
+* [Lead-lag verdict: Tier 2, macro / fed-rates, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2_macro_fed-rates_20260907T0230Z.md) - Tier 2 lead-lag verdict for macro / fed-rates: no-lead.
 * [Experiment: lead_lag_tier2_subfamilies](wiki/experiments/lead_lag_tier2_meta.md) - PRE-REGISTERED - runs only AFTER the Tier 1 maiden run has written its verdict to Cross_Market_Titans.md
+* [Lead-lag verdict: Tier 2b, macro / crypto, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2b_macro_crypto_20260907T0230Z.md) - Tier 2b lead-lag verdict for macro / crypto: polymarket-leads.
+* [Lead-lag verdict: Tier 2b, macro / fed-rates, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2b_macro_fed-rates_20260907T0230Z.md) - Tier 2b lead-lag verdict for macro / fed-rates: no-lead.
 * [Experiment: lead_lag_tier2b_dual_tag_membership](wiki/experiments/lead_lag_tier2b_meta.md) - PRE-REGISTERED - runs only after (1) the Tier 1 maiden verdict is in Cross_Market_Titans.md, (2) the watcher has been restarted with the Round 76 code, and (3) the TAGGED macro series clears the readiness bar on its own
 * [Experiment: passive_fade_rebenchmark](wiki/experiments/passive_fade_rebenchmark_meta.md) - PASSIVE - the fade does not trade; sweeps accumulate with execution disabled
 * [Passive fade rebenchmark - verdict](wiki/experiments/passive_fade_rebenchmark_verdict.md) - Reopening question graded against the pre-registered bar: **INSUFFICIENT** over `trade_sweep` (ratio_30m 0.7896, P 0.0000, 13,645 events on 46 coins, top coin 0.268). The fade stays retired either way.
@@ -192,9 +196,9 @@
 * [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
-* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 74 page(s) today.
+* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 75 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 5 page(s) today.
-* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 10 page(s) today.
+* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 14 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
 * [Filed queries register](wiki/concepts/queries_register.md) - Every question filed with `knowledge.query --file`. The scaffold records the question and what was open when it was asked; the ANSWER is the operator's to write. 0 page(s) today.
@@ -258,6 +262,7 @@
 * [Round 117 digest](wiki/digests/round_117.md) - Round 117 (2026-09-06, SELF-DIRECTED addendum, stopped at the authorisation boundary): the pre-flight gained `--online` - one read-only fetch of each registered token's live book through latency_sniper.default_fetch (the browser User-Agent the CLOB requires), PASS only when the book echoes the same asset_id and has depth; a…
 * [Round 118 digest](wiki/digests/round_118.md) - Round 118 (2026-09-06): A BAD TOKEN IS NOW AN ERROR ON THE PAGE, NOT A MISSING PAGE; SCRATCH KEEPS THREE RUNS; THE SCHEDULER PROBE IS WRITTEN FOR THE OPERATOR
 * [Round 119 digest](wiki/digests/round_119.md) - Round 119 (2026-09-06, INCIDENT, operator-authorised restart): THE HL COLLECTOR WROTE NO PRICE SNAPSHOT FOR 9 H 18 MIN AND NOTHING NOTICED
+* [Round 120 digest](wiki/digests/round_120.md) - Round 120 (2026-09-06 22:30 EDT, operator: "lets do what we can"): THE TIER 2b GATE CLOSED AND THE PRE-REGISTERED TIER 2 / TIER 2b LEAD-LAG RUNS WERE EXECUTED, AS REGISTERED, NO --force
 * [Round 31 digest](wiki/digests/round_31.md) - Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings
 * [Round 33 digest](wiki/digests/round_33.md) - Round 33: DATA GROUNDING
 * [Round 34 digest](wiki/digests/round_34.md) - Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION
