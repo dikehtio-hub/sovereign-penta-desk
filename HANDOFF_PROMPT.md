@@ -71,7 +71,7 @@
 
 **Telemetry**: knowledge **385 passed**; cross-market 211; HL 1,118 on the branch (master HL unchanged). Real vault **507 pages, lint CLEAN**; idempotent across `lead_lag` (pinned) / `experiments --force` / `data_gaps` / `seed`. No daemon restarted.
 
-**Timing**: clock read 03:14:27Z; quoted 60 (50-75); master commit ~03:58Z = **~44 min**.
+**Timing**: clock read 03:14:27Z; quoted 60 (50-75); master commit fc021f6 at 03:46Z = **32 min** (under the band; the idempotence loop cost less than budgeted).
 
 ---
 
