@@ -4,7 +4,63 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-06 23:55 EDT (Round 121: your five decisions executed; hardening staged; morning-of commands final).
+Last updated: 2026-09-07 00:05 EDT (Round 121: your five decisions executed; hardening staged; the date-ordered calendar at the top is new).
+
+---
+
+## 📅 YOUR CALENDAR — every action, in date order (times are EDT)
+
+If you read nothing else, read this block. Each line is one thing, when to do it, and how long it takes.
+
+### Tonight / tomorrow (Sun 09-07)
+- [ ] **Send the Round 121 handoff to Antigravity** (`HANDOFF_PROMPT.md`; it needs four rulings).
+- [ ] **Start the Windows Time service, 1 min, elevated PowerShell:** `Start-Service W32Time; w32tm /resync`
+      Then `python -m knowledge.drills.fomc_rehearsal --online` should show zero WARN.
+- [ ] **Two yes/no decisions I am waiting on:** (a) install `uvicorn` and `hyperliquid-python-sdk` for Desk 4;
+      (b) name a deploy window for the collector hardening (see 09-08 below for my recommendation).
+- [ ] **Keep the laptop awake through 22:20** - the second tagged 24 h window (run 2 of 3 for Antigravity's
+      R120-1.B consensus) closes about then. The run itself is mine; the laptop staying awake is yours.
+
+### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
+- [ ] Say "deploy the hardening" on one of these two evenings. That gives the watchdog a full week of soak
+      before the FOMC drill and leaves 09-10 to 09-15 for a rollback if it misbehaves. Do NOT deploy on
+      09-14 or later: never change the collector inside 48 h of the print.
+- [ ] **Keep the laptop awake through 22:20 on 09-08** as well - run 3 of 3 closes then.
+
+### Any day 09-07 to 09-14 — scheduler probe (~3 min, logged in)
+- [ ] `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`
+      Registers a temporary task that fires in 2 min, runs the drill's batch for 20 s into scratch, removes
+      itself. PROBE OK is the answer. Now that the battery flags are cleared it should pass unplugged too.
+
+### Every day until 09-16 — two 10-second checks
+- [ ] `python -m knowledge.drills.fomc_rehearsal --online`   (33 checks; 0 FAIL is the answer; forward any FAIL line to me)
+- [ ] The collector one-liner under ROUND 119 in `COMMANDS.txt` (minutes since the last snapshot; over ~1 means look).
+
+### Sat 09-13 or Sun 09-14 — live dress rehearsal (~2 min)
+- [ ] `python -m knowledge.drills.fomc_live_rehearsal`  (60 s of real books into scratch; nothing real written).
+      Expect: 180/180 stamps, one curve, two deferrals for a hold. Send me any FAIL line.
+
+### Mon 09-15 — Q3 estimated tax (deadline; not a trading task)
+- [ ] `python -m Tax_Reserve_Agent.main calendar` for the amount, then pay it. Penalty accrues from this date.
+
+### Wed 09-16 — FOMC drill day, minute by minute
+- [ ] **Morning (any time before 12:00):** `fomc_rehearsal --online`, then `fomc_live_rehearsal`. Both clean, or call me.
+- [ ] **13:30** - laptop ON, LOGGED IN, lid open, sleep disabled, VPN in whatever state it will stay in for the hour.
+- [ ] **13:56** - `python -m knowledge.query --drill-card fomc-2026-09-16`  (read-only; countdown + the paste-ready commands).
+- [ ] **13:58** - the scheduled task fires by itself and records for 420 s (until 14:05). Touch nothing.
+- [ ] **14:00** - the statement prints. READ the rate decision yourself, then:
+      `python -m knowledge.drills.event_json --bps <n>`   (0 = hold, 25 = quarter-point hike, -25 = cut).
+      Wrong number? `--force` overwrites. Nothing automated may decide this.
+- [ ] **14:06 (after the recorder stops)** - the survival curve, then `knowledge.ingest.clob`, exactly as the card prints them.
+      Your p = 0.90 "no change" forecast scores itself once the event and the books are in the vault.
+- [ ] **Afterwards** - tell me it ran (or send the output of anything that did not).
+
+### If 09-16 is missed
+- Next FOMC: 2026-10-27/28. Everything stays armed; the registration would need re-dating and fresh token ids.
+
+### No date — whenever you are ready
+- [ ] **Name the aim of the next project** (the reading-intake layer: links, videos, articles). One sentence
+      on what the notes are FOR is all I need to build the inbox and the fetch adapter.
 
 ---
 
@@ -48,7 +104,7 @@ Last updated: 2026-09-06 23:55 EDT (Round 121: your five decisions executed; har
 
 ## 🟠 BLOCKING — work is stopped until you do these
 
-- [ ] **Send the Round 119 handoff prompt to Antigravity.** (Incident report inside; it needs rulings.)
+- [ ] **Send the Round 121 handoff prompt to Antigravity.** (Four rulings requested; the watchdog deviation is one.)
 - [ ] **Run the scheduler probe** (any time before the 16th, logged in, on AC, ~3 minutes):
       `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`
       It registers a temporary task that fires in 2 minutes and runs the drill's batch for 20 s into
