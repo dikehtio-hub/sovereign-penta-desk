@@ -46,7 +46,7 @@ dev:
     value: 0.0
     file: cross_market/experiments/lead_lag_tier2b.meta.json
     json_path: bars.latency_minutes_fed_rates
-  tests_run: 2
+  tests_run: 4
 ---
 # Experiment: lead_lag_tier2b_dual_tag_membership
 

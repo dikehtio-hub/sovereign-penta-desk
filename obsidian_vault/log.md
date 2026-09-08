@@ -1,3 +1,9 @@
+## 2026-09-08
+* **Ingest**: lead-lag Tier 2 verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2_macro_fed-rates_20260908T0329Z]]; [[btc_macro_regime]] history now 6 row(s).
+* **Ingest**: lead-lag Tier 2 verdict (macro_crypto): **no-lead** -> [[lead_lag_tier2_macro_crypto_20260908T0329Z]]; [[btc_macro_regime]] history now 7 row(s).
+* **Ingest**: lead-lag Tier 2b verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2b_macro_fed-rates_20260908T0330Z]]; [[btc_macro_regime]] history now 8 row(s).
+* **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **no-lead** -> [[lead_lag_tier2b_macro_crypto_20260908T0330Z]]; [[btc_macro_regime]] history now 9 row(s).
+
 ## 2026-09-07
 * **Ingest**: work-chain digests: 73 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].
 * **Ingest**: work-chain digests: 74 round(s) from `AGENTS.md`; 1 page(s) written -> [[digests_register]].

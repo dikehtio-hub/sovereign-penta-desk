@@ -10,7 +10,7 @@ tags:
 - lead-lag
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-07T02:30:34Z'
+  at: '2026-09-08T03:30:08Z'
 status: draft
 sources:
 - id: verdicts
@@ -28,19 +28,19 @@ dev:
     tier 2 macro_fed-rates:
       latest_verdict: no-lead
       regime_consensus_3: insufficient-history
-      runs: 1
+      runs: 2
     tier 2 macro_crypto:
       latest_verdict: no-lead
       regime_consensus_3: insufficient-history
-      runs: 1
+      runs: 2
     tier 2b macro_fed-rates:
       latest_verdict: no-lead
       regime_consensus_3: insufficient-history
-      runs: 1
+      runs: 2
     tier 2b macro_crypto:
-      latest_verdict: polymarket-leads
+      latest_verdict: no-lead
       regime_consensus_3: insufficient-history
-      runs: 1
+      runs: 2
   classes:
   - insufficient
   - no-lead
@@ -94,6 +94,42 @@ dev:
     corr: -0.32504762712388213
     n: 910
     page: lead_lag_tier2b_macro_crypto_20260907T0230Z
+  - at: '2026-09-08T03:29:45Z'
+    tier: '2'
+    scope: macro_fed-rates
+    membership: label
+    class: no-lead
+    lag: 10
+    corr: -0.07130135410526685
+    n: 1553
+    page: lead_lag_tier2_macro_fed-rates_20260908T0329Z
+  - at: '2026-09-08T03:29:54Z'
+    tier: '2'
+    scope: macro_crypto
+    membership: label
+    class: no-lead
+    lag: -35
+    corr: -0.10133717034557642
+    n: 1563
+    page: lead_lag_tier2_macro_crypto_20260908T0329Z
+  - at: '2026-09-08T03:30:01Z'
+    tier: 2b
+    scope: macro_fed-rates
+    membership: tags
+    class: no-lead
+    lag: 10
+    corr: -0.07129424788934347
+    n: 1553
+    page: lead_lag_tier2b_macro_fed-rates_20260908T0330Z
+  - at: '2026-09-08T03:30:08Z'
+    tier: 2b
+    scope: macro_crypto
+    membership: tags
+    class: no-lead
+    lag: -35
+    corr: -0.1013092656518123
+    n: 1563
+    page: lead_lag_tier2b_macro_crypto_20260908T0330Z
 ---
 # BTC macro regime
 
@@ -106,14 +142,14 @@ dev:
 | Tier | Scope | Membership | Latest | Consensus (3) | Lag (min) | Corr | n | As of |
 |---|---|---|---|---|---|---|---|---|
 | 1 | macro | label | **no-lead** | insufficient-history | -45 | +0.070 | 1497 | 2026-09-06T01:42:14Z |
-| 2b | macro_crypto | tags | **polymarket-leads** | insufficient-history | 38 | -0.325 | 910 | 2026-09-07T02:30:34Z |
-| 2b | macro_fed-rates | tags | **no-lead** | insufficient-history | 58 | +0.135 | 890 | 2026-09-07T02:30:29Z |
-| 2 | macro_crypto | label | **no-lead** | insufficient-history | 38 | -0.138 | 2389 | 2026-09-07T02:30:23Z |
-| 2 | macro_fed-rates | label | **no-lead** | insufficient-history | -10 | +0.052 | 2416 | 2026-09-07T02:30:18Z |
+| 2b | macro_crypto | tags | **no-lead** | insufficient-history | -35 | -0.101 | 1563 | 2026-09-08T03:30:08Z |
+| 2b | macro_fed-rates | tags | **no-lead** | insufficient-history | 10 | -0.071 | 1553 | 2026-09-08T03:30:01Z |
+| 2 | macro_crypto | label | **no-lead** | insufficient-history | -35 | -0.101 | 1563 | 2026-09-08T03:29:54Z |
+| 2 | macro_fed-rates | label | **no-lead** | insufficient-history | 10 | -0.071 | 1553 | 2026-09-08T03:29:45Z |
 
 ## Disagreements
 
-- **macro_crypto**: Tier 2 says no-lead, Tier 2b says polymarket-leads
+- none
 
 ## History
 
@@ -124,6 +160,10 @@ dev:
 | 2026-09-07T02:30:23Z | 2 | macro_crypto | label | no-lead | 38 | -0.138 | 2389 | [[lead_lag_tier2_macro_crypto_20260907T0230Z]] |
 | 2026-09-07T02:30:29Z | 2b | macro_fed-rates | tags | no-lead | 58 | +0.135 | 890 | [[lead_lag_tier2b_macro_fed-rates_20260907T0230Z]] |
 | 2026-09-07T02:30:34Z | 2b | macro_crypto | tags | polymarket-leads | 38 | -0.325 | 910 | [[lead_lag_tier2b_macro_crypto_20260907T0230Z]] |
+| 2026-09-08T03:29:45Z | 2 | macro_fed-rates | label | no-lead | 10 | -0.071 | 1553 | [[lead_lag_tier2_macro_fed-rates_20260908T0329Z]] |
+| 2026-09-08T03:29:54Z | 2 | macro_crypto | label | no-lead | -35 | -0.101 | 1563 | [[lead_lag_tier2_macro_crypto_20260908T0329Z]] |
+| 2026-09-08T03:30:01Z | 2b | macro_fed-rates | tags | no-lead | 10 | -0.071 | 1553 | [[lead_lag_tier2b_macro_fed-rates_20260908T0330Z]] |
+| 2026-09-08T03:30:08Z | 2b | macro_crypto | tags | no-lead | -35 | -0.101 | 1563 | [[lead_lag_tier2b_macro_crypto_20260908T0330Z]] |
 
 ## Related
 
