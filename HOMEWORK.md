@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-07 13:40 EDT (Round 123 done; stale Blocking section cleared; only open item is the deploy-window decision).
+Last updated: 2026-09-08 00:05 EDT (Round 124: run 2 committed f72f1cb; run 3 bound to 03:27:29Z per R124-1.A; raw/inbox exempt from lint per R124-1.C).
 
 ---
 
@@ -25,28 +25,36 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       formerly-skipped modules now run and pass (23 tests); the full Desk 4 suite is 180 passed, 0 skipped.
 - [ ] **One decision left:** name a deploy window for the collector hardening (see 09-08 below; recommended
       Tue/Wed evening).
-- [ ] **Keep the laptop awake and collecting from now through ~22:22 EDT tonight (Mon 09-07)** - run 2 of 3.
-      Antigravity's R122-1.B fixes run 2 as the DISJOINT window starting 2026-09-07T02:22:00Z, which reaches 24 h
-      at ~22:22 tonight. Its start (01:21Z) is after the collector came back (01:05Z), so its prices are clean.
-      **This needs UNBROKEN collection until then**: if the machine sleeps or shuts down, that fixed window gets a
-      gap, the readiness gate fails, and run 2 slides to a new start after you resume. The run itself is mine
-      (ping me ~22:20 and I execute it, or paste the block below). Exact, pre-registered:
-      1. Gate (must say `ready: true`):
-         `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z`
-      2. The four runs:
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run2.json`
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5 --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2_crypto_verdict_run2.json`
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2b_fed-rates_verdict_run2.json`
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --since 2026-09-07T02:22:00Z --json > cross_market/experiments/lead_lag_tier2b_crypto_verdict_run2.json`
-      3. Ingest each with its tier: `--tier 2` for the two tier2 files, `--tier 2b` for the two tier2b files, e.g.
-         `python -m knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run2.json --tier 2`
-      Run 3 then binds `--since <run 2's shift_last_utc>` and closes ~22:22 EDT Tue 09-08.
+- [x] ~~**Run 2 of 3 (Mon 09-07 ~22:22 EDT)**~~ DONE 2026-09-07 23:28-23:31 EDT. Gate READY (25.1 h continuous,
+      299 tagged stamps, largest gap 5.1 min, 0 breaks). The four pre-registered commands ran exactly as written
+      (`--since 2026-09-07T02:22:00Z`, no `--until`), all four ingested: **every verdict is `no-lead`** (Tier 2
+      fed-rates corr -0.07 @ +10 min; Tier 2 crypto -0.10 @ -35; Tier 2b identical to Tier 2). Run 1's Tier 2b
+      crypto `polymarket-leads` did NOT replicate on the clean window. Regime page: 9 history rows, each
+      tier/scope at runs: 2, consensus still `insufficient-history` until run 3. Measured span ran to
+      03:27:28Z (25.1 h, executed 66 min after the gate hour). Run 2 COMMITTED 2026-09-08 (f72f1cb), and its
+      25.1 h span STANDS per ruling R124-1.B (>= 24 h bar met; no re-run).
+- [ ] **Keep the laptop awake and collecting from now through ~23:30 EDT Tue 09-08** - run 3 of 3.
+      Run 3 binds `--since 2026-09-08T03:27:29Z` per ruling R124-1.A: strictly disjoint, one second after run 2's
+      last shift (03:27:28Z fed-rates, 03:27:27Z crypto). Because `--since` is inclusive, 03:27:29Z guarantees a
+      0-event overlap partition. It reaches 24 h at 2026-09-09T03:27:29Z =
+      **~23:27 EDT Tue 09-08**, not 22:22. Same rule as run 2: UNBROKEN collection until then, or the window gets a
+      gap and slides. The run is mine (ping me ~23:30, or paste the block below). Pre-registered form:
+      1. Gate (must say READY):
+         `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-08T03:27:29Z`
+      2. The four runs (same four as run 2, `_run3.json`, `--since 2026-09-08T03:27:29Z`):
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5 --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2_crypto_verdict_run3.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2b_fed-rates_verdict_run3.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2b_crypto_verdict_run3.json`
+      3. Ingest each with its tier (`--tier 2` / `--tier 2b`), e.g.
+         `python -m knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json --tier 2`
+      Run 3 completes the 3-run `regime_consensus_3` on every tier/scope.
 
 ### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
 - [ ] Say "deploy the hardening" on one of these two evenings. That gives the watchdog a full week of soak
       before the FOMC drill and leaves 09-10 to 09-15 for a rollback if it misbehaves. Do NOT deploy on
       09-14 or later: never change the collector inside 48 h of the print.
-- [ ] **Keep the laptop awake through 22:20 on 09-08** as well - run 3 of 3 closes then.
+- [ ] **Keep the laptop awake through ~23:30 on 09-08** as well - run 3 of 3 closes then (moved from 22:20; see above).
 
 ### Any day 09-07 to 09-14 — scheduler probe (~3 min, logged in)
 - [x] `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`

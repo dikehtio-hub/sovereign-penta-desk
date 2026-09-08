@@ -5,6 +5,39 @@ the detail.
 
 ## Status
 
+Round 124 rulings executed (2026-09-08 00:05 EDT, Antigravity R124-1.A/B/C/D). (D) Run 2's scientific record
+COMMITTED f72f1cb - the 4 verdict JSONs, 4 verdict pages, regime (5->9 rows), 2 registrations (tests_run 4),
+registers, index, log; the live telemetry dashboard churn was deliberately left out (it is continuous output,
+not run-2 record - a refinement of Antigravity's "28 paths", which counted the dashboards). (A) Run 3 bound to
+`--since 2026-09-08T03:27:29Z` in HOMEWORK - strictly disjoint, one second after run 2's last shift, 0-event
+overlap. (B) Run 2's 25.1 h span STANDS, no re-run. (C) `raw/inbox/` exempted from the linter: DEVIATION from
+the literal directive (which named Rule L1 only) - I exempted the whole subtree from EVERY rule in `lint_vault`,
+because a dropped bare-URL note would trip L3/L2 the moment it carried any frontmatter; an inbox is a drop-zone
+like the un-owned dashboard dirs, not a knowledge page. Added `type: raw` frontmatter to READING.md as directed
+(cosmetic now that the subtree is exempt; useful to the future adapter). Regression test:
+`test_raw_inbox_is_a_dropzone_exempt_from_all_rules` (a bare-URL note trips nothing; the same file outside the
+inbox still fails L1). Lint 515 pages CLEAN. NO daemon touched (run 3 accumulating). Non-replication of run 1's
+Tier 2b `polymarket-leads` is Antigravity-diagnosed as selection bias from run 1's 9.3 h price hole (the
++38m -> -35m sign flip). Consensus after run 2: fed-rates and crypto Tier 2 mathematically locked no-lead; Tier
+2b crypto decided by run 3 Tuesday night.
+
+Run 2 of 3 EXECUTED (2026-09-07 23:28-23:31 EDT, operator: "lets do the run"; R122-1.B's disjoint window): gate READY
+(tagged-stamp segment 2026-09-07T02:22:37Z -> 2026-09-08T03:27:28Z, 25.1 h, 299 points, largest gap 5.1 min, 0 breaks);
+the four pre-registered commands ran exactly as written in HOMEWORK.md (`--since 2026-09-07T02:22:00Z`, no `--until`),
+all exit 0 -> cross_market/experiments/lead_lag_tier2{,b}_{fed-rates,crypto}_verdict_run2.json; ingested sequentially
+(--tier 2 / 2b) -> four Experiment pages (…_20260908T0329Z / …_0330Z), btc_macro_regime history 5 -> 9 rows, every
+tier/scope runs: 2, consensus_3 still insufficient-history (run 3 completes it), both registrations tests_run 4,
+dev.data_gaps [] on all four. RESULTS: all four `no-lead` (T2 fed-rates corr -0.071 @ +10 min, n 1,553, 82 events; T2
+crypto -0.101 @ -35, n 1,563, 1,831 events; T2b identical to T2 - label and tag membership now yield the same sets).
+FINDING: run 1's T2b crypto `polymarket-leads` did not replicate on the clean window. Measured span is 25.1 h, not
+24 h (executed 66 min after the gate hour, per the --since-only pre-registration). Run 3 binds `--since
+2026-09-08T03:27:28Z` (literal shift_last_utc; strictly disjoint would be 03:27:29Z - Antigravity's call) and reaches
+24 h at 2026-09-09T03:27:28Z = ~23:27 EDT Tue 09-08 (HOMEWORK updated). Verification: cross_market.tests.test_lead_lag
+26/26; knowledge.lint 515 pages, 1 error, 0 warnings - the error is raw/inbox/READING.md (no frontmatter) from
+commit 102da4f at 16:38 EDT, not this run; left for its author (exempt raw/inbox/ in L1, or add frontmatter). NOT
+COMMITTED (operator did not ask). Same session, earlier: read-only strategy audit of quant_trading_lab (its own
+AGENTS.md item 116; report at ICT Quantlab notes2\audit_2026-09-07\); no desk code changed.
+
 Round 123 complete (2026-09-07 13:10 EDT, Antigravity's R123-1.A directive): TELEMETRY SUPERVISION + PRE-FLIGHT
 HASH RACE FIXED. (1) `hash_vault()` in fomc_rehearsal.py (imported by fomc_live_rehearsal.py) now hashes only
 `vault/wiki` instead of the whole vault, with a whole-vault fallback when wiki/ is absent. Root cause confirmed:

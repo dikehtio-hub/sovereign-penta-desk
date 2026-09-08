@@ -318,6 +318,19 @@ class LintTests(TempVault):
         self.assertTrue(any("`type` is required" in m for m in msgs))
         self.assertTrue(any("no frontmatter" in m for m in msgs))
 
+    def test_raw_inbox_is_a_dropzone_exempt_from_all_rules(self):
+        """Round 124 (R124-1.C): a bare-URL note under raw/inbox/ trips NO rule, though the same
+        file anywhere else trips L1. The inbox is a drop-zone, not a knowledge page."""
+        self.clean_pair()
+        self.write("raw/inbox/READING.md", "---\ntype: raw\n---\n# Reading inbox\n\n- https://example.com/x\n")
+        self.write("raw/inbox/dropped.md", "a bare url https://arxiv.org/abs/1234 and no frontmatter at all\n")
+        findings = self.findings()
+        self.assertEqual(findings, [])                                              # vault still clean
+        self.assertFalse(any("raw/inbox/" in f.path.replace("\\", "/") for f in findings))
+        # control: the identical no-frontmatter file OUTSIDE the inbox still fails L1
+        self.write("wiki/concepts/loose.md", "no frontmatter at all\n\n[[a]]\n")
+        self.assertTrue(any(f.code == "L1" and "loose" in f.path for f in self.findings()))
+
     def test_l2_index_missing_entry_and_dead_path(self):
         self.clean_pair()
         idx = self.vault / "index.md"

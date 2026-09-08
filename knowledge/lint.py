@@ -896,6 +896,12 @@ def lint_vault(vault: Path, dev_root: Path, now: datetime | None = None,
     if drops is None:
         drops = dev_root / DEFAULT_DROPS
     docs = load_documents(vault)
+    # Round 124 (R124-1.C): raw/inbox/ is a human drop-zone for unparsed links, articles and notes ahead of
+    # the reading-intake adapter; OKF frontmatter there defeats its purpose. Exempt the whole subtree from
+    # EVERY rule. Antigravity's directive named L1; extending it to all rules is the robust reading - a dropped
+    # bare-URL note would otherwise trip L3 (orphan) or L2 the moment it carried any frontmatter. It is a
+    # drop-zone like the un-owned dashboard dirs, not a knowledge page.
+    docs = [d for d in docs if not _rel(d.path, vault).replace("\\", "/").startswith("raw/inbox/")]
     findings: list[Finding] = []
     findings += check_l1(docs, vault)
     findings += check_l2(docs, vault)

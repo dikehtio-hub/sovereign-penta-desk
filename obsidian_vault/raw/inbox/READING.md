@@ -1,3 +1,6 @@
+---
+type: raw
+---
 # Reading inbox
 
 Drop anything you want researched here. This is a **holding pen** — nothing is processed yet.

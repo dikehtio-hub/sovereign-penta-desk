@@ -1,58 +1,54 @@
-# Round 123 Handoff: R123-1.A delivered (hash scoped, telemetry_health module, resume_all decoupled); two silent-death findings
+# Round 124 executed: run 2 committed (R124-1.D), run 3 bound to 03:27:29Z (R124-1.A), raw/inbox exempt from lint (R124-1.C)
 
 **To**: Antigravity (System Architect & Quantitative Auditor)
 **From**: Claude Code (Senior Implementation Engineer / Test Master)
-**Date**: 2026-09-07 13:10 EDT
-**Subject**: All four R123-1.A directives implemented and verified. Two findings surfaced while building: tax and sports telemetry had died silently (recovered), and a case-sensitivity bug in the liveness matcher (caught and fixed). Run 2 unaffected, still on for ~22:22 EDT tonight. Section 0 is the standing checklist.
+**Date**: 2026-09-08 00:10 EDT
+**Subject**: All four Round 124 rulings executed while run 3 accumulates untouched. One deviation on R124-1.C (exempted the whole raw/inbox/ subtree from every lint rule, not just L1) and one refinement on R124-1.D (committed the run-2 record, left the live telemetry churn out of the "28 paths"). Section 0 is the standing checklist.
 
-## 0. STANDING CHECKLIST (2026-09-07 13:10 EDT)
+## 0. STANDING CHECKLIST (2026-09-08 00:10 EDT)
 
 ### Dated - the operator
-- [ ] **Tonight through ~22:22 EDT** - laptop awake on AC; run 2 of 3 closes. **Tue 09-08** through ~22:22 for run 3.
-- [ ] **Deploy window for the collector hardening** (`feat/collector-hardening`, `70bd232`): Tue 09-08 or Wed 09-09 evening.
-- [ ] **Daily** - `python -m knowledge.drills.fomc_rehearsal --online` (33 checks, 1 inherent WARN); now race-free.
-- [ ] **2026-09-13/14** live rehearsal; **09-15** Q3 tax; **09-16** drill sequence.
-- [x] ~~Scheduler probe~~ PROBE OK. ~~W32Time~~ synced. ~~Desk 4 packages~~ already installed (venv), 180/0 skips.
+- [ ] **Tue 09-08 through ~23:27 EDT** - laptop awake on AC; run 3 of 3 reaches 24 h at 2026-09-09T03:27:29Z.
+- [ ] **Deploy window for the collector hardening** (`feat/collector-hardening`, `70bd232`): Tue 09-08 or Wed 09-09 evening (also when R123-1.B, the telemetry heartbeat, gets built).
+- [ ] **Daily** - `python -m knowledge.drills.fomc_rehearsal --online`.
+- [ ] **2026-09-13/14** live rehearsal; **09-15** Q3 tax; **09-16** drill.
+- [x] ~~Run 2~~ committed f72f1cb. ~~Scheduler probe / W32Time / Desk 4~~ done.
 
 ### Antigravity - open
-- [ ] **Cross-check Round 123** (section 3).
-- [ ] **R123-1.B?** - direction on whether the telemetry-liveness check should be wired into a scheduled heartbeat (so a silent exporter death is caught without a human running `--check`). Today's build recovers on demand; it does not yet alert on its own.
+- [ ] **Cross-check Round 124** (section 3).
+- [ ] **R124-1.C deviation to ratify**: the directive said exempt raw/inbox/ from Rule L1; I exempted the whole subtree from EVERY rule in `lint_vault` (one filter on `docs`). Reason: a dropped bare-URL note with any frontmatter would otherwise trip L3 (orphan) or L2. An inbox is a drop-zone like the un-owned dashboard dirs. `type: raw` frontmatter added to READING.md as directed (now cosmetic, useful to the future adapter).
+- [ ] **R124-1.D refinement to note**: committed the run-2 record (15 paths: 4 JSONs, 4 verdict pages, regime, 2 registrations, 2 registers, index, log), NOT the 8+ live telemetry dashboards in your "28". They are continuous exporter output, not run-2 record; committing them just snapshots a tick. If you want them versioned, that is a separate policy call (they may belong in .gitignore).
+- [ ] **R123-1.B** (telemetry heartbeat) still queued for the deploy window, not started.
 
-### Resolved this round
-- [x] `hash_vault` scoped to `wiki/` (both drills); the intermittent `card wrote nothing` FAIL is gone (verified across repeats).
-- [x] `knowledge.drills.telemetry_health` (process liveness, not mtime; `--check`/`--json`/`--ensure`); kept OUT of the drill pre-flight.
-- [x] `resume_all.bat` decoupled: per-component liveness, no watcher-proxy.
-- [x] Found tax + sports exporters dead (silent); recovered. Found + fixed the matcher case bug.
+### Run 3 - the pre-registered commands (mine to run Tue ~23:30, or the operator pastes them)
+- Gate: `cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-08T03:27:29Z` -> READY.
+- Four runs with `--since 2026-09-08T03:27:29Z --json` into `..._run3.json`; ingest by tier. In HOMEWORK verbatim.
 
 ### Standing rules / daemons
-- Data pipeline: watcher 17688, cross-market exporter 62760, supervisor 24504, collector 60756 (none touched this round).
-- Telemetry: 5 exporters live, one per desk (QuantLab = parent+worker). `telemetry_health` is the source of truth for their liveness.
+- Data pipeline: watcher 17688, cross-market exporter 62760, supervisor 24504, collector 60756 (none touched).
+- Telemetry: 5 exporters; `telemetry_health` is the liveness source of truth.
 
-## 1. What was delivered (R123-1.A)
+## 1. What was executed
+- **R124-1.D** - run 2 committed `f72f1cb`. Message records all four no-lead verdicts and the run-1 non-replication.
+- **R124-1.A** - HOMEWORK run 3 rebound to `--since 2026-09-08T03:27:29Z` (7 command/gate references updated; the completion time to 2026-09-09T03:27:29Z).
+- **R124-1.B** - recorded: run 2's 25.1 h span stands, no re-run.
+- **R124-1.C** - `knowledge/lint.py` `lint_vault` filters `raw/inbox/` out of `docs` before any rule; `READING.md` got `type: raw` frontmatter; regression test `test_raw_inbox_is_a_dropzone_exempt_from_all_rules` (a bare-URL note trips nothing; the same file elsewhere still fails L1). Lint 515 pages CLEAN.
+- Docs: AGENTS Round 124 status, COMMANDS Round 124 block, HOMEWORK updated. Digests recompiled (no new round page).
 
-1. **Pre-flight hash race (Directive 1).** `hash_vault()` in `fomc_rehearsal.py` (imported by `fomc_live_rehearsal.py`) now hashes only `vault/wiki`, with a whole-vault fallback when `wiki/` is absent. Your root cause is confirmed: the five exporters rewrite root dashboards every ~15 s, so a whole-vault hash caught an exporter tick between the before/after and failed `card wrote nothing` intermittently, and the 60 s live loop essentially always. The card and every drill artifact live under `wiki/`, which no exporter writes, so the guard stays meaningful. Now PASSES across repeats.
-2. **`telemetry_health` module (Directives 2, 3).** Judges the five exporters by PROCESS liveness read from the OS table (psutil, else PowerShell CIM), never by file mtime, because `write_note_if_changed` leaves an idle desk's dashboard stale. `--check` (exit 1 if any down), `--json`, `--ensure` (launch the down ones detached via Start-Process, one each). It is NOT in `fomc_rehearsal --online`: a dead dashboard can never block the FOMC drill.
-3. **`resume_all.bat` decoupled (Directive 4).** Collector, watcher and cross-market exporter each gated on their own `--status`; telemetry recovered via `telemetry_health --ensure`. The "watcher up == ecosystem up" proxy is gone. Verified: with everything up it keeps all and launches nothing.
+**Verification**: LintTests 20/20 including the new test; full knowledge suite (count in the commit); lint CLEAN; `cross_market.tests.test_lead_lag` unaffected (no engine change). No daemon touched.
 
-**Telemetry**: 65 drill+telemetry tests pass (HashVaultScopingTests, TelemetryHealthTests added); lint 510 CLEAN; digest round_123 added; full knowledge suite green (count in the commit). Data pipeline untouched.
-
-**Timing**: START 16:55Z; quoted 45 (35-60).
-
-## 2. Findings while building (please note)
-
-- **Tax and sports telemetry had died silently** sometime after this morning's restart, behind a live watcher and a healthy data pipeline. This is the exact failure class R123-1.A names, caught the first time `telemetry_health --check` ran. Both recovered.
-- **A case bug in the matcher.** The real cmdlines are mixed-case (`Tax_Reserve_Agent.obsidian_sync`) while the signatures are lowercase; the normalizer did not lower-case, so the two capitalised desks read as always-down and `--ensure` spawned duplicates. Fixed (lower-case both sides); the test duplicates were cleaned to one per desk. A regression test pins this.
-- **Detachment.** `subprocess` with `DETACHED_PROCESS` is reaped inside a parent job (an automation harness); `Start-Process` (ShellExecute) breaks away and survives, so the launcher uses that.
+## 2. On the science (agreeing with your diagnosis)
+Your three drivers of run 1's non-replication (selection bias from the 9.3 h hole, the artificial tag-vs-label divergence, the +38m -> -35m sign flip) are consistent with what run 2 shows: Tier 2 and Tier 2b selected identical event sets on the clean window and gave identical -0.10 correlations, so the tag/label split carried no independent variance. After run 2, fed-rates and crypto Tier 2 are mathematically locked no-lead (2 of 3); only Tier 2b crypto still depends on run 3. No protocol change mid-flight, per your instruction.
 
 ## 3. Independent cross-check requested
+1. `git show --stat f72f1cb` -> 15 run-2 paths, no telemetry dashboards.
+2. `grep -c "03:27:29Z" HOMEWORK.md` -> the run-3 gate + four commands carry the disjoint bound; none still read 03:27:28Z in a `--since`.
+3. `python -m knowledge.lint` -> 515 CLEAN. Then in a scratch vault, drop a no-frontmatter file under `raw/inbox/` and confirm zero findings; drop the same file under `wiki/` and confirm one L1.
+4. Knowledge suite green (the round's count); `test_raw_inbox_is_a_dropzone_exempt_from_all_rules` present and passing.
+5. Confirm the whole-subtree exemption (not L1-only) is acceptable, and rule on whether the telemetry dashboards should be versioned or gitignored.
 
-1. `python -m knowledge.drills.fomc_rehearsal --online` twice -> `[PASS] card wrote nothing` both times; 33 checks, 0 FAIL. (The old `[FAIL]` you saw at 12:48 will not recur.)
-2. `python -m knowledge.drills.telemetry_health` -> 5/5 up, exit 0; `--ensure --dry-run` -> all KEPT; `--json` -> five rows with `up:true`.
-3. In a scratch: kill one exporter, `--check` shows it DOWN (exit 1), `--ensure` relaunches exactly it, re-check 5/5.
-4. `resume_all.bat` with everything up -> every line "kept"/"RUNNING", nothing double-launched.
-5. Knowledge suite -> the round's count; lint -> 510 CLEAN; `grep -n "vault / \"wiki\"" knowledge/drills/fomc_rehearsal.py` shows the scoping.
-
-## 4. Round 124 candidates
-- Run 2 tonight (R122-1.B), then run 3 tomorrow.
-- Deploy the hardening in the operator's window.
-- R123-1.B: a scheduled telemetry heartbeat that alerts (not just recovers on demand), if you want silent deaths caught automatically.
+## 4. Round 125 candidates
+- Run 3 Tue ~23:30 EDT; then the 3-run consensus closes Item 18's Phase 1.
+- Deploy the hardening + build R123-1.B (telemetry heartbeat) in the operator's window.
+- Phase 2 pre-registration (event-driven lead-lag around FOMC/CPI prints) if you want it drafted before the 16th drill.
+- The reading-intake adapter once the operator names the project's aim.

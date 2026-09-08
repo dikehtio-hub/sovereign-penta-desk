@@ -2360,6 +2360,15 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     ROUND 124 - RUN 2 COMMITTED; RUN 3 BOUND; raw/inbox EXEMPT FROM LINT (R124-1.A/B/C/D)
+     Run 2 committed f72f1cb (all no-lead; run 1's Tier 2b polymarket-leads did NOT replicate on the clean window).
+     Run 3 (Tue 09-08 ~23:27 EDT): the four registered commands with --since 2026-09-08T03:27:29Z --json into
+         cross_market/experiments/lead_lag_tier{2,2b}_{fed-rates,crypto}_verdict_run3.json, then ingest by tier.
+         03:27:29Z (R124-1.A) = strictly disjoint, 1 s after run 2's last shift; --since is inclusive.
+     raw/inbox/ is a lint drop-zone (R124-1.C): knowledge/lint.py's lint_vault filters the whole raw/inbox/ subtree
+         out of `docs` before any rule runs, so a dropped bare-URL note trips nothing. Drop research into
+         obsidian_vault/raw/inbox/READING.md (or any *.md there); nothing processes it until the intake adapter exists.
+
      ROUND 123 - TELEMETRY SUPERVISION; PRE-FLIGHT HASH SCOPED TO wiki/; resume_all DECOUPLED (R123-1.A)
      python -m knowledge.drills.telemetry_health              (the 5 per-desk Obsidian exporters, by PROCESS liveness)
          --check (default): one line each, exit 1 if any down.  --json: machine-readable.  --ensure: launch the
