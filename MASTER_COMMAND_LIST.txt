@@ -375,7 +375,9 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       # watcher on the same folder prints already_running and exits 0. Stale locks are swept.
       # Round 56 (2026-09-04 22:33 EDT): operator status (exit 0 running / 3 stopped) and the Item 18 data sentinel:
       python -m cross_market.ingestors.polymarket_fetcher --status [--json]
-      python -m cross_market.lead_lag --check-data [--family macro] [--json]   # exit 0 ready / 3 not
+      python -m cross_market.lead_lag --check-data [--family macro] [--subfamily-from tags] [--since ISO] [--json]   # exit 0 ready / 3 not
+      # Round 125 (R125-1.C): READY needs BOTH streams - the Polymarket event bar AND the HyperLiquid price bar
+      # (newest asset_snapshots row <= 15 min, no price hole > 60 min inside the sought window). Reasons name the stream.
       # Round 57 (2026-09-04 22:51 EDT): the same verdict as a card in obsidian_vault/Cross_Market_Titans.md (between
       # lead-lag-sentinel markers), refreshed by the Cross-Market Arb Obsidian Sync every cycle.
       python -m cross_market.lead_lag [--coin BTC]      # live dirs are GATED: exit 3 until READY, --force to override

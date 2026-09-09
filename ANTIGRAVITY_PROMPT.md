@@ -1,82 +1,93 @@
-# Round 124 Rulings & Quantitative Audit: Run 2 Verdict Analysis, Non-Replication Diagnosis, and Run 3 Bound Rulings
+# Round 125 Rulings & Incident Directives: Collector Outage Audit, Hardening Deployment Mandate, Run 3 Declared Void, and Gate Hardening Directive
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-07 23:55 EDT  
-**Subject**: Run 2 audit complete; non-replication mathematically diagnosed; strictly disjoint `--since` bound ruled for Run 3; 25.1h span stands; L1 `raw/inbox/` exemption approved; commit of Run 2 authorized.
+**Date**: 2026-09-09 14:30 EDT  
+**Subject**: Collector outage audited (26.3h stale, 11,613 FK errors, missing coins identified); Hardening deployment mandated for today's maintenance window; Run 3 declared VOID due to 67% missing price data; Gate hardening approved as directive; Data gap #2 registered.
 
 ---
 
-## 1. Independent Cross-Check Audit (Live Verification)
+## 1. Independent Incident Audit & Cross-Check Verification
 
-Every verification item requested in Section A.3 of the handoff has been audited and confirmed against the live environment:
+Every verification check requested in Section C of the handoff has been audited and confirmed against the live environment:
 
-1. **Bounded Gate Check (`--since` + `--until`):**
-   - Executed: `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-07T02:22:00Z --until 2026-09-08T03:27:28Z`
-   - Output: **READY** (Segment `02:22:37Z` $\to$ `03:22:25Z`, span 25.0h, 298 points, rate 11.88/h, largest gap 5.1 min, 0 breaks $>60$ min). Exit code 0.
-2. **Deterministic Stability Re-Run:**
-   - Re-ran Tier 2b crypto with `--since 2026-09-07T02:22:00Z --until 2026-09-08T03:27:28Z --json`:
-     - **Events:** Exactly **1,830** (identical to Run 2 artifact).
-     - **Best Lag:** Exactly **-35 minutes** (identical to Run 2 artifact).
-     - **Correlation:** **-0.0999** (vs recorded -0.1013, both unambiguously `no-lead` at ~ -0.10 vs 0.20 bar).
-     - Confirms complete numerical determinism over the bounded window.
-
----
-
-## 2. Quantitative Root-Cause Diagnosis: Why Run 1's `polymarket-leads` Did Not Replicate
-
-Run 1 found Tier 2b crypto `polymarket-leads` ($\text{corr} = -0.325$ at $+38$ min, $n=910$). On the clean disjoint window of Run 2, it collapsed to `no-lead` ($\text{corr} = -0.101$ at $-35$ min, $n=1,563$).
-
-### The Three Drivers of Non-Replication:
-1. **Severe Selection Bias from the 9.32h Price Hole in Run 1:**
-   - Run 1's BTC price series spanned the unmeasured collector outage (`para:CIFR` FK crash from 11:46 EDT to 21:05 EDT), leaving 39% of price minutes unrecorded.
-   - In cross-correlation calculations, when price series vanish for 9 hours, probability shifts occurring during the outage or near its boundary can only correlate with price deltas across the gap. A sudden post-outage price recovery creates an artificial cross-correlation peak clustered around the lag distance between shifts and the gap resumption.
-2. **Artificial Tag-vs-Label Divergence in Run 1:**
-   - In Run 1, Tier 2 (label) evaluated $n = 2,389$ with $\text{corr} = -0.138$ (`no-lead`), while Tier 2b (tags) evaluated only $n = 910$ with $\text{corr} = -0.325$ (`polymarket-leads`). Dual-tagged markets selected a concentrated, illiquid subset during volatile gap edges.
-   - In Run 2 (over a continuous 25.1h series), Tier 2 and Tier 2b selected **identical event sets** (1,831 vs 1,830 shifts) and produced **identical correlations** (-0.101). The tag vs label distinction carried zero independent variance.
-3. **Microstructural Ground Truth (Sign Flip from $+38$m to $-35$m):**
-   - Notice that the peak correlation flipped sign from $+38$ min (Polymarket leading BTC) to $-35$ min (BTC leading Polymarket).
-   - In continuous trading, BTC perps on Binance/HyperLiquid are aggressively traded by low-latency market makers. Polymarket is an illiquid retail venue. Finding that Polymarket lags spot/perps by ~35 minutes is economically natural; finding that retail Polymarket order flow led institutional BTC perps by 38 minutes was a statistical phantom created by missing data.
+1. **Collector Staleness & FK Error Count:**
+   - Executed: `SELECT MAX(timestamp) FROM asset_snapshots` on `HyperLiquid/HL_Monarch/data/hyperliquid_data.db`.
+   - Result: `1788883282392` = **`2026-09-08T16:01:22.392Z`** (**1,576.9 minutes = 26.28 hours stale**).
+   - Scanned `HyperLiquid/HL_Monarch/data/collector.log`: **11,613 total lines** of `FOREIGN KEY constraint failed` (8,206 new errors since the Round 119 restart).
+2. **Identification of Missing Exchange Listings:**
+   - Queried live exchange metadata across all active DEXes and compared against the `assets` table:
+     - **Database Assets:** 442 coins.
+     - **Live Exchange Universe:** 444 coins.
+     - **Missing Listings Causing FK Failure:** Exactly 2 coins: **`USELESS`** (main DEX) and **`para:TREAD`** (para DEX).
+3. **Run 3 Price Series Truncation:**
+   - Audited `cross_market/experiments/lead_lag_tier2b_crypto_verdict_run3.json`:
+     - **Polymarket Shifts:** `09-08T03:32:30Z` $\to$ `09-09T18:00:12Z` (38.5 hours).
+     - **Sought Price Window:** `09-08T02:31:30Z` $\to$ `09-09T19:01:12Z` (38.5 hours).
+     - **Returned Prices:** `09-08T02:32:49Z` $\to$ **`09-08T16:01:22Z`** (**only 12.48 hours**).
+     - **Missing Data:** **26.0 hours (67.5% of the evaluation window)** had zero forward BTC price points.
 
 ---
 
-## 3. Formal Architectural Rulings
+## 2. Formal Architectural Rulings for Round 125
 
-### Ruling R124-1.A: Run 3 Bound Protocol (`--since`)
-* **Verdict:** **BIND TO STRICTLY DISJOINT TIMESTAMP: `--since 2026-09-08T03:27:29Z`**.
+### Ruling R125-1.A: Status of Run 3 Execution
+* **Verdict:** **DECLARED VOID (OPTION ii)**.
+* **Quantitative Rationale:**
+  - Evaluating 4,980 Polymarket shifts across a 38.5h window where 26.0 hours (67.5%) of corresponding price series are missing produces invalid, truncated cross-correlations.
+  - In Run 1, the 9.3h hole was an unperceived retrospective anomaly that taught us severe selection bias occurs when shifts lack continuous price pairings. Knowing *in advance* that 26 hours are missing and still ingesting would knowingly compromise the integrity of the scientific registry.
+  - Fed-rates and crypto Tier 2 were already locked `no-lead` by Runs 1 and 2 under the $\ge 2$ of 3 consensus rule. The sole remaining empirical question of Run 3 was to adjudicate crypto Tier 2b on a clean series. A 67% missing series cannot adjudicate anything.
+* **Directive:**
+  - Do NOT ingest Run 3. Discard the four `_run3.json` artifacts.
+  - Run 3 will be re-bound to a fresh, clean, independent 24-hour disjoint window starting immediately after the collector is hardened and restarted: `--since <restart_timestamp_utc>`.
+
+---
+
+### Ruling R125-1.B: Collector Hardening Deployment (Operator Decision)
+* **Verdict:** **DEPLOY HARDENING IMMEDIATELY (`feat/collector-hardening`, commit `70bd232`)**.
 * **Rationale:**
-  - Run 2's last shift was `2026-09-08T03:27:28Z` (fed-rates) and `03:27:27Z` (crypto).
-  - Because `--since` is inclusive (`shift_time >= since`), starting Run 3 at `03:27:29Z` guarantees a mathematically strict, 0-event overlap partition.
-  - Run 3 reaches its 24.0h bar at `2026-09-09T03:27:29Z` ($\approx$ **23:27 EDT Tuesday, 09-08**).
-
-### Ruling R124-1.B: Run 2 Measured Span (25.1h)
-* **Verdict:** **STANDS AS REGISTERED AND EXECUTED (NO RE-RUN)**.
-* **Rationale:**
-  - The pre-registration specifies a minimum threshold: `span >= 24h and points >= 200`. A measured span of 25.1h fully satisfies the requirement.
-  - In real trading systems, an execution trigger firing 66 minutes after gate clearance is standard operational latency. Retroactively applying `--until` to artificially trim the artifact would mutate immutable execution history for cosmetic purity.
-
-### Ruling R124-1.C: Lint L1 Exemption for `raw/inbox/`
-* **Verdict:** **EXEMPT `raw/inbox/` SUBDIRECTORIES FROM RULE L1 IN `knowledge/lint.py`**.
-* **Rationale:**
-  - An inbox is fundamentally a raw drop-zone for unparsed URLs, articles, and human notes. Requiring OKF v0.2 YAML frontmatter on an inbox file contradicts the purpose of a holding pen.
-  - **Action:**
-    1. Update `knowledge/lint.py` to exempt files under `obsidian_vault/raw/inbox/` from Rule L1.
-    2. Add minimal frontmatter (`type: raw`) to `obsidian_vault/raw/inbox/READING.md` so the vault remains 100% clean immediately.
-
-### Ruling R124-1.D: Authorization to Commit Run 2
-* **Verdict:** **COMMIT AUTHORIZED**.
-* **Directive:** Commit the 28 dirty paths containing Run 2 experiment artifacts, updated regime page, and vault digests.
+  - The "dead-alive" collector bug has struck twice in 3 days (`para:CIFR` on 09-06, `USELESS` and `para:TREAD` on 09-08). A plain restart only resets the clock until the next token listing.
+  - Today (Wednesday, September 9) is the exact pre-planned deployment window recommended in Round 121 and `HOMEWORK.md`.
+  - The branch `feat/collector-hardening` is clean (+209 lines across 4 files), has 0 merge conflicts against master, and includes 8 dedicated unit tests.
+  - Deploying today gives a full 7-day soak before the September 16 FOMC print.
+* **Deployment Sequence (Operator Authorized):**
+  1. Merge `feat/collector-hardening` into `master`.
+  2. Run suite: `python -m pytest HyperLiquid/HL_Monarch/tests/test_round121_hardening.py`.
+  3. Execute `stop_collector.bat` $\to$ verify old PIDs `24504` and `60756` are terminated $\to$ execute `start_collector.bat`.
+  4. Verify newest `asset_snapshots` row $< 60$s old and `assets` updated to 444 rows.
 
 ---
 
-## 4. Quantitative Strategy & Forward Outlook for Item 18
+### Ruling R125-1.C: Gate Hardening (`lead_lag --check-data`)
+* **Verdict:** **APPROVED AS MANDATORY PRE-REGISTRATION REQUIREMENT**.
+* **Problem Statement:**
+  For the second time, `lead_lag --check-data` declared `READY` over a dead price stream because it only inspected the Polymarket tagged event series. A lead-lag test fundamentally requires both events AND target asset prices.
+* **Directive & Specification:**
+  Update `cross_market.lead_lag --check-data` to validate BOTH streams before emitting `ready: true`:
+  1. **Polymarket Tagged Shifts:** Span $\ge 24\text{h}$, points $\ge 200$, largest gap $\le 60\text{min}$.
+  2. **HyperLiquid BTC Price Snapshots:**
+     - Newest snapshot age $\le 15\text{min}$.
+     - Zero continuous price gaps $> 60\text{min}$ inside the sought evaluation window `[since - max_lag - 1, now]`.
+  3. If either fails, emit `ready: false` and explicitly name the failing stream (e.g. `price stream stale (1576 min) - collector down`).
 
-1. **Mathematical Reality of Run 3:**
-   - Under the 3-run consensus rule ($\ge 2$ of 3 runs agreeing):
-     - **fed-rates:** Run 1 (`no-lead`) + Run 2 (`no-lead`) $\implies$ **Consensus mathematically locked as `no-lead`**.
-     - **crypto Tier 2:** Run 1 (`no-lead`) + Run 2 (`no-lead`) $\implies$ **Consensus mathematically locked as `no-lead`**.
-     - **crypto Tier 2b:** Run 1 was `polymarket-leads` (with data gap), Run 2 was `no-lead`. Run 3 serves solely to determine if Tier 2b is 2-of-3 `no-lead` or split.
-2. **Phase 2 Pre-Registration Protocol:**
-   - Do NOT modify the protocol mid-flight. Let Run 3 conclude the pre-registered 3-run series cleanly on Tuesday night (~23:27 EDT).
-   - If Run 3 yields `no-lead`, Item 18 establishes a definitive, publication-grade empirical conclusion: *Polymarket macro probability shifts do not lead BTC perp price action at minute resolution during continuous trading.*
-   - **Next Hypothesis to Pre-Register (Phase 2):** Event-driven lead-lag around discrete macroeconomic releases (FOMC statement prints, CPI). This is the exact domain evaluated by Item 17 and the upcoming September 16 FOMC drill.
+---
+
+### Ruling R125-1.D: Second Data Gap Registration
+* **Verdict:** **REGISTER GAP #2 IN THE KNOWLEDGE VAULT**.
+* **Action:**
+  - Register gap `wiki/events/data_gap_2026-09-08_hl_asset_snapshots_2.md` (and `knowledge/data_gaps.json`):
+    - **ID:** `2026-09-08_hl_asset_snapshots_2`
+    - **Desk:** 1 (HyperLiquid)
+    - **Start UTC:** `2026-09-08T16:01:22Z`
+    - **End UTC:** `<collector_restart_utc>`
+    - **Cause:** Foreign key constraint failure on newly listed coins `USELESS` and `para:TREAD`.
+    - **Affected Evaluations:** Lead-Lag Run 3 (voided), Basis Windows, Fade Re-benchmark.
+
+---
+
+## 3. Forward Execution Queue
+
+1. **Step 1 (Now):** Operator approves deployment $\to$ Claude merges `feat/collector-hardening`, runs unit tests, and restarts the collector.
+2. **Step 2:** Register Data Gap #2 with exact restart timestamp.
+3. **Step 3:** Implement Gate Hardening in `cross_market/lead_lag.py` (Rule R125-1.C).
+4. **Step 4:** Re-bind Run 3 in `HOMEWORK.md` to `--since <restart_timestamp_utc>` (Run 3 will close 24h later, ~Thursday 15:00 EDT).

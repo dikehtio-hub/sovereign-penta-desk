@@ -200,10 +200,11 @@ class TestLeadLag(LeadLagCase):
         self.plant(lag_minutes=10)
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            ll.main(["--check-data", "--json", "--drops", str(self.drops)])
+            ll.main(["--check-data", "--json", "--drops", str(self.drops), "--db", str(self.db)])
         payload = json.loads(out.getvalue())
         self.assertIn("ready", payload)
         self.assertIn("reasons", payload)
+        self.assertIn("price", payload)                                         # Round 125: the price stream's own verdict
         self.assertNotIn("best_lag_minutes", payload)                          # readiness, not a verdict
         self.assertEqual(payload["bounds"], {"since_utc": None, "until_utc": None})   # Round 122: unbounded by default
 
@@ -215,12 +216,12 @@ class TestLeadLag(LeadLagCase):
             (self.drops / f"polymarket_macro_20260905T{hour:02d}0000_000000Z.json").write_text("[]", encoding="utf-8")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            ll.main(["--check-data", "--json", "--drops", str(self.drops), "--family", "macro"])
+            ll.main(["--check-data", "--json", "--drops", str(self.drops), "--family", "macro", "--db", str(self.db)])
         full = json.loads(out.getvalue())
         self.assertEqual(full["points_total"], 10)
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            ll.main(["--check-data", "--json", "--drops", str(self.drops), "--family", "macro",
+            ll.main(["--check-data", "--json", "--drops", str(self.drops), "--family", "macro", "--db", str(self.db),
                      "--since", "2026-09-05T05:00:00Z", "--until", "2026-09-05T08:00:00Z"])
         part = json.loads(out.getvalue())
         self.assertEqual(part["bounds"], {"since_utc": "2026-09-05T05:00:00Z", "until_utc": "2026-09-05T08:00:00Z"})
@@ -230,6 +231,125 @@ class TestLeadLag(LeadLagCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _insert_prices(db: Path, start: datetime, end: datetime, every_seconds: int = 30, coin: str = "BTC") -> None:
+    """A continuous mark series for `coin`, one row every `every_seconds`, start..end inclusive."""
+    con = sqlite3.connect(str(db))
+    t = start
+    while t <= end:
+        con.execute("INSERT INTO asset_snapshots (timestamp, coin, dex, mark_px) VALUES (?,?,?,?)",
+                    (int(t.timestamp() * 1000), coin, "main", 100.0))
+        t += timedelta(seconds=every_seconds)
+    con.commit()
+    con.close()
+
+
+class TestPriceReadiness(LeadLagCase):
+    """
+    Round 125 (Ruling R125-1.C). The gate reads the price stream too. Twice
+    (Rounds 119 and 125) --check-data said READY while the collector had
+    written nothing for 9 h and 26 h: it only ever looked at the Polymarket
+    stamps. Now: newest snapshot <= 15 min old, no hole > 60 min inside the
+    sought window, and every reason names the stream it is about.
+    """
+    NOW = datetime(2026, 9, 9, 18, 0, tzinfo=timezone.utc)
+
+    @staticmethod
+    def _ms(when: datetime) -> int:
+        return int(when.timestamp() * 1000)
+
+    def test_a_live_continuous_price_series_is_ready(self):
+        _insert_prices(self.db, self.NOW - timedelta(hours=26), self.NOW - timedelta(minutes=1))
+        info = ll.price_readiness(self.db, "BTC", self._ms(self.NOW - timedelta(hours=25)), now=self.NOW)
+        self.assertTrue(info["ready"], info["reasons"])
+        self.assertEqual(info["holes"], [])
+        self.assertLessEqual(info["newest_age_min"], 15)
+        self.assertGreater(info["points"], 2000)
+
+    def test_a_stale_stream_is_named_with_its_age(self):
+        # The Round 125 shape: rows stop 26 h 17 min ago, the process is still alive, nothing since.
+        _insert_prices(self.db, self.NOW - timedelta(hours=40), self.NOW - timedelta(hours=26, minutes=17))
+        info = ll.price_readiness(self.db, "BTC", self._ms(self.NOW - timedelta(hours=38)), now=self.NOW)
+        self.assertFalse(info["ready"])
+        self.assertTrue(any(r.startswith("price stream stale (1577 min") for r in info["reasons"]), info["reasons"])
+        self.assertTrue(any("collector down" in r for r in info["reasons"]))
+
+    def test_a_hole_inside_the_window_is_a_reason_even_when_the_stream_is_live_again(self):
+        _insert_prices(self.db, self.NOW - timedelta(hours=30), self.NOW - timedelta(hours=20))
+        _insert_prices(self.db, self.NOW - timedelta(hours=17), self.NOW - timedelta(minutes=1))   # 3 h hole, then back
+        info = ll.price_readiness(self.db, "BTC", self._ms(self.NOW - timedelta(hours=28)), now=self.NOW)
+        self.assertFalse(info["ready"])
+        self.assertEqual(len(info["holes"]), 1)
+        self.assertAlmostEqual(info["holes"][0]["minutes"], 180.0, delta=1.0)
+        self.assertIn("hole(s) > 60 min", info["reasons"][0])
+
+    def test_no_prices_at_the_windows_leading_edge_is_a_hole(self):
+        _insert_prices(self.db, self.NOW - timedelta(hours=2), self.NOW - timedelta(minutes=1))
+        info = ll.price_readiness(self.db, "BTC", self._ms(self.NOW - timedelta(hours=6)), now=self.NOW)
+        self.assertFalse(info["ready"])
+        self.assertEqual(len(info["holes"]), 1)
+        self.assertAlmostEqual(info["holes"][0]["minutes"], 240.0, delta=1.0)
+
+    def test_an_unreadable_database_is_its_own_reason(self):
+        info = ll.price_readiness(self.root / "missing.db", "BTC", 0, now=self.NOW)
+        self.assertFalse(info["ready"])
+        self.assertIn("price stream unreadable", info["reasons"][0])
+
+    def test_a_bounded_historical_window_judges_holes_not_freshness(self):
+        _insert_prices(self.db, self.NOW - timedelta(hours=30), self.NOW - timedelta(hours=20))
+        start, end = self._ms(self.NOW - timedelta(hours=29)), self._ms(self.NOW - timedelta(hours=21))
+        info = ll.price_readiness(self.db, "BTC", start, window_end_ms=end, now=self.NOW, require_fresh=False)
+        self.assertTrue(info["ready"], info["reasons"])
+        # ... but a hole at the bounded window's trailing edge is still a hole.
+        info = ll.price_readiness(self.db, "BTC", start, window_end_ms=self._ms(self.NOW - timedelta(hours=16)),
+                                  now=self.NOW, require_fresh=False)
+        self.assertFalse(info["ready"])
+        self.assertAlmostEqual(info["holes"][-1]["minutes"], 240.0, delta=1.0)
+
+    def test_check_data_requires_both_streams_and_names_the_failing_one(self):
+        from unittest import mock
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        now = datetime.now(timezone.utc)
+        for i in range(4):                                                   # events: fine
+            (self.drops / stamped_drop_name(now - timedelta(minutes=30) + timedelta(minutes=10 * i), family="macro")).write_text("[]")
+        _insert_prices(self.db, now - timedelta(hours=40), now - timedelta(hours=26))   # prices: dead-alive for 26 h
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--check-data", "--json", "--drops", str(self.drops), "--db", str(self.db),
+                                      "--min-span-hours", "0.1", "--min-ready-points", "3"]), ll.EXIT_NOT_READY)
+        payload = json.loads(fake_print.call_args_list[0].args[0])
+        self.assertGreaterEqual(payload["points"], 3)                         # the event bar itself is met
+        self.assertFalse(payload["ready"])
+        self.assertFalse(payload["price"]["ready"])
+        self.assertTrue(any(r.startswith("price stream stale") for r in payload["reasons"]), payload["reasons"])
+        with mock.patch("builtins.print") as fake_print:                     # the human report says which daemon
+            ll.main(["--check-data", "--drops", str(self.drops), "--db", str(self.db),
+                     "--min-span-hours", "0.1", "--min-ready-points", "3"])
+        text = fake_print.call_args_list[0].args[0]
+        self.assertIn("NOT READY - price stream stale", text)
+        self.assertIn("restart the collector", text)
+        _insert_prices(self.db, now - timedelta(hours=26), now - timedelta(seconds=30))   # prices back, continuous
+        with mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--check-data", "--drops", str(self.drops), "--db", str(self.db),
+                                      "--min-span-hours", "0.1", "--min-ready-points", "3"]), 0)
+        text = fake_print.call_args_list[0].args[0]
+        self.assertIn("READY - the first live", text)
+        self.assertIn("price series (asset_snapshots)", text)
+        self.assertIn("bar (price stream)", text)
+
+    def test_the_unforced_live_run_refuses_over_a_dead_price_stream(self):
+        from unittest import mock
+        from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
+        now = datetime.now(timezone.utc)
+        base = now - timedelta(hours=25)
+        for i in range(25 * 12 + 1):                                         # 301 stamps every 5 min: the event bar clears at defaults
+            (self.drops / stamped_drop_name(base + timedelta(minutes=5 * i), family="macro")).write_text("[]")
+        _insert_prices(self.db, now - timedelta(hours=40), now - timedelta(hours=26))
+        with mock.patch.object(ll, "DEFAULT_DROP_DIRS", [self.drops]), mock.patch("builtins.print") as fake_print:
+            self.assertEqual(ll.main(["--db", str(self.db)]), ll.EXIT_NOT_READY)
+        printed = " ".join(str(c.args[0]) for c in fake_print.call_args_list)
+        self.assertIn("[GATE]", printed)
+        self.assertIn("price stream stale", printed)
 
 
 class TestReadiness(LeadLagCase):
@@ -311,14 +431,16 @@ class TestReadiness(LeadLagCase):
         self.assertEqual(moments, sorted(moments))
         self.assertEqual(len(moments), 5)
         with mock.patch("builtins.print") as fake_print:
-            self.assertEqual(ll.main(["--check-data", "--drops", str(self.drops)]), ll.EXIT_NOT_READY)
+            self.assertEqual(ll.main(["--check-data", "--drops", str(self.drops), "--db", str(self.db)]), ll.EXIT_NOT_READY)
         self.assertIn("NOT READY", fake_print.call_args_list[0].args[0])
+        # Round 125: READY needs the price stream live too - a fresh, continuous BTC series in the temp database.
+        _insert_prices(self.db, datetime.now(timezone.utc) - timedelta(minutes=95), datetime.now(timezone.utc) - timedelta(seconds=20))
         with mock.patch("builtins.print") as fake_print:
-            self.assertEqual(ll.main(["--status", "--drops", str(self.drops), "--min-span-hours", "0.1",
+            self.assertEqual(ll.main(["--status", "--drops", str(self.drops), "--db", str(self.db), "--min-span-hours", "0.1",
                                       "--min-ready-points", "3"]), 0)
         self.assertIn("READY - the first live", fake_print.call_args_list[0].args[0])
         with mock.patch("builtins.print") as fake_print:
-            self.assertEqual(ll.main(["--check-data", "--json", "--family", "sports", "--drops", str(self.drops)]),
+            self.assertEqual(ll.main(["--check-data", "--json", "--family", "sports", "--drops", str(self.drops), "--db", str(self.db)]),
                              ll.EXIT_NOT_READY)
         parsed = json.loads(fake_print.call_args_list[0].args[0])
         self.assertEqual((parsed["points"], parsed["ready"]), (2, False))

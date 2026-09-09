@@ -1,3 +1,6 @@
+## 2026-09-09
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 2 page(s) -> [[events_register]].
+
 ## 2026-09-08
 * **Ingest**: lead-lag Tier 2 verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2_macro_fed-rates_20260908T0329Z]]; [[btc_macro_regime]] history now 6 row(s).
 * **Ingest**: lead-lag Tier 2 verdict (macro_crypto): **no-lead** -> [[lead_lag_tier2_macro_crypto_20260908T0329Z]]; [[btc_macro_regime]] history now 7 row(s).

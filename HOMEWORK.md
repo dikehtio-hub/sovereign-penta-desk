@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-08 00:05 EDT (Round 124: run 2 committed f72f1cb; run 3 bound to 03:27:29Z per R124-1.A; raw/inbox exempt from lint per R124-1.C).
+Last updated: 2026-09-09 14:40 EDT (Round 125: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 VOID and re-bound to --since 2026-09-09T19:27:39Z, closes ~15:27 EDT Thu 09-10; readiness gate now checks the price stream).
 
 ---
 
@@ -33,28 +33,41 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       tier/scope at runs: 2, consensus still `insufficient-history` until run 3. Measured span ran to
       03:27:28Z (25.1 h, executed 66 min after the gate hour). Run 2 COMMITTED 2026-09-08 (f72f1cb), and its
       25.1 h span STANDS per ruling R124-1.B (>= 24 h bar met; no re-run).
-- [ ] **Keep the laptop awake and collecting from now through ~23:30 EDT Tue 09-08** - run 3 of 3.
-      Run 3 binds `--since 2026-09-08T03:27:29Z` per ruling R124-1.A: strictly disjoint, one second after run 2's
-      last shift (03:27:28Z fed-rates, 03:27:27Z crypto). Because `--since` is inclusive, 03:27:29Z guarantees a
-      0-event overlap partition. It reaches 24 h at 2026-09-09T03:27:29Z =
-      **~23:27 EDT Tue 09-08**, not 22:22. Same rule as run 2: UNBROKEN collection until then, or the window gets a
-      gap and slides. The run is mine (ping me ~23:30, or paste the block below). Pre-registered form:
-      1. Gate (must say READY):
-         `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-08T03:27:29Z`
-      2. The four runs (same four as run 2, `_run3.json`, `--since 2026-09-08T03:27:29Z`):
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json`
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5 --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2_crypto_verdict_run3.json`
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2b_fed-rates_verdict_run3.json`
-         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --since 2026-09-08T03:27:29Z --json > cross_market/experiments/lead_lag_tier2b_crypto_verdict_run3.json`
+- [x] ~~**Collector incident 09-08/09**~~ RESOLVED 2026-09-09 14:26 EDT (Round 125, you authorised "deploy the
+      hardening" via Antigravity's R125-1.B). The collector had been dead-alive since 09-08 12:01 EDT (26.4 h,
+      `FOREIGN KEY constraint failed` every 10 s: `USELESS` and `para:TREAD` listed, not in `assets`). Hardening
+      `70bd232` merged (`d3df1cb`, 8/8 tests), collector stopped and relaunched (supervisor 16844, collector 74972),
+      assets 442 -> 444, first new snapshot 18:26:39Z. Gap #2 registered and compiled
+      (`wiki/events/data_gap_2026-09-08_hl_asset_snapshots_2.md`, 26.42 h). The readiness gate now checks the price
+      stream too (R125-1.C), so this exact failure can no longer be declared READY.
+- [x] ~~**Run 3 of 3 (Tue 09-08 ~23:27 EDT)**~~ **VOID** per R125-1.A (executed late at 14:02 EDT 09-09; all four
+      `no-lead`, but 26 h of the 38.5 h window had no BTC prices). Artifacts discarded, never ingested. Re-bound below.
+- [ ] **Keep the laptop awake and collecting through ~15:30 EDT Thu 09-10** - run 3 of 3, RE-BOUND.
+      `--since 2026-09-09T19:27:39Z`. Why not the restart instant itself (18:26:39Z, R125-1.A's literal words): the
+      run seeks prices from `since` minus `max_lag + 1` = 61 min, so a window bound at the first new snapshot pads
+      61 min back into the hole, and the hardened gate (R125-1.C, 0 price holes > 60 min inside the sought window)
+      would refuse it forever - verified live at 14:32 EDT ("1 hole 61 min: 17:25:39Z -> 18:26:39Z"). Binding 61 min
+      after the first new snapshot makes the sought window start exactly where prices resume. Antigravity to ratify.
+      Reaches 24 h at 2026-09-10T19:27:39Z = **~15:27 EDT Thu 09-10**. UNBROKEN collection until then (both daemons
+      now: the gate refuses on either stream). The run is mine (ping me ~15:30, or paste the block below):
+      1. Gate (must say READY - both bars):
+         `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-09T19:27:39Z`
+      2. The four runs (`_run3.json`, `--since 2026-09-09T19:27:39Z`):
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --since 2026-09-09T19:27:39Z --json > cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --latency-minutes 5 --since 2026-09-09T19:27:39Z --json > cross_market/experiments/lead_lag_tier2_crypto_verdict_run3.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily fed-rates --subfamily-from tags --since 2026-09-09T19:27:39Z --json > cross_market/experiments/lead_lag_tier2b_fed-rates_verdict_run3.json`
+         `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --since 2026-09-09T19:27:39Z --json > cross_market/experiments/lead_lag_tier2b_crypto_verdict_run3.json`
       3. Ingest each with its tier (`--tier 2` / `--tier 2b`), e.g.
          `python -m knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json --tier 2`
-      Run 3 completes the 3-run `regime_consensus_3` on every tier/scope.
+      Run 3 completes the 3-run `regime_consensus_3` on every tier/scope (only Tier 2b crypto is still open).
 
 ### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
-- [ ] Say "deploy the hardening" on one of these two evenings. That gives the watchdog a full week of soak
-      before the FOMC drill and leaves 09-10 to 09-15 for a rollback if it misbehaves. Do NOT deploy on
-      09-14 or later: never change the collector inside 48 h of the print.
-- [ ] **Keep the laptop awake through ~23:30 on 09-08** as well - run 3 of 3 closes then (moved from 22:20; see above).
+- [x] ~~Say "deploy the hardening"~~ DEPLOYED Wed 09-09 14:26 EDT (Round 125, R125-1.B). Soak: 7 days before the
+      09-16 print; rollback window 09-10 to 09-15 (`git revert d3df1cb` + restart). Never change the collector
+      inside 48 h of the print.
+- [ ] **Watch for 24 h**: `collector_service.jsonl` now carries `silent_failure_watchdog` events from the hardened
+      supervisor; one `coverage_report` with `coverage_pct` near 100 by Thu morning is the all-clear.
+- [x] ~~Keep the laptop awake through ~23:30 on 09-08~~ superseded: run 3 re-bound, closes ~15:27 EDT Thu 09-10 (above).
 
 ### Any day 09-07 to 09-14 — scheduler probe (~3 min, logged in)
 - [x] `powershell -ExecutionPolicy Bypass -File cross_market\scripts\probe_scheduled_task.ps1`

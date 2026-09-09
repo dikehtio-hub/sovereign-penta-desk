@@ -2431,6 +2431,34 @@ esults_drops\.
          failure was the watcher back but the collector dead). Prints a HEALTH CHECK: collector/watcher/exporter
          RUNNING or DOWN. Use it after any clean shutdown; nothing else needs running by hand.
 
+     ROUND 125 - INCIDENT #2 (same FK failure, 26.4 h); HARDENING DEPLOYED; GATE NOW CHECKS PRICES; RUN 3 VOID + RE-BOUND
+     git log --oneline -1 d3df1cb          # the hardening merge (70bd232 -> master), deployed 2026-09-09 14:26 EDT
+         What changed in the collector (HyperLiquid\HL_Monarch\collectors\market_collector.py, storage\repository.py,
+         run_collector_service.py): the asset universe re-syncs every 60 polls (~10 min) and at once after a batch
+         skipped a coin `assets` had never seen; snapshots insert row-by-row, so an unknown coin costs its own row,
+         not the whole 10-second batch; the supervisor runs a silent_failure_watchdog (coverage_report events in
+         data\collector_service.jsonl). Rollback if it misbehaves before 09-15: git revert d3df1cb, then the
+         Round 119 stop/start pair below. Never inside 48 h of the 09-16 print.
+     python -m pytest HyperLiquid/HL_Monarch/tests/test_round121_hardening.py -q      # 8 passed
+     python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags [--since ISO] [--until ISO] [--json]
+         Round 125 (R125-1.C): the readiness gate judges BOTH streams. It printed READY over a dead price collector
+         twice (Rounds 119 and 125) because it read only the Polymarket stamps. Now, in addition to the event bar
+         (span >= 24 h, points >= 200, no stamp gap > 60 min), the PRICE bar: newest asset_snapshots row for --coin
+         at most 15 min old, and no price hole > 60 min inside the sought window [since - max_lag - 1 min, now]
+         (leading edge included). Every NOT READY reason names its stream ("price stream stale (1577 min) -
+         collector down", "price stream has 1 hole(s) > 60 min ..."). --json adds a "price" sub-dict. A bounded
+         --until window is historical: judged on holes, not freshness. The unforced live run
+         (python -m cross_market.lead_lag --coin BTC ...) refuses on the same two bars. Tests: cross_market.tests.test_lead_lag 34.
+         CONSEQUENCE for a re-bound window: bind --since at least max_lag + 1 = 61 min AFTER the first new price
+         row, or the padded window starts inside the hole and the gate refuses forever (run 3 is bound at
+         2026-09-09T19:27:39Z = first new snapshot 18:26:39Z + 61 min for exactly this reason).
+     python -m knowledge.ingest.data_gaps          # compiles knowledge/data_gaps.json -> wiki/events/data_gap_*.md
+         Gap #2 registered this round: 2026-09-08_hl_asset_snapshots_2, 16:01:22Z -> 18:26:39Z (26.42 h). Append,
+         never edit a closed gap. Lint L12 holds every evaluation whose span overlaps a gap to acknowledging it.
+     Run 3 (Item 18, Tier 2/2b) is VOID (R125-1.A: 26 h of its 38.5 h window had no prices) and RE-BOUND to
+         --since 2026-09-09T19:27:39Z, closing 2026-09-10T19:27:39Z (~15:27 EDT Thu 09-10). Block in HOMEWORK.md.
+     Current daemons (2026-09-09 14:26 EDT): watcher 17688, exporter 62760, supervisor 16844, collector 74972.
+
      ROUND 119 - INCIDENT: COLLECTOR SNAPSHOTS DEAD 9 H (FK on a new listing); RESTART; STOP SCRIPT FIXED
      HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat     then     start_collector.bat
          The stop script is FIXED (Round 119): it now reads the pids with delayed expansion, kills the

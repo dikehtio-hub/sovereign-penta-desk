@@ -47,6 +47,9 @@ MINUTE_MS = 60_000
 READY_MIN_SPAN_HOURS = 24.0
 READY_MIN_POINTS = 200
 READY_MAX_GAP_MINUTES = 60.0            # a larger hole between stamps ends the continuous segment
+# Round 125 (Ruling R125-1.C): the gate judges BOTH streams. Twice (Rounds 119 and 125) it said READY over a
+# dead price collector because it read only the Polymarket stamps; a lead-lag needs events AND prices.
+READY_PRICE_MAX_AGE_MINUTES = 15.0      # the newest asset_snapshots row for the coin may be at most this old
 EXIT_NOT_READY = 3
 
 
@@ -512,7 +515,7 @@ def data_readiness(stamps: Sequence[datetime], now: Optional[datetime] = None,
     span clock and the points clock at the observed stamp rate; None when
     nothing is accumulating.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or _utcnow()
     info: Dict[str, Any] = {
         "points_total": len(stamps), "points": 0, "span_hours": 0.0, "segment_start": None, "newest": None,
         "newest_age_min": None, "largest_gap_min": None, "breaks": 0, "rate_per_hour": None,
@@ -555,6 +558,114 @@ def data_readiness(stamps: Sequence[datetime], now: Optional[datetime] = None,
     return info
 
 
+def _utcnow() -> datetime:
+    """The wall clock, behind one seam so tests can pin it (Round 125)."""
+    return datetime.now(timezone.utc)
+
+
+def price_readiness(db_path: Path, coin: str, window_start_ms: int, window_end_ms: Optional[int] = None,
+                    now: Optional[datetime] = None, require_fresh: bool = True,
+                    max_age_minutes: float = READY_PRICE_MAX_AGE_MINUTES,
+                    max_gap_minutes: float = READY_MAX_GAP_MINUTES) -> Dict[str, Any]:
+    """
+    Round 125 (Ruling R125-1.C): whether the HyperLiquid price series can carry
+    a run. Ready = the newest asset_snapshots row for `coin` is at most
+    max_age_minutes old (a live process that writes nothing is a dead stream -
+    Rounds 119 and 125 both looked exactly like that) AND there is no hole
+    longer than max_gap_minutes inside [window_start, window_end or now],
+    the window's leading edge included (a run bound before the collector
+    recovered sits on a hole it would otherwise never see). A bounded window
+    (`window_end_ms` given) is historical: pass require_fresh=False to judge
+    its holes without the freshness bar. The database is opened read-only;
+    an unreadable database is NOT "no prices", it is its own reason.
+    """
+    now = now or _utcnow()
+    now_ms = int(now.timestamp() * 1000)
+    end_ms = int(window_end_ms) if window_end_ms is not None else now_ms
+    info: Dict[str, Any] = {
+        "coin": coin, "db": str(db_path), "window_start": iso_utc(window_start_ms), "window_end": iso_utc(end_ms),
+        "checked_at": now.isoformat(), "points": 0, "newest": None, "newest_age_min": None, "first_in_window": None,
+        "last_in_window": None, "largest_gap_min": None, "holes": [], "max_age_minutes": max_age_minutes,
+        "max_gap_minutes": max_gap_minutes, "ready": False, "reasons": [],
+    }
+    try:
+        uri = "file:" + Path(db_path).as_posix() + "?mode=ro"
+        con = sqlite3.connect(uri, uri=True)
+        try:
+            newest = con.execute("SELECT MAX(timestamp) FROM asset_snapshots WHERE coin = ? AND mark_px IS NOT NULL",
+                                 (coin,)).fetchone()[0]
+            rows = con.execute("SELECT timestamp FROM asset_snapshots WHERE coin = ? AND mark_px IS NOT NULL "
+                               "AND timestamp BETWEEN ? AND ? ORDER BY timestamp",
+                               (coin, int(window_start_ms), end_ms)).fetchall()
+        finally:
+            con.close()
+    except Exception as exc:                                # noqa: BLE001 - a missing or locked database is its own reason
+        info["reasons"].append("price stream unreadable (%s: %s)" % (type(exc).__name__, exc))
+        return info
+    stamps = [int(r[0]) for r in rows]
+    info["points"] = len(stamps)
+    if newest is None:
+        info["reasons"].append("price stream has no %s snapshots at all - the collector never wrote" % coin)
+        return info
+    info["newest"] = iso_utc(int(newest))
+    info["newest_age_min"] = round((now_ms - int(newest)) / 60000.0, 1)
+    if require_fresh and info["newest_age_min"] > max_age_minutes:
+        info["reasons"].append("price stream stale (%.0f min > %.0f min) - collector down"
+                               % (info["newest_age_min"], max_age_minutes))
+    holes: List[Dict[str, Any]] = []
+    if stamps:
+        info["first_in_window"], info["last_in_window"] = iso_utc(stamps[0]), iso_utc(stamps[-1])
+        # The leading edge counts (no prices at the start of the window is a hole); the trailing edge counts
+        # for a bounded window - for a live one the freshness bar above already covers it, more strictly.
+        edges = [int(window_start_ms)] + stamps + ([end_ms] if window_end_ms is not None else [])
+        gaps = [(a, b, b - a) for a, b in zip(edges, edges[1:])]
+        info["largest_gap_min"] = round(max(g for _, _, g in gaps) / 60000.0, 1) if gaps else 0.0
+        max_gap_ms = int(max_gap_minutes * MINUTE_MS)
+        holes = [{"from": iso_utc(a), "to": iso_utc(b), "minutes": round(g / 60000.0, 1)}
+                 for a, b, g in gaps if g > max_gap_ms]
+    else:
+        info["reasons"].append("price stream has no %s snapshots inside the window %s -> %s"
+                               % (coin, info["window_start"], info["window_end"]))
+    if holes:
+        worst = max(holes, key=lambda h: h["minutes"])
+        info["reasons"].append("price stream has %d hole(s) > %.0f min inside the window (largest %.0f min: %s -> %s)"
+                               % (len(holes), max_gap_minutes, worst["minutes"], worst["from"], worst["to"]))
+    info["holes"] = holes[:20]
+    info["ready"] = not info["reasons"]
+    return info
+
+
+def readiness_check(stamps: Sequence[datetime], db_path: Path, coin: str, *, max_lag: int,
+                    since_ms: Optional[int] = None, until_ms: Optional[int] = None, now: Optional[datetime] = None,
+                    min_span_hours: float = READY_MIN_SPAN_HOURS, min_points: int = READY_MIN_POINTS,
+                    max_gap_minutes: float = READY_MAX_GAP_MINUTES,
+                    price_max_age_minutes: float = READY_PRICE_MAX_AGE_MINUTES) -> Dict[str, Any]:
+    """
+    Round 125 (Ruling R125-1.C): the gate is the event series AND the price
+    series, and `ready` is true only when both are. The price window is what
+    a run would seek: from `since` (or the event segment's own start when
+    unbounded) minus max_lag+1 minutes, to `until` or now. Every reason names
+    its stream, so "NOT READY" says which daemon to look at.
+    """
+    now = now or _utcnow()
+    info = data_readiness(stamps, now=now, min_span_hours=min_span_hours, min_points=min_points,
+                          max_gap_minutes=max_gap_minutes)
+    if since_ms is not None:
+        anchor_ms = int(since_ms)
+    elif info["segment_start"]:
+        anchor_ms = int(datetime.fromisoformat(info["segment_start"]).timestamp() * 1000)
+    else:
+        anchor_ms = int(now.timestamp() * 1000) - int(min_span_hours * 3600 * 1000)
+    window_start_ms = anchor_ms - (int(max_lag) + 1) * MINUTE_MS
+    price = price_readiness(db_path, coin, window_start_ms, window_end_ms=until_ms, now=now,
+                            require_fresh=until_ms is None, max_age_minutes=price_max_age_minutes,
+                            max_gap_minutes=max_gap_minutes)
+    info["price"] = price
+    info["reasons"] = list(info["reasons"]) + list(price["reasons"])
+    info["ready"] = bool(info["ready"] and price["ready"])
+    return info
+
+
 def format_readiness(info: Dict[str, Any], family: str) -> str:
     lines = ["[DATA] %s series: %d stamped point(s) in the latest continuous segment (%d on disk)"
              % (family, info["points"], info["points_total"])]
@@ -564,13 +675,34 @@ def format_readiness(info: Dict[str, Any], family: str) -> str:
                         info["rate_per_hour"] if info["rate_per_hour"] is not None else "n/a"))
         lines.append("[DATA]   largest gap %s min, %d break(s) > %.0f min"
                      % (info["largest_gap_min"], info["breaks"], info["max_gap_minutes"]))
+    price = info.get("price")                               # Round 125: absent only for a bare data_readiness() dict
+    if price:
+        if price["newest"]:
+            lines.append("[DATA] %s price series (asset_snapshots): %d point(s) in the window %s -> %s; newest %s, "
+                         "age %.0f min; largest gap %s min, %d hole(s) > %.0f min"
+                         % (price["coin"], price["points"], price["window_start"], price["window_end"], price["newest"],
+                            price["newest_age_min"],
+                            price["largest_gap_min"] if price["largest_gap_min"] is not None else "n/a",
+                            len(price["holes"]), price["max_gap_minutes"]))
+        else:
+            lines.append("[DATA] %s price series (asset_snapshots): unavailable - %s"
+                         % (price["coin"], "; ".join(price["reasons"]) or "no rows"))
     lines.append("[DATA] bar: span >= %.0fh and points >= %d, no gap > %.0f min"
                  % (info["min_span_hours"], info["min_points"], info["max_gap_minutes"]))
+    if price:
+        lines.append("[DATA] bar (price stream): newest <= %.0f min old, no hole > %.0f min inside the window"
+                     % (price["max_age_minutes"], price["max_gap_minutes"]))
     if info["ready"]:
         lines.append("[DATA] READY - the first live lead-lag run is honest now")
     else:
         lines.append("[DATA] NOT READY - " + "; ".join(info["reasons"]))
-        lines.append("[DATA] ETA %s" % (info["eta"] or "none while nothing is accumulating (restart the watcher)"))
+        event_reasons = [r for r in info["reasons"] if not (price and r in price["reasons"])]
+        if info["eta"]:
+            lines.append("[DATA] ETA %s" % info["eta"])
+        elif price and not price["ready"] and not event_reasons:
+            lines.append("[DATA] ETA none until the price stream is back (restart the collector)")
+        else:
+            lines.append("[DATA] ETA none while nothing is accumulating (restart the watcher)")
     return "\n".join(lines)
 
 
@@ -626,15 +758,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Round 122: a disjoint replication window is judged on ITS OWN stamps, with the same bar.
         since_ms, until_ms = _bound(args.since), _bound(args.until)
         stamps = _clip_stamps(stamps, since_ms, until_ms)
-        info = data_readiness(stamps, min_span_hours=args.min_span_hours,
-                              min_points=args.min_ready_points, max_gap_minutes=args.max_gap_minutes)
+        # Round 125 (R125-1.C): both streams, or it is not ready - the price side reads the same database the
+        # run would, over the same sought window, and names itself in every reason.
+        info = readiness_check(stamps, Path(args.db) if args.db else DEFAULT_HL_DB, args.coin.upper(),
+                               max_lag=args.max_lag, since_ms=since_ms, until_ms=until_ms,
+                               min_span_hours=args.min_span_hours, min_points=args.min_ready_points,
+                               max_gap_minutes=args.max_gap_minutes)
         info["bounds"] = {"since_utc": iso_utc(since_ms), "until_utc": iso_utc(until_ms)}
         print(json.dumps(info, indent=2) if args.json else format_readiness(info, family + (" (tagged stamps)" if tagged else "")))
         return 0 if info["ready"] else EXIT_NOT_READY
     if not args.drops and not args.events and not args.force:
         # Round 57 (Directive 57-2): the first live evaluation waits for the sentinel.
         # Round 77: a Tier 2b run waits for the TAGGED series to clear the same bar.
-        info = data_readiness(tagged_stamped_moments(drop_dirs, "macro") if tagged else stamped_moments(drop_dirs, "macro"))
+        # Round 125 (R125-1.C): and for the price stream - the same two-stream gate as --check-data.
+        info = readiness_check(tagged_stamped_moments(drop_dirs, "macro") if tagged else stamped_moments(drop_dirs, "macro"),
+                               Path(args.db) if args.db else DEFAULT_HL_DB, args.coin.upper(), max_lag=args.max_lag,
+                               since_ms=_bound(args.since), until_ms=_bound(args.until))
         if not info["ready"]:
             print(format_readiness(info, "macro (tagged stamps)" if tagged else "macro"))
             print("[GATE] the live drop dirs are not ready for an honest run - refusing (exit %d); "
