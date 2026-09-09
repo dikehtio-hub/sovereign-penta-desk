@@ -63,6 +63,15 @@ INITIAL_BACKOFF_SECONDS = 2.0
 # backed off further.
 MAX_BACKOFF_SECONDS = 600.0
 COVERAGE_REPORT_INTERVAL = 900.0   # report measured coverage every 15 minutes
+# Round 121 (Ruling R119-1.B item 3). The crash policy above cannot see a child that is alive and persisting
+# nothing (2026-09-06: 9 h 18 min). The watchdog RESTARTS on a stale stream - newest asset_snapshots row older
+# than WATCHDOG_STALE_SECONDS while the child is alive - and only WARNS on coverage decay: after any gap,
+# coverage stays low for up to 24 h while the collector is perfectly healthy, and a restart on that number
+# would loop. One restart per WATCHDOG_COOLDOWN_SECONDS at most.
+WATCHDOG_STALE_SECONDS = 900.0
+WATCHDOG_COVERAGE_FLOOR = 60.0
+WATCHDOG_COVERAGE_DROP = 5.0
+WATCHDOG_COOLDOWN_SECONDS = 3600.0
 
 
 # Round 35 (Ruling 5.A): the collector host slept for nine hours and took the
@@ -222,6 +231,39 @@ def measure_coverage(hours: float = 24.0, max_gap_hours: float = 0.5) -> Dict[st
     }
 
 
+def measure_snapshot_age() -> Optional[float]:
+    """Seconds since the newest asset_snapshots row; None when the table cannot be read."""
+    try:
+        from storage.repository import MarketRepository
+        repo = MarketRepository()
+        with repo.db.connection as conn:
+            row = conn.execute("SELECT MAX(timestamp) FROM asset_snapshots;").fetchone()
+        if not row or row[0] is None:
+            return None
+        return max(0.0, time.time() - int(row[0]) / 1000.0)
+    except Exception:
+        return None
+
+
+def watchdog_decision(age_s: Optional[float], coverage_pct: Optional[float], prev_coverage_pct: Optional[float],
+                      child_alive: bool, seconds_since_last_fire: Optional[float]) -> Dict[str, Any]:
+    """Pure. 'restart' only for a stale stream (and only outside the cooldown); coverage decay is 'warn'."""
+    out: Dict[str, Any] = {"action": "none", "reasons": []}
+    if not child_alive:
+        return out
+    if coverage_pct is not None and coverage_pct < WATCHDOG_COVERAGE_FLOOR:
+        out["reasons"].append(f"coverage {coverage_pct:.1f}% < {WATCHDOG_COVERAGE_FLOOR:.0f}%")
+    if coverage_pct is not None and prev_coverage_pct is not None and prev_coverage_pct - coverage_pct > WATCHDOG_COVERAGE_DROP:
+        out["reasons"].append(f"coverage fell {prev_coverage_pct - coverage_pct:.1f} pts since the last report")
+    if out["reasons"]:
+        out["action"] = "warn"
+    if age_s is not None and age_s > WATCHDOG_STALE_SECONDS:
+        out["reasons"].append(f"newest snapshot {age_s / 60:.1f} min old > {WATCHDOG_STALE_SECONDS / 60:.0f} min while the child is alive")
+        cooled = seconds_since_last_fire is None or seconds_since_last_fire >= WATCHDOG_COOLDOWN_SECONDS
+        out["action"] = "restart" if cooled else "warn"
+    return out
+
+
 def pid_is_alive(pid: int) -> bool:
     """
     Whether a process with this id currently exists.
@@ -361,6 +403,9 @@ class CollectorSupervisor:
         self.restarts = 0
         self.started_at = 0.0
         self._last_coverage_report = 0.0
+        self._prev_coverage_pct: Optional[float] = None       # Round 121 watchdog state
+        self._last_watchdog_fire: Optional[float] = None
+        self.watchdog_restart = True
         # Round 53 (Ruling 53-5): a killed supervisor cannot clean up after itself,
         # so the next one does - before it claims the lock.
         # The supervisor's OWN lock is judged by liveness only - a live holder,
@@ -426,6 +471,22 @@ class CollectorSupervisor:
             uptime_seconds=round(time.time() - self.started_at, 1),
             restarts=self.restarts, **stats,
         )
+        # Round 121: the silent-failure watchdog rides on the same 15-minute cadence
+        age = measure_snapshot_age()
+        alive = self.process is not None and self.process.poll() is None
+        since_fire = None if self._last_watchdog_fire is None else now - self._last_watchdog_fire
+        decision = watchdog_decision(age, stats.get("coverage_pct"), self._prev_coverage_pct, alive, since_fire)
+        self._prev_coverage_pct = stats.get("coverage_pct")
+        if decision["action"] != "none":
+            log_event(self.logger, "silent_failure_watchdog", level=logging.WARNING, action=decision["action"],
+                      snapshot_age_seconds=None if age is None else round(age, 1), reasons=decision["reasons"],
+                      restarts=self.restarts, will_restart=bool(decision["action"] == "restart" and self.watchdog_restart))
+        if decision["action"] == "restart" and self.watchdog_restart and alive:
+            self._last_watchdog_fire = now
+            try:
+                self.process.terminate()          # the run loop relaunches it, counting a restart
+            except Exception:  # noqa: BLE001
+                pass
 
     def stop(self, *_):
         """Signal handler: stop supervising and terminate the child."""

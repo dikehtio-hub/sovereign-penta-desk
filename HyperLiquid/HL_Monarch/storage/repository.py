@@ -4,6 +4,7 @@ Provides high-speed batch inserts and analytical queries.
 """
 import logging
 import time
+import sqlite3
 from typing import List, Dict, Any, Optional
 from storage.db import DatabaseManager
 from config.settings import (
@@ -37,10 +38,16 @@ class MarketRepository:
         with self.db.connection as conn:
             conn.executemany(sql, assets_data)
 
-    def insert_snapshots(self, snapshots: List[Dict[str, Any]]):
-        """Batch insert real-time asset snapshots and refresh the current-state table."""
+    def insert_snapshots(self, snapshots: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Batch insert real-time asset snapshots and refresh the current-state table.
+
+        Returns {"written": n, "skipped": [coins]}. Round 121 (Ruling R119-1.B item 2): the batch is one
+        transaction, and on 2026-09-06 a single coin absent from `assets` (para:CIFR, listed after startup)
+        made SQLite reject all 442 rows every 10 s for 9 h 18 min. On IntegrityError this now falls back to
+        row-by-row, skips the offending rows and NAMES the coins, so the stream degrades by one coin, not to zero.
+        """
         if not snapshots:
-            return
+            return {"written": 0, "skipped": []}
         sql = """
         INSERT INTO asset_snapshots (
             timestamp, coin, dex, mark_px, mid_px, oracle_px,
@@ -73,9 +80,27 @@ class MarketRepository:
             day_ntl_vlm = excluded.day_ntl_vlm
         WHERE excluded.timestamp >= latest_snapshots.timestamp;
         """
-        with self.db.connection as conn:
-            conn.executemany(sql, snapshots)
-            conn.executemany(latest_sql, snapshots)
+        try:
+            with self.db.connection as conn:
+                conn.executemany(sql, snapshots)
+                conn.executemany(latest_sql, snapshots)
+            return {"written": len(snapshots), "skipped": []}
+        except sqlite3.IntegrityError as exc:
+            skipped: List[str] = []
+            written = 0
+            for snap in snapshots:
+                try:
+                    with self.db.connection as conn:
+                        conn.execute(sql, snap)
+                        conn.execute(latest_sql, snap)
+                    written += 1
+                except sqlite3.IntegrityError:
+                    skipped.append(str(snap.get("coin")))
+            names = sorted(set(skipped))
+            logging.getLogger("HL_Collector").warning(
+                "insert_snapshots: batch rejected (%s); wrote %d row-by-row, skipped %d row(s) for coin(s) unknown to assets: %s",
+                exc, written, len(skipped), ", ".join(names[:10]))
+            return {"written": written, "skipped": names}
 
     def insert_trades(self, trades: List[Dict[str, Any]]) -> int:
         """Insert trades ignoring duplicates, return number of new trades."""

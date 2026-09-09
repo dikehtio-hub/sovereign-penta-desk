@@ -33,6 +33,11 @@ from storage.repository import MarketRepository
 from analytics.liquidation_engine import LiquidationEngine
 from analytics.whale_tracker import WhaleTracker
 from analytics.alerter import WebhookAlerter
+
+# Round 121 (Ruling R119-1.B item 1): the asset universe is re-synced every this many context polls (~10 min at
+# the 10 s REST cadence), and at once after a batch skipped rows for a coin `assets` has never seen. A
+# startup-only sync is how para:CIFR, listed at 11:46 EDT on 2026-09-06, zeroed the snapshot stream for 9 h.
+UNIVERSE_SYNC_EVERY_POLLS = 60
 from collectors.orderbook_sampler import (candidate_rotation_message, sample_orderbooks,
                                           select_sample_coins, top_funding_candidates)
 from execution.paper_trader import PaperTrader
@@ -739,6 +744,13 @@ class MarketCollector:
 
         self.repo.upsert_assets(assets_records)
         logger.info(f"Synced {len(assets_records)} assets across DEXes: {ACTIVE_DEXES}")
+        self._polls_since_universe_sync = 0
+        self._force_universe_sync = False
+
+    def _universe_sync_due(self) -> bool:
+        """Round 121: True every UNIVERSE_SYNC_EVERY_POLLS polls, or at once after a poll skipped unknown coins."""
+        self._polls_since_universe_sync = getattr(self, "_polls_since_universe_sync", 0) + 1
+        return bool(getattr(self, "_force_universe_sync", False)) or self._polls_since_universe_sync >= UNIVERSE_SYNC_EVERY_POLLS
 
     def _poll_contexts_once(self) -> Dict[str, Any]:
         """
@@ -799,19 +811,28 @@ class MarketCollector:
             except Exception as e:
                 logger.error(f"Error polling DEX {dex}: {e}")
 
+        written, skipped = 0, []
         if snapshots:
-            self.repo.insert_snapshots(snapshots)
+            result = self.repo.insert_snapshots(snapshots) or {}
+            written = int(result.get("written", len(snapshots)))
+            skipped = list(result.get("skipped", []))
         if all_clusters:
             self.repo.insert_liquidation_clusters(all_clusters)
 
-        return {"snapshots": len(snapshots), "clusters": len(all_clusters)}
+        return {"snapshots": written, "clusters": len(all_clusters), "skipped_coins": skipped}
 
     async def _poll_market_contexts_loop(self):
         """Periodically poll REST contexts for all DEXes and calculate liquidation clusters."""
         loop = asyncio.get_running_loop()
         while self.running:
             try:
+                if self._universe_sync_due():
+                    await self._sync_universe_metadata()
                 stats = await loop.run_in_executor(self._db_executor, self._poll_contexts_once)
+                if stats.get("skipped_coins"):
+                    logger.warning(f"{len(stats['skipped_coins'])} coin(s) unknown to assets skipped this pass "
+                                   f"({stats['skipped_coins'][:10]}); universe re-sync forced before the next poll")
+                    self._force_universe_sync = True
                 if stats["snapshots"]:
                     logger.info(
                         f"Persisted {stats['snapshots']} market snapshots "
