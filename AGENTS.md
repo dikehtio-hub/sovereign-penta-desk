@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+Round 125 CLOSED by Antigravity (its verification is dated 16:30 EDT; recorded 16:25 by this clock): addendum 4f773ca audited green
+(225/225, exporter 64692 RUNNING, old 62760 gone, Titans card shows the Price-stream line and [NOT READY]); R125-2.C
+RATIFIES the sentinel-card scope extension; R125-2.D CONFIRMS the loop stays gated over its cumulative window (the
+stamp series is unbroken since 2026-09-05T01:39Z) and RULES the loop will NOT be moved to rolling bounded slices -
+after run 3 its lead-lag block is an archival display of the Phase 1 consensus. Item 18 Phase 1 closes with run 3
+(Thu; only Tier 2b crypto is still open); Phase 2 = event-driven lead-lag around the 09-16 FOMC print, pre-registration
+to be drafted and locked in knowledge/registrations/ before 09-15 (ownership to confirm - Antigravity wrote "we").
+Detail folded into HOMEWORK: the gate's own ETA for run 3 is 2026-09-10T19:31:09Z (first stamp inside the window
+landed 19:31:09Z), so the ping is ~15:35 EDT Thu, not 15:27. No code changed; docs committed.
+
 Round 125 addendum complete (2026-09-09 15:50-16:15 EDT, Antigravity R125-2.A/B): RE-BIND RATIFIED; WATCHER HELD TO
 15 MIN ON LIVE WINDOWS; EXPORTER LOOP + SENTINEL CARD + --status ON THE TWO-STREAM GATE; EXPORTER RESTARTED.
 (2.A) run 3 `--since 2026-09-09T19:27:39Z` ratified, closes 2026-09-10T19:27:39Z (~15:27 EDT Thu); HOMEWORK unchanged.

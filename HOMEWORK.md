@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-09 16:15 EDT (Round 125 + addendum: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 VOID and re-bound to --since 2026-09-09T19:27:39Z (RATIFIED, R125-2.A), closes ~15:27 EDT Thu 09-10; readiness gate checks BOTH streams, watcher freshness 15 min on live windows; exporter loop restarted 16:06 EDT onto the same gate).
+Last updated: 2026-09-09 16:25 EDT (Round 125 CLOSED, all rulings ratified: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 re-bound to --since 2026-09-09T19:27:39Z, gate ETA 19:31:09Z = ~15:31 EDT Thu 09-10, ping ~15:35; both-stream gate live in the CLI, the exporter loop (pid 64692) and the Obsidian card; Phase 2 pre-registration due before 09-15).
 
 ---
 
@@ -48,8 +48,11 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       61 min back into the hole, and the hardened gate (R125-1.C, 0 price holes > 60 min inside the sought window)
       would refuse it forever - verified live at 14:32 EDT ("1 hole 61 min: 17:25:39Z -> 18:26:39Z"). Binding 61 min
       after the first new snapshot makes the sought window start exactly where prices resume. Antigravity to ratify.
-      Reaches 24 h at 2026-09-10T19:27:39Z = **~15:27 EDT Thu 09-10**. UNBROKEN collection until then (both daemons
-      now: the gate refuses on either stream). The run is mine (ping me ~15:30, or paste the block below):
+      RATIFIED by Antigravity (R125-2.A, 16:00 EDT) and re-verified live at 16:30 (price stream ready, 0 holes,
+      window start aligned to the first new snapshot). The gate's own ETA is **2026-09-10T19:31:09Z = ~15:31 EDT
+      Thu 09-10** (the first stamp inside the window landed at 19:31:09Z and the 24 h span clock runs from it).
+      UNBROKEN collection until then (both daemons: the gate refuses on either stream). The run is mine
+      (**ping me ~15:35 EDT**, or paste the block below):
       1. Gate (must say READY - both bars):
          `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-09T19:27:39Z`
       2. The four runs (`_run3.json`, `--since 2026-09-09T19:27:39Z`):
