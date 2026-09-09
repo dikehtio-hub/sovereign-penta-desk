@@ -760,6 +760,13 @@ def render_sentinel_block(info: Dict[str, Any], family: str = "macro", now: Opti
         "> - **Bar**: span ≥ %.0fh and ≥ %d points, watcher still adding"
         % (float(info.get("min_span_hours") or 0.0), int(info.get("min_points") or 0)),
     ]
+    price = info.get("price")                               # Round 125 (R125-2.B): the price stream's own verdict
+    if price:
+        price_age = price.get("newest_age_min")
+        lines.append("> - **Price stream**: `%s` snapshots %s, `%d` points in the sought window, `%d` hole(s) > %.0f min - %s"
+                     % (price.get("coin", "BTC"), ("newest %.0f min ago" % price_age) if price_age is not None else "none",
+                        int(price.get("points") or 0), len(price.get("holes") or ()), float(price.get("max_gap_minutes") or 0.0),
+                        "OK" if price.get("ready") else "NOT READY"))
     if ready:
         lines.append("> - **Gate**: open - the first honest live run may proceed: `python -m cross_market.lead_lag --coin BTC`")
     else:
@@ -773,11 +780,15 @@ def render_sentinel_block(info: Dict[str, Any], family: str = "macro", now: Opti
 
 
 def lead_lag_sentinel_block(drop_dirs=None, family: str = "macro", now: Optional[datetime] = None) -> str:
-    """The block for the live series under `drop_dirs` (default: the Polymarket drop dirs). Offline."""
-    from cross_market.lead_lag import data_readiness, stamped_moments
+    """The block for the live series under `drop_dirs` (default: the Polymarket drop dirs). Offline.
+
+    Round 125 (R125-2.B item 3): the card shows the same two-stream verdict the exporter loop acts on,
+    so it can no longer read READY while the price collector is dead."""
+    from cross_market.lead_lag import DEFAULT_HL_DB, readiness_check, stamped_moments
     dirs = [Path(d) for d in (drop_dirs if drop_dirs is not None else DEFAULT_DROP_DIRS)]
     now = now or datetime.now(timezone.utc)
-    return render_sentinel_block(data_readiness(stamped_moments(dirs, family), now=now), family=family, now=now)
+    return render_sentinel_block(readiness_check(stamped_moments(dirs, family), DEFAULT_HL_DB, "BTC", max_lag=60, now=now),
+                                 family=family, now=now)
 
 
 def refresh_marked_block(note_path: Path, block: str, start: str, end: str) -> Tuple[Path, bool]:

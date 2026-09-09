@@ -61,6 +61,15 @@ class ExporterBase(unittest.TestCase):
         # every stamp fresh at whatever time the suite runs. Any assertion that needs the anchor must
         # render it from self.NOW rather than hard-coding a date.
         self.NOW = datetime.now(timezone.utc).replace(microsecond=0)
+        # Round 125 (Ruling R125-2.B item 3): the sentinel card, --status and the LeadLagRefresher now read the
+        # PRICE stream too, through cross_market.lead_lag.DEFAULT_HL_DB - the real multi-GB database. Redirect it
+        # for every test to a fixture with a continuous BTC series a day either side of NOW (tests that move
+        # `now` a day forward still find fresh rows), so no test reads or depends on the live collector.
+        from cross_market import lead_lag as _ll
+        self.hl_db = self.root / "fixture_hl_snapshots.db"          # not "hl.db": the maiden-protocol tests build that one
+        self._seed_hl_db(self.hl_db)
+        self.addCleanup(setattr, _ll, "DEFAULT_HL_DB", _ll.DEFAULT_HL_DB)
+        _ll.DEFAULT_HL_DB = self.hl_db
         conn = sqlite3.connect(self.db)
         conn.execute("""CREATE TABLE fair_odds_measurements (
             id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL,
@@ -72,6 +81,23 @@ class ExporterBase(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def _seed_hl_db(self, path, start=None, end=None, every_seconds=60, coin="BTC"):
+        """A HyperLiquid snapshot fixture: one BTC mark per minute, start..end (default NOW-26h..NOW+27h)."""
+        start = start or (self.NOW - timedelta(hours=26))
+        end = end or (self.NOW + timedelta(hours=27))
+        conn = sqlite3.connect(path)
+        conn.execute("CREATE TABLE IF NOT EXISTS asset_snapshots (id INTEGER PRIMARY KEY, timestamp INTEGER, coin TEXT, "
+                     "dex TEXT, mark_px REAL, mid_px REAL, oracle_px REAL, open_interest REAL, notional_oi REAL, "
+                     "funding_rate REAL, premium REAL, day_ntl_vlm REAL)")
+        t = start
+        rows = []
+        while t <= end:
+            rows.append((int(t.timestamp() * 1000), coin, "main", 100.0))
+            t += timedelta(seconds=every_seconds)
+        conn.executemany("INSERT INTO asset_snapshots (timestamp, coin, dex, mark_px) VALUES (?,?,?,?)", rows)
+        conn.commit()
+        conn.close()
 
     def _quote(self, selection, odds, book="betmgm"):
         conn = sqlite3.connect(self.db)
@@ -310,6 +336,40 @@ class TestLeadLagRefresher(ExporterBase):
                      "n": 0, "interpretation": "", "curve": []}, 3)
         return run
 
+    def test_a_dead_price_collector_gates_the_run_even_when_the_stamps_are_ready(self):
+        """Ruling R125-2.B item 3 (Round 125). Rounds 119 and 125 both had READY stamps over a collector that
+        had written nothing for hours; the loop would have auto-run a verdict on a holed price series, and the
+        sentinel card would have shown READY. Now the loop refuses, names the stream, and the card agrees."""
+        from unittest import mock
+        from cross_market import lead_lag as _ll
+        from cross_market import titan_correlator as tc
+        from cross_market.interfaces.obsidian_exporter import LeadLagRefresher
+        self._stamps(300)
+        self._note()
+        stale = self.root / "stale_hl.db"                                    # the Round 125 shape: rows stop 26 h ago
+        self._seed_hl_db(stale, start=self.NOW - timedelta(hours=40), end=self.NOW - timedelta(hours=26))
+        calls = []
+        r = LeadLagRefresher(drop_dirs=[self.questions], db_path=stale, runner=self._runner(calls))
+        status = r.run(str(self.vault), now=self.NOW)
+        self.assertTrue(status.startswith("lead-lag: gated (NOT READY: price stream stale"), status)
+        self.assertEqual(calls, [])                                          # never ran
+        info = r.readiness(now=self.NOW)
+        self.assertGreaterEqual(info["points"], 200)                         # the event bar alone is met
+        self.assertFalse(info["price"]["ready"])
+        with mock.patch.object(_ll, "DEFAULT_HL_DB", stale):
+            block = tc.lead_lag_sentinel_block([self.questions], "macro", now=self.NOW)
+        self.assertIn("**Verdict: `[NOT READY]`**", block)
+        self.assertIn("**Price stream**: `BTC`", block)
+        self.assertIn("price stream stale", block)
+        # With the fixture's live series (the default for every test) the same loop is READY and runs.
+        r2 = LeadLagRefresher(drop_dirs=[self.questions], runner=self._runner(calls))
+        status = r2.run(str(self.vault), now=self.NOW)
+        self.assertTrue(status.startswith("lead-lag: RAN BTC"), status)        # READY -> it ran at once
+        self.assertEqual(calls, ["BTC"])
+        block = tc.lead_lag_sentinel_block([self.questions], "macro", now=self.NOW)
+        self.assertIn("**Price stream**: `BTC`", block)
+        self.assertIn("- OK", block)
+
     def test_the_run_that_writes_the_note_also_writes_the_verdict_artifact(self):
         """Ruling R102-2 (Round 103). The dashboard and the wiki must describe ONE run. Before this the
         ingest re-ran the correlation seconds later against a series the watcher had already grown, so
@@ -497,8 +557,12 @@ class TestReviewResilience(ExporterBase):
         (self.vault / ("%s.md" % tc.TITANS_NOTE)).write_text("# T\n%s\nx\n%s\n" % (tc.SENTINEL_START, tc.SENTINEL_END))
         fake = mock.Mock(return_value=({"events": 0, "price_points": 0, "max_lag": 60, "sufficient": False,
                                         "reason": "0 probability shifts < 5 required", "curve": []}, 0))
+        # Round 125: the gate reads the price stream from db_path before the runner is reached, so the fixture
+        # database must carry a live BTC series around this test's own `now` (the runner itself stays mocked).
+        prices = self.root / "macro_family_hl.db"
+        self._seed_hl_db(prices, start=now - timedelta(hours=26), end=now + timedelta(minutes=1))
         with mock.patch("cross_market.lead_lag.run", fake):
-            status = LeadLagRefresher(drop_dirs=[self.questions], db_path=self.root / "none.db").run(str(self.vault), now=now)
+            status = LeadLagRefresher(drop_dirs=[self.questions], db_path=prices).run(str(self.vault), now=now)
         self.assertTrue(status.startswith("lead-lag: RAN BTC"), status)
         self.assertEqual(fake.call_args.kwargs.get("family"), "macro")
 
@@ -591,10 +655,16 @@ class TestExporterLock(ExporterBase):
         from cross_market.ingestors.polymarket_fetcher import stamped_drop_name
         for i in range(300):
             (self.questions / stamped_drop_name(now - timedelta(minutes=3 + 5 * i), family="macro")).write_text("[]")
-        info = ex.exporter_status(lock, str(self.vault), [self.questions], now=now, alive=lambda pid: True,
-                                  probe=lambda pid: "pythonw -m cross_market.interfaces.obsidian_exporter --watch")
+        # Round 125: --status judges the price stream too, so this test's fixed `now` needs a BTC series of its own.
+        from cross_market import lead_lag as _ll
+        prices = self.root / "status_hl.db"
+        self._seed_hl_db(prices, start=now - timedelta(hours=26), end=now + timedelta(minutes=1))
+        with mock.patch.object(_ll, "DEFAULT_HL_DB", prices):
+            info = ex.exporter_status(lock, str(self.vault), [self.questions], now=now, alive=lambda pid: True,
+                                      probe=lambda pid: "pythonw -m cross_market.interfaces.obsidian_exporter --watch")
         self.assertTrue(info["running"]) ; self.assertEqual(info["holder_pid"], os.getpid() + 40_000)
-        self.assertTrue(info["lead_lag_ready"]) ; self.assertEqual(info["lead_lag_last_run"], "2026-09-06T01:40:00+00:00")
+        self.assertTrue(info["lead_lag_ready"], info["lead_lag_reasons"]) ; self.assertEqual(info["lead_lag_last_run"], "2026-09-06T01:40:00+00:00")
+        self.assertTrue(info["lead_lag_price_ready"])
         text = ex.format_exporter_status(info)
         self.assertIn("exporter RUNNING - pid", text) ; self.assertIn("macro series READY", text)
         # the CLI: exit codes, JSON, and never a note written

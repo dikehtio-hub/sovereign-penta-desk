@@ -2458,6 +2458,16 @@ esults_drops\.
      Run 3 (Item 18, Tier 2/2b) is VOID (R125-1.A: 26 h of its 38.5 h window had no prices) and RE-BOUND to
          --since 2026-09-09T19:27:39Z, closing 2026-09-10T19:27:39Z (~15:27 EDT Thu 09-10). Block in HOMEWORK.md.
      Current daemons (2026-09-09 14:26 EDT): watcher 17688, exporter 62760, supervisor 16844, collector 74972.
+     Round 125 addendum (R125-2.B, 16:06 EDT): (a) on a LIVE window --check-data also requires the newest tagged stamp
+         <= 15 min ("event stream stale (N min > 15 min) - watcher down"), matching the price bar; bounded --until
+         windows skip both freshness bars. (b) The exporter loop, its Obsidian sentinel card (Cross_Market_Titans.md)
+         and --status use the same two-stream gate:
+     python -m cross_market.interfaces.obsidian_exporter --status      # names BOTH streams in the lead-lag verdict
+     python -m cross_market.interfaces.obsidian_exporter --stop        # then start_cross_market_exporter.bat (pid lock)
+         Restarted 2026-09-09 20:06Z -> pid 64692. The old loop's last lines read "lead-lag: READY, next run in 5.6 h":
+         it would have auto-run a verdict over the 26 h hole. The new loop stays gated while its unbounded window (the
+         whole continuous stamp segment) spans the hole - expected; the pre-registered runs are hand-bound (HOMEWORK).
+     Current daemons (2026-09-09 16:06 EDT): watcher 17688, exporter 64692, supervisor 16844, collector 74972.
 
      ROUND 119 - INCIDENT: COLLECTOR SNAPSHOTS DEAD 9 H (FK on a new listing); RESTART; STOP SCRIPT FIXED
      HyperLiquid\HL_Monarch\scripts\launchers\stop_collector.bat     then     start_collector.bat

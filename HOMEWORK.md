@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-09 14:40 EDT (Round 125: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 VOID and re-bound to --since 2026-09-09T19:27:39Z, closes ~15:27 EDT Thu 09-10; readiness gate now checks the price stream).
+Last updated: 2026-09-09 16:15 EDT (Round 125 + addendum: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 VOID and re-bound to --since 2026-09-09T19:27:39Z (RATIFIED, R125-2.A), closes ~15:27 EDT Thu 09-10; readiness gate checks BOTH streams, watcher freshness 15 min on live windows; exporter loop restarted 16:06 EDT onto the same gate).
 
 ---
 
@@ -67,6 +67,13 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       inside 48 h of the print.
 - [ ] **Watch for 24 h**: `collector_service.jsonl` now carries `silent_failure_watchdog` events from the hardened
       supervisor; one `coverage_report` with `coverage_pct` near 100 by Thu morning is the all-clear.
+- [x] ~~Exporter loop onto the two-stream gate~~ DONE 16:06 EDT (R125-2.B): `cross_market.interfaces.obsidian_exporter`
+      restarted as pid 64692. Its Obsidian card (Cross_Market_Titans.md) and `--status` now show the price stream
+      too, and its automatic lead-lag run stays gated while the continuous stamp series still spans the 09-08 hole
+      - expected; the runs that matter are the hand-bound ones above. One-line check any time:
+      `python -m cross_market.interfaces.obsidian_exporter --status` (both streams named in the verdict).
+      Note for run 3's gate: on a live window the WATCHER must also be fresh (newest stamp <= 15 min), so a sleeping
+      laptop now fails the gate on either daemon.
 - [x] ~~Keep the laptop awake through ~23:30 on 09-08~~ superseded: run 3 re-bound, closes ~15:27 EDT Thu 09-10 (above).
 
 ### Any day 09-07 to 09-14 — scheduler probe (~3 min, logged in)

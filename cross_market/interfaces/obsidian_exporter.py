@@ -267,9 +267,12 @@ class LeadLagRefresher:
         self.last_result: Optional[Dict[str, Any]] = None
 
     def readiness(self, now: Optional[datetime] = None) -> Dict[str, Any]:
-        from cross_market.lead_lag import DEFAULT_DROP_DIRS, data_readiness, stamped_moments
+        # Ruling R125-2.B item 3: the same two-stream gate as `lead_lag --check-data` - the loop must never
+        # auto-run a verdict over a dead price collector (Rounds 119 and 125 both produced exactly that window).
+        from cross_market.lead_lag import DEFAULT_DROP_DIRS, DEFAULT_HL_DB, readiness_check, stamped_moments
         dirs = [Path(d) for d in (self.drop_dirs if self.drop_dirs is not None else DEFAULT_DROP_DIRS)]
-        return data_readiness(stamped_moments(dirs, self.family), now=now)
+        return readiness_check(stamped_moments(dirs, self.family), Path(self.db_path or DEFAULT_HL_DB), self.coin,
+                               max_lag=self.max_lag, now=now)
 
     def _write_verdict_artifact(self, result: Dict[str, Any], keys: Any, now: datetime) -> Optional[Path]:
         """Ruling R102-2: serialise the run that just wrote the note, for knowledge.ingest.lead_lag.
@@ -532,16 +535,18 @@ def exporter_status(pid_file=None, vault: Optional[str] = None, drop_dirs=None, 
         except Exception:                                   # noqa: BLE001 - psutil absent, access denied, gone
             pass
     try:
-        from cross_market.lead_lag import DEFAULT_DROP_DIRS, data_readiness, stamped_moments
+        from cross_market.lead_lag import DEFAULT_DROP_DIRS, DEFAULT_HL_DB, readiness_check, stamped_moments
         from cross_market.titan_correlator import TITANS_NOTE, lead_lag_last_run
         note = resolve_vault(vault) / ("%s.md" % TITANS_NOTE)
         info["titans_note"] = str(note) if note.exists() else None
         last = lead_lag_last_run(note) if note.exists() else None
         info["lead_lag_last_run"] = last.isoformat() if last else None
         dirs = [Path(d) for d in (drop_dirs if drop_dirs is not None else DEFAULT_DROP_DIRS)]
-        ready = data_readiness(stamped_moments(dirs, family), now=now)
+        # Ruling R125-2.B item 3: the status shows the same two-stream verdict the loop acts on.
+        ready = readiness_check(stamped_moments(dirs, family), DEFAULT_HL_DB, "BTC", max_lag=60, now=now)
         info.update(lead_lag_ready=bool(ready["ready"]), lead_lag_reasons=list(ready["reasons"]),
-                    lead_lag_eta=ready["eta"], lead_lag_points=ready["points"], lead_lag_span_hours=ready["span_hours"])
+                    lead_lag_eta=ready["eta"], lead_lag_points=ready["points"], lead_lag_span_hours=ready["span_hours"],
+                    lead_lag_price_ready=bool(ready["price"]["ready"]), lead_lag_price_age_min=ready["price"]["newest_age_min"])
     except Exception as exc:                                # noqa: BLE001 - the lock verdict must still print
         info["lead_lag_error"] = "%s: %s" % (type(exc).__name__, exc)
     return info

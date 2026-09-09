@@ -351,6 +351,27 @@ class TestPriceReadiness(LeadLagCase):
         self.assertIn("[GATE]", printed)
         self.assertIn("price stream stale", printed)
 
+    def test_a_live_window_holds_the_watcher_to_fifteen_minutes_too(self):
+        """Ruling R125-2.B item 2: the event stream's freshness bar matches the price stream's on a live window."""
+        _insert_prices(self.db, self.NOW - timedelta(hours=2), self.NOW - timedelta(minutes=1))
+        stamps = [self.NOW - timedelta(minutes=20 + 5 * i) for i in range(12)][::-1]     # newest stamp 20 min old
+        info = ll.readiness_check(stamps, self.db, "BTC", max_lag=60, now=self.NOW, min_span_hours=0.1, min_points=3)
+        self.assertFalse(info["ready"])
+        self.assertTrue(any(r.startswith("event stream stale (20 min > 15 min) - watcher down") for r in info["reasons"]),
+                        info["reasons"])
+        self.assertTrue(info["price"]["ready"])                                            # only the watcher is at fault
+        self.assertIn("live: newest stamp <= 15 min", ll.format_readiness(info, "macro"))
+        # Bounded (historical) window: no freshness bar on either stream, holes only.
+        until = int((self.NOW - timedelta(minutes=20)).timestamp() * 1000)
+        info = ll.readiness_check(stamps, self.db, "BTC", max_lag=60, now=self.NOW, until_ms=until,
+                                  min_span_hours=0.1, min_points=3)
+        self.assertTrue(info["ready"], info["reasons"])
+        self.assertIsNone(info["event_max_age_minutes"])
+        # Fresh again: READY.
+        fresh = [self.NOW - timedelta(minutes=1 + 5 * i) for i in range(12)][::-1]
+        info = ll.readiness_check(fresh, self.db, "BTC", max_lag=60, now=self.NOW, min_span_hours=0.1, min_points=3)
+        self.assertTrue(info["ready"], info["reasons"])
+
 
 class TestReadiness(LeadLagCase):
     """

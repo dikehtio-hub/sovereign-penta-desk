@@ -378,6 +378,8 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       python -m cross_market.lead_lag --check-data [--family macro] [--subfamily-from tags] [--since ISO] [--json]   # exit 0 ready / 3 not
       # Round 125 (R125-1.C): READY needs BOTH streams - the Polymarket event bar AND the HyperLiquid price bar
       # (newest asset_snapshots row <= 15 min, no price hole > 60 min inside the sought window). Reasons name the stream.
+      # R125-2.B: on a live window the newest tagged stamp must be <= 15 min too; the exporter loop, its Obsidian
+      # sentinel card and `obsidian_exporter --status` run the same two-stream gate.
       # Round 57 (2026-09-04 22:51 EDT): the same verdict as a card in obsidian_vault/Cross_Market_Titans.md (between
       # lead-lag-sentinel markers), refreshed by the Cross-Market Arb Obsidian Sync every cycle.
       python -m cross_market.lead_lag [--coin BTC]      # live dirs are GATED: exit 3 until READY, --force to override

@@ -5,6 +5,28 @@ the detail.
 
 ## Status
 
+Round 125 addendum complete (2026-09-09 15:50-16:15 EDT, Antigravity R125-2.A/B): RE-BIND RATIFIED; WATCHER HELD TO
+15 MIN ON LIVE WINDOWS; EXPORTER LOOP + SENTINEL CARD + --status ON THE TWO-STREAM GATE; EXPORTER RESTARTED.
+(2.A) run 3 `--since 2026-09-09T19:27:39Z` ratified, closes 2026-09-10T19:27:39Z (~15:27 EDT Thu); HOMEWORK unchanged.
+(2.B item 2) `readiness_check()` on a live window (no --until) now also requires the newest tagged stamp <= 15 min
+(`READY_EVENT_MAX_AGE_MINUTES`; reason "event stream stale (N min > 15 min) - watcher down"; the 60-min "stalled"
+rule inside data_readiness() still defines the segment); bounded windows skip it; the bar line prints "live: newest
+stamp <= 15 min". (2.B item 3) `LeadLagRefresher.readiness()` and `exporter_status()` in
+cross_market/interfaces/obsidian_exporter.py call `readiness_check()` (db_path or DEFAULT_HL_DB, the loop's coin
+and max_lag); SCOPE EXTENSION, same rationale: `titan_correlator.lead_lag_sentinel_block()` too, and
+`render_sentinel_block()` prints a "Price stream" line, so the Obsidian card can no longer read READY over a dead
+collector while the loop refuses. Exporter restarted: `--stop` 20:06:11Z (pid 62760 gone), `start_cross_market_
+exporter.bat` 20:06:14Z -> pid 64692. FINDING: the OLD loop's last log lines read "lead-lag: READY, next run in 5.6 h"
+- it would have auto-run a verdict at ~01:40Z 09-10 over the 26 h hole; the new loop reports NOT READY ("price
+stream has 2 hole(s) > 60 min inside the window (largest 1585 min: 16:01:22Z -> 18:26:39Z)") and will stay gated
+while its unbounded window (the whole continuous stamp segment) spans the hole - the auto-run is a cumulative-window
+run by construction (Round 122's finding), so this is correct, and it means Item 18's remaining runs are the
+hand-bound ones in HOMEWORK, not the loop's. Tests: TestPriceReadiness +1 (watcher freshness live vs bounded),
+test_obsidian_exporter +1 (dead collector gates the run and the card agrees; READY fixture runs) and its
+ExporterBase now seeds a BTC fixture DB and redirects DEFAULT_HL_DB for every test (three tests with a fixed `now`
+seed their own); cross_market.tests test_lead_lag+test_obsidian_exporter+test_titan_correlator+test_polymarket_
+fetcher 112/112; whole cross_market package under pytest 225/225 in 23 s. Timing: quoted 25-35, actual ~30.
+
 Round 125 complete (2026-09-09 14:00-14:45 EDT, Antigravity R125-1.A/B/C/D, operator-authorised): COLLECTOR
 HARDENING DEPLOYED, COLLECTOR RESTARTED, GAP #2 REGISTERED, RUN 3 VOID AND RE-BOUND, READINESS GATE NOW JUDGES
 THE PRICE STREAM. (B) `feat/collector-hardening` 70bd232 merged as `d3df1cb` (0 conflicts; master had not touched

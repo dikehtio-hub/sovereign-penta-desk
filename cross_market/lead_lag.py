@@ -50,6 +50,9 @@ READY_MAX_GAP_MINUTES = 60.0            # a larger hole between stamps ends the 
 # Round 125 (Ruling R125-1.C): the gate judges BOTH streams. Twice (Rounds 119 and 125) it said READY over a
 # dead price collector because it read only the Polymarket stamps; a lead-lag needs events AND prices.
 READY_PRICE_MAX_AGE_MINUTES = 15.0      # the newest asset_snapshots row for the coin may be at most this old
+# Ruling R125-2.B item 2: on a LIVE window the watcher must be as fresh as the collector - the 60-minute
+# "stalled" rule inside data_readiness() stays (it defines the continuous segment); this is the stricter bar.
+READY_EVENT_MAX_AGE_MINUTES = 15.0
 EXIT_NOT_READY = 3
 
 
@@ -639,17 +642,28 @@ def readiness_check(stamps: Sequence[datetime], db_path: Path, coin: str, *, max
                     since_ms: Optional[int] = None, until_ms: Optional[int] = None, now: Optional[datetime] = None,
                     min_span_hours: float = READY_MIN_SPAN_HOURS, min_points: int = READY_MIN_POINTS,
                     max_gap_minutes: float = READY_MAX_GAP_MINUTES,
-                    price_max_age_minutes: float = READY_PRICE_MAX_AGE_MINUTES) -> Dict[str, Any]:
+                    price_max_age_minutes: float = READY_PRICE_MAX_AGE_MINUTES,
+                    event_max_age_minutes: float = READY_EVENT_MAX_AGE_MINUTES) -> Dict[str, Any]:
     """
     Round 125 (Ruling R125-1.C): the gate is the event series AND the price
     series, and `ready` is true only when both are. The price window is what
     a run would seek: from `since` (or the event segment's own start when
     unbounded) minus max_lag+1 minutes, to `until` or now. Every reason names
     its stream, so "NOT READY" says which daemon to look at.
+
+    Ruling R125-2.B item 2: on a live window (no `until`) the newest stamp
+    must also be at most `event_max_age_minutes` old - the same freshness the
+    price stream is held to. A bounded window is historical and skips it.
     """
     now = now or _utcnow()
     info = data_readiness(stamps, now=now, min_span_hours=min_span_hours, min_points=min_points,
                           max_gap_minutes=max_gap_minutes)
+    info["event_max_age_minutes"] = event_max_age_minutes if until_ms is None else None
+    if (until_ms is None and info["newest_age_min"] is not None and info["newest_age_min"] > event_max_age_minutes
+            and info["newest_age_min"] <= max_gap_minutes):        # beyond max_gap the "stalled" reason already says it
+        info["reasons"].append("event stream stale (%.0f min > %.0f min) - watcher down"
+                               % (info["newest_age_min"], event_max_age_minutes))
+        info["ready"] = False
     if since_ms is not None:
         anchor_ms = int(since_ms)
     elif info["segment_start"]:
@@ -687,8 +701,10 @@ def format_readiness(info: Dict[str, Any], family: str) -> str:
         else:
             lines.append("[DATA] %s price series (asset_snapshots): unavailable - %s"
                          % (price["coin"], "; ".join(price["reasons"]) or "no rows"))
-    lines.append("[DATA] bar: span >= %.0fh and points >= %d, no gap > %.0f min"
-                 % (info["min_span_hours"], info["min_points"], info["max_gap_minutes"]))
+    lines.append("[DATA] bar: span >= %.0fh and points >= %d, no gap > %.0f min%s"
+                 % (info["min_span_hours"], info["min_points"], info["max_gap_minutes"],
+                    ("; live: newest stamp <= %.0f min" % info["event_max_age_minutes"])
+                    if info.get("event_max_age_minutes") else ""))
     if price:
         lines.append("[DATA] bar (price stream): newest <= %.0f min old, no hole > %.0f min inside the window"
                      % (price["max_age_minutes"], price["max_gap_minutes"]))
