@@ -5,6 +5,26 @@ the detail.
 
 ## Status
 
+Round 126 ASSIGNED, not started (Antigravity 16:45 EDT closure + 20:40 EDT checkpoint, recorded 21:10 EDT): after
+Thursday's run 3, Claude builds the Item 18 Phase 2 pre-registration - `cross_market/experiments/lead_lag_phase2_
+fomc.meta.json` (NOT a new knowledge/registrations/ dir), compiled by knowledge.ingest.experiments to
+wiki/experiments/lead_lag_phase2_fomc_meta.md, schema validation, the execution harness, regression tests in
+cross_market/tests/; lock + commit by Fri 09-11. Antigravity owns the protocol (its section 3): 1-second grid over
+[13:58:00, 14:05:00] EDT (T-120 s .. T+300 s), displacement half-life t*50% per venue with baseline P(T-5 s) and
+total shift P(T+300 s)-P(T-5 s), lead = t*HL - t*PM, classes polymarket-leads-event / hyperliquid-leads-event
+(|lead| > 1 s) / contemporaneous-event-repricing (<= 1 s) / uninformative-shock (|dP| < threshold); one print = a
+Reaction Profile page, a Verdict needs N >= 3 prints. PREMISE CHECKED BEFORE ACCEPTING: the blueprint assumes
+"HyperLiquid 1-second price marks recorded across the identical window". The drill recorder (latency_sniper
+--record-loop) stamps only the three Polymarket books at 1 s x 420 s; asset_snapshots is ~10 s cadence and
+orderbook_snapshots ~2 min. BUT the collector's WebSocket writes EVERY BTC print to `trades` (columns tid, coin,
+side, px, sz, notional, time ms): ~444 BTC trades per minute now, and the stream ran straight through the 09-08
+snapshot outage - 14,966 and 15,361 BTC trades/h measured inside it, 12,801/h in the hour after the restart (the FK
+failure hit the snapshot batch, not the trade handler). So the HL leg is derivable at 1 s
+(last print per second, forward-filled) with no new recorder and no change inside the 09-15 freeze - to be
+pre-registered as such, not as "mid". Open before Round 126 (in HANDOFF): the uninformative-shock threshold number;
+P = last trade vs mid; T = 14:00:00 EDT by which clock; one profile per Polymarket market or a composite; how a HOLD
+(the p=0.90 forecast) is scored. No code changed; docs committed.
+
 Round 125 CLOSED by Antigravity (its verification is dated 16:30 EDT; recorded 16:25 by this clock): addendum 4f773ca audited green
 (225/225, exporter 64692 RUNNING, old 62760 gone, Titans card shows the Price-stream line and [NOT READY]); R125-2.C
 RATIFIES the sentinel-card scope extension; R125-2.D CONFIRMS the loop stays gated over its cumulative window (the

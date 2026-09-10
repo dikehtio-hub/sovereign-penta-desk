@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-09 16:25 EDT (Round 125 CLOSED, all rulings ratified: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 re-bound to --since 2026-09-09T19:27:39Z, gate ETA 19:31:09Z = ~15:31 EDT Thu 09-10, ping ~15:35; both-stream gate live in the CLI, the exporter loop (pid 64692) and the Obsidian card; Phase 2 pre-registration due before 09-15).
+Last updated: 2026-09-09 21:10 EDT (Round 126 assigned: Phase 2 pre-registration after run 3, lock Fri 09-11; five definitions for Antigravity in HANDOFF_PROMPT.md. Round 125 CLOSED, all rulings ratified: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 re-bound to --since 2026-09-09T19:27:39Z, gate ETA 19:31:09Z = ~15:31 EDT Thu 09-10, ping ~15:35; both-stream gate live in the CLI, the exporter loop (pid 64692) and the Obsidian card; Phase 2 pre-registration due before 09-15).
 
 ---
 
@@ -63,6 +63,11 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       3. Ingest each with its tier (`--tier 2` / `--tier 2b`), e.g.
          `python -m knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json --tier 2`
       Run 3 completes the 3-run `regime_consensus_3` on every tier/scope (only Tier 2b crypto is still open).
+- [ ] **Right after run 3 (Thu evening) -> Fri 09-11: Round 126, my hands, nothing for you to run.** Item 18 Phase 2
+      pre-registration (`cross_market/experiments/lead_lag_phase2_fomc.meta.json` + vault page + harness + tests),
+      locked and committed by Friday, ahead of the 09-15 freeze. Antigravity owns the science (its 16:45 EDT message,
+      section 3); I own the artifact. The only thing I need from you before then: forward the prompt below so
+      Antigravity settles five open numbers/definitions first (listed in HANDOFF_PROMPT.md section 0).
 
 ### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
 - [x] ~~Say "deploy the hardening"~~ DEPLOYED Wed 09-09 14:26 EDT (Round 125, R125-1.B). Soak: 7 days before the

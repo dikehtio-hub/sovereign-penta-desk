@@ -1,90 +1,97 @@
-# Round 125 Addendum Verification & Ratification: Two-Stream Gate Armored, Exporter Daemon Live, Sentinel Card Unified, and Item 18 Phase 1 Finalization
+# Round 125 Closed: Phase 2 Ownership, Registration Architecture, and High-Resolution Event-Study Blueprint
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-09 16:30 EDT  
-**Subject**: Round 125 Addendum (commit `4f773ca`) completely audited and verified green; Scope extension on Obsidian Sentinel Card (`titan_correlator.lead_lag_sentinel_block`) RATIFIED; Daemon loop cumulative gating behavior CONFIRMED; Item 18 Phase 1 finalization and Phase 2 blueprint established.
+**Date**: 2026-09-09 16:45 EDT  
+**Subject**: Round 125 formal closure acknowledged; Commit `21f1f0e` audited green; Run 3 schedule confirmed (~15:35 EDT Thursday); Phase 2 Pre-Registration ownership assigned; Directory convention fixed; Quantitative solutions for 1-second resolution, single-event statistics, and sub-minute latency established.
 
 ---
 
-## 1. Round 125 Addendum Independent Cross-Check Audit
+## 1. Commit Audit & Standing Schedule
 
-Every item in Section 3 of the Addendum handoff was independently audited and verified against the live environment:
-
-1. **Commit Audit & Regression Suite:**
-   - Commit `4f773ca` verified via `git show --stat`: 11 files, +269 / -127 lines across `lead_lag.py`, `obsidian_exporter.py`, `titan_correlator.py`, test suites, and docs.
-   - Complete `cross_market` test suite: `python -m pytest cross_market/tests -q` $\to$ **225 passed in 25.55s** (100% green).
-2. **Daemon Status & Process Verification:**
-   - Executed: `python -m cross_market.interfaces.obsidian_exporter --status` $\to$ **RUNNING**.
-     - PID: `64692` (started 2026-09-09T20:06:16Z), holding `cross_market/data/cross_market_exporter.pid`.
-     - Lead-lag report: `macro series NOT READY - price stream has 2 hole(s) > 60 min inside the window (largest 1585 min: 2026-09-08T16:01:22Z -> 2026-09-09T18:26:39Z)`.
-   - Executed: `Get-Process -Id 62760` $\to$ **Terminated** (process absent, exit code 1).
-   - Finding verified: The old loop would have executed an un-gated verdict over the 26.4h hole at ~01:40Z on 09-10; the armored loop correctly intercepted and blocked it.
-3. **Obsidian Sentinel Card Integrity:**
-   - Audited `obsidian_vault/Cross_Market_Titans.md` live:
-     - Header: `> [!WARNING] **Verdict: [NOT READY]**`
-     - Price stream status line verified: `> - **Price stream**: BTC snapshots newest 0 min ago, 28104 points in the sought window, 2 hole(s) > 60 min - NOT READY`
-     - Blocking reason verified: `> - **Blocking**: price stream has 2 hole(s) > 60 min inside the window (largest 1585 min: 2026-09-08T16:01:22Z -> 2026-09-09T18:26:39Z)`
-     - Display state perfectly reflects daemon state.
-4. **Watcher Freshness & Gate Edge Tests:**
-   - `cross_market.tests.test_lead_lag.TestPriceReadiness.test_a_live_window_holds_the_watcher_to_fifteen_minutes_too` $\to$ **PASSED in 0.039s**.
-     - Verifies: stale watcher ($> 15$m) triggers `NOT READY` on live window; bounded window (`--until`) skips freshness and evaluates holes only; fresh watcher restores `READY`.
-   - `cross_market.tests.test_obsidian_exporter.TestLeadLagRefresher.test_a_dead_price_collector_gates_the_run_even_when_the_stamps_are_ready` $\to$ **PASSED in 0.950s**.
-     - Verifies: dead collector ($> 15$m stale) prevents runner execution and renders `[NOT READY]` on the sentinel card.
-5. **Live Run 3 Accumulation Gate:**
-   - Executed live: `python -m cross_market.lead_lag --check-data --family macro --subfamily-from tags --since 2026-09-09T19:27:39Z --json`:
-     - `event_max_age_minutes: 15.0`, `newest_age_min: 4.0` (watcher fresh and streaming).
-     - `price.window_start`: `2026-09-09T18:26:39Z` (aligned perfectly with first snapshot).
-     - `price.holes: []`, `largest_gap_min: 1.8`, `newest_age_min: 0.2` (12s old), **`price.ready: true`**.
-     - Gate reasons: strictly temporal accumulation (`span 0.8h < 24h`, `points 10 < 200`).
-     - ETA: `2026-09-10T19:31:09Z` ($\approx$ **15:31 EDT Thursday**).
+1. **Commit Audit (`21f1f0e`):**
+   - Verified clean: 4 doc files (`AGENTS.md`, `HOMEWORK.md`, `HANDOFF_PROMPT.md`, `ANTIGRAVITY_PROMPT.md`), 0 code churn.
+   - Rulings R125-2.C (sentinel card scope extension) and R125-2.D (daemon loop cumulative gating confirmed) accurately archived in `AGENTS.md`.
+2. **Standing Schedule for Run 3:**
+   - **Gate ETA:** `2026-09-10T19:31:09Z` ($\approx$ **15:31 EDT Thursday, Sept 10**).
+   - **Ping Time:** **~15:35 EDT Thursday** (giving the 24.0h span clock a 4-minute buffer beyond the first tagged stamp).
+   - **Operator:** Maintain laptop awake on AC with zero daemon interventions until Run 3 execution.
+   - **Thursday Morning Sanity (09-10):**
+     - `HyperLiquid/HL_Monarch/data/collector_service.jsonl`: `coverage_pct` climbing toward 100%.
+     - `python -m cross_market.interfaces.obsidian_exporter --status`: RUNNING (PID 64692).
+     - `python -m knowledge.drills.fomc_rehearsal --online`: 33 checks, 0 FAIL, 1 WARN (W32Time).
 
 ---
 
-## 2. Formal Architectural Rulings
+## 2. Phase 2 Pre-Registration Ownership & Directory Architecture
 
-### Ruling R125-2.C: Ratification of Sentinel Card Scope Extension
-* **Verdict:** **RATIFIED AS SUPERIOR SYSTEMS DESIGN**.
-* **Quantitative Rationale:**
-  - In a unified sovereign ecosystem, an operational dashboard must never display a state contradictory to the execution daemon.
-  - Had `titan_correlator.lead_lag_sentinel_block()` remained on the old event-only gate, the Obsidian cockpit would have shown a green `[READY]` badge while the background exporter loop refused to run.
-  - Feeding `readiness_check()` into both `LeadLagRefresher` and `render_sentinel_block()` ensures that the dashboard, the CLI, and the automated loop share an identical, unambiguous source of truth.
-
-### Ruling R125-2.D: Exporter Loop Cumulative Gating & Run Semantics Confirmation
-* **Verdict:** **CONFIRMED & RATIFIED**.
-* **Quantitative Rationale:**
-  - The exporter daemon loop was designed to monitor continuous stationary series. Because the continuous Polymarket stamp series on disk begins at `2026-09-05T01:39Z` (114+ hours unbroken), its cumulative window encompasses the 09-08 price hole ($26.42$h).
-  - Gating the loop as `NOT READY` is mathematically necessary to prevent the automated overwrite of `Cross_Market_Titans.md` with spurious correlation numbers computed over missing price intervals.
-  - **Item 18 Protocol Mandate:** The scientific replication series for Item 18 is strictly governed by the pre-registered, hand-bound disjoint runs in `HOMEWORK.md`:
-    - **Run 1:** Maiden run (`2026-09-05`, historical/retrospective baseline).
-    - **Run 2:** Disjoint clean window (`2026-09-07T02:22:00Z` $\to$ `2026-09-08T03:27:28Z`, 25.1h).
-    - **Run 3:** Disjoint clean window (`2026-09-09T19:27:39Z` $\to$ `2026-09-10T19:27:39Z`, 24.0h).
-  - We will **NOT** alter the daemon loop in Round 126 to compute rolling bounded slices. Continuous 24h rolling windows over unperturbed random-walk markets have already proven `no-lead` across fed-rates and crypto Tier 2. Rolling automation of stationary noise generates zero incremental alpha.
-  - Following the close of Run 3 on Thursday, Item 18 Phase 1 concludes. The exporter's lead-lag block will serve as an archival display of the final ratified Phase 1 consensus, while active monitoring shifts to Phase 2 (Event-Driven Shocks).
+1. **Directory Convention: Maintain Proven Experiment Path:**
+   - **Decision:** Do **NOT** create a new `knowledge/registrations/` directory.
+   - The established, battle-tested pattern in this codebase is:
+     - Pre-registration source: `cross_market/experiments/<name>.meta.json` (or `.rules.json`).
+     - Vault compilation: `wiki/experiments/<name>_meta.md` (via `knowledge.ingest.experiments`).
+     - Ingest linkage: `knowledge.ingest.lead_lag` / `knowledge.ingest.clob`.
+   - Phase 2 will be registered at:  
+     `cross_market/experiments/lead_lag_phase2_fomc.meta.json`  
+     compiling to `wiki/experiments/lead_lag_phase2_fomc_meta.md`.
+2. **Ownership Split:**
+   - **Antigravity (Architect / Auditor):** Authors the scientific protocol, quantitative hypotheses, formal mathematical definitions, acceptance bars, and latency thresholds (detailed below in Section 3).
+   - **Claude Code (Implementation Engineer):** Authors the `lead_lag_phase2_fomc.meta.json` artifact, wires schema validation into `knowledge.ingest.experiments`, binds the execution harness, and adds regression tests during **Round 126** (immediately following Thursday's Run 3 close-out).
+   - **Target Lock Date:** Locked and committed by **Friday, September 11**, comfortably ahead of the September 15 code freeze and September 16 FOMC print.
 
 ---
 
-## 3. Quantitative Strategy: Item 18 Phase 1 Close-Out & Phase 2 Transition
+## 3. Phase 2 Quantitative Blueprint: Solving the Three Core Methodological Risks
 
-1. **Current Mathematical State of Phase 1:**
-   - **fed-rates (Tier 2 & Tier 2b):** Runs 1 and 2 both returned `no-lead` ($|r| < 0.10$). **2-of-3 consensus locked `no-lead`**.
-   - **crypto (Tier 2):** Runs 1 and 2 both returned `no-lead` (Run 1: $r = -0.138$ @ 38m; Run 2: $r = -0.101$ @ -35m). **2-of-3 consensus locked `no-lead`**.
-   - **crypto (Tier 2b):** Run 1 was spurious `polymarket-leads` ($r = -0.325$ @ 38m, corrupted by the 9.3h price gap). Run 2 was `no-lead` ($r = -0.101$ @ -35m).
-   - **Adjudication of Run 3:** Run 3 will solely determine whether Tier 2b crypto concludes as 2-of-3 `no-lead` (confirming that Run 1 was an artifact of sample bias) or split (confirming dual-tagged market divergence).
-   - **Phase 1 Close:** Irrespective of Tier 2b's final classification, Phase 1 completes its mandate: Polymarket order flow does not lead institutional BTC perps during continuous regimes.
-2. **Phase 2 Architecture (Event-Driven Macro Lead-Lag):**
-   - **Hypothesis:** Macro event pricing leads spot/perp price discovery during discrete, high-information shocks ($[T_{\text{event}} - 15\text{m}, T_{\text{event}} + 60\text{m}]$).
-   - **Target Event:** **FOMC Rate Decision — September 16, 2026, 14:00 EDT** (Item 17).
-   - **Pre-Registration:** We will draft and lock the Phase 2 pre-registration document in `knowledge/registrations/` prior to September 15.
+Claude Code correctly highlighted three pivotal design challenges for event-driven lead-lag. Here is the formal quantitative specification:
+
+### A. Temporal Resolution: The 1-Second Discrete Grid
+- **The Problem:** The standard Polymarket watcher polls every 300 seconds (5 min). High-impact macroeconomic releases (FOMC statements) trigger institutional algorithmic price discovery within 50–500 milliseconds, with primary order-book repricing complete within 5–30 seconds. A 5-minute polling interval is mathematically blind to the entire event dynamic.
+- **The Solution:** Phase 2 decouples entirely from the 5-minute watcher drops and ingests the high-frequency stream from Item 17:
+  1. **Polymarket CLOB Stream:** The scheduled drill task (`Monarch_FOMC_Drill` / `fomc_drill_2026-09-16.bat`) records **1-second L2 order-book depth** for the three registered Fed rate markets across $[13:58:00, 14:05:00]$ EDT (420 seconds total, $T - 120\text{s}$ to $T + 300\text{s}$).
+  2. **HyperLiquid Tick/Snap Stream:** HyperLiquid 1-second price marks ($P_t^{\text{mid}}$) recorded across the identical 420-second window.
+  3. **Evaluation Grid:** Both streams are snapped to a synchronized, discrete 1.0-second UTC timestamp grid: $t \in [T_0, T_0 + 420]$.
+
+### B. Statistical Formulation: Event Study Displacement Half-Life ($t^*_{50\%}$)
+- **The Problem:** A single macroeconomic announcement cannot support a continuous Pearson correlation test ($N$ independent intervals). In a 420-second window around a binary rate surprise, both venues experience a sharp step function, which trivially produces high correlation ($r > 0.80$) at whatever lag aligns the steps, masquerading as broad predictive lead.
+- **The Solution:** Structure Phase 2 as a formal **Macroeconomic Event Study**:
+  1. **Baseline Price Displacement:** Let $\Delta P_{\text{total}} = P(T+300\text{s}) - P(T-5\text{s})$ be the net post-event shift for both venues.
+  2. **Displacement Half-Life ($t^*_{50\%}$):** Define $t^*_{50\%}$ as the earliest second $t$ where:
+     $$|P(t) - P(T-5\text{s})| \ge 0.50 \cdot |\Delta P_{\text{total}}|$$
+  3. **Lead Metric ($\Delta t_{\text{lead}}$):**
+     $$\Delta t_{\text{lead}} = t^*_{50\%, \text{HL}} - t^*_{50\%, \text{PM}}$$
+  4. **Multi-Event Panel Requirement:** A single print yields a single **Reaction Profile** (`wiki/experiments/reaction_profile_fomc_20260916.md`). A formal lead-lag **Verdict** requires a pooled panel across $N \ge 3$ major macroeconomic releases (e.g., FOMC 09-16, October CPI, FOMC 10-28).
+
+### C. Sub-Minute Latency Classification Thresholds
+- **The Problem:** Cross-venue arbitrage and latency between centralized crypto exchanges (HyperLiquid) and decentralized prediction markets (Polymarket on Polygon via CLOB) have characteristic network and settlement propagation delays of 500ms to 2.0s.
+- **The Solution:** Classification vocabulary based on a $\pm 1.0$-second tolerance band:
+  - **`polymarket-leads-event`:** $\Delta t_{\text{lead}} > +1.0\text{s}$ (Polymarket order book midpoint completes 50% displacement $> 1.0$ second before HyperLiquid spot/perp).
+  - **`hyperliquid-leads-event`:** $\Delta t_{\text{lead}} < -1.0\text{s}$ (HyperLiquid completes 50% displacement $> 1.0$ second before Polymarket).
+  - **`contemporaneous-event-repricing`:** $|\Delta t_{\text{lead}}| \le 1.0\text{s}$ (Both venues reprice within the identical 1-second window; transmission delay is indistinguishable from zero).
+  - **`uninformative-shock`:** $|\Delta P_{\text{total}}| < \text{threshold}$ (The announcement was a non-event with no measurable order-book shift).
 
 ---
 
-## 4. Operational Checklist for Operator
+## 4. Next Actions (Round 126 Handoff)
 
-- [ ] **Laptop Power & Connectivity:** Keep laptop awake on AC through **Thursday ~15:30 EDT** so Run 3 accumulates cleanly without breaks.
-- [ ] **Thursday Morning (09-10):**
-  - Verify `HyperLiquid/HL_Monarch/data/collector_service.jsonl`: `coverage_pct` steadily climbing back toward 100%.
-  - Verify `obsidian_exporter --status`: RUNNING, reporting healthy streams.
-  - Run daily drill check: `python -m knowledge.drills.fomc_rehearsal --online` (expect 33 checks, 0 FAIL, 1 WARN).
-- [ ] **Thursday ~15:27 EDT (Run 3 Execution Window):**
-  - Claude Code will verify gate clearance (`--check-data --since 2026-09-09T19:27:39Z`), execute the four registered commands, ingest artifacts into the vault, and close Item 18 Phase 1.
+1. **Thursday 15:35 EDT:** Execute Run 3, verify gate clearance, ingest four verdicts into vault, and finalize Item 18 Phase 1 close-out synthesis.
+2. **Round 126 Implementation:** Claude Code compiles `lead_lag_phase2_fomc.meta.json` using the specification in Section 3 above, verified through unit tests in `cross_market/tests/`.
+
+---
+
+## 5. Live Accumulation Checkpoint (20:40 EDT / 5.1h Post-Rebind)
+
+- **Gate Status:** `points: 62`, `span: 5.14h`, `largest_gap: 5.1 min`, `breaks: 0`.
+- **Stream Freshness:**
+  - **Watcher:** newest stamp `1.3 min` ago (streaming continuously every ~5 min).
+  - **Price Collector:** newest mark `0.7 min` (42s) ago, `1871` points, `holes: []`, **`price.ready: true`**.
+  - **Uptime:** 6.0h continuous, `gap_hours: 0.0`, `coverage_pct: 25.0%` climbing linearly ($6\text{h}/24\text{h}$).
+- **Daemon Liveness:**
+  - Supervisor: `16844`
+  - Collector: `74972`
+  - Watcher: `17688`
+  - Exporter: `64692` (two-stream gate active)
+  - Telemetry: `5/5`
+- **ETA for Gate Closure:** `2026-09-10T19:31:09Z` ($\approx$ **15:31 EDT Thursday**). All systems green.
+
+
