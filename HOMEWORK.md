@@ -4,7 +4,7 @@ Everything in this file needs a human. Anything an agent can do is not here; tha
 lives in `LLM_WIKI_BACKLOG.md` (knowledge layer) and the Top 20 registry in
 `MASTER_COMMAND_LIST.txt` (trading desks).
 
-Last updated: 2026-09-09 21:10 EDT (Round 126 assigned: Phase 2 pre-registration after run 3, lock Fri 09-11; five definitions for Antigravity in HANDOFF_PROMPT.md. Round 125 CLOSED, all rulings ratified: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 re-bound to --since 2026-09-09T19:27:39Z, gate ETA 19:31:09Z = ~15:31 EDT Thu 09-10, ping ~15:35; both-stream gate live in the CLI, the exporter loop (pid 64692) and the Obsidian card; Phase 2 pre-registration due before 09-15).
+Last updated: 2026-09-10 16:10 EDT (RUN 3 DONE, all no-lead, Item 18 Phase 1 closed; laptop may be shut down after the commit; Round 126 next. Earlier: Round 126 assigned: Phase 2 pre-registration after run 3, lock Fri 09-11; five definitions for Antigravity in HANDOFF_PROMPT.md. Round 125 CLOSED, all rulings ratified: hardening deployed + collector restarted 14:26 EDT; gap #2 registered; run 3 re-bound to --since 2026-09-09T19:27:39Z, gate ETA 19:31:09Z = ~15:31 EDT Thu 09-10, ping ~15:35; both-stream gate live in the CLI, the exporter loop (pid 64692) and the Obsidian card; Phase 2 pre-registration due before 09-15).
 
 ---
 
@@ -42,7 +42,12 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       stream too (R125-1.C), so this exact failure can no longer be declared READY.
 - [x] ~~**Run 3 of 3 (Tue 09-08 ~23:27 EDT)**~~ **VOID** per R125-1.A (executed late at 14:02 EDT 09-09; all four
       `no-lead`, but 26 h of the 38.5 h window had no BTC prices). Artifacts discarded, never ingested. Re-bound below.
-- [ ] **Keep the laptop awake and collecting through ~15:30 EDT Thu 09-10** - run 3 of 3, RE-BOUND.
+- [x] ~~**Keep the laptop awake and collecting through ~15:30 EDT Thu 09-10**~~ **RUN 3 DONE 2026-09-10 15:58-16:05
+      EDT**: gate READY on both bars (24.4 h, 291 stamps, 0 breaks; 8,391 price points, 0 holes); four verdicts all
+      **no-lead** (fed-rates corr +0.08 @ +13 min; crypto -0.07 @ +7; Tier 2b identical); ingested; regime page:
+      T2 fed-rates, T2 crypto, T2b fed-rates = no-lead 3/3; T2b crypto = `mixed` (run 1's hole-corrupted reading is
+      still in the history; Antigravity to rule). ITEM 18 PHASE 1 CLOSED. **You may shut the laptop down after this
+      commit**; wake it Friday morning, run `resume_all.bat`, tell me. Original re-bind block kept for the record:
       `--since 2026-09-09T19:27:39Z`. Why not the restart instant itself (18:26:39Z, R125-1.A's literal words): the
       run seeks prices from `since` minus `max_lag + 1` = 61 min, so a window bound at the first new snapshot pads
       61 min back into the hole, and the hardened gate (R125-1.C, 0 price holes > 60 min inside the sought window)
@@ -63,11 +68,11 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       3. Ingest each with its tier (`--tier 2` / `--tier 2b`), e.g.
          `python -m knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json --tier 2`
       Run 3 completes the 3-run `regime_consensus_3` on every tier/scope (only Tier 2b crypto is still open).
-- [ ] **Right after run 3 (Thu evening) -> Fri 09-11: Round 126, my hands, nothing for you to run.** Item 18 Phase 2
-      pre-registration (`cross_market/experiments/lead_lag_phase2_fomc.meta.json` + vault page + harness + tests),
-      locked and committed by Friday, ahead of the 09-15 freeze. Antigravity owns the science (its 16:45 EDT message,
-      section 3); I own the artifact. The only thing I need from you before then: forward the prompt below so
-      Antigravity settles five open numbers/definitions first (listed in HANDOFF_PROMPT.md section 0).
+- [ ] **Now -> Fri 09-11: Round 126, my hands, nothing for you to run.** Item 18 Phase 2 pre-registration
+      (`cross_market/experiments/lead_lag_phase2_fomc.meta.json` + vault page + `cross_market/event_study.py` harness +
+      tests), locked and committed by Friday, ahead of the 09-15 freeze, using Antigravity's 03:00 EDT ratified numbers
+      (all five definitions settled). Needs the laptop ON while I work; it can be off in between. Forward the prompt in
+      HANDOFF_PROMPT.md when you can - it carries one rule question (Tier 2b `mixed`) that does not block the build.
 
 ### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
 - [x] ~~Say "deploy the hardening"~~ DEPLOYED Wed 09-09 14:26 EDT (Round 125, R125-1.B). Soak: 7 days before the
@@ -113,10 +118,39 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       Your p = 0.90 "no change" forecast scores itself once the event and the books are in the vault.
 - [ ] **Afterwards** - tell me it ran (or send the output of anything that did not).
 
+- [ ] **14:05-14:30 - save the statement text (1 min).** Copy the Fed press release (federalreserve.gov, the 14:00
+      statement) into `obsidian_vault/raw/inbox/fomc_statement_2026-09-16.md`. The inbox is lint-exempt. It is the input
+      for the statement-tone descriptor, which is NOT in Friday's registration (ruled 09-10): scored exploratory for
+      09-16 under a rule locked before 10-28.
+
 ### If 09-16 is missed
 - Next FOMC: 2026-10-27/28. Everything stays armed; the registration would need re-dating and fresh token ids.
 
 ### No date — whenever you are ready
+- [ ] **Before any git remote (~5 min, you; found 09-10 02:20 EDT, re-verified 09-10):** ONE tracked file carries a
+      credential: `BOTS/Phemex/Phem_key.py` (a 36-char key AND a 91-char secret, in the 09-03 root commit; nothing
+      imports it). Tell me whether it is live. If live: rotate it at Phemex first, then I blank the file (like
+      dontshare.py, or delete it - nothing imports it) and add `*_key.py` to .gitignore (blocks NEW key files; NOT
+      `key_file.py`: an ignore does not untrack a tracked file, and untracking it breaks the five importers on a clone). `BOTS/HYPERLIQUID/key_file.py`
+      is a 40-hex wallet ADDRESS (public, five bot scripts import it) - nothing to rotate; say if you would rather not
+      publish the address. `BOTS/Aster/aster_key.py` is empty. History is NOT rewritten (both files are in the root
+      commit, so a rewrite would change all 171 hashes; the vault's L5 and this file cite them). No push happens until
+      you say so explicitly - a push publishes the whole history. Also needs `gh` installed and `gh auth login`.
+- [ ] **Phase 2 event 2 is the September CPI: Wed 2026-10-14 08:30 EDT** (BLS schedule, verified 09-10; the next two
+      are 11-10 and 12-10). Polymarket lists `Core CPI MoM / YoY - <month>` ladders a few weeks ahead under tags
+      inflation/cpi/economy (not in the watcher's set); September's are not listed yet. The recorder, its scheduled
+      task and the token ids are registered AFTER 09-16 and before 10-12. That Wednesday: laptop on and logged in by
+      08:26.
+- [ ] **APPROVED by Antigravity 02:40 EDT - Fri 09-11 08:28:00 EDT sharp (~8 min, you): August CPI scratch probe.**
+      Laptop awake and logged in by 08:25. In a terminal at the DEV root, at 08:28:00 (T-120 s; BLS prints 08:30:00),
+      paste ONE line:
+      `C:\Users\ixis1\anaconda\python.exe -m cross_market.latency_sniper --record-loop --tokens 62389524085487534523899712332044572176886590958623969587529644299844470210078,64368830477432477582522534288767253727710406730994687443511307805252003060742,94845965611974215936878491977753293595100306803782909168044786416574901031933 --interval 1 --duration 420 --books cross_market\data\clob_books\cpi_2026-09-11_probe`
+      The three tokens are the YES sides of `Core CPI MoM - August 2026` rungs 0.2% (priced 0.645 tonight), 0.3%
+      (0.29) and 0.1% (0.055) - the rungs carrying the probability mass, so the ones that reprice. Same recorder,
+      same python and same shape as the FOMC drill batch; 3 read-only GETs per second; the books dir is created and is
+      git-ignored; the HL leg needs nothing (the collector's trades table runs regardless). Exploratory only: not a
+      panel entry, no code, no scheduled task, no daemon. It ends by itself at 08:35. If you miss 08:28, skip it -
+      do not start it late.
 - [ ] **Name the aim of the next project** (the reading-intake layer: links, videos, articles). One sentence
       on what the notes are FOR is all I need to build the inbox and the fetch adapter.
 

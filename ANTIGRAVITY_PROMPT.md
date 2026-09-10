@@ -94,4 +94,81 @@ Claude Code correctly highlighted three pivotal design challenges for event-driv
   - Telemetry: `5/5`
 - **ETA for Gate Closure:** `2026-09-10T19:31:09Z` ($\approx$ **15:31 EDT Thursday**). All systems green.
 
+---
+
+## 6. Round 126 Phase 2 Pre-Registration Specifications (Pre-Approved)
+
+All five quantitative definitions from Claude Code's Round 126 handoff are hereby settled with explicit numbers and mathematical rationale for pre-registration:
+
+1. **HyperLiquid 1-Second Price Series Definition:**
+   - **Data Premise Confirmed:** Independently audited `hyperliquid_data.db`. The `trades` table records every millisecond trade print with `(time, px, sz, notional)`. Verified live: 91 BTC trades in the last 60s (>1.5 trades/sec).
+   - **Formula:** $P_{\text{HL}}(t) =$ price (`px`) of the **last BTC trade** in second $t$ from `trades` (where `coin = 'BTC'`), forward-filled through any empty second.
+   - **Rationale:** Size-weighted mean (VWAP) blunts the step-function repricing by mixing pre- and post-shock executions within the same second, introducing artificial phase lag. The last print in interval $[t, t+1\text{s})$ accurately captures the terminal microstructure state.
+2. **Uninformative-Shock Thresholds:**
+   - **Polymarket Displacement Bar:** $|\Delta P_{\text{PM}}| < 0.02$ (2.0% implied probability shift, matching the Tier 2 `min_shift` rule).
+   - **HyperLiquid Displacement Bar:** $|\Delta P_{\text{HL}}| / P_{\text{HL}}(T-5\text{s}) < 10\text{ bps}$ ($0.10\%$ relative return).
+   - **Classification Rule:** An event is classified as `uninformative-shock` if **EITHER** venue fails to clear its displacement bar:
+     $$\text{Class} = \text{uninformative-shock} \quad \text{if} \quad (|\Delta P_{\text{PM}}| < 0.02) \;\lor\; \left(\frac{|\Delta P_{\text{HL}}|}{P_{\text{HL}}(T-5\text{s})} < 0.0010\right)$$
+   - **Rationale:** For lead $\Delta t_{\text{lead}} = t^*_{\text{HL}} - t^*_{\text{PM}}$ to be mathematically well-defined, both venues must experience a significant displacement. If either venue is stationary, the 50% displacement point $t^*_{50\%}$ is undefined noise.
+3. **Anchor Timestamp $T$, Clock Sync, and Baseline:**
+   - **Anchor:** $T = 14:00:00$ EDT ($18:00:00$ UTC) on the recorder host's W32Time-synchronized clock.
+   - **Baseline:** Fixed at $t_{\text{base}} = T - 5\text{s}$ ($13:59:55$ EDT / $17:59:55$ UTC), guaranteed unperturbed by leaks or releases.
+   - **Evaluation Window:** $[T, T + 300\text{s}]$. Total shift is $\Delta P_{\text{total}} = P(T+300\text{s}) - P(T-5\text{s})$.
+   - **Invariance:** Because $t^*_{50\%}$ evaluates to an absolute UTC second on each venue, $\Delta t_{\text{lead}} = t^*_{\text{HL}} - t^*_{\text{PM}}$ is mathematically invariant to whether the Federal Reserve statement is released at 14:00:00.0 or 14:00:02.5.
+4. **Polymarket Contract Selection & Panel Hierarchy:**
+   - **Scope:** One Reaction Profile page per registered Fed market from `fomc_2026-09-16.rules.json` (3 contracts).
+   - **Primary Active Contract:** The contract with the largest absolute displacement $|\Delta P_{\text{total}}|$, designated as the primary macroeconomic transmission instrument.
+   - **Multi-Event Panel Key:** `(event, market_token)`.
+5. **Scoring a HOLD (No-Change Scenario):**
+   - A HOLD announcement qualifies as informative and computes a valid lead **if and only if** both venues clear their displacement bars ($|\Delta P_{\text{PM}}| \ge 0.02$ and $|\Delta P_{\text{HL}}| / P_{\text{HL}} \ge 10\text{ bps}$).
+   - If either venue fails to displace, the print is logged as `uninformative-shock` in the event history, but **does not count toward the $N \ge 3$ informative events** required for a Lead-Lag Regime Verdict.
+   - **Multi-Event Sequence Pre-Registered:**
+     1. Event 1: FOMC Rate Decision — 2026-09-16 14:00 EDT
+     2. Event 2: US CPI Release — October 2026 08:30 EDT
+     3. Event 3: FOMC Rate Decision — 2026-10-28 14:00 EDT
+6. **Sufficiency Bar & Architecture Approval (Refined & Ratified):**
+   - **File Architecture Approved:**
+     - Pre-registration: `cross_market/experiments/lead_lag_phase2_fomc.meta.json` $\to$ `wiki/experiments/lead_lag_phase2_fomc_meta.md`
+     - Engine: `cross_market/event_study.py` (CLI + harness)
+     - Adapter: `knowledge/ingest/event_study.py`
+     - Tests: `cross_market/tests/test_event_study.py`
+   - **Data Sufficiency & Feed Liveness Rule (Ratified Deviation Replacement):**
+     - **Polymarket CLOB Leg:** Reject as `insufficient` (exit code 2) if any continuous hole $> 5.0\text{ s}$ occurs within $[T_0, T+300\text{ s}]$ or if $< 300$ discrete 1-second grid stamps are present on disk. (Since the recorder actively stamps every second, missing seconds denote recorder downtime).
+     - **HyperLiquid Trades Leg:**
+       1. **Feed Liveness**: Reject as `insufficient` (exit code 2) if any ALL-coin trade gap $> 5.0\text{ s}$ occurs inside $[T-5\text{ s}, T+300\text{ s}]$ (indicating collector websocket disconnect or pipeline stall).
+       2. **Baseline Anchor**: Baseline is the last BTC trade print at or before $T-5\text{ s}$; rejected as `insufficient` (exit code 2) ONLY if older than $15.0\text{ s}$ (i.e. $t_{\text{print}} < T - 20\text{ s}$).
+       3. **Forward-Filling**: BTC-quiet seconds forward-fill the last execution price and NEVER void the run for sufficiency.
+       4. **Order of Evaluation**: Displacement bars are evaluated FIRST. If feeds are live but either venue fails to clear its displacement bar, classify as `uninformative-shock` (exit code 0). Discrete $t^*_{50\%}$ calculation is evaluated SECOND only if both venues displace.
+
+---
+
+## 7. Formal Ratification of Section 3 & 5 Refinements (2026-09-10 03:00 EDT)
+
+All empirical and architectural cross-checks verified green:
+
+1. **Noise Threshold & Snapshot Fallback (Section 3.2 & 7.1 Ratified):**
+   - Empirical BTC 5-minute move distribution verified: median $5.36\text{ bps}$, $p_{75} = 9.59\text{ bps}$, $p_{90} = 14.71\text{ bps}$, $p_{99} = 24.88\text{ bps}$. A static $10\text{ bps}$ bar is traversed by $\approx 24\%$ of quiet overnight windows.
+   - **Ratified Rule:**
+     $$\text{Bar}_{\text{HL}} = \max\left(10\text{ bps}, \; 3 \times \widetilde{|\Delta_{5\text{m}}|}_{\text{pre}}\right)$$
+     where $\widetilde{|\Delta_{5\text{m}}|}_{\text{pre}}$ is the sample median of overlapping 5-minute moves from `asset_snapshots.mark_px` across $[T-60\text{m}, T-5\text{s}]$.
+   - **Snapshot Hole Fallback**: If fewer than $60$ BTC marks exist in `asset_snapshots` in $[T-60\text{m}, T-5\text{s}]$, $\text{Bar}_{\text{HL}}$ defaults to the $10.0\text{ bps}$ floor, recorded with JSON metadata flag `bar_source: "floor_fallback"` (otherwise `"trailing_60m_relative"`).
+   - **Polymarket Bar**: $|\Delta P_{\text{PM}}| \ge 0.02$. If **EITHER** venue fails its bar, classify as `uninformative-shock`.
+2. **Grid Start & Task Scheduler (Section 3.3 & 7.2 Ratified):**
+   - Scheduled task `Monarch_FOMC_Drill` remains **UNTOUCHED** (no trigger shift; honoring the freeze).
+   - Because `NextRunTime` is $13:58:58$ EDT (dynamic scheduler jitter / registration seconds), $T_0 \approx T - 58\text{ s}$.
+   - Analysis grid evaluates $[T_0, T+300\text{ s}]$ where $T_0 = \text{timestamp of first Polymarket stamp on disk}$ (constraint $T_0 \le T - 30\text{ s}$). Pre-announcement interval is $[T_0, T - 5\text{ s}]$. Baseline is invariant at $T - 5\text{ s}$ ($13:59:55$ EDT / $17:59:55$ UTC).
+3. **Event 2 Pinned & CPI Recorder (Section 3.5 & 5e Ratified):**
+   - Event 2 pinned: **US Consumer Price Index (September Release) — Wednesday, October 14, 2026 at 08:30 EDT (12:30 UTC)**.
+   - Round 126 writes this release instant into `lead_lag_phase2_fomc.meta.json` with market-selection rule (Core CPI MoM/YoY ladders, primary = largest $|\Delta P_{\text{total}}|$). Token IDs appended in dated re-registration before 10-12.
+   - CPI recorder scheduled task will be created **AFTER** the 09-16 FOMC print.
+   - Friday 08:28:00 EDT scratch probe on August CPI books (rungs 0.2%, 0.3%, 0.1%, duration 420s) confirmed approved as read-only exploratory scratch in `HOMEWORK.md`.
+4. **AI-Tooling Architecture (Section 5 Ratified):**
+   - **Rotate-Not-Rewrite:** Confirmed. `key_file.py` (public address) stays tracked. `Phem_key.py` deleted post-rotation. `*_key.py` gitignored. Remote blocked pending rotation.
+   - **Watcher Scope:** Read-only gate + notification only. Never auto-executes Phase 1 runs.
+   - **Tone Covariate:** Excluded from Phase 2 pre-registration. Uniform shock covariate is surprise vs $P_{\text{implied}}(T-5\text{s})$. Fed statement archived to `raw/inbox/` as exploratory.
+   - **Pre-Freeze Implementation Order:** Round 126 $\to$ PreToolUse hook (with `DAEMON_UNLOCK`, expires $\le 2\text{h}$, agents cannot write) $\to$ `CLAUDE.md` + skills $\to$ subagents $\to$ Rehearsal. All other tooling deferred past 09-16.
+   - **SQLite MCP:** Deferred past 09-16; requires URI `?mode=ro`, short-lived per-query connection, strict row cap.
+
+
+
 

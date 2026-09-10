@@ -71,13 +71,17 @@
 * [Lead-lag verdict: Tier 1, macro, 2026-09-06 01:42Z](wiki/experiments/lead_lag_tier1_macro_20260906T0142Z.md) - Tier 1 lead-lag verdict for macro: no-lead.
 * [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260907T0230Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
 * [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-08 03:29Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260908T0329Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
+* [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-10 19:59Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260910T1959Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
 * [Lead-lag verdict: Tier 2, macro / fed-rates, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2_macro_fed-rates_20260907T0230Z.md) - Tier 2 lead-lag verdict for macro / fed-rates: no-lead.
 * [Lead-lag verdict: Tier 2, macro / fed-rates, 2026-09-08 03:29Z](wiki/experiments/lead_lag_tier2_macro_fed-rates_20260908T0329Z.md) - Tier 2 lead-lag verdict for macro / fed-rates: no-lead.
+* [Lead-lag verdict: Tier 2, macro / fed-rates, 2026-09-10 19:59Z](wiki/experiments/lead_lag_tier2_macro_fed-rates_20260910T1959Z.md) - Tier 2 lead-lag verdict for macro / fed-rates: no-lead.
 * [Experiment: lead_lag_tier2_subfamilies](wiki/experiments/lead_lag_tier2_meta.md) - PRE-REGISTERED - runs only AFTER the Tier 1 maiden run has written its verdict to Cross_Market_Titans.md
 * [Lead-lag verdict: Tier 2b, macro / crypto, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2b_macro_crypto_20260907T0230Z.md) - Tier 2b lead-lag verdict for macro / crypto: polymarket-leads.
 * [Lead-lag verdict: Tier 2b, macro / crypto, 2026-09-08 03:30Z](wiki/experiments/lead_lag_tier2b_macro_crypto_20260908T0330Z.md) - Tier 2b lead-lag verdict for macro / crypto: no-lead.
+* [Lead-lag verdict: Tier 2b, macro / crypto, 2026-09-10 19:59Z](wiki/experiments/lead_lag_tier2b_macro_crypto_20260910T1959Z.md) - Tier 2b lead-lag verdict for macro / crypto: no-lead.
 * [Lead-lag verdict: Tier 2b, macro / fed-rates, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2b_macro_fed-rates_20260907T0230Z.md) - Tier 2b lead-lag verdict for macro / fed-rates: no-lead.
 * [Lead-lag verdict: Tier 2b, macro / fed-rates, 2026-09-08 03:30Z](wiki/experiments/lead_lag_tier2b_macro_fed-rates_20260908T0330Z.md) - Tier 2b lead-lag verdict for macro / fed-rates: no-lead.
+* [Lead-lag verdict: Tier 2b, macro / fed-rates, 2026-09-10 19:59Z](wiki/experiments/lead_lag_tier2b_macro_fed-rates_20260910T1959Z.md) - Tier 2b lead-lag verdict for macro / fed-rates: no-lead.
 * [Experiment: lead_lag_tier2b_dual_tag_membership](wiki/experiments/lead_lag_tier2b_meta.md) - PRE-REGISTERED - runs only after (1) the Tier 1 maiden verdict is in Cross_Market_Titans.md, (2) the watcher has been restarted with the Round 76 code, and (3) the TAGGED macro series clears the readiness bar on its own
 * [Experiment: passive_fade_rebenchmark](wiki/experiments/passive_fade_rebenchmark_meta.md) - PASSIVE - the fade does not trade; sweeps accumulate with execution disabled
 * [Passive fade rebenchmark - verdict](wiki/experiments/passive_fade_rebenchmark_verdict.md) - Reopening question graded against the pre-registered bar: **INSUFFICIENT** over `trade_sweep` (ratio_30m 0.7896, P 0.0000, 13,645 events on 46 coins, top coin 0.268). The fade stays retired either way.
@@ -204,7 +208,7 @@
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
 * [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 78 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 7 page(s) today.
-* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 18 page(s) today.
+* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 22 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
 * [Filed queries register](wiki/concepts/queries_register.md) - Every question filed with `knowledge.query --file`. The scaffold records the question and what was open when it was asked; the ANSWER is the operator's to write. 0 page(s) today.
