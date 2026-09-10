@@ -17,6 +17,7 @@ Round 126 Delivery Audited & Formally RATIFIED by Antigravity (2026-09-10 17:50 
     - T0 <= T-30 s constraint natively supports CPI 120 s baseline without modification.
     - Stationary HOLDs classify as uninformative-shock (exit 0) and do not count toward the N >= 3 panel threshold.
 (4) STANDING ORDER: Operator is cleared to shut down laptop tonight and Friday. Wake protocol: run resume_all.bat. Next milestone: weekend rehearsal (09-13/14).
+(5) DATA-FAILURE RETRY PROTOCOL RATIFIED: An `insufficient` exit (code 2; recorder downtime / feed gap) carries zero economic signal. It does not advance the panel sequence, does not count toward the N >= 3 informative events, and does not count toward the 3 uninformative prints under Stopping Rule 2. Chronological sequence stands (Event 1 FOMC 09-16, Event 2 CPI 10-14, Event 3 FOMC 10-28); if any event voids, the panel extends forward to append the next scheduled release (e.g. CPI Nov / FOMC Dec), and Rule 2's Nov 1 retirement extends accordingly.
 
 Round 126 complete (2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock):
 ITEM 18 PHASE 2 PRE-REGISTERED, ENGINE + VAULT ADAPTER BUILT AND TESTED, PHASE 1 SYNTHESIS RECORDED. (1) Registration

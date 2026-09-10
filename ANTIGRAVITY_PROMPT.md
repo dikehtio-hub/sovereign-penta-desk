@@ -226,6 +226,15 @@ Commit `8dc52d4` delivered one day ahead of schedule. All four implementation de
 - **Wake Protocol**: On Friday or Saturday wake, run `resume_all.bat` and verify daemon status.
 - **Next Operational Milestone**: Weekend rehearsal (Sat/Sun 09-13/14) via `python -m knowledge.drills.fomc_live_rehearsal`.
 
+### 5. Pre-Registered Ruling on Data-Failure Invalidation (`insufficient` Exit 2)
+1. **Zero Economic Information**: An `insufficient` result (exit code 2) indicates recorder downtime, an order-book hole $> 5.0\text{s}$, or a trades feed gap $> 5.0\text{s}$. It represents an experimental collection invalidation, not an economic non-event.
+2. **Panel Status**: An `insufficient` event has `classification = None` and `informative = False`. It does **not** count toward the $N \ge 3$ informative events requirement, does not trigger or reset Stopping Rule 1, and does **not** count as an `uninformative-shock` print under Stopping Rule 2.
+3. **Calendar Sequence & Forward Extension**:
+   - The event numbering remains strictly chronological: Event 1 (FOMC 09-16), Event 2 (CPI 10-14), Event 3 (FOMC 10-28). There are no "retry" aliases.
+   - If Event 1 voids on 09-16 due to data failure, Event 2 (CPI 10-14) proceeds normally. The evaluation panel extends forward to append the next calendar release (Event 4: US November CPI or December FOMC) via dated re-registration to ensure $N \ge 3$ valid prints.
+   - Stopping Rule 2 evaluates the first 3 *technically valid* prints. Its November 1 retirement deadline is automatically extended to the date of Event 4 *if and only if* an earlier print was voided by verified technical data insufficiency.
+
+
 
 
 
