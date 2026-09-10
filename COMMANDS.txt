@@ -2431,6 +2431,30 @@ esults_drops\.
          failure was the watcher back but the collector dead). Prints a HEALTH CHECK: collector/watcher/exporter
          RUNNING or DOWN. Use it after any clean shutdown; nothing else needs running by hand.
 
+     ROUND 126 - ITEM 18 PHASE 1 CLOSED (run 3: all no-lead); PHASE 2 EVENT STUDY PRE-REGISTERED + ENGINE + ADAPTER
+     cross_market\experiments\lead_lag_phase2_fomc.meta.json      # the Phase 2 registration (protocol: Antigravity R125-2 s.6-8)
+         Three events named (FOMC 2026-09-16 14:00 EDT, CPI 2026-10-14 08:30 EDT, FOMC 2026-10-28), a 1-second grid
+         from the recorder's first stamp to T+300 s, baseline P(T-5 s), displacement bars (Polymarket 0.02;
+         HyperLiquid max(10 bps, 3 x trailing-hour median 5-min move)), half-life t*50% per venue, lead = t*HL - t*PM,
+         classes with a +-1 s band, sufficiency per leg, stopping rules and the capital bar. Compiled to
+         wiki\experiments\lead_lag_phase2_fomc_meta.md by knowledge.ingest.experiments (bars guarded by lint C1,
+         tokens by C2, the T-2..T+5 window by C5). NEVER edit inside an event window; later events' tokens are
+         APPENDED in dated re-registrations.
+     python -m cross_market.event_study --event fomc_2026-09-16 [--json] [--books DIR] [--db PATH] [--now ISO] [--force]
+         The engine. Offline, read-only: the drill's stamped books (clob_<token>_<stamp>Z.json) for the Polymarket
+         leg; the collector's `trades` table (every BTC print; last print per second, forward-filled) for the
+         HyperLiquid leg; asset_snapshots only for the noise bar. Refuses before T+300 s unless --force. Exit 0 =
+         evaluated (any class, including uninformative-shock), 2 = insufficient (the reason names the leg), 3 = refused.
+         Run it ~14:06 EDT on 09-16 after the recorder stops, --json into cross_market\experiments\event_study_fomc_2026-09-16.json.
+     python -m knowledge.ingest.event_study --result cross_market\experiments\event_study_fomc_2026-09-16.json
+         One wiki\experiments\reaction_profile_<event>__<market>.md per registered token (Experiment pages, kind
+         event_study_profile) + wiki\experiments\lead_lag_phase2_panel.md (every profile, the informative count, and
+         the pre-registered stopping rules applied to the sequence). The registration page's tests_run counts events.
+     python -m unittest cross_market.tests.test_event_study          # 17: planted leads, bars, every sufficiency rule, CLI
+     python -m pytest knowledge/tests/test_event_study_ingest.py -q  # 5: registration compile + lint, adapter, panel rules
+     Phase 1 record: wiki\regimes\btc_macro_regime.md is the consensus (T2 fed-rates, T2 crypto, T2b fed-rates no-lead
+         3/3; T2b crypto `mixed` - run 1's hole-corrupted reading stays in the history by ruling R125-2 s.8.2).
+
      ROUND 125 - INCIDENT #2 (same FK failure, 26.4 h); HARDENING DEPLOYED; GATE NOW CHECKS PRICES; RUN 3 VOID + RE-BOUND
      git log --oneline -1 d3df1cb          # the hardening merge (70bd232 -> master), deployed 2026-09-09 14:26 EDT
          What changed in the collector (HyperLiquid\HL_Monarch\collectors\market_collector.py, storage\repository.py,

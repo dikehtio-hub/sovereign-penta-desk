@@ -169,6 +169,29 @@ All empirical and architectural cross-checks verified green:
    - **Pre-Freeze Implementation Order:** Round 126 $\to$ PreToolUse hook (with `DAEMON_UNLOCK`, expires $\le 2\text{h}$, agents cannot write) $\to$ `CLAUDE.md` + skills $\to$ subagents $\to$ Rehearsal. All other tooling deferred past 09-16.
    - **SQLite MCP:** Deferred past 09-16; requires URI `?mode=ro`, short-lived per-query connection, strict row cap.
 
+---
+
+## 8. Item 18 Phase 1 Closure & Phase 2 Pre-Registered Stopping Rule (2026-09-10 17:15 EDT)
+
+1. **Phase 1 Closure Audited Green (Commit `81c67e3`):**
+   - Run 3 evaluated verbatim on the ratified continuous window ($24.4\text{ h}$ span, $291$ tagged stamps, $8,391$ price points, $0$ breaks, $0$ holes).
+   - All 4 subfamilies returned `no-lead` with high sample counts ($n \approx 1,500$, $|r| < 0.08$).
+   - Across three disjoint windows spanning $>75\text{ h}$, continuous Polymarket probability shifts show **zero predictive lead** over HyperLiquid BTC perp price. The continuous-regime null is formally closed.
+2. **Tier 2b Crypto Consensus $\implies$ `mixed` (Option a Ratified):**
+   - The compiled rule in `knowledge/ingest/lead_lag.py` requires unanimity over the last 3 runs. Because Run 1 produced `polymarket-leads` (over a 9.3h price hole) while Runs 2 and 3 produced `no-lead`, `mixed` is the mathematically correct and honest status.
+   - Historical integrity is preserved: Run 1 is not post-hoc excised. The narrative explicitly notes the data hole that generated Run 1's non-replicating artifact.
+3. **Phase 1 Close-Out Documentation:**
+   - Single source of truth for consensus remains `obsidian_vault/wiki/regimes/btc_macro_regime.md`.
+   - The narrative synthesis will be archived within the Round 126 digest (`wiki/digests/round_126.md`) via `knowledge.ingest.digests`.
+4. **Phase 2 Pre-Registered Stopping Rule & Economic Falsification:**
+   - **Non-Displacing HOLD**: Classified as `uninformative-shock` (exit code 0). It carries zero information regarding cross-venue latency and **does not count** toward the $N \ge 3$ informative events panel.
+   - **Falsification Stopping Rule 1 (Contemporaneous Repricing)**: If $N=2$ consecutive informative events yield $|\Delta t_{\text{lead}}| \le 1.0\text{ s}$ (`contemporaneous-event-repricing`) or HyperLiquid leads ($\Delta t_{\text{lead}} < -1.0\text{ s}$), the event-study trading desk is **permanently terminated** (cross-venue latency arbitrage is dominated by centralized venue feeds; zero actionable alpha).
+   - **Falsification Stopping Rule 2 (Macro Insignificance Floor)**: If 3 consecutive registered prints (FOMC 09-16, CPI 10-14, FOMC 10-28) resolve as `uninformative-shock`, the line is retired on November 1 as dead capital.
+   - **Capital Deployment Bar**: Automated trade execution bots will be funded **if and only if** $\Delta t_{\text{lead}} > +1.0\text{ s}$ (`polymarket-leads-event`) is observed on at least 2 of 3 informative events.
+5. **Round 126 Authorization:**
+   - Claude Code is cleared to proceed with authoring `cross_market/experiments/lead_lag_phase2_fomc.meta.json`, `cross_market/event_study.py`, `knowledge/ingest/event_study.py`, and `cross_market/tests/test_event_study.py`.
+
+
 
 
 

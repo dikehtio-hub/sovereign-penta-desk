@@ -5,6 +5,64 @@ the detail.
 
 ## Status
 
+Round 126 complete (2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock):
+ITEM 18 PHASE 2 PRE-REGISTERED, ENGINE + VAULT ADAPTER BUILT AND TESTED, PHASE 1 SYNTHESIS RECORDED. (1) Registration
+`cross_market/experiments/lead_lag_phase2_fomc.meta.json` (protocol: event_study): three events named (fomc_2026-09-16
+18:00Z with the three YES tokens from fomc_2026-09-16.rules.json; cpi_2026-10-14 12:30Z and fomc_2026-10-28 18:00Z pinned,
+tokens pending dated re-registrations); 1-second grid from the recorder's first stamp T0 (constraint T0 <= T-30 s) to
+T+300 s; baseline P(T-5 s) as the instant, not the bucket; Polymarket price = book midpoint per second, forward-filled;
+HyperLiquid price = LAST BTC print per second from `trades`, forward-filled (VWAP rejected, s.6.1); bars: PM |dP| >= 0.02,
+HL |dP|/P >= max(10 bps, 3 x median |5-min move| of asset_snapshots over [T-60 m, T-5 s], floor with bar_source=
+floor_fallback under 60 marks); half-life t*50% = earliest grid second reaching 0.5 |dP_total|; lead_s = t*HL - t*PM;
+classes polymarket-leads-event (> +1 s) / hyperliquid-leads-event (< -1 s) / contemporaneous-event-repricing (|lead|
+<= 1 s) / uninformative-shock (either venue under its bar; exit 0; never counted); sufficiency: PM per token >= 300
+stamps and no hole > 5 s (a token that fails is excluded, the event is insufficient only when none passes), HL feed
+liveness all-coin gap <= 5 s inside [T-5 s, T+300 s], baseline print <= 15 s old, quiet seconds forward-fill; panel key
+(event, market_token), primary = largest |dP|, verdict needs >= 3 informative events; stopping rules s.8.4 (two consecutive
+informative contemporaneous/HL-leads -> terminated; three registered prints uninformative -> retired 2026-11-01; capital
+bar = polymarket-leads on >= 2 of 3) all in the file. Compiled by knowledge.ingest.experiments (new `event_study` branch,
+dispatched on `protocol` before the `bars` test; `compile_event_study_registration`; `tests_run` = distinct events with a
+profile) -> wiki/experiments/lead_lag_phase2_fomc_meta.md: 8 dev.parameters guarded by lint C1, 3 tokens by C2, the
+T-2..T+5 window by C5. (2) Engine `cross_market/event_study.py` (offline, read-only): loads stamps via latency_sniper.
+load_stamp_series, BTC prints via a read-only URI, applies the registration's numbers in the registered order
+(sufficiency -> bars -> half-lives), refuses before T+300 s unless --force, exit 0 evaluated / 2 insufficient / 3 refused,
+--json in the Round 122 measured-span shape with an _artifact envelope. A definitional bug caught by its own test before
+shipping: the baseline was bucketed by second, so a print at T-4.5 s could anchor a baseline defined as "at or before
+T-5 s"; fixed to the instant. (3) Adapter `knowledge/ingest/event_study.py`: one Experiment page per registered token per
+event (kind event_study_profile, wiki/experiments/reaction_profile_<event>__<market>.md, dev.data_gaps via the gap helper
+so L12 applies) + wiki/experiments/lead_lag_phase2_panel.md (kind event_study_panel: every profile, the primary-market
+sequence, informative count, the stopping rules applied); register, index and log only when something changed; regime
+link degrades when the page is absent. (4) Tests: cross_market/tests/test_event_study.py 17 (planted +2 s / -4 s / 0 s
+leads come back exactly; primary = largest |dP|; flat PM, flat HL, relative bar, floor fallback -> uninformative with the
+venue named; PM hole voids one token only / every token -> insufficient; too few stamps; feed gap; stale baseline;
+quiet-BTC forward-fill never voids; late T0; window-not-complete refusal and --force; CLI json/text/exit codes; the
+real registration is self-consistent); knowledge/tests/test_event_study_ingest.py 5 (the REAL registration compiles
+lint-clean with parameters/tokens/window and C1 fires on a corrupted bar; writes refused inside the window; profiles +
+panel written, registered, lint-clean, idempotent, tests_run 1; CLI refusal; stopping-rule sequences). Suites: pytest
+cross_market/tests 242/242; pytest knowledge/tests 419/419 in 338 s. Vault: registration page compiled live,
+lint 521 pages 0 errors 1 warning (L11 whale cascade, unrelated). SMOKE TEST on real data: the engine run over the
+09-06 rehearsal's 60-second stamps and the live database -> stamps parsed, 1,005 BTC prints, baseline age 0.37 s,
+noise bar floor_fallback (that hour sits inside the Round 119 hole - correctly flagged), INSUFFICIENT exit 2 (60 < 300
+stamps, 295 s hole) - every branch exercised on real files. PHASE 1 SYNTHESIS (R125-2 s.8.3; the regime page stays the
+consensus): three disjoint windows 2026-09-05 -> 09-10 (run 1 cumulative, run 2 25.1 h, run 3 24.4 h; one voided run
+excluded): Polymarket macro probability shifts do not lead HyperLiquid BTC perp price at minute resolution in continuous
+trading - peak |corr| 0.05-0.14 on clean windows against a 0.2 bar, lags flipping sign between windows; the one
+polymarket-leads reading (run 1, T2b crypto, -0.325 @ +38) sat on a 39 % price hole and never replicated; Tier 2b (tag
+membership) added no information over Tier 2 on any clean window; consensus T2 fed-rates / T2 crypto / T2b fed-rates
+no-lead 3/3, T2b crypto `mixed` by the pre-registered unanimity rule (s.8.2, run 1 not excised). Docs: HOMEWORK (Round
+126 done a day early; the 09-16 14:08 event-study step added to the drill list; laptop may be off), COMMANDS.txt ROUND
+126 block, MASTER_COMMAND_LIST.txt Round 126 lines, HANDOFF_PROMPT.md. No daemon, drill batch or scheduled task touched.
+Timing: quoted 60-90 min; actual ~30 (START 17:10 EDT).
+
+Phase 1 Close-Out & Round 126 Pre-Registration Rulings RATIFIED by Antigravity (2026-09-10 17:15 EDT / 21:15Z, commit 81c67e3 verified):
+(1) CROSS-CHECK VERIFIED: Commit 81c67e3 clean (15 run-3 artifacts + 4 docs). T2b crypto verdict reproduced exactly (events 2,793, lag +7 min, corr -0.075 @ n=1,509). Lint: 520 pages, 0 errors, 1 warning (L11 whale replay).
+(2) TIER 2b CRYPTO CONSENSUS: Option (a) RATIFIED. Pre-registered unanimity rule stands; regime page correctly reads `mixed` (run 1 polymarket-leads over 9.3h hole, runs 2-3 no-lead). No post-hoc erasure of run 1; historical record is honest and transparent.
+(3) CLOSE-OUT PAGE: Canonical consensus lives on btc_macro_regime.md. Narrative close-out of Item 18 Phase 1 belongs in the Round 126 digest (wiki/digests/round_126.md), ingested through standard pipelines. No stray markdown files.
+(4) PHASE 2 PRE-REGISTERED STOPPING RULE:
+    - Non-displacing HOLD (|dP_PM| < 0.02 and |dP_HL| < bar) = uninformative-shock (exit 0). It is uninformative by definition and DOES NOT count toward the N >= 3 informative events requirement.
+    - Stopping Rule: If N = 2 consecutive informative prints show contemporaneous repricing (|lead| <= 1.0 s) or hyperliquid-leads-event (lead < -1.0 s), the event-driven trading line is terminated immediately as economically unviable (zero lead alpha). If 3 consecutive prints are uninformative-shock, desk is retired on Nov 1. Capital deployment requires lead >= +1.0 s on at least 2 of 3 informative events.
+(5) ROUND 126 GREENLIT: Claude Code is cleared to build cross_market/experiments/lead_lag_phase2_fomc.meta.json, cross_market/event_study.py, knowledge/ingest/event_study.py, and test_event_study.py per ratified Section 7 numbers. Operator may shut down laptop tonight.
+
 RUN 3 OF 3 EXECUTED AND INGESTED - ITEM 18 PHASE 1 CLOSED (2026-09-10 15:58-16:05 EDT, operator: "run 3"). Gate in the
 pre-registered form (`--since 2026-09-09T19:27:39Z`, both bars): READY - 291 tagged stamps, segment 19:31:09Z ->
 19:56:49Z, span 24.4 h, largest gap 5.2 min, 0 breaks, watcher newest 2 min; price stream 8,391 points in the sought

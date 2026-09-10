@@ -10,6 +10,8 @@ HyperLiquid/HL_Monarch/data/experiments/. Three registration shapes exist:
   *.meta.json (HL paper desk)    experiment, registered_utc | archived_utc, control, changes_vs_control,
                                  acceptance_bar, commitments, amendments, known_defect_not_fixed, or an
                                  archived control's result fields (closed_trades, win_rate_pct, ...)
+  *.meta.json (event study)      protocol = "event_study" (Round 126, Item 18 Phase 2): events[], window,
+                                 series, bars {...}, sufficiency, classes, stopping_rules, panel, commands
 Files with "sample" in the name are skipped; a data file without an `experiment`
 key (the N=12 baseline itself) is not a registration and is ignored, but the
 registration that cites it lists it under `dev.requires_files`, so deleting or
@@ -236,6 +238,123 @@ def compile_rules_registration(data: dict[str, Any], path: Path, vault: Path, de
         dev["not_found_in_drop"] = [str(x) for x in nf]
     meta = make_meta("Experiment", f"Experiment: {name}", first_sentence(str(data.get("status") or name)),
                      tags=["experiment", "desk-3", "item-12", "latency-sniper", "pre-registered"],
+                     generated_by=by, at=at, status="draft",
+                     sources=[{"id": "registration", "resource": rel, "title": path.name, "author": "human:operator"}],
+                     dev=dev)
+    return Page(page_path(vault, "Experiment", page_stem(path)), meta, "\n".join(body))
+
+
+# ---------------------------------------------------------------- event study (Desk 3, Item 18 Phase 2, Round 126)
+
+EVENT_STUDY_PROFILE_KIND = "event_study_profile"
+
+
+def event_study_event_count(vault: Path) -> int:
+    """How many distinct events have a Reaction Profile page (the Phase 2 multiple-testing counter)."""
+    events = set()
+    for p in load_pages(vault):
+        dev = p.meta.get("dev") or {}
+        if p.type == "Experiment" and dev.get("kind") == EVENT_STUDY_PROFILE_KIND and dev.get("event"):
+            events.add(str(dev["event"]))
+    return len(events)
+
+
+def compile_event_study_registration(data: dict[str, Any], path: Path, vault: Path, dev_root: Path, at, by: str) -> Page:
+    """The Phase 2 pre-registration: events, grid, bars, sufficiency, classes and stopping rules, with every numeric
+    bar guarded by lint C1, the first event's tokens by C2 and its T-2..T+5 window by C5 (write_page refuses inside)."""
+    from ..frontmatter import parse_iso8601 as _p
+    rel = rel_to(path, dev_root)
+    name = str(data.get("experiment") or path.stem)
+    events = [e for e in (data.get("events") or []) if isinstance(e, dict)]
+    bars = data.get("bars") if isinstance(data.get("bars"), dict) else {}
+    win = data.get("window") if isinstance(data.get("window"), dict) else {}
+    body = [f"# Experiment: {name}", "", "> Pre-registration, Item 18 Phase 2 (event-driven lead-lag). Reaction Profile pages and the panel link back here after each print.", "",
+            "## Status at registration", "", str(data.get("status", "")), ""]
+    if data.get("hypothesis"):
+        body += ["## Hypothesis", "", str(data["hypothesis"]), ""]
+    if events:
+        body += ["## Events", "", "| Id | Kind | Release (UTC) | Status |", "|---|---|---|---|"]
+        body += [f"| `{e.get('id')}` | {e.get('kind')} | `{e.get('release_utc')}` | {e.get('status')} |" for e in events]
+        body.append("")
+    if win:
+        body += ["## Grid and window", "", "| Key | Value |", "|---|---|"]
+        body += [f"| `{k}` | {str(v)[:240]} |" for k, v in win.items()]
+        body.append("")
+    series = data.get("series") if isinstance(data.get("series"), dict) else {}
+    if series:
+        body += ["## Series", ""]
+        for venue, spec in series.items():
+            if isinstance(spec, dict):
+                body.append(f"- **{venue}**: {spec.get('price', '')} (source: {spec.get('source', '')})")
+        body.append("")
+    if bars:
+        body += ["## Bars", "", "| Bar | Value |", "|---|---|"]
+        body += [f"| `{k}` | {v} |" for k, v in bars.items()]
+        body.append("")
+    for key in ("hl_bar_rule", "displacement_rule", "lead_definition"):
+        if data.get(key):
+            body += [f"## {key.replace('_', ' ').capitalize()}", "", str(data[key]), ""]
+    classes = data.get("classes") if isinstance(data.get("classes"), dict) else {}
+    if classes:
+        body += ["## Classes", "", *[f"- `{k}`: {v}" for k, v in classes.items()], ""]
+    suf = data.get("sufficiency") if isinstance(data.get("sufficiency"), dict) else {}
+    if suf:
+        body += ["## Sufficiency", ""]
+        for leg, spec in suf.items():
+            if isinstance(spec, dict):
+                body.append(f"- **{leg}**: " + "; ".join(f"{k} = {v}" for k, v in spec.items()))
+            else:
+                body.append(f"- **{leg}**: {spec}")
+        body.append("")
+    panel = data.get("panel") if isinstance(data.get("panel"), dict) else {}
+    if panel:
+        body += ["## Panel", "", *[f"- **{k}**: {v}" for k, v in panel.items()], ""]
+    stops = data.get("stopping_rules") if isinstance(data.get("stopping_rules"), dict) else {}
+    if stops:
+        body += ["## Stopping rules (pre-registered)", "", *[f"- **{k}**: {v}" for k, v in stops.items()], ""]
+    cmds = data.get("commands")
+    if isinstance(cmds, list) and cmds:
+        body += ["## Commands", "", "```", *[str(c) for c in cmds], "```", ""]
+    if isinstance(data.get("caveats"), list):
+        body += ["## Caveats", "", *[f"- {c}" for c in data["caveats"]], ""]
+    if data.get("enforced_in_code"):
+        body += ["## Enforced in code", "", str(data["enforced_in_code"]), ""]
+    body += ["## Related", "", f"- {DESK_LINKS[3]}",
+             item_link(vault, "Item_18_Cross_Market_Titan_Correlator_Macro_Crypto", "Item 18: Cross-Market Titan Correlator"),
+             f"- [[{REGISTER_FILE}|Experiments register]]", ""]
+    dev: dict[str, Any] = {"desk": 3, "item": 18, "registration": rel, "kind": "event_study", "protocol": "event_study"}
+    if data.get("registered_utc"):
+        dev["registered_utc"] = str(data["registered_utc"])
+    params = [{"name": f"event_study_{k}", "value": v, "file": rel, "json_path": f"bars.{k}"}
+              for k, v in bars.items() if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    if params:
+        dev["parameters"] = params
+    dev["events"] = [{"id": e.get("id"), "kind": e.get("kind"), "release_utc": e.get("release_utc"), "status": e.get("status")} for e in events]
+    if stops:
+        dev["stopping_rules"] = {k: str(v) for k, v in stops.items()}
+    # The first event carries the live window and the tokens; later events append theirs in dated re-registrations.
+    first = next((e for e in events if e.get("release_utc")), None)
+    if first:
+        try:
+            release = _p(str(first["release_utc"]))
+            dev["release_utc"] = iso(release)
+            dev["window"] = {"start": iso(release - WINDOW_BEFORE), "end": iso(release + WINDOW_AFTER)}
+        except ValueError:
+            pass
+        rf = first.get("rules_file")
+        if rf:
+            rules_path = Path(rf) if Path(rf).is_absolute() else dev_root / rf
+            if rules_path.is_file():
+                try:
+                    rules = json.loads(rules_path.read_text(encoding="utf-8")).get("rules") or []
+                    tokens = [str(r["market"]) for r in rules if isinstance(r, dict) and r.get("market")]
+                    if tokens:
+                        dev["tokens"] = tokens
+                        dev["tokens_from"] = rel_to(rules_path, dev_root)
+                except (OSError, json.JSONDecodeError, AttributeError):
+                    pass
+    meta = make_meta("Experiment", f"Experiment: {name}", first_sentence(str(data.get("status") or name)),
+                     tags=["experiment", "desk-3", "item-18", "lead-lag", "event-study", "pre-registered"],
                      generated_by=by, at=at, status="draft",
                      sources=[{"id": "registration", "resource": rel, "title": path.name, "author": "human:operator"}],
                      dev=dev)
@@ -498,6 +617,8 @@ def compile_registration(path: Path, vault: Path, dev_root: Path, at, by: str = 
         return None
     if isinstance(data.get("rules"), list) and "release_utc" in data:
         page = compile_rules_registration(data, path, vault, dev_root, at, by)
+    elif data.get("protocol") == "event_study":                # Round 126: before the `bars` test - it has bars too
+        page = compile_event_study_registration(data, path, vault, dev_root, at, by)
     elif isinstance(data.get("bars"), dict):
         page = compile_lead_lag_registration(data, path, vault, dev_root, at, by)
     else:
@@ -505,6 +626,8 @@ def compile_registration(path: Path, vault: Path, dev_root: Path, at, by: str = 
     dev_ = page.meta.setdefault("dev", {})
     if dev_.get("kind") == "lead_lag":      # Round 121: the counter is MEASURED, never defaulted to 0 over a live value
         dev_["tests_run"] = lead_lag_verdict_count(vault, str(data.get("tier") or _tier_of(path)))
+    elif dev_.get("kind") == "event_study":  # Round 126: distinct events with a Reaction Profile page
+        dev_["tests_run"] = event_study_event_count(vault)
     else:
         dev_.setdefault("tests_run", 0)   # B14: a registration has seen no data yet
     carry_human_fields(load_page(page.path), page.meta)          # Ruling 99-2: --force never drops a ratification

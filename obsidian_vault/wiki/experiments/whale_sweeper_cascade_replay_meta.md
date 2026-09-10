@@ -8,7 +8,7 @@ tags:
 - registration
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-07T03:34:31Z'
+  at: '2026-09-10T21:28:10Z'
 status: stable
 sources:
 - id: registration
@@ -24,26 +24,26 @@ dev:
   - 8
   registered_utc: '2026-09-06T02:06:00+00:00'
   progress:
-    accumulated: 19079
+    accumulated: 28974
     target: 500
     unit: events
     status: ready
-    measured_at: '2026-09-07T03:34:31Z'
+    measured_at: '2026-09-10T21:28:10Z'
     gates:
       min_events:
-        value: 19079
+        value: 28974
         bar: 500
         pass: true
       min_coins:
-        value: 65
+        value: 83
         bar: 20
         pass: true
       max_single_coin_share:
-        value: 0.2
+        value: 0.1816
         bar: 0.2
         pass: true
       max_hhi:
-        value: 0.1319
+        value: 0.1064
         bar: 0.15
         pass: true
     population: pooled
@@ -83,7 +83,7 @@ verified:
 
 > Pre-registration: bars fixed before the data. Amendments are listed, never applied silently.
 > [!NOTE]
-> **READY (since 2026-09-07)**: every sample gate passes (min_events 19079 vs 500; min_coins 65 vs 20; max_single_coin_share 0.2 vs 0.2; max_hhi 0.1319 vs 0.15) and no verdict page exists. Evaluate it under the registered bar or retire it; lint L11 warns once this has stood for 3 days.
+> **READY (since 2026-09-07)**: every sample gate passes (min_events 28974 vs 500; min_coins 83 vs 20; max_single_coin_share 0.1816 vs 0.2; max_hhi 0.1064 vs 0.15) and no verdict page exists. Evaluate it under the registered bar or retire it; lint L11 warns once this has stood for 3 days.
 
 
 ## Registered utc

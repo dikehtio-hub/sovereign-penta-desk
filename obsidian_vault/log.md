@@ -3,6 +3,10 @@
 * **Ingest**: lead-lag Tier 2 verdict (macro_crypto): **no-lead** -> [[lead_lag_tier2_macro_crypto_20260910T1959Z]]; [[btc_macro_regime]] history now 11 row(s).
 * **Ingest**: lead-lag Tier 2b verdict (macro_fed-rates): **no-lead** -> [[lead_lag_tier2b_macro_fed-rates_20260910T1959Z]]; [[btc_macro_regime]] history now 12 row(s).
 * **Ingest**: lead-lag Tier 2b verdict (macro_crypto): **no-lead** -> [[lead_lag_tier2b_macro_crypto_20260910T1959Z]]; [[btc_macro_regime]] history now 13 row(s).
+* **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 1 Experiment page(s) written, 7 kept; [index](index.md) rebuilt.
+* **Ingest**: registrations from `cross_market/experiments`, `HyperLiquid/HL_Monarch/data/experiments`: 3 Experiment page(s) written, 5 kept; [index](index.md) rebuilt.
+* **Warning**: Round 126 digest truncated at 250 lines (6 line(s) omitted); the full text is in `AGENTS.md` under `Round 126 complete`.
+* **Ingest**: work-chain digests: 80 round(s) from `AGENTS.md`; 2 page(s) written -> [[digests_register]].
 
 ## 2026-09-09
 * **Ingest**: data gaps from `knowledge/data_gaps.json`: 2 page(s) -> [[events_register]].

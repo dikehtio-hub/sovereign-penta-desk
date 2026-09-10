@@ -400,6 +400,10 @@ TIER 4: ANALYTICS, OPTIMIZATION & MASTER COCKPIT
       #   fetcher --status (pid) -> taskkill /F /PID <pid> -> start_polymarket_watcher.bat   (inside 60 min)
       # Round 79: the above as ONE command (--stop guards the kill; --status ends with the tags line):
       restart_polymarket_watcher.bat
+      # Round 126: Item 18 Phase 1 CLOSED (three disjoint windows, all no-lead). Phase 2 = event study around a print:
+      python -m cross_market.event_study --event fomc_2026-09-16 --json > cross_market/experiments/event_study_fomc_2026-09-16.json
+      python -m knowledge.ingest.event_study --result cross_market/experiments/event_study_fomc_2026-09-16.json
+      # registration cross_market/experiments/lead_lag_phase2_fomc.meta.json (do not amend inside an event window)
       # Round 77: Tier 2b (cross_market/experiments/lead_lag_tier2b.meta.json, do not amend) - after the restart + 24 h:
       python -m cross_market.lead_lag --check-data --subfamily-from tags
       python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5

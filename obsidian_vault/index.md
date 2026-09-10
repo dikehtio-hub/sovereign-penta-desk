@@ -68,6 +68,7 @@
 # Experiment
 * [Experiment: baseline_unfiltered](wiki/experiments/baseline_unfiltered_N12_2026-09-01_meta.md) - TERMINATED EARLY at N=12 of a pre-registered N=50
 * [Experiment: latency_sniper_fomc_2026-09-16](wiki/experiments/fomc_2026-09-16_rules.md) - PRE-REGISTERED (Ruling R2c).
+* [Experiment: lead_lag_phase2_event_study](wiki/experiments/lead_lag_phase2_fomc_meta.md) - PRE-REGISTERED (Round 126; protocol by Antigravity, Rulings R125-2 sections 6, 7 and 8 of 2026-09-09/10; artifact by Claude Code).
 * [Lead-lag verdict: Tier 1, macro, 2026-09-06 01:42Z](wiki/experiments/lead_lag_tier1_macro_20260906T0142Z.md) - Tier 1 lead-lag verdict for macro: no-lead.
 * [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260907T0230Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
 * [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-08 03:29Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260908T0329Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
@@ -206,9 +207,9 @@
 * [Cascade anatomy](wiki/concepts/cascade_anatomy.md) - Microstructure of the cascade excursion table: side A median 0.2787 (momentum persists) against side B 1.7135 (which does not survive clustering, P 0.4823), and the 1-to-1 synthetic control matching that makes the table exactly half controls.
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
-* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 78 page(s) today.
+* [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 80 page(s) today.
 * [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 7 page(s) today.
-* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 22 page(s) today.
+* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 23 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
 * [Filed queries register](wiki/concepts/queries_register.md) - Every question filed with `knowledge.query --file`. The scaffold records the question and what was open when it was asked; the ANSWER is the operator's to write. 0 page(s) today.
@@ -276,6 +277,8 @@
 * [Round 121 digest](wiki/digests/round_121.md) - Round 121 (2026-09-06 23:55 EDT, operator: "proceed" on Antigravity's Round 120 rulings + the operator's own five decisions): EVERYTHING AUTHORISED IS DONE; THE COLLECTOR HARDENING IS STAGED ON A BRANCH, NOT DEPLOYED
 * [Round 122 digest](wiki/digests/round_122.md) - Round 122 (2026-09-07 00:50 EDT, Antigravity's R121-1.D directive + a cross-check finding): LINT L12 NOW COVERS LEAD-LAG VERDICTS, AND THE ENGINE CAN RUN A DISJOINT WINDOW
 * [Round 123 digest](wiki/digests/round_123.md) - Round 123 (2026-09-07 13:10 EDT, Antigravity's R123-1.A directive): TELEMETRY SUPERVISION + PRE-FLIGHT HASH RACE FIXED
+* [Round 125 digest](wiki/digests/round_125.md) - Round 125 (2026-09-09 14:00-14:45 EDT, Antigravity R125-1.A/B/C/D, operator-authorised): COLLECTOR HARDENING DEPLOYED, COLLECTOR RESTARTED, GAP #2 REGISTERED, RUN 3 VOID AND RE-BOUND, READINESS GATE NOW JUDGES THE PRICE STREAM
+* [Round 126 digest](wiki/digests/round_126.md) - Round 126 (2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock): ITEM 18 PHASE 2 PRE-REGISTERED, ENGINE + VAULT ADAPTER BUILT AND TESTED, PHASE 1 SYNTHESIS RECORDED
 * [Round 31 digest](wiki/digests/round_31.md) - Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings
 * [Round 33 digest](wiki/digests/round_33.md) - Round 33: DATA GROUNDING
 * [Round 34 digest](wiki/digests/round_34.md) - Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION

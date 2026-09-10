@@ -3,18 +3,18 @@ type: Concept
 title: Digests register
 description: Every round of the sovereign work chain as its own page, compiled from
   AGENTS.md. The log stays the record; a digest loses to it wherever they disagree.
-  78 page(s) today.
+  80 page(s) today.
 tags:
 - concept
 - register
 - digest
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-07T17:10:14Z'
+  at: '2026-09-10T21:28:16Z'
 status: draft
 dev:
   register_for: Digest
-  count: 78
+  count: 80
   pages:
   - round_100
   - round_101
@@ -40,6 +40,8 @@ dev:
   - round_121
   - round_122
   - round_123
+  - round_125
+  - round_126
   - round_31
   - round_33
   - round_34
@@ -126,6 +128,8 @@ dev:
 | [[round_121\|Round 121 digest]] | 121 | 2026-09-06 23:55 EDT, operator: "proceed" on Antigravity's Round 120 rulings + the operator's own five decisions | Round 121 (2026-09-06 23:55 EDT, operator: "proceed" on Antigravity's Round 120 rulings + the operator's own five decisions): EVERYTHING AUTHORISED IS DONE; THE COLLECTOR HARDENING IS STAGED ON A BRANCH, NOT DEPLOYED | draft | 2026-09-07T03:46:05Z |
 | [[round_122\|Round 122 digest]] | 122 | 2026-09-07 00:50 EDT, Antigravity's R121-1.D directive + a cross-check finding | Round 122 (2026-09-07 00:50 EDT, Antigravity's R121-1.D directive + a cross-check finding): LINT L12 NOW COVERS LEAD-LAG VERDICTS, AND THE ENGINE CAN RUN A DISJOINT WINDOW | draft | 2026-09-07T04:24:18Z |
 | [[round_123\|Round 123 digest]] | 123 | 2026-09-07 13:10 EDT, Antigravity's R123-1.A directive | Round 123 (2026-09-07 13:10 EDT, Antigravity's R123-1.A directive): TELEMETRY SUPERVISION + PRE-FLIGHT HASH RACE FIXED | draft | 2026-09-07T17:10:14Z |
+| [[round_125\|Round 125 digest]] | 125 | 2026-09-09 14:00-14:45 EDT, Antigravity R125-1.A/B/C/D, operator-authorised | Round 125 (2026-09-09 14:00-14:45 EDT, Antigravity R125-1.A/B/C/D, operator-authorised): COLLECTOR HARDENING DEPLOYED, COLLECTOR RESTARTED, GAP #2 REGISTERED, RUN 3 VOID AND RE-BOUND, READINESS GATE NOW JUDGES THE PRICE STREAM | draft | 2026-09-10T21:28:16Z |
+| [[round_126\|Round 126 digest]] | 126 | 2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock | Round 126 (2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock): ITEM 18 PHASE 2 PRE-REGISTERED, ENGINE + VAULT ADAPTER BUILT AND TESTED, PHASE 1 SYNTHESIS RECORDED | draft | 2026-09-10T21:28:16Z |
 | [[round_31\|Round 31 digest]] | 31 | - | Round 31: Targets D (exit hysteresis) and E (leverage policy) applied, and **Item 14 built as a GATED, NON-TRADING module** - see findings | draft | 2026-09-06T08:12:49Z |
 | [[round_33\|Round 33 digest]] | 33 | - | Round 33: DATA GROUNDING | draft | 2026-09-06T08:12:49Z |
 | [[round_34\|Round 34 digest]] | 34 | - | Round 34: INCREMENTAL PERSISTENCE & DATA INGESTION | draft | 2026-09-06T08:12:49Z |
@@ -181,7 +185,7 @@ dev:
 | [[round_98\|Round 98 digest]] | 98 | 2026-09-05 | Round 98 (2026-09-05): KNOWLEDGE - COMPILE WHAT EXISTS (backlog B3, B4, B6, B7, B9; Antigravity's Round 97/97b rulings applied) | draft | 2026-09-06T08:12:49Z |
 | [[round_99\|Round 99 digest]] | 99 | 2026-09-05 | Round 99 (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1) | draft | 2026-09-06T08:12:49Z |
 
-78 page(s).
+80 page(s).
 
 ## Related
 

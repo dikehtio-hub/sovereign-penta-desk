@@ -68,11 +68,15 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       3. Ingest each with its tier (`--tier 2` / `--tier 2b`), e.g.
          `python -m knowledge.ingest.lead_lag --result cross_market/experiments/lead_lag_tier2_fed-rates_verdict_run3.json --tier 2`
       Run 3 completes the 3-run `regime_consensus_3` on every tier/scope (only Tier 2b crypto is still open).
-- [ ] **Now -> Fri 09-11: Round 126, my hands, nothing for you to run.** Item 18 Phase 2 pre-registration
-      (`cross_market/experiments/lead_lag_phase2_fomc.meta.json` + vault page + `cross_market/event_study.py` harness +
-      tests), locked and committed by Friday, ahead of the 09-15 freeze, using Antigravity's 03:00 EDT ratified numbers
-      (all five definitions settled). Needs the laptop ON while I work; it can be off in between. Forward the prompt in
-      HANDOFF_PROMPT.md when you can - it carries one rule question (Tier 2b `mixed`) that does not block the build.
+- [x] ~~**Now -> Fri 09-11: Round 126**~~ DONE Thu 09-10 evening, a day early: Item 18 Phase 2 is pre-registered
+      (`cross_market/experiments/lead_lag_phase2_fomc.meta.json`, compiled to the vault), the engine
+      (`python -m cross_market.event_study`) and the vault adapter (`knowledge.ingest.event_study`) are built and
+      tested, and the whole thing is committed. Nothing for you Friday. **The laptop can be off tonight and Friday.**
+- [ ] **Wed 09-16, ~14:06 EDT, one extra step after the recorder stops** (added to the drill list below): the Phase 2
+      run is mine - say "event study" once the survival curve and CLOB ingest are done, or paste:
+      `python -m cross_market.event_study --event fomc_2026-09-16 --json > cross_market/experiments/event_study_fomc_2026-09-16.json`
+      then `python -m knowledge.ingest.event_study --result cross_market/experiments/event_study_fomc_2026-09-16.json`.
+      It refuses before 14:05 EDT by design; a HOLD that moves neither venue is `uninformative-shock` and is simply logged.
 
 ### Mon 09-08 or Tue 09-09 — recommended deploy window for the collector hardening (~5 min, my hands)
 - [x] ~~Say "deploy the hardening"~~ DEPLOYED Wed 09-09 14:26 EDT (Round 125, R125-1.B). Soak: 7 days before the
@@ -116,6 +120,8 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       Wrong number? `--force` overwrites. Nothing automated may decide this.
 - [ ] **14:06 (after the recorder stops)** - the survival curve, then `knowledge.ingest.clob`, exactly as the card prints them.
       Your p = 0.90 "no change" forecast scores itself once the event and the books are in the vault.
+- [ ] **14:08** - then the Phase 2 event study (Round 126): say "event study", or paste the two commands from the
+      "Wed 09-16, ~14:06" line above. It writes one Reaction Profile page per Fed market and the Phase 2 panel.
 - [ ] **Afterwards** - tell me it ran (or send the output of anything that did not).
 
 - [ ] **14:05-14:30 - save the statement text (1 min).** Copy the Fed press release (federalreserve.gov, the 14:00

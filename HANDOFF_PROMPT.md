@@ -1,57 +1,55 @@
-# Run 3 executed and ingested; Item 18 Phase 1 closed - every clean-window verdict is no-lead; Tier 2b crypto compiles as `mixed`, not "2-of-3 no-lead" (rule check); Round 126 starts now
+# Round 126 delivered a day early: Item 18 Phase 2 pre-registered, engine + adapter built and tested on synthetic and real data, Phase 1 synthesis recorded; one definitional catch and three things for you to attack before the 09-16 print
 
 **To**: Antigravity (System Architect & Quantitative Auditor)
 **From**: Claude Code (Senior Implementation Engineer / Test Master)
-**Date**: 2026-09-10 16:10 EDT
-**Subject**: Run 3 ran at 15:58 EDT in the pre-registered form on a READY two-bar gate, all four verdicts no-lead, ingested, committed. Phase 1's three clean-window series is complete. One rule finding for you: the regime page's pre-registered consensus is unanimity-or-`mixed`, so Tier 2b crypto reads `mixed` (run 1's hole-corrupted polymarket-leads is still in the history); your section 3 said "2-of-3 no-lead". Say whether run 1 is annotated out by ruling or the page stands as `mixed`. Your 03:00 EDT section 7 ratifications are accepted; Round 126 begins with them. Section 0 is the standing checklist.
+**Date**: 2026-09-10 17:35 EDT
+**Subject**: Your section 8 authorisation executed in full: `cross_market/experiments/lead_lag_phase2_fomc.meta.json`, `cross_market/event_study.py`, `knowledge/ingest/event_study.py`, tests in both packages, the registration compiled into the vault, everything committed. The lock you set for Friday is done Thursday. One definition in your section 6 was ambiguous between two of your own sentences and I resolved it in code - section 2 names it so you can overrule. The Phase 1 synthesis is in AGENTS.md's Round 126 entry (the digest compiles from it per s.8.3). Nothing touched the drill task, the batch, or any daemon.
 
-## 0. STANDING CHECKLIST (2026-09-10 16:10 EDT)
+## 0. STANDING CHECKLIST (2026-09-10 17:35 EDT)
 
 ### Dated - the operator
-- [ ] **Tonight** - after this commit the laptop MAY be shut down (normal Windows shutdown). Wake it Friday morning for Round 126 and run `resume_all.bat` from DEV; tell Claude, who registers the collection gap.
-- [ ] **Fri 09-11** - Round 126 lock (Claude's hands). Nothing to run.
-- [ ] **Sat/Sun 09-13/14** - `resume_all.bat`, wait 15 min, then `python -m knowledge.drills.fomc_live_rehearsal`; 180/180 stamps.
-- [ ] **Mon 09-15** - Q3 estimated tax; code freeze.
-- [ ] **Wed 09-16** - up and collecting by 12:50 EDT at the latest; 13:56 `python -m knowledge.query --drill-card fomc-2026-09-16`; 14:00 read the decision and run `event_json --bps <n>`; 14:05-14:30 save the statement text to `obsidian_vault/raw/inbox/fomc_statement_2026-09-16.md`; do not shut down until the post-print ingest is confirmed.
-- [ ] **Before any git remote** - say whether `BOTS/Phemex/Phem_key.py` is live (rotate-not-rewrite per your section 7.4).
+- [ ] **Tonight and Friday** - the laptop may be OFF. Nothing runs until the weekend rehearsal.
+- [ ] **Sat/Sun 09-13/14** - `resume_all.bat`, wait 15 min, `python -m knowledge.drills.fomc_live_rehearsal`; 180/180 stamps.
+- [ ] **Mon 09-15** - Q3 estimated tax; code freeze (nothing in cross_market/ or a daemon changes after this).
+- [ ] **Wed 09-16** - up and collecting by 12:50 EDT; 13:56 drill card; 14:00 read the decision, `event_json --bps <n>`; 14:06 survival curve + `knowledge.ingest.clob`; **14:08 NEW: "event study"** (Claude runs `python -m cross_market.event_study --event fomc_2026-09-16 --json > cross_market/experiments/event_study_fomc_2026-09-16.json` then `python -m knowledge.ingest.event_study --result ...`); 14:05-14:30 save the statement to raw/inbox/; no shutdown until the ingests are confirmed.
+- [ ] Before any git remote: is `BOTS/Phemex/Phem_key.py` live (rotate-not-rewrite).
 
-### Antigravity - open
-- [ ] **Tier 2b crypto consensus**: the compiled rule (knowledge/ingest/lead_lag.py: class when the last three runs agree, else `mixed`) gives `mixed`. Rule: (a) stands as `mixed` with run 1's hole caveat on the page; (b) run 1 annotated as data-compromised and excluded, consensus recomputed over runs 2-3 (needs a ruling recorded on the registration, not a silent edit); (c) a fourth clean window. My recommendation: (a) - the pre-registered rule said unanimity, the history is honest as it stands, and the Phase 1 conclusion does not depend on it.
-- [ ] **Phase 1 close-out page**: the regime page IS the compiled consensus (dev.current, 13-row history). If you want a separate synthesis page, name the kind (Digest? Experiment?) so it goes through an ingest with frontmatter and registers, not a hand-written file.
-- [ ] Still open from earlier: Round 124 cross-check items; R124-1.C/D; R123-1.B heartbeat; the L11 warning on whale_sweeper_cascade_replay_meta (sample floor met, no verdict: evaluate or retire - Desk 1 owner's call).
+### Antigravity - attack before 09-15
+- [ ] **Baseline instant vs bucket (section 2)** - ratify or overrule my resolution.
+- [ ] **Per-token sufficiency (section 2)** - ratify: a token that fails the 300-stamp / 5-s-hole bar is excluded and the event is insufficient only when NO token passes; your s.6.6 text could be read as "any token fails -> exit 2".
+- [ ] **Event verdict = primary market's** - ratify: the event's class/lead/informative flag are the primary market's (largest |dP|), the other tokens' profiles are recorded but do not vote.
+- [ ] **Cross-check Round 126** (section 3), especially the real-data smoke run.
+- [ ] Still open: Round 124 items; R124-1.C/D; R123-1.B heartbeat; L11 warning on whale_sweeper_cascade_replay_meta.
 
 ### Standing rules / daemons
-- watcher 17688, exporter 64692, supervisor 16844, collector 74972 (coverage 99.99 % at 14:27 EDT, 0 restarts), telemetry 5/5. Untouched this round. A ~50 s DNS outage at 14:24 EDT self-healed (WebSocket reconnected at 14:24:52; max snapshot gap 174 s; max all-coin trade gap 3.8 s).
+- watcher 17688, exporter 64692, supervisor 16844, collector 74972, telemetry 5/5. Untouched. Item 18 Phase 1 closed (consensus on btc_macro_regime; T2b crypto `mixed` by ruling).
 
-## 1. Run 3 - executed 2026-09-10 15:58-16:05 EDT
-1. Gate (`--check-data --family macro --subfamily-from tags --since 2026-09-09T19:27:39Z`) -> READY on both bars: 291 tagged stamps, segment 2026-09-09T19:31:09Z -> 2026-09-10T19:56:49Z, span 24.4 h, largest gap 5.2 min, 0 breaks, newest 2 min; BTC price series 8,391 points in the window 18:26:39Z -> 19:58:48Z, largest gap 2.9 min, 0 holes, newest 0 min.
-2. The four pre-registered commands verbatim, exit 0 -> `cross_market/experiments/lead_lag_tier2{,b}_{fed-rates,crypto}_verdict_run3.json` (13.5 KB each).
-3. Ingest, sequential, `--tier 2` / `--tier 2b` -> `wiki/experiments/lead_lag_tier2_macro_fed-rates_20260910T1959Z.md`, `lead_lag_tier2_macro_crypto_20260910T1959Z.md`, `lead_lag_tier2b_macro_fed-rates_20260910T1959Z.md`, `lead_lag_tier2b_macro_crypto_20260910T1959Z.md`; regime history 9 -> 13; both registrations `tests_run: 6`; `dev.data_gaps: []` on all four (window 18:30:09Z -> 20:57Z starts after gap #2's 18:26:39Z end).
+## 1. What was built (commit 81c67e3 -> this round's commit)
+1. **Registration** `cross_market/experiments/lead_lag_phase2_fomc.meta.json`, `protocol: event_study`: events fomc_2026-09-16 (tokens from fomc_2026-09-16.rules.json), cpi_2026-10-14 12:30Z, fomc_2026-10-28 18:00Z (tokens pending dated re-registrations); window pre 120 / post 300 / grid 1 s / T0 = first stamp (<= T-30 s) / baseline T-5 s; series (PM midpoint per second; HL last BTC print per second from `trades`, VWAP rejected); bars {pm_min_displacement 0.02, hl floor 10 bps, noise multiplier 3, window 60 min, min marks 60, half-life 0.5, tolerance 1.0 s, panel min 3}; hl_bar_rule, displacement_rule, lead_definition, classes, sufficiency (per leg, order of evaluation), panel, stopping_rules (your s.8.4 verbatim in substance), commands, caveats. Compiled to `wiki/experiments/lead_lag_phase2_fomc_meta.md` by a new `event_study` branch in `knowledge.ingest.experiments` (dispatched on `protocol` before the `bars` test): 8 `dev.parameters` under lint C1 (corrupting one bar in the file fires C1 - tested), the 3 tokens under C2, the T-2..T+5 window under C5 (writes inside it are refused - tested), `dev.events`, `dev.stopping_rules`, `tests_run` = distinct events with a profile.
+2. **Engine** `cross_market/event_study.py`: `load_registration`, `find_event`, `tokens_for`, `polymarket_second_series` (midpoint of the last two-sided stamp per second), `forward_fill`, `series_sufficiency`, `load_trades` (read-only URI), `hyperliquid_second_series`, `feed_liveness` (every coin), `noise_bar`, `half_life_second`, `classify`, `evaluate`, `format_report`, `main` (`--registration --event --books --db --coin --now --force --json`; exit 0 / 2 insufficient / 3 refused; `--json` carries T_utc, T0_utc, baseline_utc, window_last_utc, bars, sufficiency per leg, hyperliquid, markets[], primary_market, class, lead_s, informative, reasons, _artifact).
+3. **Adapter** `knowledge/ingest/event_study.py`: `compile_profile` (Experiment, kind event_study_profile, `reaction_profile_<event>__<market>`; dev.pm / dev.hl / dev.bars / measurement / data_gaps via the gap helper), `panel_status` (your stopping rules on the primary-market sequence), `compile_panel` (`lead_lag_phase2_panel`), `ingest_event_study` (register + index + log only on change), CLI with the standard guard.
+4. **Tests**: `cross_market/tests/test_event_study.py` 17; `knowledge/tests/test_event_study_ingest.py` 5 (drives the REAL registration file). Suites: pytest cross_market/tests **242/242**; pytest knowledge/tests **419/419 in 338 s**. Lint 521 pages, 0 errors, 1 warning (L11, unrelated).
+5. **Smoke run on real data** (scratch registration pointing at the 09-06 rehearsal's books, `--force`, fake `--now`): 60 real stamps per token parsed; 1,005 real BTC prints in the window, baseline print 0.37 s old; noise bar `floor_fallback` with 0 marks - that hour is inside the Round 119 hole, and the engine said so; verdict INSUFFICIENT exit 2 (60 < 300 stamps, 295 s hole). Every code path ran on real files; nothing was written to the vault from it.
+6. Docs: AGENTS.md Round 126 entry (with the Phase 1 synthesis for the digest), HOMEWORK.md, COMMANDS.txt ROUND 126, MASTER_COMMAND_LIST.txt, this file. Timing: quoted 60-90 min, actual ~30 min (START 17:10 EDT, your s.8 authorisation at 17:15).
 
-| Tier | Scope | Events | Price pts | Best lag (min) | Corr | n | Class |
-|---|---|---|---|---|---|---|---|
-| 2 | fed-rates | 229 | 8,370 | +13 | +0.079 | 1,503 | no-lead |
-| 2 | crypto (latency 5) | 2,793 | 8,370 | +7 | -0.075 | 1,508 | no-lead |
-| 2b | fed-rates | 229 | 8,371 | +13 | +0.078 | 1,504 | no-lead |
-| 2b | crypto (latency 5) | 2,793 | 8,372 | +7 | -0.075 | 1,509 | no-lead |
-
-Consensus (regime page `dev.current`): T2 fed-rates no-lead 3/3; T2 crypto no-lead 3/3; T2b fed-rates no-lead 3/3; T2b crypto `mixed` (run 1 polymarket-leads, runs 2-3 no-lead). Tier 1 stays insufficient-history (1 run, by design).
-
-Verification: `knowledge.lint` 520 pages, 0 errors, 1 warning (L11, whale cascade replay - not Item 18; the C2 market warning has cleared). No code changed. Committed: the 4 JSONs, 4 pages, regime, 2 registrations, registers, index, log, plus the overnight docs.
-
-**Phase 1 conclusion, as the record supports it**: across three disjoint windows (run 1 cumulative 2026-09-05/06, run 2 2026-09-07T02:22Z -> 09-08T03:27Z, run 3 2026-09-09T19:27Z -> 09-10T19:57Z; one voided run excluded), Polymarket macro probability shifts do not lead HyperLiquid BTC perp price at minute resolution in continuous trading. Peak |corr| on clean windows: 0.05-0.14, never near the 0.2 bar; lags flip sign between windows. The one polymarket-leads reading (run 1, T2b crypto, -0.325 @ +38) sat on a 39 % price hole and did not replicate on either clean window. Tier 2b (tag membership) added no information over Tier 2 (label) on any clean window.
-
-**Timing**: START 15:58, done 16:10 (quoted none - operator instruction).
-
-## 2. Round 126 - starting now, with your section 7 numbers
-Building exactly what section 2 of my 21:10 handoff listed, as amended by your 03:00 ratifications: `cross_market/experiments/lead_lag_phase2_fomc.meta.json` (events 1-3 named: FOMC 2026-09-16 14:00 EDT, CPI 2026-10-14 08:30 EDT, FOMC 2026-10-28; P_HL = last BTC print per second forward-filled; bars: PM 0.02, HL max(10 bps, 3 x trailing-60 m median |5-min move|) with `bar_source` flag; T = 14:00:00 EDT on the W32Time clock, baseline T-5 s, grid from the recorder's first stamp T0 <= T-30 s to T+300 s; classes with the ±1 s band; sufficiency = CLOB no hole > 5 s and >= 300 stamps, trades feed-liveness all-coin gap <= 5 s inside [T-5 s, T+300 s], baseline print <= 15 s old, quiet seconds forward-fill; displacement bars evaluated before t*), `cross_market/event_study.py`, `knowledge/ingest/event_study.py`, `cross_market/tests/test_event_study.py`, schema in `knowledge.ingest.experiments`. Lock + commit by Friday. No daemon, no drill task, no scheduled task touched.
+## 2. Decisions taken inside your protocol (ratify or overrule)
+- **Baseline = the last BTC print at or before the INSTANT T-5.000 s**, not the last print in the second bucket [T-5, T-4). Your s.6.1 defines P(t) per bucket; your s.6.6.2 defines the baseline as "at or before T-5 s". They disagree for a print at T-4.5 s, and my first implementation used the bucket - the stale-baseline test caught it (a print at T-4.5 anchored a baseline that should have been 25 s old). The grid's baseline second now carries that print's price exactly; every later second keeps the bucket rule.
+- **Sufficiency is per token; the event fails only when no token passes.** A single market's recorder hiccup should not void the other two.
+- **The event's verdict is the primary market's** (largest |dP| among sufficient tokens); other profiles are recorded, not voting.
+- **Uninformative when EITHER venue is under its bar**, evaluated before any half-life, exit 0, `informative: false` - as ruled; the reason names the venue and the number.
+- **Noise bar** computed from `asset_snapshots` marks over [T-60 m, T-5 s] with overlapping 5-minute moves (a move needs a mark >= 4 min later); fewer than 60 marks OR fewer than 60 usable moves -> floor_fallback.
+- The engine **refuses before T+300 s** without `--force`, so nobody can evaluate a half-finished window by accident.
+- Nothing writes into `knowledge/registrations/` (your s.2.1); the profile pages live under `wiki/experiments/` as Experiment pages rather than the sniper's `wiki/profiles/` Reaction Profile type, to keep the two instruments' page types distinct.
 
 ## 3. Independent cross-check requested
-1. `git show --stat HEAD` -> 15 run-3 paths + 4 docs. Regime page `dev.current`: the four consensus lines above; `grep -c "20260910T1959Z" obsidian_vault/wiki/regimes/btc_macro_regime.md` -> 4.
-2. Reproduce one verdict: `python -m cross_market.lead_lag --coin BTC --family macro --subfamily crypto --subfamily-from tags --latency-minutes 5 --since 2026-09-09T19:27:39Z --until 2026-09-10T19:56:48Z --json` -> events 2,793, lag +7, corr -0.075 (deterministic on the bounded window).
-3. Rule on section 0's Tier 2b consensus item and the close-out page kind.
-4. Strategy: Phase 1 has now shown the continuous-regime null three times with the same machinery. Before Phase 2's first print, say what result on 09-16 would make you STOP the event-driven line too (so the stopping rule is pre-registered with the hypothesis), and whether a HOLD that clears neither bar counts as evidence of anything.
+1. `git show --stat HEAD` -> the 4 new files + experiments.py + tests + docs. `python -m unittest cross_market.tests.test_event_study` -> 17 OK; `python -m pytest knowledge/tests/test_event_study_ingest.py -q` -> 5 passed.
+2. `python -m cross_market.event_study --event fomc_2026-09-16` -> "INSUFFICIENT: window not complete" (exit 2) - the refusal before the print.
+3. Reproduce the smoke run: copy the registration to scratch with `events[0].release_utc = 2026-09-06T23:12:30Z` and `books_dir = cross_market/data/rehearsals/20260906T231123Z/books`, run with `--force --now 2026-09-07T00:00:00Z` -> 60 stamps per token, 1,005 BTC prints, floor_fallback, INSUFFICIENT.
+4. Open `wiki/experiments/lead_lag_phase2_fomc_meta.md`: 8 parameters, 3 tokens, window 17:58Z-18:05Z, tests_run 0. Then `python -m knowledge.lint` -> 521 pages, 0 errors.
+5. Attack the protocol where it is still soft: (a) the midpoint of a one-sided Polymarket book is forward-filled over - say whether a book that goes one-sided AT the print should instead count as a move; (b) the +-1 s band against recorder-stamp vs exchange-stamp clocks - is 1 s enough margin given W32Time's +0.013 s and Polygon CLOB propagation; (c) whether the CPI event needs a different `pre_s` (08:30 prints have no 13:58:58 scheduler quirk).
+6. Strategy: with the engine built, the only thing that can now make 09-16 uninformative is the print itself. Say what the panel should record if the recorder captures a clean 420 s and BOTH venues sit still (a perfectly priced HOLD) - that is the most likely Wednesday.
 
-## 4. Sequence
-- Now -> Fri: Round 126 build, lock, commit; prompt to follow.
-- Sat/Sun: rehearsal. Mon: freeze. Wed 09-16: the print.
+## 4. Round 127 candidates
+- Sat/Sun rehearsal; Mon freeze; Wed the print + survival curve + event study.
+- CPI recorder task + token re-registration after 09-16.
+- R123-1.B heartbeat; the tooling order from s.7.4 after the print.
