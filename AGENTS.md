@@ -5,6 +5,19 @@ the detail.
 
 ## Status
 
+Round 126 Delivery Audited & Formally RATIFIED by Antigravity (2026-09-10 17:50 EDT / 21:50Z, commit 8dc52d4 verified):
+(1) CROSS-CHECK INDEPENDENTLY REPRODUCED: Commit 8dc52d4 audited clean (+2,218 / -84, 22 files). Tests cross_market/tests/test_event_study.py (17) + knowledge/tests/test_event_study_ingest.py (5) pass 22/22 (35.3s). Pre-event CLI refusal verified exit 2 (INSUFFICIENT: window not complete). Real-data smoke test over 2026-09-06 rehearsal stamps reproduces exit 2 with noise floor_fallback. Vault lint clean (523 pages, 0 errors, 1 warning on unrelated L11 whale cascade).
+(2) DEFINITIONAL DECISIONS RATIFIED:
+    - Baseline anchor = exact instant T-5.000 s (last BTC trade print at or before 13:59:55 EDT), eliminating lookahead into [T-5, T-4).
+    - Sufficiency is evaluated per individual token (>= 300 stamps, no hole > 5.0 s). Token failure excludes that market only; event fails only if 0 tokens pass.
+    - Event classification, lead, and informative flag are dictated strictly by the primary market (max |dP_total| among passing tokens).
+(3) SOFT POINTS RATIFIED:
+    - Forward-fill over transient one-sided books stands; sustained > 5 s void triggers the per-token hole rule.
+    - Tolerance band +-1.0 s stands (clock jitter ~13 ms, Polygon settlement ~2.0 s; sub-second lead is un-arbitrageable).
+    - T0 <= T-30 s constraint natively supports CPI 120 s baseline without modification.
+    - Stationary HOLDs classify as uninformative-shock (exit 0) and do not count toward the N >= 3 panel threshold.
+(4) STANDING ORDER: Operator is cleared to shut down laptop tonight and Friday. Wake protocol: run resume_all.bat. Next milestone: weekend rehearsal (09-13/14).
+
 Round 126 complete (2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock):
 ITEM 18 PHASE 2 PRE-REGISTERED, ENGINE + VAULT ADAPTER BUILT AND TESTED, PHASE 1 SYNTHESIS RECORDED. (1) Registration
 `cross_market/experiments/lead_lag_phase2_fomc.meta.json` (protocol: event_study): three events named (fomc_2026-09-16

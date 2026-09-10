@@ -191,6 +191,42 @@ All empirical and architectural cross-checks verified green:
 5. **Round 126 Authorization:**
    - Claude Code is cleared to proceed with authoring `cross_market/experiments/lead_lag_phase2_fomc.meta.json`, `cross_market/event_study.py`, `knowledge/ingest/event_study.py`, and `cross_market/tests/test_event_study.py`.
 
+---
+
+## 9. Round 126 Delivery Audited & Formally Ratified (2026-09-10 17:50 EDT / 21:50Z)
+
+Commit `8dc52d4` delivered one day ahead of schedule. All four implementation deliverables, the definitional decisions, and empirical smoke tests have been independently audited and verified green.
+
+### 1. Independent Cross-Checks & Verification
+1. **Commit Audit (`8dc52d4`)**: Clean diff (+2,218 / -84 across 22 files). Phase 2 pre-registration, engine, vault adapter, compiler extension, and test suites delivered in full conformance with Section 6–8 specifications.
+2. **Regression Test Suites**:
+   - `pytest cross_market/tests/test_event_study.py` & `knowledge/tests/test_event_study_ingest.py`: **22/22 PASSED** (35.26s).
+   - Full test coverage includes planted leads (+2s, -4s, 0s), flat venue uninformative handling, floor fallbacks, recorder holes, trade gaps, stale baselines, quiet-BTC forward-filling, and stopping rule state machines.
+3. **Pre-Event CLI Refusal**:
+   - `python -m cross_market.event_study --event fomc_2026-09-16` returns **exit code 2** (`INSUFFICIENT: window not complete: now < T+300 s; pass --force to evaluate anyway`), preventing premature or partial execution.
+4. **Smoke Test on Real Rehearsal Data**:
+   - Replicated over the 2026-09-06 rehearsal stamps + live database: 60 stamps parsed per token, 1,005 BTC prints, baseline age 0.369s, noise bar correctly falls back to `floor_fallback` (identifying the Round 119 snapshot hole), returns **exit code 2** (`polymarket stamps 60 < 300; polymarket hole 295 s > 5 s`). Every branch exercised on real data with zero crashes.
+5. **Vault Lint & Schema Integrity**:
+   - `obsidian_vault/wiki/experiments/lead_lag_phase2_fomc_meta.md` compiles cleanly with 8 `dev.parameters` under C1, 3 tokens under C2, and $[T-120\text{s}, T+300\text{s}]$ window under C5.
+   - `python -m knowledge.lint`: **523 pages, 0 errors, 1 warning** (unrelated L11 sample floor warning on whale cascade).
+
+### 2. Ratification of Section 2 Implementation Refinements
+1. **Baseline Instant vs Bucket**: **RATIFIED**. Defining baseline price $P_{\text{base}}$ as the last BTC trade print at or before the exact instant $T - 5.000\text{s}$ strictly honors the information horizon and prevents lookahead into the $[T-5\text{s}, T-4\text{s})$ interval.
+2. **Per-Token Sufficiency**: **RATIFIED**. Sufficiency is evaluated per individual token ($\ge 300$ stamps, no hole $> 5.0\text{s}$). An illiquid or holed token is excluded from the panel; the event as a whole is rejected as `insufficient` (exit 2) only if *zero* registered tokens pass.
+3. **Primary Market Verdict Attribution**: **RATIFIED**. Event-level classification, lead $\Delta t_{\text{lead}}$, and `informative` flag are determined strictly by the primary active contract (maximum absolute displacement $|\Delta P_{\text{total}}|$ among sufficient tokens). Secondary token profiles are ingested for audit and research without voting in the panel sequence.
+
+### 3. Rulings on Section 3.5 System Soft Points
+1. **Midpoint Forward-Filling on One-Sided Books**: Forward-filling across transient one-sided books during order-book crossings is sound. A book remaining one-sided for $> 5.0\text{s}$ triggers the hole rule and excludes that token.
+2. **$\pm 1.0\text{s}$ Latency Band vs Clock/Network Jitter**: The $\pm 1.0\text{s}$ tolerance band is robust against W32Time clock offset ($\sim 13\text{ms}$) and network latency ($\sim 100\text{ms}$). With Polygon block settlement at $2.0\text{s}$, sub-second leads are economically unexploitable; $|\Delta t_{\text{lead}}| \le 1.0\text{s}$ correctly defines un-arbitrageable contemporaneous repricing.
+3. **CPI Event Window ($T_0$)**: The constraint $T_0 \le T - 30\text{s}$ natively supports the 120s pre-announcement baseline for CPI (08:30 EDT) without requiring code modifications.
+4. **Scoring Stationary HOLDs**: A non-displacing HOLD where either venue fails its bar is classified as `uninformative-shock` (exit 0) and logged to the panel history. It does not count toward the $N \ge 3$ panel threshold and is subject to Falsification Rule 2.
+
+### 4. Standing Operational Orders
+- **Laptop Power Policy**: Operator is cleared to power down the laptop Thursday night and throughout Friday.
+- **Wake Protocol**: On Friday or Saturday wake, run `resume_all.bat` and verify daemon status.
+- **Next Operational Milestone**: Weekend rehearsal (Sat/Sun 09-13/14) via `python -m knowledge.drills.fomc_live_rehearsal`.
+
+
 
 
 
