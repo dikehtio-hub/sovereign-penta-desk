@@ -10,7 +10,7 @@ AUTORESEARCH PIPELINE AUDITED & RATIFIED BY ANTIGRAVITY (2026-09-11 17:30-18:15 
 (2) GATE ZERO MANDATED: In-sample gross edge vs friction screen is mathematically sound as a decisive necessary-condition test. 5m crypto perps cannot overcome 10 bps round-trip friction. Mandatory Gate Zero (Gross Edge_IS >= 15.0 bps) locked for all future campaign registrations.
 (3) PLATEAU GATE BUG RESOLVED: Arithmetic mean-of-ratios replaced with Ratio-of-Sums with MIN_OWN_SUM = 1.0 floor: sum(max(0, plateau_score)) / sum(max(0, own_score)), failing closed (0.0) if sum(own_score) < 1.0.
 (4) STABILITY CONTRADICTION RESOLVED: Option (a) Global In-Sample Consensus with Cross-Fold Regularization mandated. Post-hoc stability gate dropped as vacuous; cross-fold variance penalized at selection time (Fitness = mean_IS - 0.5 * std_IS). Single robust theta* evaluated across all test folds and deployed to holdout.
-(5) FULL RULINGS ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-12) & ANTIGRAVITY_PROMPT.md (Section 13): Option (a) regularized consensus locked; plateau floor MIN_OWN_SUM = 1.0 calibrated to cross-fold sum; 6-month continuous holdout re-slice (2026-03-01..08-31) mandated with >= 50 trades promotion floor; WFE denominator locked to raw in-sample mean PF mu_IS_PF(theta*); AST price detector, monotonic deflated hurdle, and Campaign 3 fold consistency >= 6/8 pre-approved for single-pass implementation.
+(5) FULL RULINGS ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-13) & ANTIGRAVITY_PROMPT.md (Section 14): Commit 720ecc7 audited clean (55 tests green, S=1.38 smoke test passing all 12 gates); selection regularization lambda = 0.5 locked as half-Kelly risk penalty on episodic trend returns; linear difference mu - 0.5*sigma retained over division-singular mu/sigma; AST module constant indirection ratified; negative Fitness recognized as valid ordinal ranking metric compatible with cardinal sum_own >= 1.0 floor; Campaign 3 execution formally authorized.
 
 AUTORESEARCH PHASE 3 COMPLETE - CAMPAIGN 2 CLOSED, HOLDOUT FAILED, HARNESS VINDICATED (2026-09-11 18:21-20:19Z, 40 trials
 + holdout; operator said "begin phase 3"):
@@ -47,6 +47,40 @@ reproduced t0005's entire score block).
 rows + 40 trial JSONs + the archived campaign-1 5m ledger). Holdout run in a SEPARATE non-loop worktree `../qtl_holdout`
 on branch `holdout/c2_verify` (the fence refuses loop branches). LAB MASTER UNTOUCHED at 33ebe81 with the other agent's 19
 uncommitted paths intact. Nothing was committed to master.
+CAMPAIGN 3 ENGINE BUILT TO ANTIGRAVITY'S RULED SPEC (2026-09-11 21:44-22:05Z, 20 min against a 50 min quote; operator
+said "proceed"). Commit 720ecc7 on NEW branch autoresearch/c3_donchian_crypto_1h. Campaign 3 REGISTERED, NOT RUN. Lab
+master still untouched at 33ebe81.
+(1) ALL 8 RATIFIED PARAMETERS IMPLEMENTED. score.py REWRITTEN for Option (a): per-fold parameter switching is gone; every
+theta is evaluated on all 8 train folds, scored S_w = Metric_w x min(1, sqrt(N_w/10)), aggregated to Fitness = mu - 0.5
+sigma, and ONE theta* = argmax Plateau(Fitness) drives every test fold and the holdout. New gate_zero.py (pre-campaign
+gross-edge screen, >=15 bps). fences.py: blunt numeric-ceiling rule replaced by an AST price-scaled comparison detector.
+ledger.py: deflated bar max(0.05, 0.05*sqrt(ln(1+n))). holdout.py: promotion floor (6 months AND 50 trades/asset) with a
+distinct INCONCLUSIVE_INSUFFICIENT_SAMPLE verdict. Re-slice applied exactly as mandated: research 2023-01-01..2026-02-28
+(38 mo), holdout 2026-03-01..2026-08-31 (6 mo), folds re-pinned.
+(2) TESTS 55 (was 41), lab suite 243. Six stale assertions retrofitted (campaign tag, per-fold best_params which no longer
+exists under Option (a), two detector messages, a rounding comparison, a retired kwarg). Eight NEW tests: penalised fold
+score saturation, the plateau floor including the degenerate case the epsilon mishandled, bar monotonicity, the keep rule
+under deflation, 7 price-detector cases, Gate Zero, the promotion floor, one-theta-per-campaign.
+(3) MY ADDITION BEYOND THE RULING, forced by testing: Antigravity's AST rule bans price-scaled comparisons against
+CONSTANTS, and one indirection defeats it - `CRASH = 64250.0` then `bar.close > CRASH` compares against a Name, not a
+Constant, so nothing fires. Added module-level constant resolution. Verified over 7 cases: both direct and indirect levels
+refused; conviction>=0.5, rsi<=30, net/path<min_eff, price-vs-price and price-diff-vs-ATR-multiple all permitted (that
+false-positive class is exactly what the refinement was written to fix).
+(4) VERIFIED ON REAL DATA. Gate Zero on the campaign-3 span: BTC 41.69 bps, ETH 35.51 bps, both clear 15.0, runs in 2.6 s.
+Engine smoke test (NOT a registered trial, no ledger row): S=1.38, ALL 12 GATES PASS, 23 s/trial. BTC theta*={donchian 24,
+eff 0.05} 141 OOS trades 7/8 folds WFE 1.15 plateau 0.92; ETH theta*={donchian 96, eff 0.05} 119 trades 6/8 folds WFE 1.18
+plateau 1.06.
+(5) OPEN QUESTION SENT BACK, NOT PATCHED: sigma DOMINATES mu on this data (BTC mu=0.850 vs sigma=1.745; ETH 0.556 vs 1.050),
+so Fitness = mu - 0.5 sigma is near zero or NEGATIVE for essentially every theta, and argmax Plateau(Fitness) is in practice
+selecting the LEAST VARIABLE parameter set rather than the best-performing one. That may be intended (cross-regime
+robustness is the opposite of what killed Campaign 2) but it is a different objective from what the formula reads like, and
+a negative Fitness at theta* while the own-sum gate passes at 8.90 reads inconsistent. lambda is Antigravity's
+pre-registered number; changing it unilaterally is exactly what the fences exist to prevent, so it is NOT adjusted.
+(6) HANDOFF ROTATION ADOPTED ON BOTH SIDES: HANDOFF_PROMPT.md and ANTIGRAVITY_PROMPT.md each hold ONE current prompt;
+superseded ones move to HANDOFF_ARCHIVE.md / ANTIGRAVITY_ARCHIVE.md newest-last. Caught in time that today's five addenda
+existed ONLY in the working copy (last commit of HANDOFF_PROMPT.md was 38 lines with zero autoresearch content), so
+truncating without archiving would have destroyed them unrecoverably.
+
 5-MINUTE GROSS-EDGE SCREEN COMPLETE + ANTIGRAVITY AUDIT PREMISE-TESTED (2026-09-11 21:00-21:45Z):
 (A) SCREEN RAN, 8/8 FAMILIES DEAD. Per-trade GROSS edge (before fees) over the full 359,136-bar research span vs the
 measured 10.0 bps round-trip hurdle. BTCUSDT: donchian follow -0.95, fade +0.63, campaign-2 stack -0.52, mean reversion
