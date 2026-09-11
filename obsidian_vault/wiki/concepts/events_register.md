@@ -2,21 +2,23 @@
 type: Concept
 title: Events register
 description: 'Every Event page: scheduled prints with their windows, tax deadlines,
-  and recorded events. 7 page(s) today.'
+  and recorded events. 9 page(s) today.'
 tags:
 - concept
 - register
 - event
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-09T18:32:02Z'
+  at: '2026-09-11T16:31:20Z'
 status: draft
 dev:
   register_for: Event
-  count: 7
+  count: 9
   pages:
   - data_gap_2026-09-06_hl_asset_snapshots
   - data_gap_2026-09-08_hl_asset_snapshots_2
+  - data_gap_2026-09-11_hl_sleep
+  - data_gap_2026-09-11_polymarket_drops_sleep
   - fomc_2026-09-16
   - fomc_2026-10-28
   - fomc_2026-12-09
@@ -32,13 +34,15 @@ dev:
 |---|---|---|---|---|
 | [[data_gap_2026-09-06_hl_asset_snapshots\|Data gap: 2026-09-06_hl_asset_snapshots]] | data_gap | - | draft | 2026-09-07T03:24:44Z |
 | [[data_gap_2026-09-08_hl_asset_snapshots_2\|Data gap: 2026-09-08_hl_asset_snapshots_2]] | data_gap | - | draft | 2026-09-09T18:32:02Z |
+| [[data_gap_2026-09-11_hl_sleep\|Data gap: 2026-09-11_hl_sleep]] | data_gap | - | draft | 2026-09-11T16:31:20Z |
+| [[data_gap_2026-09-11_polymarket_drops_sleep\|Data gap: 2026-09-11_polymarket_drops_sleep]] | data_gap | - | draft | 2026-09-11T16:31:20Z |
 | [[fomc_2026-09-16\|Event: fomc_2026-09-16]] | fed_rate | 2026-09-16T18:00:00Z | draft | 2026-09-06T07:12:54Z |
 | [[fomc_2026-10-28\|Event: fomc_2026-10-28]] | fed_rate | 2026-10-28T18:00:00Z | draft | 2026-09-06T07:12:54Z |
 | [[fomc_2026-12-09\|Event: fomc_2026-12-09]] | fed_rate | 2026-12-09T19:00:00Z | draft | 2026-09-06T07:12:54Z |
 | [[tax_estimated_2026_q3\|Event: tax_estimated_2026_q3]] | estimated_tax | - | draft | 2026-09-05T21:27:23Z |
 | [[tax_estimated_2026_q4\|Event: tax_estimated_2026_q4]] | estimated_tax | - | draft | 2026-09-05T21:27:23Z |
 
-7 page(s).
+9 page(s).
 
 ## Related
 
