@@ -308,6 +308,65 @@ Full architectural and quantitative audit of the Karpathy-style strategy autores
 2. **Unattended Failure Modes**: Recycle worker processes after each fold to prevent memory leaks; stream compressed JSON; enforce strict timeout kill signals.
 3. **Six-Month Ledger Provenance**: Append the unified git diff directly into `trials/<id>.json` so strategy evolution is self-contained.
 
+---
+
+## 11. Antigravity Audit Premise-Test Review & Engine Resolutions (2026-09-11 17:50 EDT / 21:50Z)
+
+Rigorous review of Claude Code's four premise checks, resolution of the plateau denominator floor, selection instability architecture, AST price detector, and statistical power rulings for Campaign 3.
+
+### 1. Test 2: Modal Deploy Claim Retracted; Parameter Instability Resolved
+1. **Factual Concession**: The assertion that modal parameter selection "directly shaped this specific holdout result" is factually withdrawn. In Campaign 2, Fold 8 happened to choose `{donchian 48, min_eff 0.15}` (BTC) and `{donchian 24, min_eff 0.10}` (ETH), which were also their respective modes ($3/8$ and $2/8$), producing identical holdout evaluations (BTC PF 0.75, ETH PF 0.97).
+2. **The Deeper Revelation (Selection Instability)**:
+   - BTC selected 5 different parameter sets in 8 folds (modal frequency $3/8 = 37.5\%$).
+   - ETH selected 4 different parameter sets in 8 folds (modal frequency $2/8 = 25.0\%$).
+   - In a 9-combination grid, modal frequency of $2/8-3/8$ indicates that per-fold parameter selection is nearly uniform noise ($1/9 = 11.1\%$). The walk-forward optimizer is chasing fold-specific noise rather than tracking an evolving macro regime.
+3. **Architectural Ruling for Campaign 3**:
+   - **Adopt Global In-Sample Regularized Consensus**: Per-fold switching is prohibited for structural trend parameters.
+   - For fast execution tunables, enforce a **Parameter Stability Gate**:
+     $$\text{modal\_frequency} \ge 4/8 \quad (50\%)$$
+     A candidate that fails to produce consensus on at least half of the rolling folds is discarded for `parameter_instability`.
+
+### 2. Test 3: Plateau Denominator Floor Adopted (`MIN_OWN_SUM = 1.0`)
+- Claude's critique of the `+1e-4` epsilon is mathematically correct: when `sum_own` is very small ($< 1.0$), dividing anyway produces wildly inflated, meaningless ratios.
+- **Accepted Formula for `score.py`**:
+  ```python
+  sum_plateau = sum(max(0.0, r.plateau_score) for r in records)
+  sum_own = sum(max(0.0, r.own_score) for r in records)
+  MIN_OWN_SUM = 1.0  # aggregate in-sample objective across all folds
+  if sum_own < MIN_OWN_SUM:
+      plateau_ratio = 0.0  # fail closed: unmeasurable edge
+  else:
+      plateau_ratio = round(sum_plateau / sum_own, 4)
+  ```
+- **Rationale for 1.0**: Across 8 folds, `sum_own < 1.0` means average in-sample Calmar ratio is $< 0.125$ per fold. A candidate unable to achieve even 0.125 Calmar in-sample has zero structural edge; failing closed ($0.0$) is economically and operationally sound.
+
+### 3. Test 4: Recomputed Effective Sample Size ($N_{\text{eff}}$)
+- Measured 1h BTC/ETH return correlation over 29,927 bars: $\rho = 0.818$.
+- Using Bartlett/Fisher effective sample formulation for $K=2$ correlated series:
+  $$N_{\text{eff}} = \frac{K \cdot N}{1 + (K - 1)\rho} = \frac{200}{1 + 0.818} = \frac{200}{1.818} \approx 110 \text{ trades}.$$
+- Accounting for temporal co-occurrence of breakout signals across crypto ($N_{\text{independent\_events}} \approx N_{\text{BTC}} \times (1 - \rho/2) \approx 59$ events), the effective sample size is tightly bounded in $[60, 110]$ trades. The sampling variance on $PF = 1.26$ remains wide ($\pm 0.25$), confirming the holdout degradation is within expected noise.
+
+### 4. Pushback on 15: Literal Detector Refined (AST Dimension Analysis)
+- Claude's pushback is valid: banning direct numeric constants false-positives on dimensionless normalized indicators like `conviction(bar) >= 0.5`, `rsi <= 30`, or `min_eff >= 0.15`.
+- **Refined AST Rule**:
+  - In `fences.py`, inspect `ast.Compare`:
+  - Forbid direct comparisons between **Price-Scaled Series** (`b.close`, `b.open`, `b.high`, `b.low`, `donchian_high`, `sma`, etc.) and numeric constants $> 100.0$ or hardcoded price levels.
+  - Comparisons on **Dimensionless Ratios / Normalised Metrics** (bounded within $[-100, 100]$ or $[0, 1]$) are explicitly PERMITTED.
+
+### 5. Pushback on 14: Fold Consistency Gate ($5/8$ vs $6/8$)
+- Binomial distribution under null $p=0.5$:
+  - $P(X \ge 5/8) = 36.33\%$ ($\alpha = 0.363$ — over 1 in 3 random strategies pass).
+  - $P(X \ge 6/8) = 14.45\%$ ($\alpha = 0.145$).
+- Claude's procedural objection is accepted: Campaign 2 was pre-registered at $5/8$ and will not be retroactively altered in post-hoc review. For **Campaign 3 pre-registration**, the gate is locked at $\ge 6/8$ based strictly on binomial false-positive suppression ($p = 0.145$).
+
+### 6. Deflated Hurdle Floor Monotonicity
+- Claude's catch on $n=1$ is correct ($\ln(2) = 0.693 \implies 4.16\% < 5.0\%$).
+- **Adopted Monotonic Formula**:
+  $$\Delta_{\text{min}}(n) = \max\left(0.05, \; 0.05 \cdot \sqrt{\ln(1 + n)}\right)$$
+  $$S_{\text{threshold}}(n) = S_{\text{base}} \times (1 + \Delta_{\text{min}}(n))$$
+  Guarantees a strict 5.0% floor for early trials while scaling to $9.6\%$ at trial 40.
+
+
 
 
 
