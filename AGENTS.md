@@ -5,11 +5,12 @@ the detail.
 
 ## Status
 
-AUTORESEARCH PIPELINE AUDITED & RATIFIED BY ANTIGRAVITY (2026-09-11 17:30 EDT / 21:30Z):
+AUTORESEARCH PIPELINE AUDITED & RATIFIED BY ANTIGRAVITY (2026-09-11 17:30-18:15 EDT / 21:30-22:15Z):
 (1) HARNESS VINDICATED: The holdout failure (BTC PF 0.75 / ETH PF 0.97) proves the necessity of the unreachable holdout boundary. Multi-trial walk-forward hill-climbing inherently creates selection bias on validation folds; the holdout successfully killed an overfit candidate before capital deployment.
 (2) GATE ZERO MANDATED: In-sample gross edge vs friction screen is mathematically sound as a decisive necessary-condition test. 5m crypto perps cannot overcome 10 bps round-trip friction. Mandatory Gate Zero (Gross Edge_IS >= 15.0 bps) locked for all future campaign registrations.
-(3) PLATEAU GATE BUG RESOLVED: Arithmetic mean-of-ratios is mathematically invalid due to near-zero denominator explosion. Ruled and replaced with Ratio-of-Sums: sum(max(0, plateau_score)) / (sum(max(0, own_score)) + 1e-4).
-(4) 18/18 AUDIT COMPLETE: Full rulings archived in ANTIGRAVITY_PROMPT.md Section 10: Holdout promotion floor raised to >= 6 months / >= 50 trades; Calmar fold objective penalized for small N; grid combinations bounded 9 <= N <= 27 with >= 3 values/dim; last-fold deployment replaced with Modal parameter consensus; functional group ablation required.
+(3) PLATEAU GATE BUG RESOLVED: Arithmetic mean-of-ratios replaced with Ratio-of-Sums with MIN_OWN_SUM = 1.0 floor: sum(max(0, plateau_score)) / sum(max(0, own_score)), failing closed (0.0) if sum(own_score) < 1.0.
+(4) STABILITY CONTRADICTION RESOLVED: Option (a) Global In-Sample Consensus with Cross-Fold Regularization mandated. Post-hoc stability gate dropped as vacuous; cross-fold variance penalized at selection time (Fitness = mean_IS - 0.5 * std_IS). Single robust theta* evaluated across all test folds and deployed to holdout.
+(5) FULL RULINGS ARCHIVED: ANTIGRAVITY_PROMPT.md Sections 10-12: Holdout promotion floor >= 6 months / >= 50 trades; AST detector refined to price-scaled quantities; monotonic deflated hurdle max(0.05, 0.05 * sqrt(ln(1+n))); functional group ablation required; Campaign 3 fold consistency locked at >= 6/8 (binomial alpha = 0.145).
 
 AUTORESEARCH PHASE 3 COMPLETE - CAMPAIGN 2 CLOSED, HOLDOUT FAILED, HARNESS VINDICATED (2026-09-11 18:21-20:19Z, 40 trials
 + holdout; operator said "begin phase 3"):
@@ -46,7 +47,40 @@ reproduced t0005's entire score block).
 rows + 40 trial JSONs + the archived campaign-1 5m ledger). Holdout run in a SEPARATE non-loop worktree `../qtl_holdout`
 on branch `holdout/c2_verify` (the fence refuses loop branches). LAB MASTER UNTOUCHED at 33ebe81 with the other agent's 19
 uncommitted paths intact. Nothing was committed to master.
-(10) 5-MINUTE GROSS-EDGE SCREEN PARKED, NOT RUN (2026-09-11 20:52Z). A necessary-condition test: measure per-trade GROSS
+5-MINUTE GROSS-EDGE SCREEN COMPLETE + ANTIGRAVITY AUDIT PREMISE-TESTED (2026-09-11 21:00-21:45Z):
+(A) SCREEN RAN, 8/8 FAMILIES DEAD. Per-trade GROSS edge (before fees) over the full 359,136-bar research span vs the
+measured 10.0 bps round-trip hurdle. BTCUSDT: donchian follow -0.95, fade +0.63, campaign-2 stack -0.52, mean reversion
+-0.19. ETHUSDT: follow +0.71, fade -0.17, campaign-2 stack +0.16, mean reversion -0.88. BEST across both assets is
+0.71 bps against a 10 bps hurdle - 14x short - and five of eight do not make money gross at all. In-sample gross is an
+UPPER bound, so 5m is closed by measurement, not opinion. Runtime ~20 min (each family fires 4-12k trades at 5m; the
+cost is trade handling, not bar scanning). My earlier "12 min hang" was a misdiagnosis: output was pipe-buffered through
+`tail`, the job was running fine. Script: qtl_holdout/research/autoresearch/gross_edge_screen.py (uncommitted).
+(B) ANTIGRAVITY REPLIED AT LAST (commit 4c8c2ef, 18 rulings). I TESTED ITS PREMISES BEFORE ADOPTING ANY OF THEM:
+    - Ruling 3 GATE ZERO (>=15 bps gross before any campaign): VALIDATED AND SELF-CONSISTENT. The obvious risk was that
+      it would also ban the 1h campaign that produced the legitimate keep. It does not: the kept 1h family scores 32.0
+      bps (BTC, 266 trades) and 21.0 bps (ETH, 396 trades) vs <=0.71 bps at 5m. Adopt as written.
+    - Ruling 11 MODAL DEPLOY PARAMS: marked CRITICAL and claimed to have "directly shaped the holdout result". FACTUALLY
+      WRONG for this case - the modal params are IDENTICAL to the last-fold params on BOTH assets and the holdout is
+      byte-identical (BTC 0.75/19 trades, ETH 0.97/27). The principle is defensible; the claim is not. The check did
+      surface something worse than the ruling addressed: there is NO meaningful mode. BTC's 8 folds chose 5 different
+      parameter sets, ETH's chose 4, modal frequency only 3/8 and 2/8. Per-fold selection is UNSTABLE, which is a deeper
+      problem than which fold you read.
+    - Ruling 6 PLATEAU FIX: right diagnosis, buggy replacement. Its ratio-of-sums DOES rescue the blocked candidates
+      (t0016 ETH 0.356->0.652, t0017 ETH 0.408->0.653, t0018 BTC 0.598->0.752, all FAIL->PASS), confirming they were
+      division artefacts - and note t0018 would then have become a KEEP before t0019, changing campaign history. BUT its
+      `+1e-4` epsilon swaps one instability for another: sum_own=0 gives ratio 5000, sum_own=0.001 gives 454. Needs a
+      denominator FLOOR that refuses to score, not an epsilon that divides anyway.
+    - Ruling 1 CORRELATION PREMISE: overstated. Measured BTC/ETH 1h return correlation over 29,927 bars is rho=0.818,
+      not the ">0.85" asserted. The effective-sample argument survives with adjusted numbers but the figure was asserted.
+    - ADOPT AS-IS: Gate Zero, factorial/block ablation, fold consistency as a separate gate, deflated acceptance bar,
+      git-diff-in-ledger provenance. MODIFY: plateau formula needs a denominator floor; the literal-detector proposal
+      (ban comparisons against numeric constants) would false-positive on legitimate code including my own t0023
+      `conviction(bar) >= 0.5`; raising min_positive_folds to exactly 6/8 - precisely what the keep scored - looks like
+      fitting the gate to the observed result.
+(C) NOT YET IMPLEMENTED. The accepted rulings change the SCORING ENGINE, which is pre-registered and immutable to the
+loop; that is an operator decision, not mine to make unilaterally. Awaiting the go.
+
+(10) 5-MINUTE GROSS-EDGE SCREEN (superseded by (A) above; originally parked 2026-09-11 20:52Z). A necessary-condition test: measure per-trade GROSS
 edge (before fees) for four 5m signal families against the measured 10 bps round-trip hurdle. In-sample gross is an upper
 bound, so a family that fails there cannot be rescued by any filter or campaign - decisive in the negative direction only.
 Script at `qtl_holdout/research/autoresearch/gross_edge_screen.py` (uncommitted). STARTED AND KILLED after 12 min with no
