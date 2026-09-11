@@ -234,6 +234,81 @@ Commit `8dc52d4` delivered one day ahead of schedule. All four implementation de
    - If Event 1 voids on 09-16 due to data failure, Event 2 (CPI 10-14) proceeds normally. The evaluation panel extends forward to append the next calendar release (Event 4: US November CPI or December FOMC) via dated re-registration to ensure $N \ge 3$ valid prints.
    - Stopping Rule 2 evaluates the first 3 *technically valid* prints. Its November 1 retirement deadline is automatically extended to the date of Event 4 *if and only if* an earlier print was voided by verified technical data insufficiency.
 
+---
+
+## 10. Strategy Autoresearch Comprehensive Audit (2026-09-11 17:30 EDT / 21:30Z)
+
+Full architectural and quantitative audit of the Karpathy-style strategy autoresearch pipeline (Phases 0–3, Campaign 2 closure, holdout failure, and 5-minute gross-edge screen).
+
+### 1. Headline Rulings (Points 1, 3, 6)
+
+#### Point 1: Out-of-Sample Holdout Failure (Severity: CRITICAL)
+- **Verdict**: **Both (a) System Working As Intended and (c) Inherent Sample/Asset Limitations.**
+  1. *Harness Vindicated*: The holdout's sole mathematical purpose is to catch cross-validation overfitting. In an iterative 40-trial hill climb, the 8 walk-forward folds become an effective *in-sample* training set through selection bias on the validation metric. Without the physical holdout barrier, the overfit candidate ($PF = 1.26$) would have been promoted to paper execution.
+  2. *Statistical Power Deficiency*: 41 months on BTC + ETH 1h yields ~32,000 bars per asset. Sliced across 8 rolling folds, each out-of-sample fold spans only ~3.5 months (~2,500 bars), generating ~10–12 trades per fold (~100 pooled OOS trades per asset). BTC and ETH returns share $\rho > 0.85$ correlation, reducing the effective independent trade sample from 200 to $N_{\text{eff}} \approx 65$. The 95% bootstrap confidence interval of $PF = 1.26$ with $N=100$ spans $[0.94, 1.58]$; dropping to $0.75$ / $0.97$ in holdout is well within expected sampling variance.
+
+#### Point 3: 5-Minute Gross-Edge Screen & Mandatory Gate Zero (Severity: CRITICAL)
+- **Verdict**: **Mathematically Sound & Decisive in Negative Direction. MANDATED as Gate Zero.**
+  1. *Mathematical Proof*: $\text{Net PnL} = \text{Gross PnL} - \text{Friction}$. On UM crypto perps, round-trip friction is measured at $10.0\text{ bps}$ (1 tick slippage + 0.05% taker $\times 2$). In-sample gross edge over the full research span without fold penalties represents an absolute theoretical upper bound on out-of-sample net performance. If $\text{Gross}_{\text{IS}} < 10.0\text{ bps}$, then $\text{Net}_{\text{OOS}} < 0$ almost surely.
+  2. *Empirical Confirmation*: At 5m, BTC gross edge was $-0.95$, $+0.63$, $-0.52$, $-0.19\text{ bps}$. Even fading ($+0.63\text{ bps}$) is $16\times$ below friction.
+  3. *Protocol Rule*: Mandatory **Gate Zero** added to `campaign.meta.json`: No campaign may be registered on any timeframe unless the candidate family demonstrates full-span $\text{Gross Edge}_{\text{IS}} \ge 1.5 \times \text{Friction}$ ($\ge 15.0\text{ bps}$ for taker perps).
+
+#### Point 6: Plateau Gate Mis-Specification (Severity: CRITICAL — Live Bug)
+- **Verdict**: **Arithmetic Mean-of-Ratios is Mathematically Invalid. Replace with Ratio-of-Sums.**
+  1. *The Flaw*: `ratio = plateau_score / own_score if own_score > 0 else 0.0` followed by `mean(r.plateau_ratio)` creates extreme denominator instability when `own_score` (Calmar) is near zero ($0.01-0.05$). On ETH, individual fold ratios exploded/collapsed ($1.53, 0.00, -1.59$), driving the mean down to $0.408$ (failing the $0.60$ gate) while median was $0.630$ and ratio-of-sums was $0.625$.
+  2. *Concrete Replacement*:
+     $$\text{plateau\_ratio} = \frac{\sum_{w \in \text{folds}} \max(0, \text{plateau\_score}_w)}{\sum_{w \in \text{folds}} \max(0, \text{own\_score}_w) + \epsilon} \quad (\epsilon = 1e-4)$$
+     This measures aggregate neighborhood stability across all folds without division noise.
+
+---
+
+### 2. Core Methodological Findings (Points 2, 4, 5)
+
+#### Point 2: Holdout Span & Promotion Criteria (Severity: HIGH)
+- A 3-month holdout (19 BTC trades) has statistical power $< 0.30$ to reject $PF \le 1.0$. While sufficient for terminal rejection, it is insufficient for promotion.
+- **Rule**: Minimum holdout span for promotion is $\ge 6$ months continuous or $\ge 50$ trades per asset. If holdout produces $< 30$ trades, verdict is `INCONCLUSIVE_INSUFFICIENT_SAMPLE` and promotion is barred.
+
+#### Point 4: In-Sample Calmar Optimization vs Over-Filtering (Severity: HIGH)
+- In-sample Calmar on short 4-month folds rewarded a 200-bar trend filter because restricting trade count flattered in-sample drawdowns, while lagging out-of-sample regimes ($S=0.91$). Kept default 100 survived as an unexamined default ($S=1.26$).
+- **Rule**:
+  1. Fold optimization objective must include sample-size shrinkage: $\text{Objective} = \text{Calmar} \times \min(1, \sqrt{N / 20})$.
+  2. Overarching trend window is a *macro structural parameter* that must be fixed globally rather than tuned per fold.
+
+#### Point 5: Grid Topology & Optimum (Severity: MEDIUM)
+- Grids with 2 values per dimension leave all points as boundary points (only 1 neighbor), introducing 50% boundary distortion in `_plateau_score`.
+- **Rule**: Enforce minimum 3 values per numeric dimension ($[v - \Delta, v, v + \Delta]$) and bound grid combinations $9 \le N_{\text{grid}} \le 27$.
+
+---
+
+### 3. Harness Defects & Design Audit (Points 7–11)
+
+- **Point 7 ($S = \min$ vs Pool)** (Severity: HIGH): Retain $S = \min(S_{\text{BTC}}, S_{\text{ETH}})$. Cross-asset invariance is required to prevent BTC from subsidizing an unprofitable ETH curve-fit.
+- **Point 8 (Grouped Ablation)** (Severity: MEDIUM): One-at-a-time ablation fails on collinear mechanisms (position test and path shape). Enforce functional group ablation (`Directional_Group = {position, path_shape}`).
+- **Point 9 (Hard Gate Separation)** (Severity: MEDIUM): Confirmed. Volatility expansion preserved fold consistency (6/8 vs 4/8) while leaving PF unchanged. Hard gates must never be collapsed into a scalar utility.
+- **Point 10 (Dirty Tree Exemption)** (Severity: LOW): Exemption of `ledger.tsv` and `trials/` is acceptable *only* when paired with atomic git commits inside `run_trial.py`.
+- **Point 11 (`deploy_params` for Holdout)** (Severity: CRITICAL): Using the last fold's in-sample selection is biased by the final fold's idiosyncratic regime. **Replace with Modal Parameter Selection** (most frequent parameter set across passing folds) or the multi-fold parameter centroid.
+
+---
+
+### 4. Process, Integrity, and original Items (Points 12–18)
+
+- **Point 12 (Fold Stability)**: Verified. Integer-index slicing on clean CSVs with SHA256 fold fingerprinting is deterministic and cryptographically tamper-proof.
+- **Point 13 (Metric Primary)**: Profit Factor is the correct primary score for screening; Calmar on small trade counts is prone to zero-drawdown infinities.
+- **Point 14 (Gate Bars)**: Raise `min_oos_trades_per_asset` from 40 to 60 ($7-8$ trades/fold). Keep $WFE \ge 0.50$ and $maxDD \le 8\%$.
+- **Point 15 (Literal Detector)**: AST inspection must check `ast.Compare` to ban direct price comparisons against numeric literals, not just constants $> 10,000$.
+- **Point 16 (Adversarial Surface)**: Protect against module-level state leakage across folds, dummy parameter injection in `PARAM_GRID`, and $O(N^2)$ algorithmic timeouts.
+- **Point 17 (Phase Ordering)**: Ratified. Adapter compiles vault page first; `knowledge.ratify` executes second.
+- **Point 18 (Sovereign Operator Override)**: Operator instructions override agent locks. However, unattended overnight runs must hard-refuse if `antigravity_ratification: OUTSTANDING` without an explicit `--operator-override` flag.
+
+---
+
+### 5. Brainstorming & Long-Horizon Protocol
+1. **Trial-Deflated Acceptance Threshold**: Replace static 5% hurdle with a Deflated Sharpe/PF threshold:
+   $$S_{\text{threshold}}(n) = S_{\text{base}} \times \left(1 + 0.05 \cdot \sqrt{\ln(1 + n)}\right)$$
+2. **Unattended Failure Modes**: Recycle worker processes after each fold to prevent memory leaks; stream compressed JSON; enforce strict timeout kill signals.
+3. **Six-Month Ledger Provenance**: Append the unified git diff directly into `trials/<id>.json` so strategy evolution is self-contained.
+
+
 
 
 

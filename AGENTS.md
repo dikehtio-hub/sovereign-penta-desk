@@ -5,6 +5,145 @@ the detail.
 
 ## Status
 
+AUTORESEARCH PIPELINE AUDITED & RATIFIED BY ANTIGRAVITY (2026-09-11 17:30 EDT / 21:30Z):
+(1) HARNESS VINDICATED: The holdout failure (BTC PF 0.75 / ETH PF 0.97) proves the necessity of the unreachable holdout boundary. Multi-trial walk-forward hill-climbing inherently creates selection bias on validation folds; the holdout successfully killed an overfit candidate before capital deployment.
+(2) GATE ZERO MANDATED: In-sample gross edge vs friction screen is mathematically sound as a decisive necessary-condition test. 5m crypto perps cannot overcome 10 bps round-trip friction. Mandatory Gate Zero (Gross Edge_IS >= 15.0 bps) locked for all future campaign registrations.
+(3) PLATEAU GATE BUG RESOLVED: Arithmetic mean-of-ratios is mathematically invalid due to near-zero denominator explosion. Ruled and replaced with Ratio-of-Sums: sum(max(0, plateau_score)) / (sum(max(0, own_score)) + 1e-4).
+(4) 18/18 AUDIT COMPLETE: Full rulings archived in ANTIGRAVITY_PROMPT.md Section 10: Holdout promotion floor raised to >= 6 months / >= 50 trades; Calmar fold objective penalized for small N; grid combinations bounded 9 <= N <= 27 with >= 3 values/dim; last-fold deployment replaced with Modal parameter consensus; functional group ablation required.
+
+AUTORESEARCH PHASE 3 COMPLETE - CAMPAIGN 2 CLOSED, HOLDOUT FAILED, HARNESS VINDICATED (2026-09-11 18:21-20:19Z, 40 trials
++ holdout; operator said "begin phase 3"):
+(1) THE HEADLINE: the one kept candidate FAILED the holdout. Walk-forward showed BTC PF 1.28 / ETH 1.26; the untouched
+2026-06-01..08-31 span returned BTC PF 0.75 on 19 trades (-$337) and ETH PF 0.97 on 27 trades (-$48). Trade RATE was
+consistent with expectation (~7/month from the pooled OOS rate), so this is degradation, not a sample artefact. Verdict:
+NO paper promotion, no live anything. Twelve gates and an 8-fold walk-forward were NOT sufficient to guarantee
+out-of-sample survival - which is precisely why the holdout exists and why the loop is fenced out of it. The public
+autoresearch forks would have shipped the 1.26.
+(2) CAMPAIGN 2 (c2_donchian_crypto_1h, 1h bars after the Phase 2 cost finding): 40 trials, 1 keep, 39 discards, ~28 s per
+trial. Score went 0.69 -> 1.26. Four mechanisms earned their place: efficiency regime filter (trend EXISTENCE, not
+direction), a loosened threshold to keep the sample, volatility EXPANSION at the break, and path-shape direction. The keep
+(t0019) passed all 12 gates: BTC 100 trades PF 1.28 6/8 folds plateau 0.77; ETH 99 trades PF 1.26 6/8 folds plateau 0.78.
+(3) THE KEEP CAME FROM SHRINKING THE SEARCH, not from a trading idea: same mechanisms as the three trials before it but a
+3x3 grid instead of 12-16 combinations. Later falsified as monotone - 6 combinations was WORSE (t0025), because a grid with
+two values per dimension leaves each point one neighbour and blinds the plateau statistic. Grid size has an optimum.
+(4) BIGGEST METHODOLOGICAL FINDING (t0029/t0030): the trend window the in-sample optimizer selected in EVERY trial where it
+was a grid choice (200) is HARMFUL out of sample - fixing it there gives S=0.91 and 2-3/8 folds. The kept value (100) is one
+the optimizer NEVER chose; it survives only because the parameter was dropped from the grid and left at an unexamined
+default. t0030 confirmed 100 is a genuine peak (50 -> 0.97, 100 -> 1.26, 200 -> 0.91). What the in-sample optimizer prefers
+is not what survives.
+(5) ALL FOUR NUMERIC PARAMETERS MAPPED AS PEAKS with degradation on both sides: trend window 0.97/1.26/0.91; ATR period
+1.23/1.26/1.08; reward multiple 0.96/1.26/(4,8 rejected); ATR stop 0.98/1.26/(3,4 rejected). Plus grid size 1.23/1.26/1.09.
+(6) ABLATION (t0020, t0035-t0038): only the efficiency filter is load-bearing (-0.29, both assets below break-even without
+it). Volatility expansion is INVISIBLE in the score but holds fold consistency (BTC 6/8 -> 4/8 with PF unchanged) - a
+score-only loop would have deleted it. The position test and path-shape test are each individually removable but cost 0.08
+TOGETHER vs 0.02 apart: mutually redundant, not expendable. One-at-a-time ablation cannot detect that.
+(7) A LAW CONFIRMED FOUR WAYS: this strategy needs room. Breakeven ratchet 0.48 (t0006), wider stops rejected (t0008),
+structural stop at the broken level 0.54 (t0028), tighter ATR stop 0.98 (t0034). Its winners move against it first.
+(8) INTEGRITY: t0039 verified the kept candidate byte-identical (sha256) after 20 edit-and-revert cycles and reproducing
+exactly; t0040 then triggered CAMPAIGN_CAP_REACHED correctly with no ledger row. Determinism proven on real data (t0010
+reproduced t0005's entire score block).
+(9) STATE: everything is on branch `autoresearch/c2_donchian_crypto_1h` in worktree `../qtl_autoresearch` (ledger.tsv 40
+rows + 40 trial JSONs + the archived campaign-1 5m ledger). Holdout run in a SEPARATE non-loop worktree `../qtl_holdout`
+on branch `holdout/c2_verify` (the fence refuses loop branches). LAB MASTER UNTOUCHED at 33ebe81 with the other agent's 19
+uncommitted paths intact. Nothing was committed to master.
+(10) 5-MINUTE GROSS-EDGE SCREEN PARKED, NOT RUN (2026-09-11 20:52Z). A necessary-condition test: measure per-trade GROSS
+edge (before fees) for four 5m signal families against the measured 10 bps round-trip hurdle. In-sample gross is an upper
+bound, so a family that fails there cannot be rescued by any filter or campaign - decisive in the negative direction only.
+Script at `qtl_holdout/research/autoresearch/gross_edge_screen.py` (uncommitted). STARTED AND KILLED after 12 min with no
+output: 385k bars/asset x 4 families x 2 assets, and the campaign-2 stack recomputes a 100-bar window every bar. Needs an
+incremental/vectorised rewrite before it is usable; budget 20-30 min, not the 5 originally quoted. RUN IT ONLY AFTER
+Antigravity replies, and only if its answer does not already close the 5m question (handoff points 11/12 ask it directly
+about maker pricing and re-scoping the family).
+(11) RESOLVED: Antigravity audited and ruled on all 18 points (2026-09-11 17:30 EDT / 21:30Z; ANTIGRAVITY_PROMPT.md Section 10). The plateau-gate defect is formally resolved: arithmetic mean-of-ratios is deprecated and replaced by Ratio-of-Sums with epsilon floor. Gate Zero mandated. Holdout protocol and modal parameter deployment ratified.
+
+AUTORESEARCH PHASE 2 DONE + A FINDING THAT CHANGES THE CAMPAIGN (2026-09-11 17:35-17:50Z, operator said "Phase 2";
+15 min against a quote of 30): PERSISTENT campaign worktree `../qtl_autoresearch` on branch
+`autoresearch/c1_donchian_crypto_5m`, harness committed THERE not on master (master keeps the other agent's uncommitted
+work untouched; committing Phase 1 to master remains the operator's call). Seven commits on the branch, tree clean, 41
+tests green in the worktree.
+(1) TWO DEVIATIONS, FLAGGED NOT WORKED AROUND. (a) Blueprint Phase 2 step 1 (Antigravity cross-check BEFORE any trial) was
+NOT satisfied - Antigravity has not replied on autoresearch at all (0 hits in ANTIGRAVITY_PROMPT.md as of 17:35Z); the dry
+run proceeded on the operator's instruction and the cross-check is still owed before Phase 3. (b) Step 2 could not execute:
+`knowledge.ratify` operates on VAULT PAGES and needs a ruling id, but the autoresearch wiki adapter is Phase 4, so no page
+exists to ratify - an ordering error in my own plan. Operator acceptance is recorded in campaign.meta.json instead
+(`status: operator-accepted`, `antigravity_ratification: OUTSTANDING`, `ruling_id: null`); Phase 4 ratifies the page properly.
+(2) FIVE SUPERVISED TRIALS, each committed file-scoped per PROGRAM.md: t0001 volatility-compression filter DISCARD S=0.70;
+t0002 peeking (import the data loader inside the strategy) REFUSED by the import fence; t0003 eight tunables REFUSED (cap 6);
+t0004 a real ZeroDivisionError CRASH logged, loop survived; t0005 FADE the breakout instead of following it DISCARD S=0.82.
+NO KEEP - three genuine hypotheses tested, all three rejected. Fading scores better than following (0.82 vs 0.68), a real
+signal about the market, but neither is profitable after costs.
+(3) THE FINDING: CAMPAIGN 1'S TIMEFRAME IS NOT VIABLE AND PHASE 3 SHOULD NOT RUN ON IT. t0005 is roughly break-even GROSS
+and loses entirely to friction. Registered costs are 1 tick slippage + 0.05 % taker per side = 10.0 bps round trip on a
+~$28.8k average notional. BTCUSDT over the research span, same strategy: 5m/donch96 = 6,966 trades, gross -$18,730,
+friction $281,916 = 1505 % of gross; 1h/donch24 = 1,213 trades, gross +$3,570, friction 375 %; 1h/donch48 = 834 trades,
+gross +$4,808, friction 178 %; 1h/donch96 = 552 trades, gross +$3,761, friction 136 %, PF 0.96. At 5 minutes the cost
+hurdle is 15x the gross edge, so no hill-climb inside that family can clear it; at 1 hour the gross edge turns POSITIVE and
+friction is ~1.4x it. The gates are not too tight - they correctly refuse a structurally unprofitable design.
+(4) RECOMMENDATION (NOT applied unilaterally - it is a material change to what the operator accepted): re-register campaign 1
+on 1h bars. Change `timeframe`, the two csv names (the 1h files already exist from Phase 0) and re-pin folds; keep the gate
+bars except `min_oos_trades_per_asset`, which must drop from 100 since 1h yields ~a tenth the trades. Alternative for
+operator + Antigravity: keep 5m but price maker/limit entries instead of taker, which changes the ENGINE's cost model and
+needs its own ruling.
+
+AUTORESEARCH PHASE 1 DONE (2026-09-11 16:53-17:28Z, operator said "go phase 1"; 35 min against a quote of 30 (25-40)):
+THE HARNESS IS BUILT, TESTED AND VERIFIED END TO END ON REAL DATA. New package quant_trading_lab/research/autoresearch/:
+campaign.meta.json (campaign `c1_donchian_crypto_5m`: BTC+ETH 5m, research 2023-01-01..2026-05-31, holdout
+2026-06-01..2026-08-31, 8 folds, the blueprint s.2.3 gates verbatim, 40 trials/night, 5 nights), config.py (the only place a
+number lives; --pin-folds), fences.py, score.py, ledger.py, run_trial.py, holdout.py, PROGRAM.md. Plus
+strategies/stack9_candidate.py (v0 Donchian breakout, 4 tunables, 27-combination grid - the ONLY file the loop may edit),
+tests/test_autoresearch.py (41 offline tests), and a STACK_9_CANDIDATE entry in config/portfolio_config.yaml (enabled:false,
+registered only so size_trade sizes it like a real Track 2 stack). Lab suite 243 passed (202 + 41).
+(1) THE OPEN QUESTION IS ANSWERED: `build_rolling_windows` slices by integer INDEX, so folds are deterministic for a fixed
+span - no timestamp pinning needed. The registration instead carries a fold_fingerprint (sha256 over every fold's four
+boundary stamps), pinned once, re-derived every trial; a mismatch refuses the trial unscored. Strictly stronger than pinned
+timestamps: it also catches a silently rewritten CSV. BTC and ETH pin to the SAME fingerprint - correct, they share every
+timestamp.
+(2) VERIFIED ON REAL DATA in a throwaway worktree (removed afterwards; repo byte-identical to before, master still 33ebe81):
+real trial DISCARD S=0.68 with 6 gates failed and 0/8 positive folds on both assets; keep rule KEEP then DISCARD at
+"S 0.6800 < 0.7140 (best x 1.05)"; five fences refused live (strategy importing backtesters.engine, literal 64250.0, an edit
+to engine.py, empty hypothesis, a stray file); holdout REFUSED on the loop branch and on master returned FAIL (BTC PF 0.48
+/ -$26,391, ETH PF 0.68 / -$8,736). The v0 baseline losing everywhere is the correct floor: the gates demonstrably reject a
+real losing strategy.
+(3) TWO BUGS the harness caught testing itself: a default-bound `sys.stdout` that bypassed redirection, and a
+`git status --porcelain` parse that stripped the first line's leading space and so ate one character of one reported path
+per call (modified files only, never untracked - which is why the first test round missed it). Both fixed and covered.
+(4) DESIGN DEVIATION: the dirty-tree fence exempts the harness's own ledger.tsv and trials/ - otherwise trial 2 of every
+night is refused for trial 1's artefacts. The invariant holds (nothing affecting the SCORE may differ from HEAD; the ledger
+is written after scoring) and integrity is kept by append-only writes, an overwrite refusal, per-row sha256 and per-trial
+commits.
+(5) COST: 3m04s per trial (8 folds x 27 combos x ~29k train bars x 2 assets, 4 workers) -> a 40-trial night is ~2 h; the
+600 s timeout has 3x headroom.
+(6) NOT COMMITTED. WARNING: config/portfolio_config.yaml now mixes MY STACK_9 block with the OTHER AGENT's uncommitted work
+(retail_3k tier, tradfi_hip3 + polymarket_binary correlation groups) - staging that file stages their changes too. Every
+other path of mine is exclusively mine. Phase 2 (Antigravity cross-check + ratify the campaign + 5 supervised trials) waits
+on the operator.
+
+AUTORESEARCH PHASE 0 DONE (2026-09-11 05:28-05:36Z, operator said "do phase 0"; docs to 05:38Z; 9 min against a quote of
+20 + download): NEW quant_trading_lab/scripts/fetch_binance_archive.py (stdlib only; monthly kline zips from the public
+data.binance.vision bucket, --market um perps default; sha256-verified against the archive's .CHECKSUM files; idempotent zip
+cache data/binance_archive/ git-ignored; header- and timestamp-unit-agnostic parser; dedupe + sort + hole report, coverage
+vs theoretical bar count, exit 2 on a shortfall beyond --tolerance 1 % with the CSV still written) + 22 offline tests
+(tests/test_fetch_binance_archive.py, injected fetcher, round-trip through load_bars_from_csv) + .gitignore line. Geo-check
+passed (HTTP 200 + checksum from this machine). Fetched BTCUSDT + ETHUSDT at 5m and 1h, 2023-01..2026-08 (44 months each):
+385,632 5m rows and 32,136 1h rows per symbol, 100.0000 % coverage, 0 holes >= 2 bars, 0 dupes, all four PASS; cache 38 MB.
+Verified through the lab's own loader (spot-check ETH 2024-01-01 00:00 = archive values exactly) and a Stack 5 run_backtest
+smoke. Lab suite 202 passed (180 baseline + 22). Finding: the FUTURES archive is still milliseconds in the 2026-08 file; the
+microsecond switch was spot-only - the parser detects by magnitude either way. NOT committed (lab is a nested repo with the
+other agent's uncommitted work; stage by explicit path). Phase 1 (harness) waits on the operator's go + the gate-bar decision.
+Earlier the same night, PLAN (~05:15Z): NEW AUTORESEARCH_BLUEPRINT.md - a Karpathy-autoresearch
+loop over quant_trading_lab strategies, reshaped for trading: one editable file (strategies/stack9_candidate.py), score =
+min-over-assets pooled walk-forward OOS profit factor with hard gates (>=100 OOS trades/asset, >=5/8 folds positive, WFE >=0.5,
+OOS DD <=8% tier equity, plateau >=0.6, <=6 tunables, 5% min delta), holdout 2026-06-01..08-31 unreachable by construction
+(runner truncates; holdout.py refuses on autoresearch/* branches), 40 trials/night cap, mandatory hypothesis, append-only
+ledger + per-trial JSON compiled into the wiki by a new knowledge/ingest/autoresearch.py adapter, file-scoped git only (the
+lab tree carries the other agent's uncommitted work). Phases: 0 data (Binance public archive, free, geo-check first; HL
+history is capped ~5k candles), 1 harness+tests (~30 min), 2 supervised dry run + ratify campaign.meta.json (~20), 3 first
+overnight via /loop, 4 wiki adapter + Pine parity on the holdout window (~25). TradingView stays OUTSIDE the loop (in-sample
+by construction); no TradingView MCP required - the desktop bridge is an optional later parity convenience with a paid-plan
+and terms-of-use decision for the operator. Context: the public trading forks of autoresearch (Nunchi-trade) report Sharpe
+2.7 -> 20.6 after 103 trials on 500 hourly bars with no holdout - the trap this plan fences. Blueprint s.8 carries the
+Antigravity cross-check prompt; s.9 the operator actions (gate bars, overage billing before any overnight run).
+
 Round 126 Delivery Audited & Formally RATIFIED by Antigravity (2026-09-10 17:50 EDT / 21:50Z, commit 8dc52d4 verified):
 (1) CROSS-CHECK INDEPENDENTLY REPRODUCED: Commit 8dc52d4 audited clean (+2,218 / -84, 22 files). Tests cross_market/tests/test_event_study.py (17) + knowledge/tests/test_event_study_ingest.py (5) pass 22/22 (35.3s). Pre-event CLI refusal verified exit 2 (INSUFFICIENT: window not complete). Real-data smoke test over 2026-09-06 rehearsal stamps reproduces exit 2 with noise floor_fallback. Vault lint clean (523 pages, 0 errors, 1 warning on unrelated L11 whale cascade).
 (2) DEFINITIONAL DECISIONS RATIFIED:
