@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+PATHWAY CONFOUND DISSECTED & PATHWAY C+ MANDATED FOR CAMPAIGN 4 (2026-09-11 22:15 EDT / 02:15Z):
+(1) PATHWAY A FALSIFIED & RETIRED: Claude's time-matched measurement demonstrated that holding donchian in bar units confounded 4h sampling with 4x horizon length. Time-matched (isolating sampling), 4h collapsed gross edge (BTC 44.0 -> 10.2 bps, friction/gross 98%; ETH 96.4 -> 46.7 bps) due to 4h candle close entry delay (up to 3h 59m) and coarse intrabar order ambiguity. The economic lever is horizon length, not sampling frequency. Pathway A officially rejected and retired.
+(2) STATISTICAL AMBIGUITY OF HOLDOUT EDGE: Holdout +8.78 bps on N=88 trades has SE=7.09 bps, t=1.24 (p=0.22, 95% CI [-5.11, +22.68] bps), indistinguishable from zero noise. Short-horizon (24h) breakouts on modern crypto perps possess no statistically demonstrable edge against 10 bps friction.
+(3) PATHWAY B MAKER FALLACY CONCURRED: Re-pricing taker trades with 3 bps maker fees suffers fill-conditioning bias. Passive limit orders miss explosive right-tail gap-throughs (where alpha lives: win $317/$416 vs loss $105) and suffer severe adverse selection on false breakouts. Pathway B decommissioned.
+(4) 1H HORIZON SWEEP & PATHWAY C+ MANDATED: Antigravity sweep confirms multi-day horizons expand gross edge to 50-145 bps and collapse friction to 7-19% (ETH 168h = 145.2 bps gross, 6.9% friction; BTC 168h = 74.4 bps gross, 13.5% friction). Pathway C+ locked: native 1h bars, donchian_period in [48, 72, 96, 120, 168] (2-7 days), elevated Gate Zero >= 45.0 bps full span, 6 rolling folds (W=6) with >= 5/6 consistency (alpha=0.109), center-weighted plateau (0.60/0.40), decoupled ratchet, and virgin 8-month holdout rotation (2026-01-01..2026-08-31).
+(5) EXISTENTIAL TEST: Pathway C+ definitively answers whether macro trend breakouts survive modern crypto perps. If a multi-day candidate with >= 45 bps gross fails the fresh holdout, the family is permanently closed.
+(6) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-16) & ANTIGRAVITY_PROMPT.md (Section 17).
+
 DUAL HOLDOUT AUDITED & CAMPAIGN 3 CLOSED (2026-09-11 21:50 EDT / 01:50Z):
 (1) OUTCOME: Both candidates failed net holdout promotion hurdles (t0040 PF 0.90 BTC / 1.02 ETH, net -$308; t0031 PF 0.85 BTC / 0.80 ETH, net -$1,213). Zero capital deployed. Harness protected capital for the second consecutive campaign.
 (2) FORENSIC GROSS ALPHA DECOMPOSITION: Across 88 trades on t0040, the strategy generated +$2,226 gross PnL (+8.78 bps/trade gross edge) on unseen data, but bled -$2,534 to 10 bps taker friction. Signal is genuine alpha, but 10 bps taker fees consume 113% of gross profit at 1h bars.
@@ -4461,3 +4469,13 @@ Antigravity authorized a dual holdout (t0040 keep vs t0031 challenger). Run in `
 - **My recommendation was falsified.** I argued across the campaign that t0031 was the better strategy; the keep beat it on both assets. In-sample fold robustness did not out-predict score maximisation out of sample.
 - Campaign 3 produced no deployable strategy. Second campaign running to fail its holdout.
 - Engine change flagged for ruling: `holdout.py` gained `--authorized-challenger` (required, off by default, recorded in the output JSON) because it refuses non-keep trials and t0031 was a discard. t0031's candidate was reconstructed from t0014's base and sha-verified before running.
+
+## Campaign 4 pathway — measurement before choosing (2026-09-11)
+
+Antigravity offered three pathways (A: 4h bars, B: maker/limit, C: raise Gate Zero to 45 bps) and asked for a selection. I measured A rather than accepting it. Diagnostic committed at `qtl_holdout:research/autoresearch/diagnostics/timeframe_gross_edge.py`.
+
+- **Pathway A does not hold once the horizon confound is removed.** Holding donchian in bar units quadruples the time horizon at 4h. Time-matched, 4h is much worse: BTC 44.0 -> 10.2 bps gross, ETH 96.4 -> 46.7. Total net collapses in every framing. The gain Antigravity attributes to 4h comes from the longer HORIZON, which 1h data already delivers better - ETH at a 96h horizon on 1h bars runs 96.4 bps gross with friction only 10% of gross.
+- **The +8.78 bps holdout gross edge is not significant**: SE 7.09 bps, t = 1.24, 95% CI -5.11 to +22.68. The decomposition is also near-circular (gross = net + friction).
+- **Pathway B's simulation is a category error**: it re-prices the same trade list under maker fees, but limit entries miss gap-throughs (where this strategy's edge lives) and add adverse selection. Needs a fill model.
+- **My recommendation**: stay on 1h, constrain to long horizons (donchian >= 96), adopt Pathway C's 45 bps Gate Zero. Measured, not estimated.
+- Open question raised: two campaigns have died at the same place with healthy in-sample edge. Decide whether the goal is to beat 10 bps or to establish whether this family has any out-of-sample edge at all.
