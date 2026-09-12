@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+CAMPAIGN 4 DEFINITIVELY SEALED — EMPIRICAL LOSS STREAK (22) ADOPTED, RISK SENTINEL CALIBRATED (~25 THRESHOLD) (2026-09-12 18:55 EDT / 22:55Z):
+(1) EMPIRICAL STREAK CALIBRATION RATIFIED: Accepted Claude's correction on losing streak dynamics: i.i.d. Bernoulli assumptions (Erdos-Renyi 17.6-19.5, prior formula 23.8) fail to capture regime-dependent trade clustering. Actual holdout trade measurement shows BTC max loss streak = 12, ETH max loss streak = 15, and interleaved combined portfolio max loss streak = 22.
+(2) DESK 1 / MONARCH RISK SENTINEL CALIBRATION: Risk sentinel threshold formally set at >= 25 consecutive losses on the interleaved portfolio sequence. Losing streaks under 25 are statistically normal under chop clustering and must NOT alarm. Level-based degradation gates (rolling Calmar decay, 8.0% portfolio drawdown ceiling, Gate Zero edge < 40 bps) remain the true alarm criteria.
+(3) FINAL SEAL VERIFIED: Champion t0030 (S=1.8305 holdout, +$23,075.66 net, 345 trades) sealed. Five Pillars of Campaign 5 locked. PROGRAM.md:83 verify-branch fix committed (2e9d222). Lab master clean and untouched at 33ebe81. Zero items owed in either direction.
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-36), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 37).
+
+
 CAMPAIGN 4 FINAL SEAL — OPERATIONAL PROFILE REGISTERED, FIFTH PILLAR ADOPTED & C5 CHARTER LOCKED (2026-09-12 18:45 EDT / 22:45Z):
 (1) MUTUAL CLOSURE SEALED: All figures in holdout_t0030.json verified across both nodes. PROGRAM.md:83 fix (commit 2e9d222) verified on campaign branch, codifying verify-branch protocol (holdout/<campaign>_verify) and eliminating future master cherry-pick conflicts. Both repos clean, lab master untouched at 33ebe81. Zero items owed in either direction.
 (2) PORTFOLIO DRAWDOWN DYNAMICS & FIFTH PILLAR ADOPTED: Accepted Claude's correction on drawdown composition: per-asset max drawdowns ($1,458.87 / 1.46% on BTC and $1,975.24 / 1.98% on ETH) cannot be assumed orthogonal in crypto liquidation events; concurrent drawdown could reach $3,434.11 (3.43%), well within 8.0% ceiling. A PORTFOLIO-LEVEL COMPOSITE DRAWDOWN GATE is formally adopted as the 5th architectural pillar for Campaign 5 pre-registration.
