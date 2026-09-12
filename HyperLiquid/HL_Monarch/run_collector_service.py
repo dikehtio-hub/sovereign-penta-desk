@@ -53,6 +53,19 @@ if sys.platform == "win32":
 DEFAULT_LOG_FILE = SERVICE_DIR / "data" / "collector_service.jsonl"
 DEFAULT_PID_FILE = SERVICE_DIR / "data" / "collector_service.pid"
 
+# Cooperative shutdown sentinel. `--stop` creates it; the supervise loop polls
+# for it once a second and exits cleanly, closing the database on the way out.
+#
+# WHY A FILE AND NOT A SIGNAL. The supervisor runs detached under pythonw: no
+# console and no window. That rules out every signal path on Windows at once --
+# CTRL_BREAK_EVENT needs a shared console group, `taskkill` without /F delivers
+# WM_CLOSE to a window that does not exist, and os.kill() for anything but the
+# CTRL_* events maps onto TerminateProcess (see pid_is_alive below, where that
+# exact quirk once made `--status` kill the process it was reporting on). A
+# sentinel file is the one mechanism that reaches a detached process and lets it
+# shut itself down.
+DEFAULT_STOP_FILE = SERVICE_DIR / "data" / "collector_service.stop"
+
 # A run that lasts this long is treated as healthy, which resets the backoff.
 # Raised from 120s: a collector dying every ~3 minutes would have had its backoff
 # reset on every cycle and so never escalated, hammering the API indefinitely.
@@ -326,6 +339,92 @@ def read_pid_file(pid_file: Path) -> Optional[int]:
         return None
 
 
+def checkpoint_wal() -> Dict[str, Any]:
+    """Fold the write-ahead log back into the main database file.
+
+    WAL + synchronous=FULL already makes an abrupt power-off recoverable, so this
+    is not a correctness fix -- SQLite would replay the log on next open either
+    way. It is here so a planned shutdown leaves a checkpointed file rather than
+    a multi-megabyte log for the next start to replay.
+    """
+    out: Dict[str, Any] = {"checkpointed": False}
+    try:
+        from storage.repository import MarketRepository
+        repo = MarketRepository()
+        db_path = Path(repo.db.path) if hasattr(repo.db, "path") else None
+        wal = Path(str(db_path) + "-wal") if db_path else None
+        out["wal_bytes_before"] = wal.stat().st_size if wal and wal.exists() else 0
+        with repo.db.connection as conn:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        out["wal_bytes_after"] = wal.stat().st_size if wal and wal.exists() else 0
+        out["checkpointed"] = True
+    except Exception as exc:  # noqa: BLE001
+        out["error"] = f"{type(exc).__name__}: {exc}"
+    return out
+
+
+def stop_supervisor(pid_file: Path = DEFAULT_PID_FILE,
+                    stop_file: Path = DEFAULT_STOP_FILE,
+                    timeout_seconds: float = 30.0) -> Dict[str, Any]:
+    """Ask a running supervisor to shut down, and confirm that it did.
+
+    Cooperative first: drop the sentinel and wait for the supervise loop to
+    notice it, terminate its child and close the database. Only if the process
+    is still alive after `timeout_seconds` does this escalate to a forced kill,
+    and the returned summary says plainly which of the two happened -- a caller
+    that needs to know whether the shutdown was clean can read `forced`.
+    """
+    started = time.time()
+    pid = running_supervisor_pid(pid_file)
+    summary: Dict[str, Any] = {
+        "was_running": pid is not None,
+        "supervisor_pid": pid,
+        "stop_file": str(stop_file),
+        "graceful": False,
+        "forced": False,
+        "waited_seconds": 0.0,
+    }
+
+    if pid is None:
+        summary["note"] = "no supervisor holds the lock; nothing to stop"
+        summary.update(checkpoint_wal())
+        return summary
+
+    stop_file.parent.mkdir(parents=True, exist_ok=True)
+    stop_file.write_text(datetime.now(timezone.utc).isoformat(), encoding="utf-8")
+
+    try:
+        while time.time() - started < timeout_seconds:
+            if not pid_is_alive(pid):
+                summary["graceful"] = True
+                break
+            time.sleep(0.5)
+
+        if not summary["graceful"]:
+            # Escalate. WAL makes this safe, just untidy -- and it means the
+            # supervisor predates the sentinel or is wedged, which is worth
+            # saying out loud rather than hiding behind a zero exit code.
+            summary["forced"] = True
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"],
+                               capture_output=True, check=False)
+            else:
+                os.kill(pid, signal.SIGKILL)
+            deadline = time.time() + 10.0
+            while time.time() < deadline and pid_is_alive(pid):
+                time.sleep(0.5)
+            summary["still_alive_after_force"] = pid_is_alive(pid)
+    finally:
+        try:
+            stop_file.unlink()
+        except FileNotFoundError:
+            pass
+
+    summary["waited_seconds"] = round(time.time() - started, 1)
+    summary.update(checkpoint_wal())
+    return summary
+
+
 def running_supervisor_pid(pid_file: Path = DEFAULT_PID_FILE) -> Optional[int]:
     """
     The pid of a live supervisor, or None.
@@ -381,6 +480,7 @@ class CollectorSupervisor:
         quiet: bool = False,
         python_executable: Optional[str] = None,
         pid_file: Path = DEFAULT_PID_FILE,
+        stop_file: Path = DEFAULT_STOP_FILE,
         keep_awake: bool = True,
         child_log: Optional[Path] = None,
         child_log_max_bytes: int = 20_000_000,
@@ -389,6 +489,7 @@ class CollectorSupervisor:
         self.logger = build_logger(Path(log_file), quiet=quiet)
         # Round 52: where the child's stdout/stderr go. It was DEVNULL, which made
         # every collector log line unobservable in service mode.
+        self.stop_file = Path(stop_file)
         self.child_log = Path(child_log) if child_log else SERVICE_DIR / "data" / "collector.log"
         self.child_log_max_bytes = int(child_log_max_bytes)
         self.child_command = list(child_command) if child_command else ["-u", "main.py", "collector"]
@@ -489,7 +590,12 @@ class CollectorSupervisor:
                 pass
 
     def stop(self, *_):
-        """Signal handler: stop supervising and terminate the child."""
+        """Stop supervising and terminate the child.
+
+        Reached three ways: a SIGINT/SIGTERM handler, Ctrl+C, or the supervise
+        loop noticing the stop sentinel. All three land here so there is exactly
+        one shutdown path to reason about.
+        """
         self.running = False
         if self.process and self.process.poll() is None:
             try:
@@ -498,6 +604,15 @@ class CollectorSupervisor:
                 pass
 
     def run(self) -> Dict[str, Any]:
+        # A sentinel left behind by a crashed --stop would otherwise shut this
+        # supervisor down one second after it started.
+        try:
+            self.stop_file.unlink()
+        except FileNotFoundError:
+            pass
+        except Exception:  # noqa: BLE001
+            pass
+
         """Supervise until stopped or the restart budget is exhausted."""
         self.running = True
         self.started_at = time.time()
@@ -545,6 +660,9 @@ class CollectorSupervisor:
             while self.running and self.process.poll() is None:
                 time.sleep(1.0)
                 self._maybe_report_coverage()
+                if self.stop_file.exists():
+                    log_event(self.logger, "stop_file_observed", path=str(self.stop_file))
+                    self.stop()
 
             runtime = time.time() - run_started
 
@@ -620,9 +738,21 @@ def main():
                         help=f"Lockfile path (default: {DEFAULT_PID_FILE})")
     parser.add_argument("--status", action="store_true",
                         help="Report whether a supervisor holds the lock, plus coverage, then exit")
+    parser.add_argument("--stop", action="store_true",
+                        help="Ask a running supervisor to shut down cleanly, then checkpoint the WAL")
+    parser.add_argument("--stop-file", default=str(DEFAULT_STOP_FILE),
+                        help=f"Cooperative shutdown sentinel (default: {DEFAULT_STOP_FILE})")
+    parser.add_argument("--stop-timeout", type=float, default=30.0,
+                        help="Seconds to wait for a cooperative stop before forcing (default: 30)")
     parser.add_argument("--allow-sleep", action="store_true",
                         help="Do NOT hold the host awake while supervising (default: hold it awake)")
     args = parser.parse_args()
+
+    if args.stop:
+        result = stop_supervisor(Path(args.pid_file), Path(args.stop_file), args.stop_timeout)
+        print(json.dumps(result, indent=2))
+        # exit 3 mirrors --status: "nothing was running"
+        sys.exit(0 if result.get("was_running") else 3)
 
     if args.status:
         pid = running_supervisor_pid(Path(args.pid_file))
@@ -644,6 +774,7 @@ def main():
         max_restarts=args.max_restarts,
         quiet=args.quiet,
         pid_file=Path(args.pid_file),
+        stop_file=Path(args.stop_file),
         keep_awake=not args.allow_sleep,
     )
     summary = supervisor.run()
