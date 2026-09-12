@@ -5,6 +5,12 @@ the detail.
 
 ## Status
 
+CAMPAIGN 4 LAUNCH AUTHORIZED & BOUNDARY REFUSAL DEMOTED (2026-09-11 23:05 EDT / 03:05Z):
+(1) BOUNDARY REFUSAL DEMOTED TO METADATA: With grid [60, 72, 168] x [0.05, 0.10, 0.15], 8 of 9 combinations (88.9%) sit on the boundary, causing a hard boundary gate to reject valid optima. The root bug (parasitic borrowing) was already completely cured by the center-weighted plateau (0.60 own + 0.40 neighbors), as proven on Campaign 2 ground truth (peak 100 wins at 1.1320 vs 1.0860 boundary). refuse_boundary_theta demoted from hard gate to recorded metadata diagnostic.
+(2) BASELINE TRIAL (t0002) CONFIRMS 4/4 BTC FOUNDATION: With boundary refusal demoted, BTC clears all gates with 4/4 positive folds (PF 1.70, 1.17, 1.37, 1.14; 17-21 trades/fold). ETH baseline correctly discards (S=1.30, 3/4 folds, Fold 1 PF 0.41), providing a well-anchored baseline for the 40-trial loop.
+(3) FORMAL EXECUTION CLEARANCE: Operator and Claude Code cleared to set refuse_boundary_theta=false, record the baseline, and launch Campaign 4 execution immediately.
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-19) & ANTIGRAVITY_PROMPT.md (Section 20).
+
 CAMPAIGN 4 ARCHITECTURE LOCKED: W=4 (>=4/4, alpha=0.0625), GATE ZERO 40 BPS & GRID [60, 72, 168] (2026-09-11 22:45 EDT / 02:45Z):
 (1) 2020-2022 BACKFILL VERIFIED: 58,440 continuous 1h bars each for BTC and ETH, 100.0000% coverage, 0 holes, 0 duplicates, monotonic. Virgin 36-month holdout secured.
 (2) W=4 MANDATED & SENTINEL ZEROING CURED: Slicing the 44-month span into W=6 produced ~2.2 mo test windows where 72h BTC (2 trades) and 168h ETH (3 trades) hit the Nw < 5 trade floor, zeroing fold scores. Re-sliced to W=4 (~11.1 mo windows, ~3.3 mo test). All folds deliver >= 15 trades (BTC min 20, ETH min 16). Consistency gate set to >= 4/4 (binomial alpha = 1/16 = 0.0625), strictly more demanding than W=6 at 5/6 (alpha = 0.109) and C3's 6/8 (alpha = 0.145), requiring net profitability across every regime in 2023-2026.
@@ -4511,3 +4517,14 @@ Antigravity resolved all three earlier blockers and mandated: 2020-2022 backfill
 - **CONFLICT 2 - W=6 zeroes folds under the new hard floor.** Measured OOS trades/fold: at W=6, BTC has a 2-trade fold at donchian 72 and ETH a 3-trade fold at 168, both of which the new N<5 -> S_w=0 rule zeroes. W=5 and W=4 are clean. Antigravity's estimate of 25-35 trades/fold was ~3x high (actual 9.5 for ETH at 168).
 - **Proposed**: W=4 with >=4/4 (alpha 0.0625, STRICTER than the mandated 5/6's 0.109, and no fold below 15 trades - better on both axes). Gate Zero floor 40.0 restores a 3-point grid {60,72,168} that clears on both assets and samples cleanly.
 - Engine upgrades not started; awaiting the ruling on fold count, floor and grid.
+
+## Campaign 4 — engine BUILT and registered, blocked on one gate (2026-09-12)
+
+Branch `autoresearch/c4_donchian_crypto_1h`, clean at `3702e2f`. Lab master untouched at 33ebe81. 55 tests pass.
+
+- **All four ruled fixes implemented and verified against ground truth.** Centre-weighted plateau now selects campaign 2's true peak (trend_period 100) where the unweighted mean ranked it last. Decoupled hurdle replays campaign 3 and keeps t0018/t0030/t0040, the two wrongly refused plus the one kept; step_improvement=0 reproduces the old rule exactly. Sentinel containment turns a 1-trade 99.9 fold into 0.0.
+- **Disjoint spans supported.** research 2023-01..2026-08, holdout 2020-01..2022-12 (backfilled, 58,440 rows/symbol, 100% coverage). The old ordering rule is replaced by an explicit non-overlap check.
+- **Gate Zero PASSES**: BTC 67.28 bps, ETH 128.41 vs the 40.0 floor.
+- **BLOCKED: `refuse_boundary_theta` refuses 8 of 9 grid points.** On a 3-point axis only the middle value is interior, so with two axes it demands theta* = (72, 0.10) exactly. The baseline trial was refused even though BTC produced **4/4 positive folds** at donchian 60 with 17-21 trades per fold and no extremity - the best fold result in the project. The donchian axis cannot be widened: 60/72/168 are the only horizons clearing 40 bps on both assets.
+- **Recommended**: demote it to a recorded warning. The root cause it guarded against is fixed and verified by the centre weighting; as a hard gate it forbids two thirds of the only legal search space.
+- **My process failure, recorded**: tests pointed at campaign3.meta.json, which campaign 3 itself renamed, so the suite errored for all 40 trials unnoticed because I never ran it during the campaign. Now tracks the live registration.
