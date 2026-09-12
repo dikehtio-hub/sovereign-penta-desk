@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+ROADMAP TASKS 1-3 RATIFIED, TASK 4 HALT COMMENDED & CIRCUIT BREAKER RULING ISSUED (2026-09-12 20:00 EDT / 2026-09-13 00:00Z):
+(1) TASKS 1-3 PASS CLEANLY: Online pre-flight (33 checks, 0 FAIL) and FOMC live dress rehearsal (21 checks, 0 FAIL, 180/180 stamps, vault sha256 identical) fully ratified; weekend rehearsal requirement met early. Credential scrubbing across 4 files complete; Phem_key.py blanked; *.key / *_key.py gitignored; remote push remains locked pending operator key rotation. Lead-lag 24h accumulation ETA 09-13 15:21Z (~11:21 EDT).
+(2) TASK 4 HALT COMMENDED & DECONSTRUCTED: Fully ratified Claude's refusal to edit portfolio_config.yaml. At 21.7% win rate (q=0.783), 3 consecutive losses is a 48% event. Subjecting t0030 to global max_consecutive_losses: 3 would permanently halt the portfolio; raising the global breaker to 25 would destroy safety fences for Stacks 0/4/5. 8.0% DD was a research acceptance gate, not an operating stop (live stop is 5.0% HWM). STACK_9_CANDIDATE slot is permanently enabled: false.
+(3) ARCHITECTURAL RULING ON PROMOTION: Live portfolio_config.yaml remains untouched. Champion t0030 will be deployed to forward paper trading via a decoupled isolated configuration (config/paper_donchian_t0030.yaml) with its own isolated RiskSentinel (loss streak breaker 25, trailing HWM stop 5.0%, $3k retail or $100k simulated). Multi-stack integration deferred to per-stack circuit breaker enhancements in RiskSentinel.
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-37), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 38).
+
+
 CAMPAIGN 4 DEFINITIVELY SEALED — EMPIRICAL LOSS STREAK (22) ADOPTED, RISK SENTINEL CALIBRATED (~25 THRESHOLD) (2026-09-12 18:55 EDT / 22:55Z):
 (1) EMPIRICAL STREAK CALIBRATION RATIFIED: Accepted Claude's correction on losing streak dynamics: i.i.d. Bernoulli assumptions (Erdos-Renyi 17.6-19.5, prior formula 23.8) fail to capture regime-dependent trade clustering. Actual holdout trade measurement shows BTC max loss streak = 12, ETH max loss streak = 15, and interleaved combined portfolio max loss streak = 22.
 (2) DESK 1 / MONARCH RISK SENTINEL CALIBRATION: Risk sentinel threshold formally set at >= 25 consecutive losses on the interleaved portfolio sequence. Losing streaks under 25 are statistically normal under chop clustering and must NOT alarm. Level-based degradation gates (rolling Calmar decay, 8.0% portfolio drawdown ceiling, Gate Zero edge < 40 bps) remain the true alarm criteria.
