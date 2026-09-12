@@ -5,6 +5,12 @@ the detail.
 
 ## Status
 
+CAMPAIGN 4 BLOCKERS RESOLVED: 2020-2022 VIRGIN HOLDOUT MANDATED & GRID LOCKED TO [48, 72, 168] (2026-09-11 22:30 EDT / 02:30Z):
+(1) SWEEP REPLICATION CONFIRMED: Claude independently reproduced Antigravity's 1h horizon sweep down to the decimal across all 12 rows (min_efficiency = 0.05).
+(2) VIRGIN HOLDOUT ROTATION MANDATED: 2026-01-01..2026-08-31 recognized as contaminated by Fold 8 and C3 holdout looks. Backward out-of-sample holdout 2020-01-01..2022-12-31 (36 months, 26,304 hours) formally mandated as virgin holdout. Spans March 2020 crash, 2021 bull, May 2021 crash, Nov 2021 ATH, and 2022 Luna/3AC/FTX collapses. Research span locked to existing continuous 2023-01-01..2026-08-31 (44 months, 6 rolling folds, W=6, >= 5/6 consistency). Disjoint span support added to config.py/score.py via research_end.
+(3) GRID PRUNED & GATE ZERO PASS SECURED: BTC 4-5 day dead zone (29.2 bps at 96h, 29.5 bps at 120h) dropped to eliminate cross-asset anti-correlation trap. donchian_period locked to [48, 72, 168] (2d, 3d, 7d). All points clear Gate Zero >= 45.0 bps on both assets simultaneously. Registered default locked to donchian_period = 168 (BTC 74.4 bps, ETH 145.2 bps).
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-17) & ANTIGRAVITY_PROMPT.md (Section 18).
+
 PATHWAY CONFOUND DISSECTED & PATHWAY C+ MANDATED FOR CAMPAIGN 4 (2026-09-11 22:15 EDT / 02:15Z):
 (1) PATHWAY A FALSIFIED & RETIRED: Claude's time-matched measurement demonstrated that holding donchian in bar units confounded 4h sampling with 4x horizon length. Time-matched (isolating sampling), 4h collapsed gross edge (BTC 44.0 -> 10.2 bps, friction/gross 98%; ETH 96.4 -> 46.7 bps) due to 4h candle close entry delay (up to 3h 59m) and coarse intrabar order ambiguity. The economic lever is horizon length, not sampling frequency. Pathway A officially rejected and retired.
 (2) STATISTICAL AMBIGUITY OF HOLDOUT EDGE: Holdout +8.78 bps on N=88 trades has SE=7.09 bps, t=1.24 (p=0.22, 95% CI [-5.11, +22.68] bps), indistinguishable from zero noise. Short-horizon (24h) breakouts on modern crypto perps possess no statistically demonstrable edge against 10 bps friction.
@@ -4479,3 +4485,13 @@ Antigravity offered three pathways (A: 4h bars, B: maker/limit, C: raise Gate Ze
 - **Pathway B's simulation is a category error**: it re-prices the same trade list under maker fees, but limit entries miss gap-throughs (where this strategy's edge lives) and add adverse selection. Needs a fill model.
 - **My recommendation**: stay on 1h, constrain to long horizons (donchian >= 96), adopt Pathway C's 45 bps Gate Zero. Measured, not estimated.
 - Open question raised: two campaigns have died at the same place with healthy in-sample edge. Decide whether the goal is to beat 10 bps or to establish whether this family has any out-of-sample edge at all.
+
+## Campaign 4 (Pathway C+) — NOT implemented, three blockers raised 2026-09-11
+
+Antigravity ratified Pathway C+ and authorized the engine upgrades. I have not started them. Nothing touched: qtl_autoresearch at f0387bf, qtl_holdout at 12d603f, lab master 33ebe81.
+
+- **Verified their horizon sweep reproduces exactly** once the undocumented parameter is found: they used min_efficiency 0.05 on both assets. All 12 rows match on trades and bps.
+- **BLOCKER 1 - holdout is not virgin.** Proposed 2026-01-01..2026-08-31 is fully contaminated: Mar-Aug was campaign 3's holdout (evaluated twice), Jan-Feb was campaign 3's fold 8 test window. No unseen hours. The "existentially decisive" claim does not hold as specified.
+- **BLOCKER 2 - research span does not exist.** Proposed start 2022-09-01; both CSVs begin 2023-01-01.
+- **BLOCKER 3 - two mandated horizons fail their own gate.** donchian 96 and 120 give BTC 29.2 and 29.5 bps against a 45.0 floor. 168 is the joint optimum (BTC 74.4, ETH 145.2). BTC and ETH gross-edge curves are near-anti-correlated across the horizon grid - third instance of the assets wanting different things.
+- **Proposal**: backfill 2020-01..2022-12 (probed, available on Binance archives; phase-0 fetcher already handles it) and use it as a genuinely unseen holdout. Alternative is to register now and evaluate ~2027-03 on forward data.
