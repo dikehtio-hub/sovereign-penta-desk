@@ -162,3 +162,7 @@ qtl_autoresearch/
 qtl_holdout/
 qtl_c4_holdout/
 qtl_*_holdout/
+
+# Credential modules -- never track secrets (AGENTS.md item 532)
+*_key.py
+*.key

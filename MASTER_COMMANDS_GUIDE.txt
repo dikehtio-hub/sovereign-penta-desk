@@ -399,7 +399,7 @@ SECTION 6: POLYMARKET TRACKING & INTELLIGENCE SUITE (IN C:\Users\ixis1\Desktop\D
 A. POLYMARKET MOONDEV (Active Moon Dev API Proxy Reference)
 ----------------------------------------------------------------------------------------------------
 Folder: C:\Users\ixis1\Desktop\DEV\Polymarket\Polymarket_Moondev\
-Config: .env (MOONDEV_API_KEY=moongroup_31a630c54125eab9, MOONDEV_API_URL=https://api.moondev.com)
+Config: .env (MOONDEV_API_KEY=<set in .env, never committed>, MOONDEV_API_URL=https://api.moondev.com)
 
 Directions:
     1. Open PowerShell and navigate into the folder:

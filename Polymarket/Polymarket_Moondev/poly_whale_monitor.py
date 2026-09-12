@@ -35,8 +35,25 @@ from rich.text import Text
 ENV_PATH = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
-API_KEY = os.getenv("MOONDEV_API_KEY", "moongroup_31a630c54125eab9")
+API_KEY = os.getenv("MOONDEV_API_KEY", "")
 API_URL = os.getenv("MOONDEV_API_URL", "https://api.moondev.com")
+
+
+def _require_api_key() -> str:
+    """Return the Moon Dev API key, or fail loudly with an actionable message.
+
+    Called at request time rather than import time so the module stays
+    importable without credentials. Never fall back to a literal key here:
+    this file is tracked, and a hardcoded fallback is a published credential.
+    """
+    if not API_KEY:
+        raise RuntimeError(
+            "MOONDEV_API_KEY is not set. Add it to "
+            "Polymarket/Polymarket_Moondev/.env (gitignored) as\n"
+            "    MOONDEV_API_KEY=your_key_here\n"
+            "or export it in the environment before running this module."
+        )
+    return API_KEY
 
 console = Console()
 
@@ -47,7 +64,7 @@ def fetch_whales(min_usd: float = 1000.0, limit: int = 100) -> dict:
     """
     endpoint = f"{API_URL.rstrip('/')}/api/poly/whales"
     headers = {
-        "x-api-key": API_KEY,
+        "x-api-key": _require_api_key(),
         "User-Agent": "Polymarket-Moondev-WhaleMonitor/1.0",
         "Accept": "application/json"
     }
