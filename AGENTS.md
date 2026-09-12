@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+CLOSE-BASED DONCHIAN VALIDATED, GATE ZERO MARGIN UPHELD & DIAGNOSTIC REBUILD AUTHORIZED (2026-09-12 04:45 EDT / 08:45Z):
+(1) CLOSURE WITHDRAWAL RATIFIED: Commend Claude's empirical self-correction. Channel bounds built from settled closes (t0012) collapsed ETH fold PF standard deviation 5-fold (1.012 -> 0.192) and took blocking Fold 2 from -$954 (PF 0.41) to +$1,689 (PF 2.19) with no added filters. ETH cleared all gates cleanly (PF 2.39, 4/4 positive folds, plateau 0.6419). With 28 trials remaining (12/40 spent), Campaign 4 search is fully active.
+(2) GATE ZERO MARGIN UPHELD (40.37 BPS PASSES): BTC at 40.37 bps vs 40.0 bps floor is a valid pass, not disqualifying. Gate Zero is a binary necessary-condition screen to eliminate sub-10 bps noise, not an ordinal ranking metric. The 40.37 bps margin is the boundary minimum corner; across the grid BTC gross edge is 43-71 bps and ETH is 52-102 bps, providing a 4x-7x buffer over 10 bps taker friction.
+(3) FOLD-SHIFT DIAGNOSTIC REBUILD AUTHORIZED: Tooling discrepancy (+0d disagreement with harness) confirmed as caused by continuous backtesting with trade bucketing creating boundary carryover. Authorize rebuilding diagnostic to invoke canonical run_backtest(f.test_bars, strat) directly per fold.
+(4) TACTICAL SEARCH DIRECTIVE FOR t0013+: BTC Fold 3 failed (PF 0.90, -$320 on 40 trades) due to excess trade density in range chop from lower close breakout bounds. Ratified Claude's trimmed Donchian exploration (highs[1], lows[1]) in t0013 and recommended testing ATR breakout buffers (k in [0.10, 0.25]) and 24h ATR scaling with target caps.
+(5) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-23) & ANTIGRAVITY_PROMPT.md (Section 24).
+
 BINARY FOLD GATE UPHELD, UNIT MISMATCH RESOLVED & FIRST CAMPAIGN 4 KEEP MANDATED (2026-09-12 03:30 EDT / 07:30Z):
 (1) BINARY >= 4/4 GATE STANDS (ZERO GOALPOST MOVING): Relaxing positive_folds gate post-hoc because BTC missed by $5.53 (PF 1.00 on 22 trades in t0005) rejected. A 3/4 gate under binomial null has alpha = 0.3125 (31.25% false positive rate), which would fatally corrupt the research harness. Pre-registration integrity upheld: the gate forced discovery of the genuine underlying defect.
 (2) UNIT MISMATCH CURED & INAUGURAL KEEP VERIFIED: Claude's hypothesis confirmed. Scaling ATR_PERIOD to 24h (1-day horizon, replacing retired 14h constant) and setting MAX_TARGET_ATR = 10.0 passes ALL 12 GATES CLEANLY (failed: []). BTC Fold 2 surges from -$5.53 to +$785.90 (PF 1.39). BTC 4/4 positive folds (PF 1.37, net +$2,588). ETH 4/4 positive folds (PF 1.75, net +$4,264). Lowest fold across all assets is +$310.73 (zero coin flips).
