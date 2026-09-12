@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+CAMPAIGN 4 FIFTH KEEP RATIFIED (t0030, S=2.0900), TWO-SIDED ATR RESPONSIVENESS & 4D ASSET ASYMMETRY ARCHITECTURE (2026-09-12 17:40 EDT / 21:40Z):
+(1) FIFTH KEEP RATIFIED (t0030, S=2.0900): Claude refined ATR_STOP_SETTLED from 1.75 -> 1.65 on t0025 baseline, delivering S=2.0900 (+3.5% over 2.0196 hurdle). All 12 gates pass cleanly (failed: []). BTC achieves PF 2.09 (4/4 folds, 53 trades, plateau 0.8181). ETH achieves PF 2.45 (4/4 folds, 81 trades, plateau 0.7465). S_best anchored at 2.0900; next hurdle set to 2.1318 (30 spent, 10 remain).
+(2) FINE STOP OPTIMIZATION AUDITED: The coarse 0.25 grid was hiding a structural failure cliff at 1.55 (BTC w4 drops to 0.94). While 1.60 is BTC's private peak (1.86), 1.65 is the true multi-asset compromise optimum: it maximizes ETH (1.83, w3 surges to 4.45) while giving BTC (1.81) a 2-step (0.10) safety buffer from the cliff.
+(3) TWO-SIDED ATR RESPONSIVENESS CONFIRMED: Sweeping ATR_PERIOD below 14 ([9, 11, 12, 14, 16]) proves the responsiveness effect is two-sided: faster ATR overperforms equivalent level on BTC (ATR 9 equiv. stop 1.872 yields min fold 1.85 vs 1.67 predicted); slower ATR underperforms (ATR 16 equiv. stop 1.579 collapses w3 to 1.29). Two completely independent axes (stop multiple and ATR window) locate the identical 1.55-1.58 failure cliff. ATR 14 confirmed as unique joint global optimum.
+(4) FOUR-DIMENSIONAL ASSET ASYMMETRY ARCHITECTURE: Claude synthesized 4 structural divergences: (a) efficiency threshold (0.10-0.15 vs 0.05-0.10 disjoint), (b) efficiency horizon (100 vs 200), (c) stop multiple (1.60 vs 1.65), (d) ATR responsiveness (faster helps BTC, hurts ETH). Because S = min(), the incumbent sits at an uneasy compromise on all four. A decoupled per-asset parameterization is formally prioritized for Campaign 5 pre-registration.
+(5) DIRECTIVES FOR TRIALS 31-40: Claude's fine re-measurement roadmap (probing TREND_PERIOD in [84, 120] and Donchian grid rungs around [60, 72, 84]) is fully ratified. If no trial beats 2.1318, t0030 stands as Campaign 4 champion for master promotion and virgin holdout evaluation.
+(6) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-32) & ANTIGRAVITY_PROMPT.md (Section 33).
+
+
 CAMPAIGN 4 FOURTH KEEP RATIFIED (t0025, S=1.9800), t0029 R² DISCARD AUDITED, SENTINEL DECODED & PROTOCOL FOR FINAL 11 TRIALS (2026-09-12 17:15 EDT / 21:15Z):
 (1) FOURTH KEEP RATIFIED (t0025, S=1.9800): Claude executed channel_target_multiple = 1.70 on t0024 baseline, delivering S=1.9800 (+4.9% over 1.8870 hurdle) with 100% fold-stability (4/4 on both BTC and ETH across all offsets). S_best anchored at 1.9800; next hurdle set to 2.0196 (29 spent, 11 remain).
 (2) t0029 R² ADMISSION DISCARD AUDITED: R² linear fit admission discarded at S=1.6400 with plateau_ratio=0.0000 on ETH. Claude correctly deduced that 0.0000 is an intentional fail-closed sentinel ("UNMEASURABLE") triggered when cross-fold sum_own < min_own_sum (1.0). ETH scored 0.95 (missing floor by 5%). The gate successfully caught a genuine train/test divergence (positive out-of-sample folds but near-zero in-sample fitness). R² functional form permanently closed.
