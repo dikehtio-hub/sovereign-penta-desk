@@ -95,6 +95,8 @@
 * [Data gap: 2026-09-08_hl_asset_snapshots_2](wiki/events/data_gap_2026-09-08_hl_asset_snapshots_2.md) - 26.42 h with no recording in asset_snapshots, latest_snapshots: 2026-09-08T16:01:22Z to 2026-09-09T18:26:39Z. Round 125.
 * [Data gap: 2026-09-11_hl_sleep](wiki/events/data_gap_2026-09-11_hl_sleep.md) - 10.75 h with no recording in asset_snapshots, trades: 2026-09-11T05:43:07Z to 2026-09-11T16:27:59Z. Round 127.
 * [Data gap: 2026-09-11_polymarket_drops_sleep](wiki/events/data_gap_2026-09-11_polymarket_drops_sleep.md) - 10.82 h with no recording in Sports_Desk/data/polymarket_drops stamped drops: 2026-09-11T05:38:27Z to 2026-09-11T16:27:57Z. Round 127.
+* [Data gap: 2026-09-12_hl_shutdown](wiki/events/data_gap_2026-09-12_hl_shutdown.md) - 9.57 h with no recording in asset_snapshots, liquidation_events: 2026-09-12T05:46:48Z to 2026-09-12T15:21:06Z. Round 127.
+* [Data gap: 2026-09-12_polymarket_drops_shutdown](wiki/events/data_gap_2026-09-12_polymarket_drops_shutdown.md) - 9.44 h with no recording in Sports_Desk/data/polymarket_drops stamped drops: 2026-09-12T05:54:25Z to 2026-09-12T15:21:01Z. Round 127.
 * [Event: fomc_2026-09-16](wiki/events/fomc_2026-09-16.md) - FOMC statement 2026-09-16T18:00:00Z (SEP meeting); window T-2..T+5 registered.
 * [Event: fomc_2026-10-28](wiki/events/fomc_2026-10-28.md) - FOMC statement 2026-10-28T18:00:00Z (no SEP); window T-2..T+5 registered.
 * [Event: fomc_2026-12-09](wiki/events/fomc_2026-12-09.md) - FOMC statement 2026-12-09T19:00:00Z (SEP meeting); window T-2..T+5 registered.
@@ -210,7 +212,7 @@
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
 * [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 80 page(s) today.
-* [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 9 page(s) today.
+* [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 11 page(s) today.
 * [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 23 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.

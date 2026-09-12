@@ -1,3 +1,6 @@
+## 2026-09-12
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 6 page(s) -> [[events_register]].
+
 ## 2026-09-11
 * **Ingest**: data gaps from `knowledge/data_gaps.json`: 4 page(s) -> [[events_register]].
 

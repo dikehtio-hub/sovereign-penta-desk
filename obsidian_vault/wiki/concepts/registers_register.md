@@ -10,7 +10,7 @@ tags:
 - register
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-11T16:31:20Z'
+  at: '2026-09-12T15:59:45Z'
 status: draft
 dev:
   register_for: Register
@@ -37,7 +37,7 @@ dev:
 | [[computations_register\|Computations register]] | Attested Computation | 17 | draft | 2026-09-06T00:57:24Z |
 | [[crm_register\|CRM register]] | Entity | 185 | draft | 2026-09-06T06:28:48Z |
 | [[digests_register\|Digests register]] | Digest | 80 | draft | 2026-09-10T21:28:16Z |
-| [[events_register\|Events register]] | Event | 9 | draft | 2026-09-11T16:31:20Z |
+| [[events_register\|Events register]] | Event | 11 | draft | 2026-09-12T15:59:45Z |
 | [[experiments_register\|Experiments register]] | Experiment | 23 | draft | 2026-09-10T21:28:10Z |
 | [[journal_register\|Journal register]] | Journal Entry | 2 | draft | 2026-09-06T00:57:21Z |
 | [[markets_register\|Markets register]] | Market | 97 | draft | 2026-09-06T07:00:50Z |

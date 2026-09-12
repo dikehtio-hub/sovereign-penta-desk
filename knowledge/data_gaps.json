@@ -1,88 +1,127 @@
 {
-  "_about": "Known intervals in which a desk's measurement stream did not record. Compiled into wiki/events/data_gap_<id>.md by knowledge.ingest.data_gaps; lint L12 warns when an evaluation window overlaps a gap it does not acknowledge. Append, never edit a closed gap.",
-  "gaps": [
-    {
-      "id": "2026-09-06_hl_asset_snapshots",
-      "desk": 1,
-      "start_utc": "2026-09-06T15:46:10Z",
-      "end_utc": "2026-09-07T01:05:10Z",
-      "tables": [
-        "asset_snapshots (no rows written)",
-        "latest_snapshots (stale for the whole interval)",
-        "cascade_excursions (no forward excursions measured: 'persisted 0 windows / 0 events' on every maintenance pass)",
-        "basis_realised_windows (0 windows opened inside; 1,764 overlapping windows carry coverage 0.61-0.99)"
-      ],
-      "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: para:CIFR was listed on the exchange (para DEX) with no row in assets; the collector syncs assets only at startup and writes each batch as one transaction, so one unknown coin rejected all 442 rows per pass. The process never crashed, so the supervisor's crash policy never fired. Round 119.",
-      "detected_utc": "2026-09-07T00:55:00Z",
-      "resolved_utc": "2026-09-07T01:05:10Z",
-      "resolution": "Collector restarted on the operator's word (supervisor 24504, collector 60756); assets re-synced (441 -> 442); stop_collector.bat fixed (it had never killed anything); hardening staged on branch feat/collector-hardening per Ruling R119-1.B.",
-      "affected_evaluations": [
-        "lead_lag Tier 2 and Tier 2b runs ingested 2026-09-07T02:30Z (Round 120): BTC prices come from asset_snapshots, so about 9.3 h of the 24 h window had no price series. The registration's readiness bar covers the tagged Polymarket stamps only. The readings stand as recorded; this caveat is now attached to them.",
-        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
-        "basis windows: none opened inside the gap; the 1,764 that span it are marked by their own coverage column."
-      ],
-      "round": 119
-    },
-    {
-      "id": "2026-09-08_hl_asset_snapshots_2",
-      "desk": 1,
-      "start_utc": "2026-09-08T16:01:22Z",
-      "end_utc": "2026-09-09T18:26:39Z",
-      "tables": [
-        "asset_snapshots (no rows written; last old row 16:01:22.392Z, first new row 18:26:39.445Z)",
-        "latest_snapshots (stale for the whole interval)",
-        "cascade_excursions (no forward excursions measured inside the interval)",
-        "basis_realised_windows (no windows opened inside; overlapping windows carry their own coverage column)"
-      ],
-      "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: USELESS (main DEX) and para:TREAD (para DEX) were listed after the 2026-09-07 01:05Z restart with no row in assets (442 rows), and the pre-hardening collector synced assets only at startup and wrote each batch as one transaction, so two unknown coins rejected every row of every pass (8,206 errors in collector.log from 2026-09-08 12:01:37 EDT). The process never crashed (supervisor 24504 / collector 60756 stayed alive), so the crash-only policy never fired; collector_service.jsonl logged coverage_pct 0.0, samples 0, restarts 0 every 15 min. Second occurrence of the Round 119 failure; the fix had been staged on feat/collector-hardening since Round 121. Round 125.",
-      "detected_utc": "2026-09-09T18:03:00Z",
-      "resolved_utc": "2026-09-09T18:26:39Z",
-      "resolution": "Hardening 70bd232 merged to master as d3df1cb (8/8 tests) and deployed on the operator's authorisation (Ruling R125-1.B): stop_collector.bat at 18:26:30Z (pids 24504/60756 gone), start_collector.bat at 18:26:34Z (supervisor 16844, collector 74972); universe re-synced 442 -> 444; first new snapshot 18:26:39.445Z. The hardened collector re-syncs the universe every 60 polls and at once after a batch skips an unknown coin, inserts row-by-row, and the supervisor carries a silent-failure watchdog. Readiness gate hardened the same round (R125-1.C): cross_market.lead_lag --check-data now judges the price stream too.",
-      "affected_evaluations": [
-        "lead_lag Tier 2 and Tier 2b run 3 (executed 2026-09-09T18:02Z over --since 2026-09-08T03:27:29Z, all four no-lead): 26.0 h of the 38.5 h window had no price series; declared VOID by Ruling R125-1.A, never ingested, the four _run3.json artifacts discarded; run 3 re-bound to a fresh disjoint window from 2026-09-09T18:26:39Z.",
-        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
-        "basis windows: none opened inside the gap; overlapping windows are marked by their own coverage column."
-      ],
-      "round": 125
-    },
-    {
-      "id": "2026-09-11_hl_sleep",
-      "desk": 1,
-      "start_utc": "2026-09-11T05:43:07Z",
-      "end_utc": "2026-09-11T16:27:59Z",
-      "tables": [
-        "asset_snapshots (no rows 05:43:07.623Z -> 16:27:59.397Z, 10.75 h)",
-        "trades (WebSocket silent 05:43:14Z -> 12:49Z, 7.1 h; then a modern-standby trickle of 5-42 prints/h until 16:20:43Z; largest gaps 25,573 s, 1,680 s, 1,392 s)",
-        "latest_snapshots (stale for the whole interval)",
-        "cascade_excursions / basis_realised_windows (no forward measurements inside; overlapping basis windows carry their coverage column)"
-      ],
-      "cause": "The laptop entered sleep at 2026-09-11 01:43:25 EDT (Kernel-Power 42 after a user-mode SetSuspendState call at 01:43:23 - lid or power menu) and returned from low power at 12:21:50 EDT (Kernel-Power 1). Every daemon died with it: supervisor, collector, watcher, exporter, all five telemetry exporters (telemetry_health 0/5 at 12:24). The machine was not rebooted (last boot 09-04). resume_all.bat relaunched everything at 12:27:53 EDT (watcher 31600, exporter 69348). No 24 h series was accumulating (Item 18 Phase 1 closed 09-10; Phase 2 needs only the 09-16 window), so no registered evaluation is affected - the first sleep gap since the standing keep-awake rule, taken while nothing was owed. Round 127 (pre-round).",
-      "detected_utc": "2026-09-11T16:24:00Z",
-      "resolved_utc": "2026-09-11T16:27:59Z",
-      "resolution": "resume_all.bat at 12:27:53 EDT; collector newest snapshot 0.0 min at 12:28; exporter and watcher RUNNING on fresh pids; telemetry 5/5. Nothing else touched (freeze approaching 09-15).",
-      "affected_evaluations": [
-        "none registered: no lead-lag window was open; the Phase 2 event study reads only [T-60 min, T+300 s] around 2026-09-16T18:00Z",
-        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions measured inside; their gates clear later by the gap length",
-        "basis windows: overlapping windows are marked by their own coverage column"
-      ],
-      "round": 127
-    },
-    {
-      "id": "2026-09-11_polymarket_drops_sleep",
-      "desk": 3,
-      "start_utc": "2026-09-11T05:38:27Z",
-      "end_utc": "2026-09-11T16:27:57Z",
-      "tables": [
-        "Sports_Desk/data/polymarket_drops stamped drops (last polymarket_macro_20260911T053827Z, first new polymarket_macro_20260911T162757Z; 10.8 h with no stamp)"
-      ],
-      "cause": "Same sleep as 2026-09-11_hl_sleep: the watcher (pid 17688 since 09-05) died when the laptop slept at 01:43 EDT; relaunched by resume_all.bat at 12:27:53 EDT as pid 31600.",
-      "detected_utc": "2026-09-11T16:24:00Z",
-      "resolved_utc": "2026-09-11T16:27:57Z",
-      "resolution": "resume_all.bat; watcher RUNNING; stamps resumed at the 5-minute cadence.",
-      "affected_evaluations": [
-        "none registered: Item 18 Phase 1 is closed; the tagged-stamp series restarts a new continuous segment from 16:27:57Z, which the two-stream gate will report on any future unbounded check"
-      ],
-      "round": 127
-    }
-  ]
+ "_about": "Known intervals in which a desk's measurement stream did not record. Compiled into wiki/events/data_gap_<id>.md by knowledge.ingest.data_gaps; lint L12 warns when an evaluation window overlaps a gap it does not acknowledge. Append, never edit a closed gap.",
+ "gaps": [
+  {
+   "id": "2026-09-06_hl_asset_snapshots",
+   "desk": 1,
+   "start_utc": "2026-09-06T15:46:10Z",
+   "end_utc": "2026-09-07T01:05:10Z",
+   "tables": [
+    "asset_snapshots (no rows written)",
+    "latest_snapshots (stale for the whole interval)",
+    "cascade_excursions (no forward excursions measured: 'persisted 0 windows / 0 events' on every maintenance pass)",
+    "basis_realised_windows (0 windows opened inside; 1,764 overlapping windows carry coverage 0.61-0.99)"
+   ],
+   "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: para:CIFR was listed on the exchange (para DEX) with no row in assets; the collector syncs assets only at startup and writes each batch as one transaction, so one unknown coin rejected all 442 rows per pass. The process never crashed, so the supervisor's crash policy never fired. Round 119.",
+   "detected_utc": "2026-09-07T00:55:00Z",
+   "resolved_utc": "2026-09-07T01:05:10Z",
+   "resolution": "Collector restarted on the operator's word (supervisor 24504, collector 60756); assets re-synced (441 -> 442); stop_collector.bat fixed (it had never killed anything); hardening staged on branch feat/collector-hardening per Ruling R119-1.B.",
+   "affected_evaluations": [
+    "lead_lag Tier 2 and Tier 2b runs ingested 2026-09-07T02:30Z (Round 120): BTC prices come from asset_snapshots, so about 9.3 h of the 24 h window had no price series. The registration's readiness bar covers the tagged Polymarket stamps only. The readings stand as recorded; this caveat is now attached to them.",
+    "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
+    "basis windows: none opened inside the gap; the 1,764 that span it are marked by their own coverage column."
+   ],
+   "round": 119
+  },
+  {
+   "id": "2026-09-08_hl_asset_snapshots_2",
+   "desk": 1,
+   "start_utc": "2026-09-08T16:01:22Z",
+   "end_utc": "2026-09-09T18:26:39Z",
+   "tables": [
+    "asset_snapshots (no rows written; last old row 16:01:22.392Z, first new row 18:26:39.445Z)",
+    "latest_snapshots (stale for the whole interval)",
+    "cascade_excursions (no forward excursions measured inside the interval)",
+    "basis_realised_windows (no windows opened inside; overlapping windows carry their own coverage column)"
+   ],
+   "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: USELESS (main DEX) and para:TREAD (para DEX) were listed after the 2026-09-07 01:05Z restart with no row in assets (442 rows), and the pre-hardening collector synced assets only at startup and wrote each batch as one transaction, so two unknown coins rejected every row of every pass (8,206 errors in collector.log from 2026-09-08 12:01:37 EDT). The process never crashed (supervisor 24504 / collector 60756 stayed alive), so the crash-only policy never fired; collector_service.jsonl logged coverage_pct 0.0, samples 0, restarts 0 every 15 min. Second occurrence of the Round 119 failure; the fix had been staged on feat/collector-hardening since Round 121. Round 125.",
+   "detected_utc": "2026-09-09T18:03:00Z",
+   "resolved_utc": "2026-09-09T18:26:39Z",
+   "resolution": "Hardening 70bd232 merged to master as d3df1cb (8/8 tests) and deployed on the operator's authorisation (Ruling R125-1.B): stop_collector.bat at 18:26:30Z (pids 24504/60756 gone), start_collector.bat at 18:26:34Z (supervisor 16844, collector 74972); universe re-synced 442 -> 444; first new snapshot 18:26:39.445Z. The hardened collector re-syncs the universe every 60 polls and at once after a batch skips an unknown coin, inserts row-by-row, and the supervisor carries a silent-failure watchdog. Readiness gate hardened the same round (R125-1.C): cross_market.lead_lag --check-data now judges the price stream too.",
+   "affected_evaluations": [
+    "lead_lag Tier 2 and Tier 2b run 3 (executed 2026-09-09T18:02Z over --since 2026-09-08T03:27:29Z, all four no-lead): 26.0 h of the 38.5 h window had no price series; declared VOID by Ruling R125-1.A, never ingested, the four _run3.json artifacts discarded; run 3 re-bound to a fresh disjoint window from 2026-09-09T18:26:39Z.",
+    "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
+    "basis windows: none opened inside the gap; overlapping windows are marked by their own coverage column."
+   ],
+   "round": 125
+  },
+  {
+   "id": "2026-09-11_hl_sleep",
+   "desk": 1,
+   "start_utc": "2026-09-11T05:43:07Z",
+   "end_utc": "2026-09-11T16:27:59Z",
+   "tables": [
+    "asset_snapshots (no rows 05:43:07.623Z -> 16:27:59.397Z, 10.75 h)",
+    "trades (WebSocket silent 05:43:14Z -> 12:49Z, 7.1 h; then a modern-standby trickle of 5-42 prints/h until 16:20:43Z; largest gaps 25,573 s, 1,680 s, 1,392 s)",
+    "latest_snapshots (stale for the whole interval)",
+    "cascade_excursions / basis_realised_windows (no forward measurements inside; overlapping basis windows carry their coverage column)"
+   ],
+   "cause": "The laptop entered sleep at 2026-09-11 01:43:25 EDT (Kernel-Power 42 after a user-mode SetSuspendState call at 01:43:23 - lid or power menu) and returned from low power at 12:21:50 EDT (Kernel-Power 1). Every daemon died with it: supervisor, collector, watcher, exporter, all five telemetry exporters (telemetry_health 0/5 at 12:24). The machine was not rebooted (last boot 09-04). resume_all.bat relaunched everything at 12:27:53 EDT (watcher 31600, exporter 69348). No 24 h series was accumulating (Item 18 Phase 1 closed 09-10; Phase 2 needs only the 09-16 window), so no registered evaluation is affected - the first sleep gap since the standing keep-awake rule, taken while nothing was owed. Round 127 (pre-round).",
+   "detected_utc": "2026-09-11T16:24:00Z",
+   "resolved_utc": "2026-09-11T16:27:59Z",
+   "resolution": "resume_all.bat at 12:27:53 EDT; collector newest snapshot 0.0 min at 12:28; exporter and watcher RUNNING on fresh pids; telemetry 5/5. Nothing else touched (freeze approaching 09-15).",
+   "affected_evaluations": [
+    "none registered: no lead-lag window was open; the Phase 2 event study reads only [T-60 min, T+300 s] around 2026-09-16T18:00Z",
+    "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions measured inside; their gates clear later by the gap length",
+    "basis windows: overlapping windows are marked by their own coverage column"
+   ],
+   "round": 127
+  },
+  {
+   "id": "2026-09-11_polymarket_drops_sleep",
+   "desk": 3,
+   "start_utc": "2026-09-11T05:38:27Z",
+   "end_utc": "2026-09-11T16:27:57Z",
+   "tables": [
+    "Sports_Desk/data/polymarket_drops stamped drops (last polymarket_macro_20260911T053827Z, first new polymarket_macro_20260911T162757Z; 10.8 h with no stamp)"
+   ],
+   "cause": "Same sleep as 2026-09-11_hl_sleep: the watcher (pid 17688 since 09-05) died when the laptop slept at 01:43 EDT; relaunched by resume_all.bat at 12:27:53 EDT as pid 31600.",
+   "detected_utc": "2026-09-11T16:24:00Z",
+   "resolved_utc": "2026-09-11T16:27:57Z",
+   "resolution": "resume_all.bat; watcher RUNNING; stamps resumed at the 5-minute cadence.",
+   "affected_evaluations": [
+    "none registered: Item 18 Phase 1 is closed; the tagged-stamp series restarts a new continuous segment from 16:27:57Z, which the two-stream gate will report on any future unbounded check"
+   ],
+   "round": 127
+  },
+  {
+   "id": "2026-09-12_hl_shutdown",
+   "desk": 1,
+   "start_utc": "2026-09-12T05:46:48Z",
+   "end_utc": "2026-09-12T15:21:06Z",
+   "tables": [
+    "asset_snapshots (no rows 05:49:29Z -> 15:21:06Z, 9.53 h; point-in-time polls, unrecoverable)",
+    "liquidation_events (no rows 05:46:48Z -> 15:20:53Z, 9.57 h; unrecoverable)",
+    "trades (LARGELY RECOVERED: exchange-side timestamps let the collector backfill on resume, so the residual gap is only 05:49:36Z -> 06:58:22Z, 1.15 h. The backfill reached back to ~06:58 and no further, consistent with an API lookback limit)",
+    "latest_snapshots (stale for the whole interval)",
+    "cascade_excursions (NOT part of this event: its largest nearby gap is 04:08:21Z -> 04:57:13Z, 0.81 h, which predates the shutdown)"
+   ],
+   "cause": "Planned overnight shutdown, taken deliberately after confirming the autoresearch campaign reads only historical archive data and so was unaffected. The collector supervisor and its child were stopped and the machine powered off; resume_all.bat brought the pipeline back at 11:21 EDT (supervisor pid 54884, collector 88176). This was the first shutdown after run_collector_service.py gained a --stop flag (commit ca02ca7): the WAL was checkpointed and the sentinel cleaned up, though the then-running supervisor predated the sentinel and so took the forced path, exactly as that commit predicted.",
+   "detected_utc": "2026-09-12T15:22:00Z",
+   "resolved_utc": "2026-09-12T15:21:06Z",
+   "resolution": "resume_all.bat; supervisor RUNNING pid 54884 with child 88176; --status confirmed running:true after a brief startup race in which the pid lock was not yet held. Trades partially self-healed by backfill; snapshots and liquidations did not and cannot.",
+   "affected_evaluations": [
+    "none registered: Campaign 4 autoresearch reads data/continuous (historical Binance archive, research span ends 2026-09-01) and is not fed by this collector",
+    "Item 18 Phase 2 needs the 09-16 window, which is unaffected"
+   ],
+   "round": 127
+  },
+  {
+   "id": "2026-09-12_polymarket_drops_shutdown",
+   "desk": 3,
+   "start_utc": "2026-09-12T05:54:25Z",
+   "end_utc": "2026-09-12T15:21:01Z",
+   "tables": [
+    "Sports_Desk/data/polymarket_drops stamped drops (last stamp 20260912T055425Z, first new 20260912T152101Z; 9.44 h with no stamp)"
+   ],
+   "cause": "Same planned shutdown as 2026-09-12_hl_shutdown. The watcher died with the machine and was relaunched by resume_all.bat as pid 62448.",
+   "detected_utc": "2026-09-12T15:22:00Z",
+   "resolved_utc": "2026-09-12T15:21:01Z",
+   "resolution": "resume_all.bat; watcher RUNNING pid 62448; stamps resumed at the 5-minute cadence.",
+   "affected_evaluations": [
+    "none registered: the tagged-stamp series restarts a new continuous segment from 15:21:01Z, which the two-stream gate will report on any future unbounded check"
+   ],
+   "round": 127
+  }
+ ]
 }
