@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+CAMPAIGN 3 CLOSED (40/40 TRIALS, S=1.85, 3 KEEPS) & DUAL HOLDOUT AUTHORIZED (2026-09-11 21:35 EDT / 01:35Z):
+(1) OUTCOME: S climbed 1.38 -> 1.85 (t0040 keep, stop 1.75xATR, target 1.5x width at breakout level, uncapped; BTC PF 1.85 7/8 folds, ETH PF 2.41 6/8 folds). Volatility expansion filter retired.
+(2) DUAL HOLDOUT MANDATE: Run untouched 6-month holdout (2026-03-01..08-31) on BOTH t0040 (formal keep, S=1.85) AND t0031 (regime-robust challenger, stop 2.0xATR, S=1.65, 8/8 BTC folds, profitable in hostile 2023 Fold 2, 0 ETH folds below trade floor). Directly tests whether hostile-regime consistency out-predicts in-sample score maximization out-of-sample.
+(3) FOUR ENGINE DEFECTS RESOLVED FOR CAMPAIGN 4:
+    - Plateau peak-penalization bug: center-weighted plateau objective (0.60 own + 0.40 neighbors) + two-sided plateau gate (0.60 <= r <= 1.40) + grid boundary refusal.
+    - Deflated hurdle ratchet: decoupled into max(S_best * 1.02, S_baseline * (1 + Delta_min(n))) to prevent early fluke keeps from blocking superior later candidates.
+    - Sentinel Calmar containment: hard floor (Nw < 5 => 0.0) and winsorization (Mw <= 5.0) before trade-count shrinkage.
+    - Regime non-exchangeability & ETH sample starvation: re-slice to 6 rolling folds (~6.3 mo, ~4,600 bars) with >= 5/6 positive folds (alpha = 0.109), ensuring ETH 96-bar channel gets 15-20 trades/fold.
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-14) & ANTIGRAVITY_PROMPT.md (Section 15).
+
 AUTORESEARCH PIPELINE AUDITED & RATIFIED BY ANTIGRAVITY (2026-09-11 17:30-18:15 EDT / 21:30-22:15Z):
 (1) HARNESS VINDICATED: The holdout failure (BTC PF 0.75 / ETH PF 0.97) proves the necessity of the unreachable holdout boundary. Multi-trial walk-forward hill-climbing inherently creates selection bias on validation folds; the holdout successfully killed an overfit candidate before capital deployment.
 (2) GATE ZERO MANDATED: In-sample gross edge vs friction screen is mathematically sound as a decisive necessary-condition test. 5m crypto perps cannot overcome 10 bps round-trip friction. Mandatory Gate Zero (Gross Edge_IS >= 15.0 bps) locked for all future campaign registrations.
@@ -4424,3 +4434,12 @@ False, the pre-registration bar, the live tax ledger at $0.00.
   right approximation for a NJ resident; it is not a return.
 - `professional_schedule_c` is permanently barred under *Groetzinger* while the
   x-ray contract work continues. Do not re-open it.
+
+## Autoresearch campaign 3 — CLOSED 2026-09-11 (40/40 trials)
+
+Branch `autoresearch/c3_donchian_crypto_1h` in worktree `../qtl_autoresearch`, clean at `f0387bf`. Lab master untouched at `33ebe81`. Holdout NOT run.
+
+- 3 keeps: t0001 baseline 1.38, t0014 1.52, t0040 1.85. Every trial has a full record in its commit message; the ledger is `research/autoresearch/ledger.tsv`.
+- **Deploy recommendation is NOT the keep.** t0031 (stop 2.0) scores 1.65 but gives BTC 8/8 folds, the only perfect consistency in 40 trials, and is the only configuration ever to make the 2023 regime fold profitable. t0040 (stop 1.75) scores 1.85 with 7/8 and a 0.35 on that fold.
+- **Four engine defects found**, detailed in `HANDOFF_PROMPT.md`. The big one: `_plateau_score` averages a candidate with its grid neighbours, which structurally penalises true peaks and prefers boundaries. It blocked 6 of 40 trials from testing their hypothesis, caused 11 selection relocations, contaminates across axes, and decided the t0014 keep.
+- Next action is Antigravity's ruling, then the holdout.
