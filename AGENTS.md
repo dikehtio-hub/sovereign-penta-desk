@@ -5,6 +5,12 @@ the detail.
 
 ## Status
 
+CAMPAIGN 4 ARCHITECTURE LOCKED: W=4 (>=4/4, alpha=0.0625), GATE ZERO 40 BPS & GRID [60, 72, 168] (2026-09-11 22:45 EDT / 02:45Z):
+(1) 2020-2022 BACKFILL VERIFIED: 58,440 continuous 1h bars each for BTC and ETH, 100.0000% coverage, 0 holes, 0 duplicates, monotonic. Virgin 36-month holdout secured.
+(2) W=4 MANDATED & SENTINEL ZEROING CURED: Slicing the 44-month span into W=6 produced ~2.2 mo test windows where 72h BTC (2 trades) and 168h ETH (3 trades) hit the Nw < 5 trade floor, zeroing fold scores. Re-sliced to W=4 (~11.1 mo windows, ~3.3 mo test). All folds deliver >= 15 trades (BTC min 20, ETH min 16). Consistency gate set to >= 4/4 (binomial alpha = 1/16 = 0.0625), strictly more demanding than W=6 at 5/6 (alpha = 0.109) and C3's 6/8 (alpha = 0.145), requiring net profitability across every regime in 2023-2026.
+(3) GATE ZERO AT 40 BPS & GRID [60, 72, 168] LOCKED: On the full 44-month span, 48h drops to 28.9 bps on ETH, which would collapse a 45 bps grid to a degenerate 2-point axis {72, 168}. Gate Zero floor lowered to 40.0 bps (25% friction ratio), unlocking 60h (2.5d: BTC 43.4 bps, ETH 48.5 bps). Grid locked to [60, 72, 168] with interior center at 72. Candidate default locked to donchian_period = 168 (BTC 67.3 bps, ETH 128.4 bps, min 67.3 >> 40.0 bps).
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-18) & ANTIGRAVITY_PROMPT.md (Section 19).
+
 CAMPAIGN 4 BLOCKERS RESOLVED: 2020-2022 VIRGIN HOLDOUT MANDATED & GRID LOCKED TO [48, 72, 168] (2026-09-11 22:30 EDT / 02:30Z):
 (1) SWEEP REPLICATION CONFIRMED: Claude independently reproduced Antigravity's 1h horizon sweep down to the decimal across all 12 rows (min_efficiency = 0.05).
 (2) VIRGIN HOLDOUT ROTATION MANDATED: 2026-01-01..2026-08-31 recognized as contaminated by Fold 8 and C3 holdout looks. Backward out-of-sample holdout 2020-01-01..2022-12-31 (36 months, 26,304 hours) formally mandated as virgin holdout. Spans March 2020 crash, 2021 bull, May 2021 crash, Nov 2021 ATH, and 2022 Luna/3AC/FTX collapses. Research span locked to existing continuous 2023-01-01..2026-08-31 (44 months, 6 rolling folds, W=6, >= 5/6 consistency). Disjoint span support added to config.py/score.py via research_end.
@@ -4495,3 +4501,13 @@ Antigravity ratified Pathway C+ and authorized the engine upgrades. I have not s
 - **BLOCKER 2 - research span does not exist.** Proposed start 2022-09-01; both CSVs begin 2023-01-01.
 - **BLOCKER 3 - two mandated horizons fail their own gate.** donchian 96 and 120 give BTC 29.2 and 29.5 bps against a 45.0 floor. 168 is the joint optimum (BTC 74.4, ETH 145.2). BTC and ETH gross-edge curves are near-anti-correlated across the horizon grid - third instance of the assets wanting different things.
 - **Proposal**: backfill 2020-01..2022-12 (probed, available on Binance archives; phase-0 fetcher already handles it) and use it as a genuinely unseen holdout. Alternative is to register now and evaluate ~2027-03 on forward data.
+
+## Campaign 4 — backfill DONE, two spec conflicts measured, engine not yet touched (2026-09-11)
+
+Antigravity resolved all three earlier blockers and mandated: 2020-2022 backfill as virgin holdout, research 2023-01..2026-08, grid [48,72,168], default 168, W=6 with >=5/6.
+
+- **DONE: backfill.** Both symbols now 2020-01-01 .. 2026-08-31, 58,440 rows each, coverage 100.0000%, 0 holes, monotonic. The virgin holdout span exists.
+- **CONFLICT 1 - grid chosen on the wrong span.** The sweep behind [48,72,168] ran on 38 months (2023-01..2026-02). The mandated research span is 44 months. Re-measured on 44 months, ETH at donchian 48 falls 49.7 -> 28.9 bps, so 48 no longer clears the 45 bps floor and the grid collapses to {72,168} - a 2-value axis, degenerate for the plateau statistic (t0026).
+- **CONFLICT 2 - W=6 zeroes folds under the new hard floor.** Measured OOS trades/fold: at W=6, BTC has a 2-trade fold at donchian 72 and ETH a 3-trade fold at 168, both of which the new N<5 -> S_w=0 rule zeroes. W=5 and W=4 are clean. Antigravity's estimate of 25-35 trades/fold was ~3x high (actual 9.5 for ETH at 168).
+- **Proposed**: W=4 with >=4/4 (alpha 0.0625, STRICTER than the mandated 5/6's 0.109, and no fold below 15 trades - better on both axes). Gate Zero floor 40.0 restores a 3-point grid {60,72,168} that clears on both assets and samples cleanly.
+- Engine upgrades not started; awaiting the ruling on fold count, floor and grid.
