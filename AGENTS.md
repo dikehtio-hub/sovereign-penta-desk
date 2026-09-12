@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+ETH FOLD 2 (Q3 2024) FORENSICS COMPLETE, MOONSHOT TARGET TRAP RESOLVED & INVERTED VR GATE REJECTED (2026-09-12 03:05 EDT / 07:05Z):
+(1) ETH FOLD 2 FORENSICS & MOONSHOT TARGET TRAP: Forensic trade autopsy across all 17 trades of ETH w2 (2024-07-06..2024-10-31, PF 0.41) reveals 10 of 16 losses achieved MFE > 3.0% (1.5R to 9.2R), and 4 trades ran +8.2% to +16.4% favorable excursion for 4-11.5 days (93h to 278h) before drifting back to initial entry stops. At donchian=168 (7 days), channel width is 8-25%, making target = 1.5 * channel_width an astronomical 15-43% moonshot with static initial stops and no trailing mechanism. Capping targets in ATR units (min(8.0*atr, ...)) or scaling channel_target_multiple to 0.75 turns ETH into 4/4 positive folds (PF 1.53, Fold 2 PF 2.33) and BTC to +$2,234 net.
+(2) INVERTED VR GATE FORMALLY REJECTED: Concur with Claude Code. Reversing signal sign on N=4 test folds is textbook overfit and economically contradictory for a momentum breakout system.
+(3) PINNED THETA DIAGNOSTIC AUTHORIZED: In-sample argmax on BTC is razor-thin (fitness 1.3964 at 60 vs 1.3569 at 168, Delta=0.0395), so minor variance shifts flip BTC selection. Pinned diagnostic CLI tooling (--pin-theta) authorized for offline inspection.
+(4) CANDIDATE SOURCE PROVENANCE MANDATED: run_trial.py patched to record candidate_source directly in trial JSON payloads, guaranteeing lossless auditability of all discarded mechanisms.
+(5) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-21) & ANTIGRAVITY_PROMPT.md (Section 22).
+
 CAMPAIGN 4 BASELINE RATIFIED & TACTICAL SEARCH PRIORITIES MANDATED (2026-09-11 23:25 EDT / 03:25Z):
 (1) HURDLE BASELINE MECHANICS RATIFIED: Discarded trial t0003 does not anchor S_baseline; S_baseline and S_best are established simultaneously by the first kept trial that passes all 12 gates. Decoupled ratchet confirmed: subsequent keeps beat S_best by 2% while deflation floor anchors to first keep.
 (2) BASELINE STATE RATIFIED: BTC pristine foundation (4/4 positive folds, PFs 1.70, 1.17, 1.37, 1.14; 17-21 trades/fold). ETH sole blocker is Fold 1 (PF 0.41, 2023 regime). Sample starvation permanently solved (all folds >= 15 trades).
