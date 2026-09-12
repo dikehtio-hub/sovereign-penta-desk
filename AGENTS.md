@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+SHAPE RESCOPING BREAKTHROUGH (S=1.87), PROVENANCE AUDIT VERIFIED & ETH w2 TARGET SYNTHESIS (2026-09-12 05:15 EDT / 09:15Z):
+(1) SHAPE TEST CHANNEL-SCOPING DELIVERS CAMPAIGN HIGH S=1.87: Commend Claude for t0016. Scoping path-shape test to donchian_period flattened horizon-dependent admission drift (85-87% flat vs 69-93% drift). BTC cleared all gates (PF 1.87, 4/4 positive folds) with plateau surging to 1.0391 (>1.0 neighbor convexity, curing cliff edges). ETH plateau cleared 0.60 floor (0.8575) for first time on wick channel. Sole blocker is ETH w2 (PF 0.47).
+(2) ENVIRONMENTAL DISAMBIGUATION & PROVENANCE DISCLOSURE: Confirmed 100% that all Antigravity audits execute exclusively on the LIVE worktree (qtl_autoresearch). Full 9-point Gate Zero grid disclosed (BTC 32.2-70.6 bps, ETH 50.8-101.8 bps, confirming 40.37 bps as minimum boundary corner). Offline CloseHybrid audit artifact disclosed (ETH PF 1.92, 4/4 folds, +$7,422 net).
+(3) ETH w2 TARGET TRAP SOLVED ON WICK BASELINE: Forensic autopsy on ETH w2 in t0016 reveals 10-day excursions (Trades 1, 4, 13) drifting from +8-16% open profit to initial stops under 1.5x width moonshot targets. Scaling channel_target_multiple to 1.00 on t0016 turns ETH into 4/4 positive folds (Fold 2 surges 0.47 -> 1.75, PFs: [1.78, 1.75, 2.28, 1.00], plateau 1.15). Setting MAX_TARGET_ATR = 10.0 similarly yields 4/4 folds (Fold 2 at 1.84). The wick channel does not need to be abandoned.
+(4) TACTICAL SEARCH DIRECTIVE FOR t0017+: Test channel_target_multiple = 1.00 (or grid [1.0, 1.25]) in t0017, ATR target capping (10x ATR) in t0018, and breakeven ratcheting at +1.5R in t0019 to convert S=1.87 into Campaign 4's first formal keep.
+(5) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-24) & ANTIGRAVITY_PROMPT.md (Section 25).
+
 CLOSE-BASED DONCHIAN VALIDATED, GATE ZERO MARGIN UPHELD & DIAGNOSTIC REBUILD AUTHORIZED (2026-09-12 04:45 EDT / 08:45Z):
 (1) CLOSURE WITHDRAWAL RATIFIED: Commend Claude's empirical self-correction. Channel bounds built from settled closes (t0012) collapsed ETH fold PF standard deviation 5-fold (1.012 -> 0.192) and took blocking Fold 2 from -$954 (PF 0.41) to +$1,689 (PF 2.19) with no added filters. ETH cleared all gates cleanly (PF 2.39, 4/4 positive folds, plateau 0.6419). With 28 trials remaining (12/40 spent), Campaign 4 search is fully active.
 (2) GATE ZERO MARGIN UPHELD (40.37 BPS PASSES): BTC at 40.37 bps vs 40.0 bps floor is a valid pass, not disqualifying. Gate Zero is a binary necessary-condition screen to eliminate sub-10 bps noise, not an ordinal ranking metric. The 40.37 bps margin is the boundary minimum corner; across the grid BTC gross edge is 43-71 bps and ETH is 52-102 bps, providing a 4x-7x buffer over 10 bps taker friction.
