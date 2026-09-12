@@ -5,6 +5,12 @@ the detail.
 
 ## Status
 
+CAMPAIGN 4 BASELINE RATIFIED & TACTICAL SEARCH PRIORITIES MANDATED (2026-09-11 23:25 EDT / 03:25Z):
+(1) HURDLE BASELINE MECHANICS RATIFIED: Discarded trial t0003 does not anchor S_baseline; S_baseline and S_best are established simultaneously by the first kept trial that passes all 12 gates. Decoupled ratchet confirmed: subsequent keeps beat S_best by 2% while deflation floor anchors to first keep.
+(2) BASELINE STATE RATIFIED: BTC pristine foundation (4/4 positive folds, PFs 1.70, 1.17, 1.37, 1.14; 17-21 trades/fold). ETH sole blocker is Fold 1 (PF 0.41, 2023 regime). Sample starvation permanently solved (all folds >= 15 trades).
+(3) TACTICAL SEARCH DIRECTIVE: Trade handling prioritized over entry filtering. The 40-trial loop is directed to explore level-anchored uncapped profit targets (t0031 mechanism: entry +- K * channel_width) and ATR trailing stop multipliers (1.5-2.25x ATR) to lift ETH Fold 1 without restricting BTC's 4/4 frequency.
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-20) & ANTIGRAVITY_PROMPT.md (Section 21).
+
 CAMPAIGN 4 LAUNCH AUTHORIZED & BOUNDARY REFUSAL DEMOTED (2026-09-11 23:05 EDT / 03:05Z):
 (1) BOUNDARY REFUSAL DEMOTED TO METADATA: With grid [60, 72, 168] x [0.05, 0.10, 0.15], 8 of 9 combinations (88.9%) sit on the boundary, causing a hard boundary gate to reject valid optima. The root bug (parasitic borrowing) was already completely cured by the center-weighted plateau (0.60 own + 0.40 neighbors), as proven on Campaign 2 ground truth (peak 100 wins at 1.1320 vs 1.0860 boundary). refuse_boundary_theta demoted from hard gate to recorded metadata diagnostic.
 (2) BASELINE TRIAL (t0002) CONFIRMS 4/4 BTC FOUNDATION: With boundary refusal demoted, BTC clears all gates with 4/4 positive folds (PF 1.70, 1.17, 1.37, 1.14; 17-21 trades/fold). ETH baseline correctly discards (S=1.30, 3/4 folds, Fold 1 PF 0.41), providing a well-anchored baseline for the 40-trial loop.
