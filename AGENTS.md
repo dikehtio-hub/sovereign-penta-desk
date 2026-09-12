@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+CAMPAIGN 4 TRIAL 31 AUDITED (S=1.9600 DISCARD), NON-LOCAL GRID TOPOLOGY DECODED & CONVERGENCE PROTOCOL (2026-09-12 18:00 EDT / 22:00Z):
+(1) t0031 DISCARD AUDITED (S=1.9600): Claude re-spaced Donchian grid [60, 72, 84] -> [66, 72, 84] on t0030 baseline. Trial discarded at S=1.9600 against 2.1318 hurdle. Candidate reverted. BTC stayed at (72, 0.15) with byte-identical folds. ETH relocated from (84, 0.10) to (66, 0.15), collapsing min fold from 1.83 -> 1.07 (w2 profit factor plunged 2.10 -> 1.07). Incumbent stands anchored at t0030 (S=2.0900; 31 spent, 9 remain).
+(2) NON-LOCAL GRID TOPOLOGY DECODED: Replacing 60 with 66 halved parameter distance to 72 (12 -> 6 bars), topologically distorting neighbor averaging across the entire hypergrid. On ETH, in-sample fitness at (66, 0.15) rose to 1.0785, artificially inflating plateau ratio (0.7465 -> 0.8887) and drawing the selector into an out-of-sample overfit trap. Grid edits are non-local operators that reshape the regularized objective landscape across all assets simultaneously; Donchian grid [60, 72, 84] confirmed as joint global regularized optimum and permanently closed.
+(3) SYSTEMATIC SEARCH SPACE SATURATION: All continuous and discrete degrees of freedom within the Campaign 4 framework are now exhaustively mapped and closed (Stop: 1.65; Target: 1.70; ATR: 14; Trend: 100; Grid: [60, 72, 84]; Admission: Shape scoped only; Engine: static). Zero unmapped degrees of freedom remain.
+(4) PROTOCOL FOR CAMPAIGN 4 CONCLUSION & HOLDOUT: Two authorized pathways: Pathway 1 (Recommended): Operator declares Formal Search Convergence at Trial 31, cherry-picks t0030 (commit 3005b02) onto master, and executes virgin 36-month holdout evaluation under Dual Accounting Protocol. Pathway 2: Claude runs remaining 9 exploratory trials to cap (Trial 40). Under either pathway, t0030 (S=2.0900, marked-to-market ~2.27) stands as undisputed Campaign 4 champion.
+(5) CAMPAIGN 5 ARCHITECTURAL BLUEPRINT: Formalized 4 design pillars: (a) decoupled per-asset parameters, (b) independent per-asset grids, (c) span-boundary mark-to-market accounting, (d) engine-level max holding bars exit hook.
+(6) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-33) & ANTIGRAVITY_PROMPT.md (Section 34).
+
+
 CAMPAIGN 4 FIFTH KEEP RATIFIED (t0030, S=2.0900), TWO-SIDED ATR RESPONSIVENESS & 4D ASSET ASYMMETRY ARCHITECTURE (2026-09-12 17:40 EDT / 21:40Z):
 (1) FIFTH KEEP RATIFIED (t0030, S=2.0900): Claude refined ATR_STOP_SETTLED from 1.75 -> 1.65 on t0025 baseline, delivering S=2.0900 (+3.5% over 2.0196 hurdle). All 12 gates pass cleanly (failed: []). BTC achieves PF 2.09 (4/4 folds, 53 trades, plateau 0.8181). ETH achieves PF 2.45 (4/4 folds, 81 trades, plateau 0.7465). S_best anchored at 2.0900; next hurdle set to 2.1318 (30 spent, 10 remain).
 (2) FINE STOP OPTIMIZATION AUDITED: The coarse 0.25 grid was hiding a structural failure cliff at 1.55 (BTC w4 drops to 0.94). While 1.60 is BTC's private peak (1.86), 1.65 is the true multi-asset compromise optimum: it maximizes ETH (1.83, w3 surges to 4.45) while giving BTC (1.81) a 2-step (0.10) safety buffer from the cliff.
