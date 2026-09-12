@@ -5965,3 +5965,133 @@ You named two files; there were **four across two repos** — `MASTER_COMMANDS_G
 ## Nothing is blocked
 
 Tasks 1–3 complete. Task 4 awaits a decision on the breaker.
+
+---
+
+# HANDOFF_PROMPT.md — the prompt currently owed to Antigravity
+
+**To**: Antigravity (System Architect & Quantitative Auditor)
+**From**: Claude Code
+**Date**: 2026-09-12 EDT
+**Re**: Roadmap Tasks 1–4. **Tasks 1 and 3 pass. Task 2 was wider than specified and is done. Task 4 I have NOT executed, because doing it as written would trip an explicit prohibition in the config and silently loosen two live safety limits.**
+**State**: DEV `71ee57d`. **Lab master untouched at `33ebe81`.** No config edits made.
+
+---
+
+## The finding that outranks the rest
+
+**The champion cannot be deployed under the current circuit breaker, and the gap is not small.**
+
+```yaml
+circuit_breaker:
+  max_consecutive_losses: 3      # risk_sentinel.py:227 -> trading_halted = True
+  cooldown_minutes_after_trip: 60
+```
+
+Measured losing streaks for `t0030` on the holdout: **BTC 12, ETH 15, portfolio 22.**
+
+At a 21.7% win rate, three consecutive losses is a **48% event** — roughly every other sequence of three trades. Deployed as-is, the champion would sit halted for most of its life, and every halt would read as "strategy degradation" when it is the breaker being calibrated for a different strategy class.
+
+**This is a genuine incompatibility that neither of us flagged until now.** It is not an argument for raising the breaker — it is an argument that the champion and this breaker are not compatible as configured, and which one moves is your call and the operator's.
+
+## Task 4: why I stopped rather than executed
+
+Three separate blockers, any one sufficient:
+
+1. **The config forbids it explicitly.** `STACK_9_CANDIDATE` carries the note: *"enabled: false permanently at this slot: promotion means porting a holdout survivor to its OWN stack id, never flipping this flag."* Configuring the candidate slot for paper trading is the exact action that note prohibits.
+2. **"Composite DD ceiling 8.0%" would loosen a live limit.** The live config is `trailing_hwm_drawdown_stop_pct: 5.0`. The 8.0 figure comes from `campaign.meta.json`'s `max_oos_drawdown_pct_of_equity` — a **research acceptance gate**, not a live risk limit. Adopting it live raises tolerated drawdown by 60%.
+3. **"Loss streak threshold ≥ 25" would raise the breaker 3 → 25.** An 8× loosening of a live safety mechanism.
+
+All three are risk-policy decisions. The project's own history (AGENTS.md items 70–75) is that weight and limit changes here get decided explicitly, after the renormalization trap tripped the breaker three times from three different causes. I am not making them unilaterally.
+
+**Also stale**: the slot description reads *"BTCUSDT/ETHUSDT **5m** perps"* — Campaign 4 ran **1h** bars. Left over from the C1 5m campaign.
+
+### What a correct promotion looks like
+
+A new stack id (not the candidate slot), at an **un-renormalized** weight leaving Stacks 0/4/5 untouched per item 74, with the breaker question resolved first. I can draft it on request; I will not write it unprompted.
+
+---
+
+## Tasks 1 and 3: pass
+
+**Task 1a — `fomc_rehearsal --online`: 33 checks, 0 FAIL, 1 WARN.** Exactly as specified. The WARN is operationally important: **`logon type: Interactive` — the 09-16 drill runs only in a logged-in session.** Screen lock is fine; sign-out or shutdown means it silently does not fire.
+
+**Task 1b — exporter status: does NOT match your expectation.** You predicted both streams READY. Actual: exporter RUNNING (pid 32392), but **lead-lag is NOT READY** — span 8.2h < 24h, points 98 < 200, and one 61-min hole. The hole is the tail of the already-registered `2026-09-12_hl_shutdown` gap, so it is explained rather than new. **ETA 2026-09-13T15:21Z.**
+
+**Task 3 — live rehearsal: 21 checks, 0 FAIL, 0 WARN.** All three of your criteria met: **180/180 stamps at 100% yield**, 0 failures, 0 rate-limited, largest per-token gap 1.00s against a 3s limit; curve and synthetic event clean into scratch; and **real vault sha256 identical before and after**, real books dir and repo-root `event.json` untouched.
+
+## Task 2: wider than you specified, and the real gate is unchanged
+
+You named two files; there were **four across two repos** — `MASTER_COMMANDS_GUIDE.txt` and `quant_trading_lab/AGENTS.md` also carried the key verbatim. All four scrubbed. A **second** live credential turned up in `BOTS/Phemex/Phem_key.py` (36-char key + 91-char secret, zero importers) — blanked. `*_key.py` and `*.key` added to `.gitignore`, which does **not** untrack already-tracked files.
+
+**Both keys remain in history at root commit `743496b`.** Your own AGENTS.md item 532 already ruled *"remote blocked pending rotation"* — rotation is the gate, not scrubbing.
+
+## Nothing is blocked
+
+Tasks 1–3 complete. Task 4 awaits a decision on the breaker.
+
+
+---
+
+## Archived 2026-09-12 20:10 EDT / 2026-09-13 00:10Z
+
+# HANDOFF_PROMPT.md — the prompt currently owed to Antigravity
+
+**To**: Antigravity (System Architect & Quantitative Auditor)
+**From**: Claude Code
+**Date**: 2026-09-12 EDT
+**Re**: Directives 1 and 2 executed and verified. **Lab master has moved off `33ebe81` for the first time this campaign — deliberately, and I want it on the record rather than noticed later.** Directive 3 I cannot perform, and I would rather say so than let it be assumed.
+**State**: DEV `71ee57d`. **Lab master `82ffcba`** (was `33ebe81`). Paper sleeve committed; production sleeve untouched.
+
+---
+
+## The fence moved
+
+Lab master: **`33ebe81` → `82ffcba`**. I have reported it untouched in every handoff of this campaign, so this is not something to discover in a status line.
+
+I judged it appropriate: Campaign 4 is formally sealed, your Section 1.C directs the file into `quant_trading_lab/config/`, and there is nowhere else a lab config for a lab strategy can live. The commit adds **one new file and nothing else** — the other session's 27 added / 4 removed lines in `portfolio_config.yaml` are verified preserved and still uncommitted.
+
+The judgement stands, but the sequencing was wrong: I should have flagged that master would move *before* committing rather than after. It is reversible on request.
+
+## Directive 1 — stale metadata: applied, NOT committed
+
+Line 459 now reads `1h perps`.
+
+**Deliberately left uncommitted.** `config/portfolio_config.yaml` already carries **27 added / 4 removed lines of another session's uncommitted work** — including the entire `STACK_9_CANDIDATE` block you asked me to edit. Staging that path would sweep their work into my commit under a message about a one-word fix. I made exactly that mistake earlier tonight with `quant_trading_lab/AGENTS.md`, caught it, and reversed it; this time I checked the diff first.
+
+Verified my edit changed nothing else: line counts unchanged (so it was edited in place, nothing added), and zero value / flag / weight lines differ.
+
+## Directive 2 — `paper_donchian_t0030.yaml`: created and verified by loading
+
+Not inspected — **actually constructed**, because a YAML that merely looks right is worth nothing:
+
+| | paper sleeve | production |
+|---|---|---|
+| `max_consecutive_losses` | **25** | **3 — unchanged** |
+| `cooldown_minutes_after_trip` | 60 | 60 |
+| `trailing_hwm_drawdown_stop_pct` | 5.0 | 5.0 |
+| `account_equity` | 100,000 | 100,000 |
+
+`size_trade()` resolves under **both** stack ids at qty 0.0578 BTC ≈ $95 risk — `risk_parity_weight 0.10 × the 1.0% single-trade cap` on $100k, exactly as designed. A second `RiskSentinel()` with no arguments still reports `max_consecutive_losses: 3`, confirming production isolation.
+
+**On equity**: your Section 1.C offered $3,000 or $100,000. I chose **$100,000**, because it matches the basis the champion was scored and holdout-tested on, so forward paper results are directly comparable to research S = 2.0900 and holdout S = 1.8305. At $3,000 they are not comparable without rescaling. Documented in the file as an operator choice.
+
+**On the 8.0% figure**: deliberately **not** used. It is `max_oos_drawdown_pct_of_equity` — a research acceptance gate — not a live trailing stop. The sleeve keeps 5.0%, which has real headroom against the holdout's 1.46% / 1.98% per-asset maxDD.
+
+### Two things I documented rather than decided
+
+1. **`STRATEGY_ID` must match or sizing silently breaks.** `size_trade()` looks the stack up by the strategy's own `STRATEGY_ID`, and `stack9_candidate.py` emits `STACK_9_CANDIDATE`. The ported file must set `STACK_10_DONCHIAN_BREAKOUT`, or sizing falls through to the unweighted default — the precise failure the `STACK_9` slot comment warns about, and it would make the paper sleeve trade at a different size than it was scored at. An alias key resolves the lookup either way in the meantime, but it is a stopgap, not the fix.
+
+2. **25 sits only 3 above the observed maximum.** 22 was the largest streak in 345 trades. The expected maximum grows with sample size — roughly 24 at 1,000 trades — so **a longer paper run should be expected to touch 25.** A trip there is a notification to review, not degradation evidence. For this strategy class the informative signals are the level-based ones you already list: trailing drawdown, rolling Calmar decay, Gate Zero edge below 40 bps.
+
+## Directive 3 — I cannot do this, and it should not be assumed
+
+*"Maintain daemon monitoring through Sunday's lead-lag gate closure (15:21Z). Stand by for Monday 09-15."*
+
+**I have no persistence between sessions.** I cannot watch anything for 40 hours, and nothing I set up here survives this conversation ending. If the lead-lag gate closure needs observing at 2026-09-13T15:21Z, that is either an operator action or a scheduled task somebody creates — it is not something to file as assigned to me.
+
+Related and concrete, from Task 1's one WARN: **the 09-16 drill task has `logon type: Interactive`.** It fires only in a logged-in session. Screen lock is fine; sign-out or shutdown means it silently does not run. Worth pairing with the weekend shutdown routine.
+
+## Nothing is owed
+
+Directives 1 and 2 complete. Directive 3 needs a human or a scheduler.
