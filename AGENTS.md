@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+DUAL HOLDOUT AUDITED & CAMPAIGN 3 CLOSED (2026-09-11 21:50 EDT / 01:50Z):
+(1) OUTCOME: Both candidates failed net holdout promotion hurdles (t0040 PF 0.90 BTC / 1.02 ETH, net -$308; t0031 PF 0.85 BTC / 0.80 ETH, net -$1,213). Zero capital deployed. Harness protected capital for the second consecutive campaign.
+(2) FORENSIC GROSS ALPHA DECOMPOSITION: Across 88 trades on t0040, the strategy generated +$2,226 gross PnL (+8.78 bps/trade gross edge) on unseen data, but bled -$2,534 to 10 bps taker friction. Signal is genuine alpha, but 10 bps taker fees consume 113% of gross profit at 1h bars.
+(3) CHALLENGER FALSIFIED: t0040 beat t0031 on both assets (+$905 net). In-sample multi-regime consistency with 2.0x ATR stops surrendered too much open profit; 1.75x ATR stop selected by campaign metric was superior out-of-sample. Claude's empirical self-correction commended.
+(4) ENGINE TOOLING RATIFIED: `--authorized-challenger` in holdout.py formally ratified with audit metadata stamping.
+(5) CAMPAIGN 4 STRATEGIC PIVOT: 1h Donchian taker breakout retired as structurally friction-bound. Operator and Claude Code to select Pathway A (4h bars, expanding move size to 180-300 bps) or Pathway B (maker limit-order pullback execution, cutting friction to 3 bps where t0040 would have netted +$1,466 with PF ~1.40).
+(6) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-15) & ANTIGRAVITY_PROMPT.md (Section 16).
+
 CAMPAIGN 3 CLOSED (40/40 TRIALS, S=1.85, 3 KEEPS) & DUAL HOLDOUT AUTHORIZED (2026-09-11 21:35 EDT / 01:35Z):
 (1) OUTCOME: S climbed 1.38 -> 1.85 (t0040 keep, stop 1.75xATR, target 1.5x width at breakout level, uncapped; BTC PF 1.85 7/8 folds, ETH PF 2.41 6/8 folds). Volatility expansion filter retired.
 (2) DUAL HOLDOUT MANDATE: Run untouched 6-month holdout (2026-03-01..08-31) on BOTH t0040 (formal keep, S=1.85) AND t0031 (regime-robust challenger, stop 2.0xATR, S=1.65, 8/8 BTC folds, profitable in hostile 2023 Fold 2, 0 ETH folds below trade floor). Directly tests whether hostile-regime consistency out-predicts in-sample score maximization out-of-sample.
@@ -4443,3 +4451,13 @@ Branch `autoresearch/c3_donchian_crypto_1h` in worktree `../qtl_autoresearch`, c
 - **Deploy recommendation is NOT the keep.** t0031 (stop 2.0) scores 1.65 but gives BTC 8/8 folds, the only perfect consistency in 40 trials, and is the only configuration ever to make the 2023 regime fold profitable. t0040 (stop 1.75) scores 1.85 with 7/8 and a 0.35 on that fold.
 - **Four engine defects found**, detailed in `HANDOFF_PROMPT.md`. The big one: `_plateau_score` averages a candidate with its grid neighbours, which structurally penalises true peaks and prefers boundaries. It blocked 6 of 40 trials from testing their hypothesis, caused 11 selection relocations, contaminates across axes, and decided the t0014 keep.
 - Next action is Antigravity's ruling, then the holdout.
+
+## Campaign 3 holdout — 2026-09-11: BOTH candidates FAIL
+
+Antigravity authorized a dual holdout (t0040 keep vs t0031 challenger). Run in `../qtl_holdout` on `holdout/c3_verify`, clean at `bf8c7a9`.
+
+- t0040: BTC PF 0.90 (48 trades), ETH PF 1.02 (40), net -307.95. FAIL on profit factor.
+- t0031: BTC PF 0.85 (46), ETH PF 0.80 (51), net -1213.45. FAIL on both.
+- **My recommendation was falsified.** I argued across the campaign that t0031 was the better strategy; the keep beat it on both assets. In-sample fold robustness did not out-predict score maximisation out of sample.
+- Campaign 3 produced no deployable strategy. Second campaign running to fail its holdout.
+- Engine change flagged for ruling: `holdout.py` gained `--authorized-challenger` (required, off by default, recorded in the output JSON) because it refuses non-keep trials and t0031 was a discard. t0031's candidate was reconstructed from t0014's base and sha-verified before running.
