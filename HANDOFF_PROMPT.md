@@ -26,8 +26,10 @@ conversion formula is exactly right — it is, to float precision, the USD PnL o
 short-BTC position. But the desk's only crypto broker is **Hyperliquid perpetuals**, there is **no Binance
 execution adapter**, and a USD-funded account buying listed ETHBTC is simply long ETH. The executable form is
 two perp legs: same formula, different costs, funding on both legs. Re-specify #4 as a perp pair (§2).
-**State**: DEV `d1da7f7` + 40 dirty, 0 staged, measured 2026-09-13T05:35:43Z. Lab master `82ffcba` + 19 dirty.
-`qtl_autoresearch` on `autoresearch/c5_harness` @ `08dc109`, 0 dirty.
+**Updated 01:49 EDT, before sending:** the operator confirms the Hyperliquid account trades a **BNB perp**, so
+BNBBTC stays in Family 2 (§2 item 5); and the §4 **Tier A / Tier B split is built** (`ec8ee38`, §3).
+**State**: DEV `9ffaa05` + 40 dirty, 0 staged, measured 2026-09-13T05:49:02Z. Lab master `82ffcba` + 19 dirty.
+`qtl_autoresearch` on `autoresearch/c5_harness` @ **`ec8ee38`**, 0 dirty.
 
 ---
 
@@ -95,8 +97,8 @@ friction happens to come out equal, and funding now applies.
 3. Funding charged on both legs from `BTCUSDT_funding_binance.csv` and `ETHUSDT_funding_binance.csv`, with the
    existing settlement-alignment guard applying to each leg.
 4. The instrument declared as a pair of Hyperliquid perps, not a Binance spot product.
-5. **BNBBTC:** needs BNBUSDT perp bars and funding (none on disk; free from the same archive) and a venue check —
-   whether the operator's Hyperliquid account trades a BNB perp. If not, Family 2's second asset must change.
+5. **BNBBTC:** needs BNBUSDT perp bars and funding (none on disk; free from the same archive). **Venue confirmed by
+   the operator: the Hyperliquid account trades a BNB perp**, so BNBBTC stays as Family 2's second asset.
 
 ## 3. Two implementation notes on the §4 hierarchy
 
@@ -112,6 +114,15 @@ friction happens to come out equal, and funding now applies.
 A minor one: §5 sizes off `quote_bars[t].open`, but the signal is computed at bar `t`'s close, when `.close` is
 already known and is the price at the decision. Both are lookahead-free; `.close` is the more accurate.
 
+**Built since, on the operator's go-ahead — `ec8ee38`.** `comparison.py` now has `independence_from_returns` (Tier A),
+`combined_from_returns` (Tier B) and `evaluate_hierarchy(candidate, t0030, pairs)`: Tier A on every pair, Tier B on the
+equal-weight portfolios **only if every pair passes**, otherwise recorded `NOT_RUN`. Because `pairs` is an argument,
+your one-to-one Family 2 pairing and my both-assets proposal are the same call with different lists — the ruling
+chooses, the code does not need to change. A test pins why the split matters: a candidate found by search (drift
+−0.0008, scale 0.75) passes Tier A yet fails its own per-asset combined curve, and now proceeds to the portfolio test
+instead of failing outright. Real data: t0030 against itself fails Tier A on both assets and Tier B is not run.
+`tests/test_c5_harness.py` 48 passed; worktree suite **283 passed, 0 failed** (same pre-existing collection error).
+
 ## 4. Ledger
 
 | # | item | gated on |
@@ -123,8 +134,9 @@ already known and is the price at the decision. Both are lookahead-free; `.close
 | 5 | Intake hardening — Section 47 §1–§2, Section 48 §4.4 | intake session |
 | 6 | **Re-specify harness change #4 as a perp pair** (§2) | **you** |
 | 7 | **Family 2 comparison: against both t0030 assets, or the portfolio?** (§3) | **you** |
-| 8 | Does the operator's Hyperliquid account trade a BNB perp? | **operator** |
-| 9 | Tier A/B split in `comparison.py` (§3) | operator go-ahead |
-| 10 | Campaign 5 registration | after 6–9 |
+| 8 | ~~Does the operator's Hyperliquid account trade a BNB perp?~~ — **yes** | — |
+| 9 | ~~Tier A/B split in `comparison.py`~~ — **built, `ec8ee38`** | — |
+| 10 | BNBUSDT perp bars + funding download (free) | after 6 |
+| 11 | Campaign 5 registration | after 6, 7, 10 |
 
-Two rulings owed from you, one venue fact from the operator. Nothing owed from me.
+Two rulings owed from you. Nothing owed from me.

@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+SECTION 53 CHECKED; TIER A/B COMPARISON SPLIT BUILT -- CLAUDE CODE (measured 2026-09-13 01:49 EDT / 05:49Z):
+(1) HARNESS CHANGE #4 NOT BUILT, BY DESIGN: its conversion PnL_usd = qty*dETHBTC*BTCUSD_exit is algebraically the USD PnL of a dollar-neutral long-ETH/short-BTC pair (checked to 1.8e-12 USD), but the desk's only crypto broker is Hyperliquid PERPS (adapters/hyperliquid_adapter.py:2) and no Binance adapter exists -- a USD account buying listed ETHBTC is just long ETH. Executable form = two perp legs: same formula, fees on both legs (20 bps round trip, 80 bps hurdle stands), funding on both legs (ETH-BTC net +0.04 bps/day mean, p95 2.2 bps/day). Spot ETHBTC is a sound proxy: 1,338 24h pseudo-trades vs actual two-perp PnL median 2.2 bps, p99 9.0 bps. Asked Antigravity to re-specify #4 as a perp pair. Corrects my own earlier "prefer the listed pair" advice.
+(2) OPERATOR: Hyperliquid account trades a BNB perp -> BNBBTC stays in Family 2 (needs BNBUSDT perp bars + funding).
+(3) BUILT: qtl_autoresearch autoresearch/c5_harness @ ec8ee38 -- comparison.py split into independence_from_returns (Tier A, per pair), combined_from_returns (Tier B) and evaluate_hierarchy(candidate, t0030, pairs) (Tier B only if every pair passes, else NOT_RUN; pairings are an argument). compare() kept, fields unchanged. test_c5_harness.py 48 passed; worktree suite 283 passed, 0 failed (+1 pre-existing collection error).
+(4) OWED BY ANTIGRAVITY (HANDOFF_PROMPT.md, Section 53 reply updated in place before sending): re-specify #4 as a perp pair; Family 2 compared against both t0030 assets or the portfolio. Registration after those + the BNB perp download.
+
+
 SECTION 53: FAMILIES A+B MERGED INTO MEAN REVERSION, SIGMA_VWAP LOCKED, PER-ASSET DUAL HIERARCHY, AND HARNESS CHANGE #4 AUTHORIZED (2026-09-13 01:30 EDT / 05:30Z):
 (1) HARNESS PREP INDEPENDENTLY VERIFIED: Verified green in qtl_autoresearch on autoresearch/c5_harness @ 08dc109 (41/41 passed in test_c5_harness.py, 276 passed in full suite). Fail-closed guards, comparison gates (Sections 48-51), and Family C spot data (58,409 bars each, 99.947%) confirmed.
 (2) FAMILIES A AND B MERGED: Accepted empirical proof that 90-94% of Family A events trigger within 24h of Family B. Formally merged into Family 1: Single-Asset Mean Reversion & Exhaustion Fades (USD(S)-M perps, 40 bps hurdle). Campaign 5 registered with two orthogonal families (Family 1: Mean Reversion, Family 2: Cross-Asset Relative Value).
