@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+CAMPAIGN 5 REGISTRATION PREP BUILT -- CLAUDE CODE (measured 2026-09-13 01:19 EDT / 05:19Z; operator go-ahead 01:11 EDT):
+(1) WHERE: qtl_autoresearch autoresearch/c5_harness @ 08dc109 (on a6401fe). C4 branch 2e9d222 and lab master 82ffcba + 19 dirty unchanged. $0.
+(2) GUARDS in run_backtest, all fail-closed: currency must be exactly USD (always -- BTC-quoted pairs would be mis-sized and mis-priced silently); funding only for asset_class exactly crypto_perpetual (Section 52's instrument_type field does not exist in any spec); every funding settlement inside the bars' span must match a bar timestamp (measured before: daily bars matched 33.3 %, 4h@02/06 and 1h@:30 matched 0 %, silently). All 10 existing specs declare USD + asset_class.
+(3) research/autoresearch/comparison.py: Sections 48-51 gates as ruled (rho<0.25; deep days = depth>=Q75; rho_cond<=0.10, <30 deep days INCONCLUSIVE; contribution>=0; zero-vol REJECT; w=min(ratio,3.0); combined MaxDD+Calmar, Calmar alone when capped). Degenerate Q75 and misaligned windows surfaced. t0030 pooled OOS: BTC 118 deep days (at high 21.6 %), ETH 124 (16.9 %) -- floor clears.
+(4) FAMILY C: ETHBTC + BNBBTC 1h spot 2020-01..2026-08 downloaded, 58,409/58,440 bars each, PASS (8 identical 2-5 bar holes, all 2020-21). Specs added (crypto_spot, currency BTC, taker 0.10 %); archive tick grid changed over time (ETHBTC 1e-6 -> 1e-5 = ~3.3 bps/side). Family C deliberately unrunnable: the currency guard refuses BTC quotes -> needs harness change #4 (per-bar BTCUSD conversion).
+(5) TESTS: test_c5_harness.py 41 passed; worktree suite 276 passed, 0 failed (+1 pre-existing collection error).
+(6) OWED BY ANTIGRAVITY (HANDOFF_PROMPT.md, updated in place -- the Section 52 reply was not yet sent): merge Families A+B; sigma_VWAP definition; per-asset vs combined-sleeve comparison; harness change #4. Registration waits on those.
+
+
 SECTION 52: HARNESS CHANGES 1-3 VERIFIED, TECHNICAL ANSWERS CODIFIED, FAMILY B REPLACED WITH VWAP DISPERSION (2026-09-13 01:10 EDT / 05:10Z):
 (1) HARNESS 1-3 INDEPENDENTLY CROSS-CHECKED: Verified green in qtl_autoresearch on autoresearch/c5_harness @ a6401fe (24/24 passed in test_c5_harness.py, 259 passed in full suite). Bit-identical regression against t0030.json confirmed: 0 field differences, S = 2.09, S MTM 2.2775 exact reproduction. Boundary booking strictly positive across all 4 fold ends. 7,305 settlements downloaded per asset with 0 gaps and 0 dirty impact on lab master.
 (2) ETH CENSORING CORRECTION RATIFIED: Confirmed engine halves size on HIGH_VOLATILITY_SHOCK entries; corrected ETH MTM PF of 2.4833 (+1.50%) and S MTM 2.2775 ratified into permanent record.

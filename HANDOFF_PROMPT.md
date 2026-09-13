@@ -25,9 +25,10 @@ sentence. And a claimed write is not a write: confirm the file on disk before re
 Family A's events have a Family B trigger within 24 hours**, so A and B are one bet counted twice. The Q4
 spot guard keys on a field that **does not exist**, and the Q5 check validates the funding file while the
 misalignment it must catch is on the bar side. **Registration is not started**; I recommend it wait for your
-ruling on A and B (§5).
-**State**: DEV `ea1d773` + 40 dirty, 0 staged, measured 2026-09-13T05:08:42Z. Lab master `82ffcba` + 19 dirty.
-`qtl_autoresearch` on `autoresearch/c5_harness` @ `a6401fe`, 0 dirty.
+ruling on A and B (§5). **Updated 01:19 EDT, before sending:** the §5(b) prep work — both guards, the comparison
+gates, Family C data and specs — is built on the operator's go-ahead (§6).
+**State**: DEV `c53265e` + 40 dirty, 0 staged, measured 2026-09-13T05:19:09Z. Lab master `82ffcba` + 19 dirty.
+`qtl_autoresearch` on `autoresearch/c5_harness` @ **`08dc109`**, 0 dirty.
 
 ---
 
@@ -126,7 +127,45 @@ Proposed order: **(a)** you rule on §2; **(b)** meanwhile, with the operator's 
 depend on that ruling — the gate computations, both guards, and the Family C download and specs; **(c)** then
 registration, once the family set is fixed.
 
-## 6. Ledger
+## 6. Update: §5(b) is built — `08dc109`
+
+The operator gave the go-ahead. Record: `C5_HARNESS_BUILD.md`, section "Prep work for registration".
+
+**Guards, both fail-closed.** Funding is accepted only when a spec's `asset_class` is exactly `crypto_perpetual`
+— the field the specs already carry, so no `instrument_type` is needed; a missing field refuses. Any funding
+settlement inside the bars' span that matches no bar timestamp raises. And a third guard the Family C work
+exposed: **any spec whose `currency` is not exactly `USD` is refused outright** — sizing budgets risk in account
+USD and `net_pnl_usd` is computed in the quote currency, so a BTC-quoted pair would be wrong by the BTC price with
+no error. All ten existing specs declare `USD` and an `asset_class`; nothing existing is affected.
+
+**Comparison gates** — `research/autoresearch/comparison.py`, implementing Sections 48–51 as ruled, thresholds as
+arguments. Two cases the rulings did not cover are surfaced rather than guessed: a degenerate Q75 (benchmark at
+its high on 75 %+ of days) and misaligned fold windows (raises). On t0030's own pooled OOS MTM the conditioning
+set is healthy:
+
+| asset | OOS days | at a high | Q75 depth | deep days | daily σ | max DD | Calmar |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| BTCUSDT | 472 | 21.6 % | 0.365 % | **118** | 0.095 % | 0.909 % | 3.89 |
+| ETHUSDT | 472 | 16.9 % | 0.488 % | **124** | 0.137 % | 1.029 % | 6.47 |
+
+**One registration detail this raises for you**: the rulings compare "the candidate" with "t0030" but never say
+whether that is **per asset** — BTC candidate against BTC t0030, both assets required to pass — or on the
+combined BTC + ETH sleeve. The module compares two series; the registration must say which two.
+
+**Family C data**: `ETHBTC` and `BNBBTC` 1h spot 2020-01 → 2026-08, **58,409 of 58,440 bars each (99.947 %)**, PASS.
+Eight holes of 2–5 bars at identical timestamps in both pairs — exchange outages, all 2020–21, none in the research
+span. **Family C specs** added: `crypto_spot`, `currency: BTC`, taker 0.10 %, 1 tick. The archive's tick grid
+**changed over time** — ETHBTC 0.000001 → 0.00001, BNBBTC 1e-7 → 0.000001 — and at ETHBTC ≈ 0.03 a 0.00001 tick
+is **~3.3 bps per side**, a cost the 80 bps hurdle should know about.
+
+**Family C cannot be scored yet, deliberately.** The currency guard refuses both specs. Scoring them needs a
+per-bar BTCUSD conversion applied to sizing and PnL — **harness change #4**, which Section 49's Family C ruling did
+not include. It needs your ruling before registration, like §2.
+
+**Verification**: `tests/test_c5_harness.py` 41 passed (was 24); full worktree suite **276 passed, 0 failed**, the
+same single pre-existing collection error.
+
+## 7. Ledger
 
 | # | item | gated on |
 | --- | --- | --- |
@@ -136,8 +175,10 @@ registration, once the family set is fixed.
 | 4 | Will the remote be private? — decides `raw/fetched/` tracking | operator |
 | 5 | Intake hardening — Section 47 §1–§2, Section 48 §4.4 | intake session |
 | 6 | **Families A and B: merge, and is a third family needed?** (§2) | **you** |
-| 7 | σ_VWAP definition (§1); fail-closed spot guard (§3); bar-side settlement match (§4) | you, then Claude Code |
-| 8 | Gate computations, guards, Family C data and specs (§5b) | **operator go-ahead** |
-| 9 | Campaign 5 registration | after 6–8 |
+| 7 | σ_VWAP definition (§1); confirm the fail-closed guards as built (§3, §4, §6) | you |
+| 8 | ~~Gate computations, guards, Family C data and specs~~ — **built, `08dc109`** | — |
+| 9 | **Per-asset or combined-sleeve comparison?** (§6) | **you** |
+| 10 | **Harness change #4: quote-currency conversion for Family C** (§6) | **you**, then operator go-ahead |
+| 11 | Campaign 5 registration | after 6, 7, 9, 10 |
 
-One ruling owed from you, two design confirmations, and one go-ahead from the operator. Nothing owed from me.
+Three rulings and one confirmation owed from you. Nothing owed from me.
