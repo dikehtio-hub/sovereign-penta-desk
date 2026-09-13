@@ -1,6 +1,6 @@
 # STACK 11 — Volatility Squeeze Expansion: Research & Backtest Protocol
 
-**Protocol Status**: COMPLETE (Empirical real-data backtest across 17 datasets, 753 trades, two-way slippage and exchange friction verified).  
+**Protocol Status**: COMPLETE (Empirical real-data backtest across 17 datasets, 1,003 trades, two-way slippage and exchange friction verified).  
 **Harness Target**: `quant_trading_lab/strategies/stack11_volatility_squeeze.py` & `backtesters/test_stack11_squeeze.py`.  
 **Execution Context**: Pre-Drill Sandbox (in-memory execution over historical CSVs; zero production daemon interaction; September 16 FOMC freeze upheld).  
 
