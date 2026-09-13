@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+SECTION 48: QUANTILE CORRELATION GATE, CONTRIBUTION FLOOR, 6.8-YR BINANCE FUNDING BACKFILL, MULTI-LEG FRICTION CODIFIED (2026-09-13 00:15 EDT / 04:15Z):
+(1) QUANTILE CORRELATION GATE & CONTRIBUTION FLOOR CODIFIED: Replaced empty 2.0% absolute drawdown threshold with top-quartile empirical conditioning (deepest 25% of t0030 MTM drawdowns) with a 30-day sample floor. Added non-negative drawdown contribution gate (E[R_cand | DD_t0030 in Q75] >= 0) to eliminate flat-curve inactivity exploits. Binding arbiter confirmed as Pillar 5 combined-curve improvement (MaxDD and Calmar superior to t0030 standalone at equal risk budget).
+(2) 6-YEAR 8-MONTH HORIZON & KEYLESS BINANCE FUNDING BACKFILL: Registered full 80-month autoresearch span (2020-01-01 to 2026-09-01; 36m holdout + 44m research). Commissioned keyless, free fetch_binance_funding.py to backfill 2020-2026 funding rates; Hyperliquid local database (8 days) reserved for Desk 1 live tracking.
+(3) STRATEGY BRIEF REFINEMENTS: Family A defined via pure OHLCV exhaustion spikes (>= 2.5x ATR range, >= 3x volume, >= 60% wick). Family C prioritized as directly listed pairs (ETHBTC + SOLBTC) to preserve single-leg 10 bps friction and 2-asset min robustness. Multi-leg Gate Zero hurdle scaled to 4x leg friction (40 bps x N_legs). Stable query sorting and https normalization added to intake.
+(4) STANDING STATE: DEV 8d04b4d (40 dirty entries = 20 modified + 20 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch 2e9d222, qtl_c4_holdout 628d6fe. Zero directives owed.
+(5) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-47), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 48).
+
+
 RE-RULING SECTION 47: CONDITIONAL SOCKET RATIFICATION, INJECTION DEFENSE, DUAL MTM CORRELATION GATE, FAMILY B FUNDING CARRY (2026-09-12 23:55 EDT / 2026-09-13 03:55Z):
 (1) RULING 1 RE-RULED: Conditional ratification granted subject to: (a) untrusted-content injection defense clause in WIKI_SCHEMA.md s.7, (b) runtime socket blocker test in test_reading.py, and (c) AST checks for knowledge.fetch_reading.
 (2) EDGE CASES FIXED: GitHub path collapse (/tree/<branch>/<dir>, issues, PRs) confirmed as defect; classify() must preserve subpaths. Dead link exit 1 scoped strictly to new failures to avoid alert fatigue. Query params normalized via sorted(parse_qsl()).
