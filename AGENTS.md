@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+SECTION 56: FAMILIES 1 & 2 CLOSED AT GATE ZERO, DEFECT-ENG-001 (ENGINE SLIPPAGE) CODIFIED FOR BRANCH FIX, SECTION 55 CORRECTIONS RATIFIED, AND CAMPAIGN 5 CROSSROADS DEFINED (2026-09-13 03:35 EDT / 07:35Z):
+(1) GATE ZERO INDEPENDENTLY AUDITED & RATIFIED: Audited 41e2c32 (75/75 passed in test_c5_harness.py, 310 passed in full suite). F1 v0 BTC -3.11 / ETH -3.90 bps vs 40; F1 exhaustion intersection BTC -23.25 / ETH -10.99; F1 pure exhaustion BTC -18.02 / ETH -16.07; F2 v0 ETHBTC -16.18 / BNBBTC -9.54 vs 80. 0 of 168 settings clear hurdle; best +11.87 bps (35 ETH trades). Payoff 1.8-2.3x stop hit 27-35% = break-even/negative EV.
+(2) RULING 1 (FAMILIES 1 & 2 CLOSED): Under Section 46 Ruling 4, Families 1 & 2 are formally closed (FAIL). Registration cancelled. Unprincipled filter hunting barred.
+(3) RULING 2 (DEFECT-ENG-001 CODIFIED): backtesters/engine.py:246 shifted entry and exit by -direction*slip, cancelling slippage from gross PnL since 50c9bdf (2026-08-18). Crypto perps impact de minimis (~$15-$20 across t0030's 134 trades); futures impact substantial ($20-$25/contract round trip). Authorized branch bugfix/engine-slippage-signs off master to fix formula, re-score t0030.json, and audit futures stacks.
+(4) RULING 3 (CAMPAIGN 5 CROSSROADS): Formulated Operator choice between Path A (Reading Intake Family 3 Screen) and Path B (Park Autoresearch & Focus on Sovereign Incubation / Sept 16 FOMC Rehearsal).
+(5) FOUR CORRECTIONS RATIFIED: Struck Gate Zero formula contradiction in Re line; confirmed intrabar exit error bound; acknowledged quote leg fee sizing disclosure; ratified BNB Tier 1 pre-span warm-up on spot bars (25,336 bars).
+(6) STANDING STATE: DEV 6579c35 (40 dirty entries = 19 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch on autoresearch/c5_harness @ 41e2c32, qtl_c4_holdout 628d6fe. Zero directives owed.
+(7) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-55), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 56).
+
+
 CAMPAIGN 5 GATE ZERO MEASURED: NEITHER FAMILY CLEARS -- CLAUDE CODE (measured 2026-09-13 03:20 EDT / 07:20Z; operator go-ahead "Gate Zero first" 02:58 EDT):
 (1) WHY: Section 55 cleared registration + loop launch, but Section 46 Ruling 4 (ANTIGRAVITY_ARCHIVE.md:3594) bars registration until Gate Zero is measured, and no Campaign 5 candidate existed. Operator chose Gate Zero first. Nothing registered, no loop, $0.
 (2) BUILT: qtl_autoresearch autoresearch/c5_harness @ 41e2c32. strategies/c5_meanrev_candidate.py (F1 v0 VWAP-dispersion fade + ExhaustionFadeCandidate / PureExhaustionCandidate measurement variants) and strategies/c5_pair_candidate.py (F2 v0 log-ratio z divergence), 3 tunables / 27-point grids, fences clean. gate_zero.py: measure_pair (gross = _pair_close_net_pnl with both legs' costs zeroed; bps of alt-leg entry notional), funding reported apart from gross on both paths, --candidate/--assets/--hurdle/--grid. test_c5_harness.py 75 passed (16 new, mutation-checked); worktree suite 310 passed, 0 failed (+1 pre-existing collection error).
