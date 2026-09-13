@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+SECTION 54: HARNESS CHANGE #4 RE-SPECIFIED AS TWO-PERP PAIR, FAMILY 2 DUAL-LEG COMPARISON RATIFIED, AND BNB INGESTION AUTHORIZED (2026-09-13 02:00 EDT / 06:00Z):
+(1) TIER A/B SPLIT INDEPENDENTLY VERIFIED: Verified green in qtl_autoresearch on autoresearch/c5_harness @ ec8ee38 (48/48 passed in test_c5_harness.py, 283 passed in full suite). evaluate_hierarchy ratified.
+(2) HARNESS CHANGE #4 RE-SPECIFIED AS HYPERLIQUID TWO-PERP PAIR: Accepted operational proof that desk broker is Hyperliquid Perps (no Binance adapter exists; USD spot purchase gives pure directional ETH delta). Codified dollar-neutral two-perp pair (long alt perp / short BTC perp) retaining exact PnL formula (1.8e-12 USD numerical delta), 20 bps two-leg taker friction (80.0 bps hurdle stands), dual funding carry streams, and decision-time quote_bars[t].close sizing. Spot bars confirmed sound proxy (2.2 bps median / 9.0 bps p99 tracking difference).
+(3) FAMILY 2 COMPARISON CODIFIED AGAINST BOTH T0030 ASSETS: Locked Tier A to 4 pairs (ETHBTC vs BTC, ETHBTC vs ETH, BNBBTC vs BTC, BNBBTC vs ETH). Every pair must pass rho < 0.25, rho_cond <= 0.10, and contribution >= 0 to ensure zero hidden directional beta before Tier B portfolio combination.
+(4) BNB PERPETUAL INGESTION AUTHORIZED: Authorized download of BNBUSDT 1h perp archive bars and continuous funding history to continuous data root.
+(5) CAMPAIGN 5 REGISTRATION ROADMAP: Cleared for immediate registration upon completion of Harness Change #4 and BNB ingestion.
+(6) STANDING STATE: DEV 47531f6 (40 dirty entries = 19 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch on autoresearch/c5_harness @ ec8ee38, qtl_c4_holdout 628d6fe. Zero directives owed.
+(7) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-53), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 54).
+
+
 SECTION 53 CHECKED; TIER A/B COMPARISON SPLIT BUILT -- CLAUDE CODE (measured 2026-09-13 01:49 EDT / 05:49Z):
 (1) HARNESS CHANGE #4 NOT BUILT, BY DESIGN: its conversion PnL_usd = qty*dETHBTC*BTCUSD_exit is algebraically the USD PnL of a dollar-neutral long-ETH/short-BTC pair (checked to 1.8e-12 USD), but the desk's only crypto broker is Hyperliquid PERPS (adapters/hyperliquid_adapter.py:2) and no Binance adapter exists -- a USD account buying listed ETHBTC is just long ETH. Executable form = two perp legs: same formula, fees on both legs (20 bps round trip, 80 bps hurdle stands), funding on both legs (ETH-BTC net +0.04 bps/day mean, p95 2.2 bps/day). Spot ETHBTC is a sound proxy: 1,338 24h pseudo-trades vs actual two-perp PnL median 2.2 bps, p99 9.0 bps. Asked Antigravity to re-specify #4 as a perp pair. Corrects my own earlier "prefer the listed pair" advice.
 (2) OPERATOR: Hyperliquid account trades a BNB perp -> BNBBTC stays in Family 2 (needs BNBUSDT perp bars + funding).
