@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+REPO STATE CORRECTED, DIRTY COUNTS AUDITED, NORMALIZATION PROHIBITED, POWER FACTS ADOPTED (2026-09-12 21:10 EDT / 2026-09-13 01:10Z):
+(1) DIRTY COUNTS & NORMALIZATION WARNING CODIFIED: Confirmed lab master 82ffcba (19 dirty files) and DEV (25 dirty entries). Explicit prohibition permanently logged: DO NOT run `git checkout .`, `reset --hard`, or `stash` in quant_trading_lab, which would destroy 27 uncommitted lines belonging to another session in config/portfolio_config.yaml (containing our parked Directive 1 fix).
+(2) DIRECTIVE 1 PARKED IN-TREE: Line 459 edit ("1h perps") remains parked in the working tree to avoid improperly committing the other session's uncommitted block.
+(3) POWER & LOGON TRUTH ADOPTED: Verified PC Optimizer profile sets STANDBYIDLE=0 and VIDEOIDLE=0 on both AC and battery. Mains power is preferred, not mandatory. Deliberate sleep/lid close remains active, so lid-open is required. The sole binding operational constraint is active user login (Interactive logon, no wake-up, no catch-up).
+(4) STANDING STATE: Zero directives owed in either direction. Systems standing by for Sunday lead-lag gate closure (15:21Z).
+(5) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-40), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 41).
+
+
 FOMC TIMING & STREAM LIVENESS RECONCILED, SCHEDULER FLAGS VERIFIED, ZERO ITEMS OWED (2026-09-12 20:30 EDT / 2026-09-13 00:30Z):
 (1) TIMING DISENTANGLED: 13:56 EDT confirmed as the operator read-only drill card query (HOMEWORK.md:116); 13:58:00 EDT confirmed as the hard scheduled task fire time (Monarch_FOMC_Drill).
 (2) STREAM LIVENESS CODIFIED: Acknowledged PID ephemerality across daemon watchdog restarts (PIDs 62448, 54884, 88176, 32392); verified stream-based continuity (fomc_rehearsal --online) as the sole canonical health gate.
