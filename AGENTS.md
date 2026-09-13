@@ -5,6 +5,17 @@ the detail.
 
 ## Status
 
+SECTION 55: FIVE CORRECTIONS RATIFIED, BNB TIER 1 40-DAY EXEMPTION GRANTED, BNBBTC RETAINED UNDER GROSS ALPHA DEMARCATION, AND CAMPAIGN 5 REGISTRATION CLEARED (2026-09-13 02:40 EDT / 06:40Z):
+(1) HARNESS CHANGE #4 INDEPENDENTLY VERIFIED: Verified green in qtl_autoresearch on autoresearch/c5_harness @ 4ee6199 (59/59 passed in test_c5_harness.py, 294 passed in full suite). Closed-form identity test pinned (exact to 1.8e-12 USD). Real-data ETHBTC two-perp fold replay and 4-pair hierarchy confirmed.
+(2) FIVE CORRECTIONS RATIFIED: Distinct crypto_perp_pair asset class ratified; per-leg perp slippage ticks ratified; fee basis on one leg's notional confirmed; funding cash-flow formula (-rate_alt*N_alt + rate_quote*N_quote) locked; empirical BNB measurement accepted.
+(3) FOUR ENGINE AUDIT POINTS CONFIRMED: Slippage signs verified correct (two ticks subtracted per leg across both long and short pairs); exit conversion at quote close sound; alt-leg sizing confirmed; regime throttle on ratio window ratified.
+(4) BNB TIER 1 SPAN GRANTED 40-DAY BOUNDARY EXEMPTION: Granted instrument-inception boundary exemption starting at 2020-02-10 08:00 UTC (capturing 100% of Covid crash, Luna, 3AC, and FTX across 34.7 months). Research span 100% complete and unaffected.
+(5) BNBBTC RETAINED UNDER GROSS ALPHA DEMARCATION RULE: Preserved spot ratio bars for intrabar barrier integrity; 80.0 bps Gate Zero hurdle must be satisfied by gross capital returns alone (E[PnL_gross] >= 80.0 bps before funding carry), preventing passive carry from masquerading as signal alpha.
+(6) CAMPAIGN 5 REGISTRATION CLEARED: Authorized Claude Code to formally register campaign.meta.json and launch the autonomous research loop.
+(7) STANDING STATE: DEV cb78d37 (40 dirty entries = 19 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch on autoresearch/c5_harness @ 4ee6199, qtl_c4_holdout 628d6fe. Zero directives owed.
+(8) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-54), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 55).
+
+
 HARNESS CHANGE #4 BUILT (TWO-PERP PAIR) + BNB DATA -- CLAUDE CODE (measured 2026-09-13 02:26 EDT / 06:26Z; operator go-ahead 02:11 EDT):
 (1) WHERE: qtl_autoresearch autoresearch/c5_harness @ 4ee6199. C4 branch 2e9d222 and lab master 82ffcba + 19 dirty unchanged. $0.
 (2) BUILT: backtesters/engine.py run_pair_backtest (long alt perp / short qty*ratio_entry quote perp, dollar-neutral at entry; per-leg perp slippage + taker fee via _pair_close_net_pnl, which equals qty*dRatio*quote_exit exactly with costs off; alt-leg sizing through size_trade at quote close; per-leg funding through the shared settlement guard; daily MTM). run_backtest refuses crypto_perp_pair specs. mtm.replay_oos_pair builds folds on the QUOTE leg's bars (t0030's grid). Specs: ETHBTC/BNBBTC -> crypto_perp_pair on Hyperliquid with legs {alt, quote}; new BNBUSDT perp spec.

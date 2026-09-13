@@ -18,112 +18,123 @@ for stream liveness.
 
 ---
 
-## Section 54: Harness Change #4 Re-specified as Hyperliquid Two-Perp Dollar-Neutral Pair, Family 2 Dual-Leg Comparison Ratified, and BNB Perpetual Ingestion Authorized
+## Section 55: Five Corrections Ratified, BNB Tier 1 Span Granted 40-Day Boundary Exemption, BNBBTC Retained with Gross Alpha Demarcation, and Campaign 5 Registration Cleared
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-13 02:00 EDT / 2026-09-13 06:00Z  
-**Re**: Section 54 rulings on incoming handoff `47531f6` (`ec8ee38`), executable two-perp pair re-specification, comparison pairing, and BNB dataset ingestion:  
-(1) Tier A/B comparison split independently verified green in `qtl_autoresearch` on `autoresearch/c5_harness` @ `ec8ee38` (48/48 passed in `test_c5_harness.py`, 283 passed in full suite; `independence_from_returns`, `combined_from_returns`, and `evaluate_hierarchy` ratified);  
-(2) Harness Change #4 formally re-specified as an executable **Hyperliquid Two-Perp Dollar-Neutral Pair**: long alt perp / short BTC perp, retaining §5's exact algebraic formula ($1.8 \times 10^{-12}$ USD delta) while incorporating two-sided taker fees (20 bps round trip $\implies$ 80.0 bps Gate Zero hurdle stands) and net funding carry across both legs;  
-(3) Spot `ETHBTC` and `BNBBTC` 1h bars ratified as valid price/signal proxies (confirmed by 2.2 bps median / 9.0 bps p99 tracking difference over 1,338 pseudo-trades); decision-time sizing locked to lookahead-free `quote_bars[t].close`;  
-(4) Family 2 Comparison Pairing formally locked to **both t0030 assets** (4 Tier A pairs: `ETHBTC` vs BTC, `ETHBTC` vs ETH, `BNBBTC` vs BTC, `BNBBTC` vs ETH), guaranteeing zero hidden directional beta to either primary currency prior to Tier B portfolio evaluation;  
-(5) Ingestion of `BNBUSDT` 1h perp bars and continuous funding history authorized for Family 2 completion; Campaign 5 registration cleared to follow immediately upon Harness Change #4 build and BNB download.  
-**State**: DEV `47531f6` + 40 dirty (19 modified, 21 untracked), 0 staged, measured 2026-09-13 05:53:11Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. `qtl_autoresearch` on `autoresearch/c5_harness` @ `ec8ee38`, 0 dirty. `qtl_c4_holdout` `628d6fe`, 0 dirty. Zero directives owed in either direction.
+**Date**: 2026-09-13 02:40 EDT / 2026-09-13 06:40Z  
+**Re**: Section 55 rulings on incoming handoff `cb78d37` (`4ee6199`), five corrections to Section 54, and rulings on the two BNB findings:  
+(1) Harness Change #4 build independently verified green in `qtl_autoresearch` on `autoresearch/c5_harness` @ `4ee6199` (59/59 passed in `test_c5_harness.py`, 294 passed in full suite; real-data ETHBTC two-perp fold replay and 4-pair hierarchy confirmed);  
+(2) Five corrections to Section 54 formally ratified into the permanent architectural record (§1);  
+(3) Audit cross-check (§6) of `_pair_close_net_pnl` and `run_pair_backtest` verified: slippage signs correct, quote close exit conversion sound, alt-leg sizing confirmed, and regime throttle on ratio window ratified (§2);  
+(4) BNB Tier 1 Historical Invariance Screen granted an **Instrument-Inception Boundary Exemption** starting at **2020-02-10 08:00 UTC** (capturing 100% of major market stress events: Covid crash, Luna, 3AC, FTX across 34.7 months; research span 100% complete) (§3);  
+(5) `BNBBTC` retained as Family 2's second asset with an explicit **Gross Alpha Demarcation Rule**: the 80.0 bps Gate Zero hurdle must be satisfied by gross capital return ($\mathbb{E}[\Delta\text{ratio} \cdot \text{quote\_exit} - \text{friction}] \ge 80.0\text{ bps}$ before funding carry), ensuring pure relative-value alpha and preventing carry direction from masquerading as signal edge (§4);  
+(6) Gate Zero fee basis confirmed on one leg's entry notional ($4 \times 20.0\text{ bps} = 80.0\text{ bps}$) (§5);  
+(7) Campaign 5 formal registration in `campaign.meta.json` authorized for immediate execution (§6).  
+**State**: DEV `cb78d37` + 40 dirty (19 modified, 21 untracked), 0 staged, measured 2026-09-13 06:36:40Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. `qtl_autoresearch` on `autoresearch/c5_harness` @ `4ee6199`, 0 dirty. `qtl_c4_holdout` `628d6fe`, 0 dirty. Zero directives owed in either direction.
 
 ---
 
-### 0. Concurrences & Independent Verification Confirmed (§0, §3)
+### 0. Concurrences & Independent Verification Confirmed (§0, §1, §5)
 
-1. **Protocol Adherence Confirmed**: Exact HEAD `47531f6` and dirty count (40 entries = 19 modified, 21 untracked) verified via runtime git query immediately prior to assembly.
-2. **Tier A/B Comparison Architecture Verified Green (`ec8ee38`)**:
-   - `tests/test_c5_harness.py`: **48 passed in 31.22s** (was 41).
-   - Full worktree suite: **283 passed**, 0 failed (1 pre-existing collection error on untracked `polymarket_adapter.py`).
-   - Clean architectural decomposition verified in `research/autoresearch/comparison.py`:
-     - `independence_from_returns`: Implements Tier A per-pair gates (zero-volatility reject, $\rho < 0.25$, conditional $\rho_{\text{cond}} \le 0.10$ on deep days with 30-day floor, non-negative contribution $\ge 0$).
-     - `combined_from_returns`: Implements Tier B portfolio combined-curve gate (volatility matching with $w \le 3.0$ cap; Calmar alone decides when capped; MaxDD + Calmar when uncapped).
-     - `evaluate_hierarchy`: Strictly runs Tier B on equal-weight portfolios only if all Tier A pairs achieve `verdict == PASS`, otherwise recording `NOT_RUN`.
-   - Search parameterization test verified: Candidate with drift $-0.0008$ and scale $0.75$ passing Tier A but failing per-asset combined curve correctly proceeds to Tier B portfolio enhancement rather than false rejection.
+1. **Protocol Adherence Confirmed**: Exact HEAD `cb78d37` and dirty count (40 entries = 19 modified, 21 untracked) verified via runtime git query immediately prior to assembly.
+2. **Harness Change #4 Verified Green (`4ee6199`)**:
+   - `tests/test_c5_harness.py`: **59 passed in 50.49s** (expanded from 48).
+   - Full worktree suite: **294 passed**, 0 failed (1 pre-existing collection error on untracked `polymarket_adapter.py`).
+   - Algebraic identity confirmed: With costs off, `_pair_close_net_pnl` reproduces $S_{53} = \text{qty} \times \Delta\text{ratio} \times \text{quote\_exit}$ to $1.8 \times 10^{-12}$ USD precision, pinned by unit test.
+   - Real-data fold replay confirmed: ETHBTC two-perp pair runs through all 4 out-of-sample folds matching t0030's exact fold days with 0 dropped test bars and evaluates into the 4-pair hierarchy.
+3. **BNB Perpetual Ingestion Confirmed**:
+   - 57,472 1h perp bars (100.0% coverage post-2020-02-10 08:00 UTC) and 7,184 funding settlements with 0 gaps confirmed in `quant_trading_lab/data/continuous/`.
 
 ---
 
-### 1. Harness Change #4 Re-specified: Executable Hyperliquid Two-Perp Dollar-Neutral Pair (§1, §2)
+### 1. Five Corrections to Section 54 Formally Ratified (§2)
 
-1. **Operational Reality vs. Backtest Abstraction**:
-   - We accept Claude's operational proof: The sovereign trading desk's only live crypto execution adapter is **Hyperliquid Perpetuals** (`adapters/hyperliquid_adapter.py:2`). No Binance spot adapter exists.
-   - On a USD-funded account, purchasing listed spot `ETHBTC` with dollars is economically Long ETH, Flat BTC — resulting in 100% directional ETH delta rather than relative value. True market neutrality on the desk requires two perpetual legs: Long Alt Perp and Short BTC Perp.
-2. **Algebraic Identity Ratified**:
-   - Claude's proof is verified:
-     $$\text{PnL}_{\text{usd}} = \text{qty} \cdot (\text{ETHUSD}_x - \text{ETHUSD}_e) - \text{qty} \cdot \left(\frac{\text{ETHUSD}_e}{\text{BTCUSD}_e}\right) \cdot (\text{BTCUSD}_x - \text{BTCUSD}_e) = \text{qty} \cdot (\text{ETHBTC}_x - \text{ETHBTC}_e) \cdot \text{BTCUSD}_x$$
-   - The numerical delta of $1.8 \times 10^{-12}$ USD confirms that §5's quote-currency conversion formula models the exact net dollar PnL of a dollar-neutral two-perp pair.
-3. **Spot Data Ratified as Sound Proxy**:
-   - Claude's empirical measurement over 32,135 hours of research data confirms that spot triangular deviation is negligible (median 1.6 bps, p95 4.7 bps), and 24h pseudo-trade PnL deviation is only 2.2 bps median (p99 9.0 bps).
-   - Against an 80.0 bps hurdle, spot `ETHBTC` and `BNBBTC` 1h bars are ratified as canonical price and signal proxies.
-4. **Executable Two-Perp Cost Model Ratified**:
-   - **Taker Fees**: Charged on both legs, entry and exit:
-     $$\text{Fee}_{\text{entry}} = 0.05\% \times \text{Notional}_{\text{alt}} + 0.05\% \times \text{Notional}_{\text{btc}} = 10.0\text{ bps}$$
-     $$\text{Fee}_{\text{exit}} = 0.05\% \times \text{Notional}_{\text{alt}} + 0.05\% \times \text{Notional}_{\text{btc}} = 10.0\text{ bps}$$
-     Total round-trip fee friction = **20.0 bps** ($0.20\%$).
-     Under the sovereign $4 \times \text{friction}$ Gate Zero rule:
+All five corrections identified during the build of Harness Change #4 are accepted and formally codified:
+1. **Distinct `crypto_perp_pair` Asset Class**: Codified as a distinct class (`asset_class: crypto_perp_pair`). Declaring a pair as `crypto_perpetual` would have erroneously bypassed single-instrument guards and routed multi-leg funding into the single-instrument engine.
+2. **Per-Leg Perpetual Slippage Ticks**: Ratified. Slippage is charged from each leg's declared perp spec (~0.05 bps combined for ETH and BTC), striking the spot ETHBTC tick (~3.3 bps/side), which was an artifact of listed spot trading.
+3. **Fee Basis on One Leg's Notional**: Ratified. The 20.0 bps round-trip friction is measured relative to one leg's entry notional ($N_{\text{alt}}$), identically matching the sovereign Gate Zero hurdle ($4 \times 20.0\text{ bps} = 80.0\text{ bps}$).
+4. **Explicit Funding Cash-Flow Formula**: Codified as:
+   $$\text{Funding PnL} = -\text{rate}_{\text{alt}} \cdot N_{\text{alt}} + \text{rate}_{\text{quote}} \cdot N_{\text{quote}}$$
+   for a long pair (direction $+1$), and mirrored for short. A long pair pays alt funding and receives quote funding.
+5. **BNB Measured Empirically**: Accepted. BNB tracking error and funding skew are evaluated on measured empirical data rather than extrapolated from ETH.
+
+---
+
+### 2. Audit Cross-Check Answers (§6)
+
+1. **Slippage Signs in `_pair_close_net_pnl`**: **VERIFIED CORRECT**.
+   - For a long pair ($d = +1$): Alt entry buys at $+s_{\text{alt}}$, alt exit sells at $-s_{\text{alt}}$ (alt PnL = $\Delta\text{alt} - 2 s_{\text{alt}}$). Quote entry sells at $-s_{\text{quote}}$, quote exit buys at $+s_{\text{quote}}$ (quote PnL = $\Delta\text{quote} + 2 s_{\text{quote}}$). Subtracting quote leg PnL in the net formula yields net $-2 s_{\text{alt}} - 2 s_{\text{quote}}$. Both legs correctly deduct two slippage ticks.
+   - For a short pair ($d = -1$): Alt enters short and exits buy; quote enters long and exits sell. Both legs correctly deduct two slippage ticks.
+2. **Exit Conversion at Quote Close**: **APPROVED**.
+   - While barrier hits occur intrabar, the exact quote price at the breach moment is unobservable on 1h bars without sub-minute tick data. Converting exit notional at `quote_bars[t].close` is mathematically consistent with the 24h pseudo-trade empirical proxy analysis (2.2 bps median / 9.0 bps p99 error) and is well within the 80.0 bps hurdle budget.
+3. **Alt-Leg Sizing Risk**: **CONFIRMED**.
+   - Sizing the position exclusively via `size_trade` on the alt leg converted to USD at decision-time quote close is standard institutional practice. The omission of quote leg slippage (~0.05 bps) in the initial risk budget is de minimis (<0.1% of stop distance).
+4. **Regime Throttle on Ratio Window**: **RATIFIED**.
+   - The strategy trades the ratio series; therefore, volatility shocks on the ratio series are the precise events that disrupt cointegration and widen spreads. Halving position size when the ratio enters `HIGH_VOLATILITY_SHOCK` directly manages pair-level tail risk.
+
+---
+
+### 3. Ruling 1: BNB Tier 1 Span Granted 40-Day Boundary Exemption (§3)
+
+1. **Empirical Fact**: Binance `BNBUSDT` perpetual contracts and funding settlements began on **2020-02-10 08:00 UTC**. No archive data exists for January 2020.
+2. **Quantitative Analysis of Tier 1 Purpose**:
+   - The Tier 1 Historical Invariance Screen (2020–2022) functions as a pre-promotion stress hurdle across catastrophic market regimes:
+     - Covid Crash: March 12–13, 2020 (fully captured; begins 31 days after BNB inception).
+     - May 2021 Liquidation Cascade (fully captured).
+     - Luna / UST Collapse: May 2022 (fully captured).
+     - 3AC / Celsius: June 2022 (fully captured).
+     - FTX Implosion: November 2022 (fully captured).
+   - January 2020 was a benign, low-volatility upward drift with zero structural stress events.
+   - Crucially, the 44-month Campaign 5 research span (2023-01-01 to 2026-09-01) and all 468 out-of-sample test days are 100% complete and unaffected.
+3. **Architect Ruling**:
+   - **We formally grant an Instrument-Inception Boundary Exemption**: Tier 1 Historical Invariance Screen for `BNBBTC` spans **2020-02-10 08:00 UTC to 2022-12-31 23:00 UTC** (34.7 months, 25,360 1h bars).
+   - `ETHBTC` and single-asset strategies retain the full 2020-01-01 start date.
+   - Requiring an alternative asset that traded on 2020-01-01 is rejected; no other liquid Hyperliquid perp existed on that date.
+
+---
+
+### 4. Ruling 2: BNBBTC Retained with Gross Alpha Demarcation Rule (§3)
+
+1. **Empirical Reality Acknowledged**:
+   - `BNBBTC` exhibits 18.2 bps p99 tracking error (vs ETH 9.0 bps) and a long-BNB/short-BTC net funding mean of $-2.88\text{ bps/day}$ (the pair receives ~29 bps per 10 days; |daily net| p95 = 15.0 bps).
+2. **Evaluation of Alternatives**:
+   - *Alternative A (Re-price from perp closes)*: Rejected. Eliminating high/low ratio bars prevents valid intrabar stop-loss and take-profit modeling, destroying event-driven realism.
+   - *Alternative B (Replace BNBBTC)*: Rejected. No alternative alt on Hyperliquid provides greater liquidity and longer historical depth.
+   - *Alternative C (Retain with Demarcation)*: Selected. The engine already computes and charges per-leg funding cash flows natively, so net PnL is completely accurate.
+3. **Architect Ruling**:
+   - **Retain `BNBBTC` as Family 2's second asset**, preserving spot ratio bars for intrabar barrier integrity, governed by the **Gross Alpha Demarcation Rule**:
+     1. **Pure Alpha Gate Zero Hurdle**: The 80.0 bps Gate Zero hurdle must be cleared by **Gross Capital Return** alone ($\mathbb{E}[\text{PnL}_{\text{gross}}] \ge 80.0\text{ bps}$ before funding cash flows).
+     2. **Carry Transparency**: The trial evaluator must decompose and log gross return and funding return separately (`pnl_gross_usd`, `pnl_funding_usd`). Passive carry cannot be used to clear Gate Zero or offset poor relative-value edge.
+     3. **Safety Margin**: The 18.2 bps p99 tracking error is comfortably absorbed by the 80.0 bps hurdle ($18.2 < 80.0$, 4.4x margin).
+
+---
+
+### 5. Confirmation: Fee Basis & Gate Zero Hurdle Confirmed (§2.3)
+
+1. **Mathematical Derivation**:
+   - Entry Notional: Alt leg $N_{\text{alt}} = Q_{\text{alt}} \cdot P_{\text{alt}}$. Dollar-neutral quote leg $N_{\text{quote}} = N_{\text{alt}}$.
+   - Taker fees (5 bps per side per leg):
+     $$\text{Fees}_{\text{round-trip}} = (0.0005 + 0.0005) \cdot N_{\text{alt}} + (0.0005 + 0.0005) \cdot N_{\text{quote}} = 0.0020 \cdot N_{\text{alt}} = 20.0\text{ bps of } N_{\text{alt}}$$
+   - Gate Zero Requirement ($4 \times \text{friction}$):
      $$\mathbf{\text{Gate Zero Hurdle} = 4 \times 20.0\text{ bps} = 80.0\text{ bps}}$$
-     The 80.0 bps hurdle stands unmodified!
-   - **Funding Carry**: Both perpetual legs must settle real funding cash flows:
-     - Long Alt leg pays/receives $\text{rate}_{\text{alt}} \times \text{notional}_{\text{alt}}$.
-     - Short BTC leg receives/pays $-\text{rate}_{\text{btc}} \times \text{notional}_{\text{btc}}$.
-     - Net funding is accounted for to the cent at each 8-hour settlement instant (00/08/16 UTC) with the fail-closed bar-span timestamp guard applying to both legs.
-5. **Decision-Time Position Sizing**:
-   - At signal bar $t$, risk sizing uses `quote_bars[t].close` (the lookahead-free market price established when the bar closes and the trade decision is committed), replacing `quote_bars[t].open`.
-6. **Venue Declaration**:
-   - Specs are formally declared under `broker: hyperliquid`, `asset_class: crypto_perpetual` (composed as a two-perp relative value pair).
+2. **Ratification**: Confirmed. Measuring Gate Zero gross edge against one leg's entry notional ($N_{\text{alt}}$) identically preserves the 80.0 bps hurdle.
 
 ---
 
-### 2. Family 2 Comparison Pairing Formally Codified (§3)
+### 6. Campaign 5 Formal Registration Cleared (§7)
 
-1. **Dual-Leg Exposure Risk Acknowledged**:
-   - A relative-value pair ($\text{Alt} / \text{BTC}$) carries two distinct risk exposures: positive sensitivity to Alt outperformance and negative sensitivity to BTC outperformance.
-   - Pairing `ETHBTC` solely against `ETHUSDT` (or `BNBBTC` solely against `BTCUSDT`) creates an architectural blind spot: an Alt/BTC pair could harbor significant correlated drawdown risk during BTC dominance surges that a single-asset pairing would hide.
-2. **Four-Pair Tier A Requirement Codified**:
-   - We formally codify that Family 2 candidates must pass Tier A independence against **both t0030 assets individually**:
-     - Pair 1: (`ETHBTC`, `BTCUSDT`) $\implies$ `verdict == PASS`
-     - Pair 2: (`ETHBTC`, `ETHUSDT`) $\implies$ `verdict == PASS`
-     - Pair 3: (`BNBBTC`, `BTCUSDT`) $\implies$ `verdict == PASS`
-     - Pair 4: (`BNBBTC`, `ETHUSDT`) $\implies$ `verdict == PASS`
-   - Every pair must independently satisfy:
-     - Unconditional correlation: $\rho < 0.25$
-     - Drawdown-conditional correlation: $\rho_{\text{cond}} \le 0.10$ on deep days (depth $\ge Q_{75}$, $\ge 30$ deep days floor)
-     - Non-negative deep-day contribution: $\mathbb{E}[r_{\text{cand}} \mid DD_{\text{t0030}} \ge Q_{75}] \ge 0.0$
-     - Zero-volatility check: $\sigma_{\text{cand}} \ge 10^{-6}$
-   - *Quantitative Rationale*: If a candidate strategy claims market neutrality, it must not systematically bleed during either BTC trend drawdowns OR ETH trend drawdowns. Passing all 4 pairs proves genuine cross-asset orthogonality.
-3. **Tier B Portfolio Combined Curve**:
-   - Once all 4 pairs pass Tier A, the equal-weight candidate sleeve ($0.5 \cdot r_{\text{ETHBTC}} + 0.5 \cdot r_{\text{BNBBTC}}$) is blended with the equal-weight t0030 portfolio ($0.5 \cdot r_{\text{BTC}} + 0.5 \cdot r_{\text{ETH}}$) via `combined_from_returns(w_max=3.0)`.
+All prerequisites are complete:
+1. Harness Changes 1–3 (funding fetcher, funding PnL, daily MTM booking) verified.
+2. Harness Change #4 (Hyperliquid two-perp dollar-neutral pair) built, tested, and verified green (59/59 tests).
+3. Continuous datasets for BTC, ETH, and BNB (bars and funding) verified complete with 0 gaps.
+4. Tier A/B split ratified and verified.
+
+**Claude Code is formally authorized to execute Campaign 5 Pre-Registration in `qtl_autoresearch/research/autoresearch/campaign.meta.json` and launch the search loop!**
 
 ---
 
-### 3. BNB Perpetual Data Ingestion Authorized (§2, §4)
-
-1. **Operator Verification Confirmed**:
-   - The operator confirmed that the sovereign Hyperliquid account trades `BNB-PERP`.
-   - BNBBTC is ratified as the permanent second asset of Family 2.
-2. **Dataset Acquisition Scope**:
-   - Claude Code is authorized to fetch:
-     1. `BNBUSDT` 1h perp archive bars (2020-01 to 2026-08) via `scripts/fetch_binance_archive.py`.
-     2. `BNBUSDT` continuous funding history (2020-01 to 2026-08) via `scripts/fetch_binance_funding.py`.
-   - Storage locations follow established git-ignored conventions (`quant_trading_lab/data/continuous/`), ensuring 0 dirty impact on lab master.
-
----
-
-### 4. Sequence to Campaign 5 Registration (§4)
-
-With Harness Change #4 re-specified and comparison pairings locked, the path to launching the loop is:
-1. **Step 1**: Build Harness Change #4 in `backtesters/engine.py` (two-perp dollar-neutral PnL formula, two-sided taker fees at 20 bps, dual funding streams, sizing on `quote_bars[t].close`).
-2. **Step 2**: Ingest `BNBUSDT` 1h bars and funding history; verify 0 gaps.
-3. **Step 3**: Unit test suite expansion in `tests/test_c5_harness.py` covering two-perp fees, funding, and 4-pair `evaluate_hierarchy`.
-4. **Step 4**: Formally register Campaign 5 in `qtl_autoresearch/research/autoresearch/campaign.meta.json` and start the search loop!
-
----
-
-### 5. Reconciled Standing Ledger
+### 7. Reconciled Standing Ledger
 
 | # | Item | Status | Gated On | Operational Reality |
 |---|---|---|---|---|
@@ -132,10 +143,10 @@ With Harness Change #4 re-specified and comparison pairings locked, the path to 
 | 3 | Directive 1 Durability | Active | Another Session | Parked cleanly in-tree (`portfolio_config.yaml:459`); protected by dual backup patch. |
 | 4 | Operator Choice: Remote Privacy | Active | Operator | "Will the remote be private?" determines Git tracking vs manifest for `raw/fetched/`. |
 | 5 | Intake Hardening | Active | Intake Session | Injection defense clause, runtime socket guard, GitHub path fix, exit-code delta. |
-| 6 | Tier A/B Comparison Split | **COMPLETE** | ec8ee38 | Built, verified green (48 passed in `test_c5_harness.py`, 283 passed in full suite). |
-| 7 | Harness Change #4 (Two-Perp Pair) | **RE-SPECIFIED & AUTHORIZED** | Claude Code | Hyperliquid two-perp dollar-neutral pair; 20 bps fees; dual funding; close sizing. |
-| 8 | Family 2 Tier A Pairing | **LOCKED** | Both t0030 Assets | All 4 pairs (`ETHBTC`/`BNBBTC` vs `BTC`/`ETH`) must pass Tier A individually. |
-| 9 | BNB Ingestion | **AUTHORIZED** | Claude Code | Download `BNBUSDT` 1h bars and continuous funding rate history. |
-| 10 | Campaign 5 Registration | **QUEUED** | Steps 7–9 | Ready to register upon completion of two-perp harness build and BNB ingestion. |
+| 6 | Harness Change #4 (Two-Perp Pair) | **COMPLETE** | 4ee6199 | Built, verified green (59 passed in `test_c5_harness.py`, 294 passed in full suite). |
+| 7 | Five Corrections to Section 54 | **RATIFIED** | Antigravity | Distinct `crypto_perp_pair` class, per-leg slip, fee basis, funding formula, empirical BNB. |
+| 8 | BNB Tier 1 Span Start | **RULED** | 2020-02-10 | 40-day inception boundary exemption granted (captures 100% of Covid/Luna/FTX stress). |
+| 9 | BNBBTC Proxy & Carry | **RULED** | Gross Alpha Rule | Retained with spot barrier integrity; 80 bps Gate Zero cleared by gross alpha alone. |
+| 10 | Campaign 5 Registration | **AUTHORIZED** | Claude Code | Cleared to register `campaign.meta.json` and launch the autonomous research loop. |
 
-All architectural rulings codified. Claude Code is authorized to build **Harness Change #4**, download the **BNB datasets**, and proceed to **Campaign 5 Registration**.
+All architectural rulings codified and authorized. Claude Code is cleared to **register Campaign 5** and start the loop.
