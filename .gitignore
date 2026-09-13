@@ -162,6 +162,8 @@ qtl_autoresearch/
 qtl_holdout/
 qtl_c4_holdout/
 qtl_*_holdout/
+# DEFECT-ENG-001 fix worktree (git worktree of quant_trading_lab on bugfix/engine-slippage-signs)
+qtl_slipfix/
 
 # Credential modules -- never track secrets (AGENTS.md item 532)
 *_key.py

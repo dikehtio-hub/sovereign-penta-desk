@@ -122,6 +122,66 @@
     "none registered: the tagged-stamp series restarts a new continuous segment from 15:21:01Z, which the two-stream gate will report on any future unbounded check"
    ],
    "round": 127
+  },
+  {
+   "id": "2026-09-13_hl_sleep",
+   "desk": 1,
+   "start_utc": "2026-09-13T07:45:38Z",
+   "end_utc": "2026-09-13T16:45:46Z",
+   "tables": [
+    "asset_snapshots (no rows 07:45:38Z -> 16:45:46Z, 9.00 h; point-in-time polls, unrecoverable)",
+    "liquidation_clusters (no rows 07:45:38Z -> 16:45:46Z, 9.00 h; unrecoverable)",
+    "orderbook_snapshots (no rows 07:45:29Z -> 16:47:58Z, 9.04 h; unrecoverable)",
+    "trades (EFFECTIVELY EMPTY: the subscribe-time backfill on resume delivered 998 rows spread 09:04Z -> 16:44Z against a live rate of ~60,000 an hour, so the interval holds well under 1 % of what was traded; unrecoverable)",
+    "liquidation_events (4 rows in the interval, 10:03Z and 14:27Z; effectively empty, unrecoverable)",
+    "latest_snapshots (stale for the whole interval)"
+   ],
+   "cause": "Overnight sleep, not a shutdown. The operator ran shutdown_all.bat and then the machine entered sleep at 03:45:55 EDT (Kernel-Power 42; a lid close or power-menu sleep) - the same shape as 2026-09-11 - and resumed at 12:41 EDT. The collector's last persisted snapshot was 03:45:40 EDT (07:45:38Z). resume_all.bat at 12:45 EDT relaunched the supervisor (pid 83292, service_start 16:45:43Z); its first child (42868) was restarted 8 s later by the silent-failure watchdog, which saw the 9-hour-old newest snapshot before the first new one landed, and the second child (64720) has run since. First new snapshot 16:45:46Z.",
+   "detected_utc": "2026-09-13T16:50:00Z",
+   "resolved_utc": "2026-09-13T16:45:46Z",
+   "resolution": "resume_all.bat; supervisor RUNNING pid 83292 with child 64720; snapshots every ~9 s across 445 assets confirmed at 16:48Z; fomc_rehearsal --online 33 checks 0 FAIL at 16:51Z.",
+   "affected_evaluations": [
+    "none registered: the FOMC drill of 2026-09-16 has not run; the Item 18 lead-lag price series restarts a new continuous segment from 16:45:46Z (exporter ETA 2026-09-14T16:45Z), which the two-stream gate will report on any future unbounded check"
+   ],
+   "round": 128
+  },
+  {
+   "id": "2026-09-13_polymarket_drops_sleep",
+   "desk": 3,
+   "start_utc": "2026-09-13T07:45:06Z",
+   "end_utc": "2026-09-13T16:45:16Z",
+   "tables": [
+    "Sports_Desk/data/polymarket_drops stamped drops (last stamps polymarket_macro_20260913T074506Z / polymarket_sports_20260913T074506Z, first new 20260913T164516Z; 9.00 h with no stamp)"
+   ],
+   "cause": "Same sleep as 2026-09-13_hl_sleep: the watcher (pid 62448 since 09-12) died with the sleep and was relaunched by resume_all.bat at 12:45 EDT as pid 95876 (16:45:12Z).",
+   "detected_utc": "2026-09-13T16:50:00Z",
+   "resolved_utc": "2026-09-13T16:45:16Z",
+   "resolution": "resume_all.bat; watcher RUNNING pid 95876; stamps resumed at the 5-minute cadence (macro and sports stamps 3.4 min old at 16:49Z).",
+   "affected_evaluations": [
+    "none registered: the tagged-stamp series restarts a new continuous segment from 16:45:16Z, which the two-stream gate will report on any future unbounded check"
+   ],
+   "round": 128
+  },
+  {
+   "id": "2026-09-11_hl_trade_batches_defect_col_001",
+   "desk": 1,
+   "start_utc": "2026-09-11T16:37:01Z",
+   "end_utc": "2026-09-13T16:56:47Z",
+   "tables": [
+    "trades (OPEN, PARTIAL: 181 flush batches discarded to date - 4,963 rows on 09-11, 5,460 on 09-12, 14,943 on 09-13 (14,226 before the sleep, 717 after the 16:45Z restart) - about 1 % of the ~60,000 trades an hour the feed records; each loss is a 10-second batch, unrecoverable)",
+    "liquidation_events (OPEN, PARTIAL: 99 events discarded in the same batches - 46 / 11 / 42 by day; unrecoverable)",
+    "orderbook_snapshots (45 sampling passes failed on the same lock; the 30-second cadence resumes on the next pass)",
+    "whale_wallets (37 persist failures on the same lock)",
+    "asset_snapshots (NOT affected: the 1 s price stream writes on a separate path and shows no hole in this interval outside the registered sleep gaps)"
+   ],
+   "cause": "DEFECT-COL-001 (Antigravity Section 57). Every ~7 minutes storage/repository.py prune_old_data runs five DELETEs in one transaction on the 8.1 GB database and run_maintenance follows with checkpoint(TRUNCATE); the exclusive lock outlasts the 30-second busy_timeout every connection already sets, so the flush thread's write fails with 'database is locked'. collectors/market_collector.py _flush_loop swaps the trade and liquidation buffers out BEFORE writing and only logs on failure (~line 351), so the swapped batch is dropped. First failed flush 2026-09-11 12:37:01 EDT, 86 seconds before the first logged maintenance pass; clusters of lock errors precede each pass since. Errors continue after the 09-13 restart (2 batches, 717 trades, at 16:55-16:56Z). Found in the 2026-09-13 morning start check; recorded nowhere before.",
+   "detected_utc": "2026-09-13T16:55:00Z",
+   "resolved_utc": null,
+   "resolution": "OPEN. Section 57 rules the fix for after the 2026-09-16 FOMC drill (daemon freeze): restore an unwritten batch to the head of its buffer on a transient write error, bounded by MAX_BUFFERED_TRADES / MAX_BUFFERED_LIQ_EVENTS; chunk the prunes into small transactions (Python's SQLite 3.45.3 is built without DELETE ... LIMIT, so chunk by rowid IN (SELECT rowid ... LIMIT n)); checkpoint PASSIVE or RESTART during collection. end_utc is the last measured failed flush and is extended when the fix deploys - this is an open gap, not a closed one.",
+   "affected_evaluations": [
+    "any evaluation over this interval that reads trades or liquidation_events - cascade_excursions and basis_realised_windows are persisted from those tables by storage/incremental_persistence - runs on streams missing ~1 % of trades and 99 liquidation events; asset_snapshots-based evaluations (Item 18 lead-lag, the FOMC drill) are unaffected"
+   ],
+   "round": 128
   }
  ]
 }
