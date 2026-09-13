@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+HARNESS CHANGE #4 BUILT (TWO-PERP PAIR) + BNB DATA -- CLAUDE CODE (measured 2026-09-13 02:26 EDT / 06:26Z; operator go-ahead 02:11 EDT):
+(1) WHERE: qtl_autoresearch autoresearch/c5_harness @ 4ee6199. C4 branch 2e9d222 and lab master 82ffcba + 19 dirty unchanged. $0.
+(2) BUILT: backtesters/engine.py run_pair_backtest (long alt perp / short qty*ratio_entry quote perp, dollar-neutral at entry; per-leg perp slippage + taker fee via _pair_close_net_pnl, which equals qty*dRatio*quote_exit exactly with costs off; alt-leg sizing through size_trade at quote close; per-leg funding through the shared settlement guard; daily MTM). run_backtest refuses crypto_perp_pair specs. mtm.replay_oos_pair builds folds on the QUOTE leg's bars (t0030's grid). Specs: ETHBTC/BNBBTC -> crypto_perp_pair on Hyperliquid with legs {alt, quote}; new BNBUSDT perp spec.
+(3) FIVE CORRECTIONS to Section 54 as written: distinct crypto_perp_pair class (not crypto_perpetual, which would pass the single-leg funding path); per-leg perp slippage (~0.05 bps), not the spot tick; fees on one leg's notional; funding as -rate_alt*N_alt + rate_quote*N_quote; BNB measured, not extrapolated.
+(4) BNB FINDINGS (rulings owed): BNBUSDT perp and funding START 2020-02-10 08:00 (no 2020-01 in the archive) -> Section 48's 2020-01-01 rule fails for the BNB pair's Tier 1 span. BNBBTC proxy vs two-perp PnL research-span p99 18.2 bps (ETH 9.0), triangle median 5.8 (ETH 1.6); long BNB/short BTC funding -2.88 bps/day mean (ETH +0.04), |daily| p95 15.0 bps -> carry can masquerade as signal.
+(5) DATA FACT: ETHBTC/BNBBTC spot each have 7 single-bar gaps the archive fetcher's hole report omits (>=2 bars only); 2023-03-24 13:00 is in the research span (fold 1 TRAIN window).
+(6) TESTS: test_c5_harness.py 59 passed (incl. real-data ETHBTC pair through 4 folds on t0030's fold days into the 4-pair hierarchy); worktree suite 294 passed, 0 failed (+1 pre-existing collection error).
+
+
 SECTION 54: HARNESS CHANGE #4 RE-SPECIFIED AS TWO-PERP PAIR, FAMILY 2 DUAL-LEG COMPARISON RATIFIED, AND BNB INGESTION AUTHORIZED (2026-09-13 02:00 EDT / 06:00Z):
 (1) TIER A/B SPLIT INDEPENDENTLY VERIFIED: Verified green in qtl_autoresearch on autoresearch/c5_harness @ ec8ee38 (48/48 passed in test_c5_harness.py, 283 passed in full suite). evaluate_hierarchy ratified.
 (2) HARNESS CHANGE #4 RE-SPECIFIED AS HYPERLIQUID TWO-PERP PAIR: Accepted operational proof that desk broker is Hyperliquid Perps (no Binance adapter exists; USD spot purchase gives pure directional ETH delta). Codified dollar-neutral two-perp pair (long alt perp / short BTC perp) retaining exact PnL formula (1.8e-12 USD numerical delta), 20 bps two-leg taker friction (80.0 bps hurdle stands), dual funding carry streams, and decision-time quote_bars[t].close sizing. Spot bars confirmed sound proxy (2.2 bps median / 9.0 bps p99 tracking difference).
