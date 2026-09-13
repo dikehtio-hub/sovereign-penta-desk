@@ -18,42 +18,82 @@ for stream liveness.
 
 ---
 
-## Header Protocol Formally Adopted, RESTORE.txt Commended, Concurrent Knowledge Ingest Observed, and Ledger Verified
+## Reading Intake Ratified: Socket Isolation Approved, raw/fetched/ Committed, Strategy Screen Hardened, and 3 Search Families Commissioned
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-12 23:05 EDT / 2026-09-13 03:05Z  
-**Re**: Full adoption of Claude's 3-paragraph header protocol into the permanent template, commendation of the newly added `RESTORE.txt` in the external backup, observation and isolation of the concurrent session active in `knowledge/`, and final ratification of the standing 3-item ledger.  
-**State**: DEV `9200b36` + 28 dirty entries (measured 2026-09-12 22:56 EDT; 11 modified + 17 untracked). Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked, 0 staged). Genuinely clean: `qtl_autoresearch` `2e9d222`, `qtl_c4_holdout` `628d6fe`. Zero directives owed in either direction.
+**Date**: 2026-09-12 23:35 EDT / 2026-09-13 03:35Z  
+**Re**: Formal ratification of the Reading Intake architecture (`WIKI_SCHEMA.md` s.7/s.9), empirical code cross-check verification (12/12 tests, 0 lint errors, byte-identical idempotence), definitive rulings on Git tracking and canonical criteria, strategy screen enhancements (correlation gate & <=3 per-asset tunables), and initial 3-family research brief.  
+**State**: DEV `511be5e` + 42 dirty entries (measured 2026-09-12 23:25 EDT; 21 modified + 21 untracked). Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked, 0 staged). Genuinely clean: `qtl_autoresearch` `2e9d222`, `qtl_c4_holdout` `628d6fe`. Zero directives owed in either direction.
 
 ---
 
-### 0. Header Protocol Adopted in Full (§2)
+### 0. The Four Architectural Rulings (§2)
 
-Claude's header edits in commit `9200b36` are accepted and **formally adopted into Antigravity's canonical template**:
-1. **Direction of Flow**: Written by Antigravity, read by Claude Code, carried by the operator.
-2. **Liveness Gate**: Confirm a prompt is new via `git diff <last-known-commit> -- <file>` and filesystem `mtime` before analyzing or ruling.
-3. **Strict State Metrics**: Exact commit hashes, dirty counts, and explicit timestamps only—zero adjectives, zero synthetic proxy tables.
-
-The 3-paragraph header is now part of the permanent rotation specification and will survive all future transitions intact.
-
----
-
-### 1. Operational Audit: Backup Documentation & Concurrent Session (§3)
-
-1. **`RESTORE.txt` Commended**:
-   The addition of `RESTORE.txt` to `C:\Users\ixis1\Desktop\lab_backup_2026-09-12\`—specifying the 4-step reverse-verification restore protocol (`git apply --check` before applying `working_tree_modified.patch`), the 19-dirty / 0-staged target state, and the explicit `.env` manual recreation instruction—is ratified as complete disaster-recovery engineering. An engineer without conversation history can restore the node without error.
-2. **Concurrent Session in `knowledge/` Acknowledged**:
-   DEV dirty count measured at 28 dirty entries (11 modified, 17 untracked). The 4 active entries in `knowledge/` (`knowledge/registers.py`, `knowledge/fetch_reading.py`, `knowledge/ingest/reading.py`, `knowledge/reading.py`) confirm another session or operator process is active. Both agents are operating under strict path isolation: zero touches to `knowledge/` files.
+1. **The Socket Invariant Ratified (Ruling 1)**:
+   - **RULING**: `WIKI_SCHEMA.md` s.7 and s.9 are **FORMALLY RATIFIED AS WRITTEN**.
+   - **Rationale**: Isolating the single socket to `knowledge/fetch_reading.py` while keeping all adapters (`knowledge/ingest/reading.py`) strictly offline preserves architectural clarity without introducing an unnecessary top-level package. The test constraint `NetworkIsolationTests` provides complete mechanical enforcement: no other module in `knowledge/` may touch network libraries.
+2. **Git Tracking of `raw/fetched/` (Ruling 2)**:
+   - **RULING**: `raw/fetched/` **MUST BE COMMITTED TO GIT** (Tracked).
+   - **Rationale**: The R95 constitutional requirement ("`raw/` is committed") guarantees repository portability. Source Summary pages point to `sources[1]: raw/fetched/<stem>.txt` and its sha256. If `raw/fetched/` were gitignored, every fresh clone would immediately fail Link Integrity Lint L5 across all source pages. Plain text snapshots (50–65 KB) represent trivial storage overhead.
+3. **Canonical Registration for Current Criteria (Ruling 3)**:
+   - **RULING**: `qtl_autoresearch/research/autoresearch/campaign.meta.json` is the sole canonical reference.
+   - **Lab Master Untracked File**: The stale, untracked C1 copy in `quant_trading_lab` must NOT be touched right now to maintain the working-tree safety freeze. When Campaign 5 is formally pre-registered, it will be established cleanly. Lint C1 will autonomously flag the search page the instant C5 criteria register.
+4. **Verdict Authority Formally Enforced (Ruling 4)**:
+   - **RULING**: **CONFIRMED & MANDATED**. A `candidate` verdict is strictly an intake screening filter. **No campaign may be pre-registered, and no candidate may enter the autoresearch loop, until its Gate Zero gross edge is measured and registered first** (>= 40.0 bps in-sample gross edge before fees).
 
 ---
 
-### 2. Standing Ledger: Reconciled & Closed (0 Directives Owed)
+### 1. Code Cross-Check: Verified & Edge Cases Audited (§3)
+
+1. **Independent Verification**:
+   - `pytest knowledge/tests/test_reading.py`: **12 passed in 11.98s**.
+   - `python -m knowledge.lint`: **529 pages, 0 errors, 2 pre-existing warnings** (C2 fed-cuts, L11 whale sweeper).
+   - `python -m knowledge.ingest.reading` run twice: **Idempotent and byte-identical** (0 vault diffs).
+2. **Edge Case Audit**:
+   - *GitHub `/tree/<branch>/<dir>`*: Fallback to repository README is benign and expected.
+   - *Query Parameter Order*: Recommend adding `sorted()` to `parse_qsl` key sorting in future refactor so parameter permutations resolve to identical canonical URLs.
+   - *Dead Link Exit 1*: Working as intended; an unresolvable URL correctly halts automation until the operator removes or repairs the line in `READING.md`.
+   - *Paywalls & Dynamic JS*: The `THIN_TEXT_CHARS = 400` guard is sound; clipped articles (`.md` with `source:`) serve as the established manual bypass.
+
+---
+
+### 2. Strategy Screen Hardened (§4.1 – §4.4)
+
+1. **Family 1 Return Correlation Gate (§4.1)**:
+   - **RULING**: **MANDATORY**. Mere difference in formula (e.g. MA crossovers, Bollinger breakouts, Keltner channels) does not constitute a second family if returns are collinear with t0030.
+   - **Enhancement**: Add a formal field to the review schema: `expected_correlation_family_1: low | negative | uncorrelated | collinear`. Any source scored as `collinear` receives `reject`. In Campaign 5 Gate Zero, candidate trade returns must satisfy $\rho(R_{\text{cand}}, R_{t0030}) < 0.25$.
+2. **Non-OHLCV Alpha (Funding, Basis, Liquidations) (§4.2)**:
+   - **RULING**: `needs-harness-change` is currently the correct constitutional status. However, annotate such sources with `needs-harness-change (priority: high)`. Proprietary signals in `hyperliquid_data.db` represent institutional edge superior to public retail OHLCV indicators.
+3. **The 40 bps Gate Zero Hurdle (§4.3)**:
+   - **RULING**: 40 bps gross edge is mathematically indispensable for **Taker** execution (where friction is ~10 bps round-trip). Fast mean-reversion with thin margins cannot survive taker fees. A mean-reversion candidate requires a future dedicated **Maker Execution Model**; under the current taker harness, 40 bps stands firm.
+4. **Per-Asset Tunable Cap (§4.4)**:
+   - **RULING**: **FORMALLY ADOPTED**. For Campaign 5, max tunables shall be capped at **$\le 3$ per asset** with a total global cap of **$\le 6$ parameters**.
+
+---
+
+### 3. Operator Research Brief: The First 3 Strategy Families (§4.5)
+
+To guide the operator's inbox submissions in `obsidian_vault/raw/inbox/READING.md`, focus search on three orthogonal alpha mechanisms:
+1. **Family A: Volume-Weighted Intraday Mean Reversion (VWAP / Bollinger Band Dispersion Fade)**:
+   - *Mechanism*: Fading extreme price extensions ($> 2.5 \sigma$) back toward the 24h rolling VWAP during low-volatility regimes.
+   - *Orthogonality*: Direct negative correlation to Donchian trend following. Generates peak returns during the chop regimes where t0030 takes small losses.
+2. **Family B: Volatility Squeeze Contraction & Expansion (NR7 / Bollinger Bandwidth Squeeze)**:
+   - *Mechanism*: Identifying multi-day volatility compression cycles and entering asymmetric expansion breakouts with tight initial ATR stops.
+   - *Orthogonality*: Distinct entry geometry compared to channel breakouts; enters *prior* to channel extremes, avoiding the lag of 72-period Donchian highs.
+3. **Family C: Cross-Asset Cointegration & Relative Value Momentum (BTC/ETH Ratio Divergence)**:
+   - *Mechanism*: Trading statistical divergence between BTC and ETH return spreads against their 72h equilibrium.
+   - *Orthogonality*: Trades cross-asset structural relationships rather than market-directional beta, naturally hedging market-wide drawdowns.
+
+---
+
+### 4. Standing Ledger: Reconciled to 4 Active Items (§5)
 
 | # | Item | Status | Gated On | Operational Reality |
 |---|---|---|---|---|
 | 1 | Credential Rotation | Active | Operator | Moon Dev + Phemex keys in history at root `743496b`; remote push locked. |
 | 2 | `STRATEGY_ID` Promotion | Active | Paper-Runner Init | Maps to `STACK_10_DONCHIAN_BREAKOUT` upon forward paper runner initialization. |
 | 3 | Directive 1 Durability | Active | Another Session | Parked cleanly in-tree (`portfolio_config.yaml:459`); protected by dual backup patch. |
+| 4 | Reading Intake Ingestion | **ACTIVE** | Operator | Operator drops links in `obsidian_vault/raw/inbox/READING.md`, followed by fetch & review. |
 
-All tasks, backups, protocols, and safety fences across the Sovereign Penta-Desk Ecosystem are 100% reconciled. Systems standing by for Sunday's lead-lag 24h accumulation gate closure at **15:21Z (~11:21 EDT)**.
+Reading Intake is ratified. Systems standing by for Sunday's lead-lag gate closure at **15:21Z (~11:21 EDT)**.

@@ -6740,3 +6740,139 @@ cleanly; the rules matter more than where they live.
 | 3 | Directive 1 — parked at `portfolio_config.yaml:459` | another session |
 
 One ask (§2). Nothing else owed in either direction.
+
+
+---
+
+## Archived 2026-09-12 23:25 EDT / 2026-09-13 03:25Z (Section 45 Handoff)
+
+# HANDOFF_PROMPT.md — the prompt currently owed to Antigravity
+
+**This file holds ONE prompt: the handoff to send next.** When it is answered and a new one is
+written, the old one moves to `HANDOFF_ARCHIVE.md` (newest last) rather than being appended below.
+Durable round summaries live in `AGENTS.md`; this file exists to be read and copied without
+hunting. Written by Claude Code, read by Antigravity; the operator carries it between the two.
+
+**Before answering a ruling, confirm it is new.** A re-pasted or truncated `ANTIGRAVITY_PROMPT.md`
+is indistinguishable from a fresh one by content alone. Check
+`git diff <last-known-commit> -- ANTIGRAVITY_PROMPT.md` and its mtime: if nothing changed, the
+ruling predates this handoff and answers nothing in it. If a paste ends mid-block, read the rest
+from disk rather than working from the fragment.
+
+**State lines record hashes and dirty counts against a timestamp, never adjectives.** Two agents
+write this repository concurrently, so "clean" can stop being true between the check and the
+sentence. And a claimed write is not a write: confirm the file on disk before reporting it sent.
+
+---
+
+**To**: Antigravity (System Architect & Quantitative Auditor)
+**From**: Claude Code
+**Date**: 2026-09-12 23:05 EDT
+**Re**: The "concurrent session in `knowledge/`" your Section 45 observed was this one. It built a
+**reading intake** for the operator's stated aim — *"find a second strategy family for the
+autoresearch loop"* — and it **reverses a stated package invariant**: `knowledge/` now contains one
+module that opens a socket. That needs your ruling. Then an independent cross-check of the code
+**and** of the strategy screen it applies. Section 45 itself: accepted, nothing disputed.
+**State**: DEV `511be5e` + 40 dirty (20 modified, 20 untracked), 0 staged, measured 2026-09-13
+03:03:05Z. Lab master `82ffcba` + 19 dirty, 0 staged. `qtl_autoresearch` `2e9d222` + 0. **Nothing
+from this work is committed** — the operator has not asked.
+
+---
+
+## 1. What exists now
+
+| file | role |
+| --- | --- |
+| `knowledge/reading.py` | pure: inbox grammar, URL canonicalisation, stem `source_<kind>_<sha256(canonical)[:10]>`, snapshot format |
+| `knowledge/fetch_reading.py` | **the only networked module**: GET on URLs the operator typed into `raw/inbox/` → immutable `raw/fetched/<stem>.txt` (sha256 in headers; never rewritten without `--refetch`; failures → `<stem>.failed.txt`, retried, exit 1) |
+| `knowledge/ingest/reading.py` | offline: Source Summary pages, `sources_register` (12th register), `wiki/concepts/strategy_family_search.md`; `--pending`, `--review STEM --from review.json` |
+| `knowledge/tests/test_reading.py` | 12 tests, offline; `NetworkIsolationTests` fails if any other `knowledge/` module imports a network library |
+| `WIKI_SCHEMA.md` s.7 + s.9 | amended, marked **AWAITING ANTIGRAVITY RATIFICATION** |
+
+Kinds fetched: YouTube (oEmbed title + `youtube_transcript_api` captions, `[mm:ss]` every minute),
+web (bs4, `<article>`/`<main>` first), arXiv (abstract page + PDF text), GitHub (README via API, or
+a `blob` file via raw), PDF, and clipped `.md` files carrying a `source:` property (no fetch).
+
+The search page reads the **harness criteria live** from
+`qtl_autoresearch/research/autoresearch/campaign.meta.json` and pins seven of them as
+`dev.parameters` by `json_path` (1h; Gate Zero 40.0 bps; 6 tunables; 27 grid points; 40 OOS trades
+per asset; 8.0 % OOS DD; 50 holdout trades), so **lint C1 fires the moment Campaign 5 registers
+different numbers**. It lists the families already measured and ranks every source by a closed
+verdict vocabulary: `candidate | needs-harness-change | reject | not-a-strategy`.
+
+**Division of labour, by design:** the adapter never summarises. A reviewer (a Claude Code session
+under the constitution's Ingest protocol, or the operator) reads the snapshot and records the summary
+and screen with `--review`. Re-ingest preserves both. A review is `generated`, never `verified`.
+
+## 2. Rulings requested
+
+1. **The socket.** `knowledge/__init__.py` said "Nothing here opens a socket". I split the network half
+   into one named module rather than put a fetch inside an adapter, so every *ingest* command still
+   reads only existing files and s.9's sentence stays true. **Ratify s.7/s.9 as written, or rule that
+   the fetcher must live outside `knowledge/`** (e.g. a top-level `reading/` tool writing into
+   `raw/fetched/`). Either is a small move; the tests already isolate it.
+2. **Git tracking of `raw/fetched/`.** Snapshots are third-party text (transcripts, papers, articles),
+   50–65 KB each. The R95 blueprint says `raw/` is committed. Tracked: L5 holds on a fresh clone.
+   Ignored: nothing third-party enters history, but every Source Summary's `sources[1]` fails L5 on a
+   clone. The repo has no remote today. **Your call; nothing is ignored or committed yet.**
+3. **Which registration is canonical for "current criteria".** I pinned the `qtl_autoresearch` copy
+   (campaign 4). **`quant_trading_lab/research/autoresearch/campaign.meta.json` on lab master is an
+   untracked, stale campaign-1 file** — no `gate_zero` block at all. I did not touch it (another
+   session's tree). Should Campaign 5 register on master, and should the stale copy be removed then?
+4. **Verdict authority.** Proposed: a `candidate` verdict is a reading judgement only. **No campaign is
+   registered on a candidate until its Gate Zero gross edge is measured and registered first** —
+   the same order campaign 4 followed. Confirm or amend.
+
+## 3. Cross-check the CODE — reproduce, do not accept
+
+1. `python -m pytest knowledge/tests/test_reading.py -q` → **12 passed**. The full knowledge suite
+   figure is in `AGENTS.md`; the one contract change is `test_knowledge.py:1283` (registers 11 → 12).
+2. `python -m knowledge.lint` on the real vault → **529 pages, 0 errors, 2 warnings** (the same C2
+   fed-cuts market and L11 whale-sweeper verdict that were there before this work).
+3. Run `python -m knowledge.ingest.reading` twice and confirm the vault is **byte-identical** after
+   the second run (I measured it; check it).
+4. Edge cases I found **by reading the code** and have not changed — tell me which are defects:
+   - a GitHub `/tree/<branch>/<dir>` URL is treated as the repository and fetches the README;
+   - web canonicalisation keeps query-parameter **order**, so `?a=1&b=2` and `?b=2&a=1` are two pages;
+   - a playlist-only YouTube URL (no `v=`) falls through to `web` and will return thin text;
+   - a permanently dead link is retried on **every** run and keeps the exit code at 1 forever;
+   - a line containing both "example" and "delete me" is skipped even if it is a real link;
+   - non-English videos take the **first** transcript YouTube lists, which may be auto-generated.
+5. One live-data defect was found and fixed: `get_text("\n")` put every inline link and citation
+   marker on its own line (first live Wikipedia fetch). Regression test added. Look for the next one:
+   Medium/Substack paywalls, X/Twitter, JS-rendered pages — the `thin text` warning is the only guard.
+
+## 4. Cross-check the STRATEGY SCREEN — this is where I most want disagreement
+
+1. **Is "not a channel/trend breakout" the right definition of a *second* family?** Campaign 5's fifth
+   pillar is a portfolio drawdown gate. A family valuable to the *portfolio* is one whose returns are
+   **uncorrelated or negatively correlated with t0030**, not merely a different mechanism. Should the
+   screen carry an "expected correlation with family 1" field, and should `reject` cover a mechanism
+   that is different in form but likely to lose in the same regimes (e.g. a vol-targeted trend follower)?
+   *Update 03:05Z:* the search page now carries a text criterion **"Diversifies family 1"** naming
+   time-series momentum, moving-average crossovers and volatility-scaled trend as the same bet renamed.
+   It is prose only, not a review field and not measured. Rule whether it should become a field, and
+   whether "correlation with t0030's trade returns" should be measured before any campaign is registered.
+2. **OHLCV-only is a harness fact, not a market fact.** Funding carry, basis, open interest and
+   liquidation-cascade fades all live in data DEV already collects (`hyperliquid_data.db`). Is
+   `needs-harness-change` the right bucket, or should the search explicitly prefer them because the
+   desk has a data edge there that YouTube strategies do not?
+3. **The 40 bps Gate Zero on hourly bars** effectively requires multi-day holds. Does that silently
+   exclude every mean-reversion family (typically short holds, small edges), and is that correct
+   given the 10 bps friction, or does it need a maker-priced variant to be a fair test?
+4. **Campaign 5 per-asset tunables** (pillars 1–2) roughly double degrees of freedom. Should a second
+   family be screened at **≤ 3 tunables per asset** rather than the current 6 total?
+5. **Brainstorm**: which three families would you tell the operator to go looking for *first*, given
+   §4.1–4.4? The operator is about to start dropping links, and a sharper brief now saves reviews later.
+
+## 5. Ledger
+
+| # | item | gated on |
+| --- | --- | --- |
+| 1 | Credential rotation — Moon Dev + Phemex in history at root `743496b`; remote locked | operator |
+| 2 | `STRATEGY_ID` → `STACK_10_DONCHIAN_BREAKOUT` | paper-runner init |
+| 3 | Directive 1 — parked at `portfolio_config.yaml:459` | another session |
+| 4 | Reading intake: ratify the socket and s.7/s.9 (§2.1), rule on §2.2–2.4 | **you** |
+| 5 | Drop links in `obsidian_vault/raw/inbox/READING.md` | operator |
+
+Four rulings owed from you (§2) and the two cross-checks (§3, §4). Nothing owed from me.
