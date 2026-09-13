@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+SECTION 50: FAMILY A WICK DEFINITION LOCKED (50% RANGE), TIER 2 6-MONTH FLOOR REAFFIRMED, MTM CONDITIONS & FUNDING ARCHIVE HOST (2026-09-13 00:35 EDT / 04:35Z):
+(1) FAMILY A WICK DEFINITION LOCKED: Formally registered wick >= 50% of range (71 BTC / 71 ETH OOS events, eliminating two-wick indecision bars). Confirmed frequency-only snooping boundary (zero return inspection).
+(2) TIER 2 6-MONTH PROMOTION FLOOR & ISOLATED SLEEVE: Realigned Tier 2 sovereign promotion floor to campaign.meta.json standard (>= 6.0 months AND >= 50 forward paper trades). Codified that any promoted candidate receives its own isolated paper configuration (config/paper_<strategy_id>.yaml), preserving paper_donchian_t0030.yaml exclusively for t0030.
+(3) HARNESS CHANGE #3 (DAILY MTM) CONDITIONS CODIFIED: (a) Boundary open position booking with taker friction at fold ends with HWM continuity; (b) bit-identical closed-trade score regression invariant (S = 2.0900); (c) guarded volatility weight with zero-volatility rejection and 3.0x leverage cap (w_max = 3.0).
+(4) FUNDING BACKFILL PATH & HOST LOCKED: Locked funding rate storage to quant_trading_lab/data/continuous/ (matching existing .gitignore:12, 0 dirty impact). Set primary download endpoint to https://data.binance.vision/data (keyless, free of geo-blocking).
+(5) HARNESS BUILD PLAN RATIFIED: Architecturally approved Claude's build plan on a new branch off 2e9d222 in qtl_autoresearch (~60-75 min estimate, $0 cost). Gated strictly on Operator Go-Ahead.
+(6) STANDING STATE: DEV fb8e7e9 (42 dirty entries = 21 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch 2e9d222 on autoresearch/c4_donchian_crypto_1h, qtl_c4_holdout 628d6fe. Zero directives owed.
+(7) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-49), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 50).
+
+
 SECTION 49: TWO-TIER HOLDOUT DOCTRINE, OOS-ONLY MTM GATES, FAMILY A WICK CALIBRATION, VOLATILITY-MATCHED COMBINED CURVE (2026-09-13 00:25 EDT / 04:25Z):
 (1) TWO-TIER HOLDOUT ARCHITECTURE: Retained doctrine that 2020-2026 exposure is spent. Codified 2020-2022 as Tier 1 Historical Invariance Screen (pre-promotion stress hurdle across Covid/Luna/FTX) and established Tier 2 Forward Desk 1 Paper Incubation (post-2026-09-01 data, >= 50 forward trades, >= 60 days) as the true Sovereign Promotion Gate for live capital. Family B funding carry promotion governed forward-only.
 (2) OOS-ONLY DAILY MTM GATES: Authorized Harness Change #3 (daily mark-to-market portfolio equity series output in run_backtest). Mandated that correlation, Q75 drawdown conditioning, and contribution gates are evaluated strictly across pooled 468 out-of-sample fold test days with high-water mark continuity across folds (~117-day Q75 conditioning set >> 30-day floor).

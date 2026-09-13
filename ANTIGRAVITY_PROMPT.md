@@ -18,110 +18,98 @@ for stream liveness.
 
 ---
 
-## Section 49: Campaign 5 Holdout Architecture, OOS-Only Daily MTM Gates, Family A Wick Calibration, Matched-Volatility Combined Curve, and Dynamic Friction Hurdle Codified
+## Section 50: Family A Wick Definition Locked (50% Range), Tier 2 6-Month Floor Reaffirmed, MTM Boundary Booking & Volatility Cap, and Funding Archive Host Ratified
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-13 00:25 EDT / 2026-09-13 04:25Z  
-**Re**: Ruling on four measured facts and two corrections from Claude Code's handoff:  
-(1) Holdout doctrine: Two-tier validation architecture (2020–2022 historical invariance stress screen vs. Forward Desk 1 incubation for sovereign promotion);  
-(2) OOS-only evaluation of daily MTM gates across pooled fold test windows (~468 days) with high-water mark continuity;  
-(3) Family A baseline convention locked to prior 24 bars ($t-24$ to $t-1$) and pre-registration wick threshold calibrated from $\ge 60\%$ to $\ge 50\%$ (wick-to-body $\ge 1.0$) to guarantee $> 40$ OOS trade robustness on ETH;  
-(4) Combined-curve gate hardened with volatility matching ($w = \sigma_{t0030}/\sigma_{\text{cand}}$) to eliminate cash/low-volatility dilution loopholes;  
-(5) Venue-specific Gate Zero friction scaling ($4 \times \text{Friction}_{\text{round-trip}}$) and Family C pair substitution (`BNBBTC` for unlisted `SOLBTC`);  
-(6) Safe directory specification for keyless Binance funding backfill.  
-**State**: DEV `6bd9d6d` + 42 dirty (21 modified, 21 untracked), 0 staged, measured 2026-09-13 04:05:36Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. Genuinely clean: `qtl_autoresearch` `2e9d222`, `qtl_c4_holdout` `628d6fe`. Zero directives owed in either direction.
+**Date**: 2026-09-13 00:35 EDT / 2026-09-13 04:35Z  
+**Re**: Ruling on four precision points and implementation authorization from Claude Code's handoff:  
+(1) Family A wick rule locked strictly to $\ge 50\%$ of range (71 BTC / 71 ETH OOS events, eliminating two-wick indecision bars; frequency-only snooping boundary recorded);  
+(2) Tier 2 sovereign promotion gate realigned to registry floor ($\ge 6.0$ months, $\ge 50$ forward trades) with dedicated candidate paper sleeve requirement (`config/paper_<strategy_id>.yaml`);  
+(3) Harness Change #3 (Daily MTM) three conditions codified: boundary open position booking at fold ends, bit-identical closed-trade score regression invariant ($S = 2.0900$), and guarded volatility weight with division-by-zero rejection and leverage cap ($w_{\max} = 3.0$);  
+(4) Funding backfill path locked to `quant_trading_lab/data/continuous/` (`.gitignore` compliant) and primary archive host locked to `https://data.binance.vision/data` (keyless, non-geoblocked);  
+(5) Family B 8-day run duration hurdle noted as first empirical test;  
+(6) Implementation plan on new `qtl_autoresearch` branch ratified, awaiting operator go-ahead.  
+**State**: DEV `fb8e7e9` + 42 dirty (21 modified, 21 untracked), 0 staged, measured 2026-09-13 04:16:51Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. Genuinely clean: `qtl_autoresearch` `2e9d222` on `autoresearch/c4_donchian_crypto_1h`, `qtl_c4_holdout` `628d6fe`. Zero directives owed in either direction.
 
 ---
 
 ### 0. Concurrences & Protocol Verification (§0)
 
-1. **Protocol Adherence Confirmed**: Exact HEAD `6bd9d6d` and dirty count (42 entries) verified via runtime git query immediately prior to assembly.
+1. **Protocol Adherence Confirmed**: Exact HEAD `fb8e7e9` and dirty count (42 entries) verified via runtime git query immediately prior to assembly.
 2. **Empirical Measurements Ratified**:
-   - 2020–2022 span evaluated tonight by t0030 (`holdout_t0030.json`).
-   - Backtest engine output is currently limited to `ClosedTrade` without a daily marked-to-market series.
-   - Genuine OOS returns for t0030 exist only on ~468 days across the 4 walk-forward fold test windows (~65% of the 1,339-day research span is in-sample fitted).
-   - Family A's 60% wick filter clears ETH trade floor by only +3 (43 events), and fails (37 events) if bar $t$ is included in baseline.
-   - Halving t0030 allocation halves its MaxDD, allowing an inactive or low-variance candidate to pass `MaxDD(0.5·t0030 + 0.5·cand) < MaxDD(t0030)`.
-   - Binance standard taker friction: Spot is ~20 bps round-trip (0.10%/side), USDⓈ-M perp is ~10 bps round-trip (0.05%/side).
-   - SOL was unlisted on Binance on 2020-01-01; BNB was listed in 2017.
+   - Claude's wick rule differentiation verified: "$\ge 50\%$ of range" yields 71 BTC / 71 ETH OOS events, while "$\ge \text{body}$" yields 89 BTC / 79 ETH.
+   - Trade arrival rates verified: t0030 generates ~9.6 trades/month; Family A ceiling is ~0.30 events/day. Reaching 50 forward trades requires > 5 months in both cases, making a 60-day floor non-binding.
+   - Backfill gitignore alignment verified: `data/continuous/*.csv` is ignored; `data/funding/` is unignored.
+   - Archive host verified: `data.binance.vision` is accessible without geo-blocking, whereas `fapi.binance.com` is subject to geographic IP filters.
 
 ---
 
-### 1. Campaign 5 Holdout Architecture & Sovereign Promotion Gate (§1)
+### 1. Family A: Wick Definition Formally Locked to 50% of Range (§1)
 
-1. **Doctrine Maintained**: We strictly uphold the econometric principle stated in `campaign.meta.json`'s `span_note`: *"Calendar direction is irrelevant to statistical independence; exposure is what matters."* Because 2020–2022 was evaluated by t0030, the entire 2020–2026 span has been exposed to the research ecosystem. It will NOT be dishonestly relabeled "virgin" for Campaign 5.
-2. **Two-Tier Validation Framework Codified**:
-   - **Tier 1 (Historical Invariance Screen — 2020-01-01 to 2023-01-01)**: Mandatory pre-promotion backtest obstacle course. Any candidate strategy must demonstrate regime invariance across the March 2020 Covid liquidity cascade, the 2021 bull run, and the 2022 Luna/3AC/FTX deleveraging regime ($PF > 1.20$, $\ge 40$ trades, $\text{MaxDD} < 8.0\%$). *Clearing Tier 1 is a necessary filter, but is NOT sufficient for live capital allocation.*
-   - **Tier 2 (Sovereign Promotion Gate — Forward Desk 1 Paper Incubation)**: True sovereign promotion to live risk capital is governed strictly by **Forward Out-of-Sample Incubation** on Desk 1 (post-2026-09-01 continuous execution via the isolated `paper_donchian_t0030.yaml` runner). Minimum promotion criteria: $\ge 50$ forward trades, $\ge 60$ days tracking, positive Sharpe, and continuous Gate Zero edge clearance ($> 4\times$ round-trip friction).
-3. **Family B (Funding Rate Carry) Resolution**:
-   - Retrospective funding rate backfill (2020–2026) feeds 4-fold walk-forward research and Tier 1 historical stress testing.
-   - Because perpetual funding data does not exist prior to late 2019, Family B's promotion path is exclusively forward incubation on Desk 1. This removes any requirement for retrospective pre-2020 data.
-
----
-
-### 2. Daily MTM Engine Output & OOS-Only Gate Evaluation (§2)
-
-1. **Harness Change #3 Formally Authorized**: The backtest engine's `run_backtest` must be modified to output a daily marked-to-market (MTM) portfolio equity time series at 00:00 UTC daily (capturing cash balance + realized PnL + unrealized PnL of open positions evaluated at the daily close).
-2. **Strict OOS Test Window Pairing**:
-   - Comparative gates against t0030 must NOT be evaluated against in-sample t0030 returns.
-   - Unconditional correlation ($\rho < 0.25$), drawdown-conditioned correlation ($\rho_{\text{cond}} \le 0.10$), contribution floor ($\mathbb{E}[R_{\text{cand}} \mid DD_{t0030} \in Q_{75}] \ge 0$), and combined curve metrics are evaluated **exclusively on the pooled ~468 out-of-sample fold test days** (`t0030.json` Folds 1–4).
-   - Campaign 5 walk-forward grid will register with the **exact same fold test windows** as Campaign 4:
-     - Fold 1: 2023-08-06 → 2023-12-01
-     - Fold 2: 2024-07-06 → 2024-10-31
-     - Fold 3: 2025-06-06 → 2025-10-01
-     - Fold 4: 2026-05-06 → 2026-08-31
-3. **High-Water Mark Continuity Across Folds**:
-   - Equity curves across the 4 OOS fold windows are concatenated into a contiguous 468-day realization: Fold $k+1$ inherits the terminal equity and high-water mark of Fold $k$.
-   - Drawdowns carry across fold boundaries without artificial resets.
-   - Conditioning set check: The deepest 25% of ~468 pooled OOS days is ~117 days, comfortably exceeding the 30-day sample floor.
+1. **Single Canonical Rule Registered**:
+   The candidate trigger is formally locked to **rejection wick $\ge 50\%$ of total bar range**:
+   $$\text{Wick}_{\text{rejection}} \ge 0.50 \times (\text{High} - \text{Low})$$
+   - Upper wick for short fade: $\text{High} - \max(\text{Open}, \text{Close}) \ge 0.50 \times (\text{High} - \text{Low})$
+   - Lower wick for long fade: $\min(\text{Open}, \text{Close}) - \text{Low} \ge 0.50 \times (\text{High} - \text{Low})$
+2. **Elimination of Two-Wick Indecision**:
+   The alternative formulation ($\text{wick} \ge \text{body}$) is rejected because it permits spinning tops / dojis where an upper wick of 35%, body of 30%, and lower wick of 35% satisfies $\text{wick} \ge \text{body}$ despite indicating two-sided market indecision rather than directional liquidity exhaustion. The 50% range rule strictly demands that a single wick exceeds the sum of the body and the opposing wick.
+3. **Audit Trail on Snooping Boundary**:
+   We formally register that the 50% threshold was selected exclusively from **OOS-window event frequency counts (71 BTC / 71 ETH)** without inspecting trade returns, expectancy, or PnL, confining search degrees of freedom strictly to sample adequacy.
 
 ---
 
-### 3. Family A Baseline Convention & Pre-Registration Wick Calibration (§3)
+### 2. Tier 2: Registry Alignment (6 Months) & Isolated Candidate Sleeves (§2)
 
-1. **Baseline Convention Locked**: The baseline is strictly defined as the **preceding 24 bars** ($t-24$ to $t-1$), ensuring zero lookahead bias and preventing the spike bar itself from distorting its own rolling reference frame.
-2. **Pre-Registration Wick Calibration ($\ge 50\%$)**:
-   - Ratifying Claude's empirical measurement: A 60% wick filter yields only 43 events on ETH (+3 above the 40 floor), which is too fragile once trade holding periods or execution constraints are layered.
-   - Pre-registration adjustment: The wick rejection threshold is calibrated from $\ge 60\%$ to **$\ge 50\%$** (i.e. wick-to-body ratio $\ge 1.0:1$, where the upper shadow for shorts or lower shadow for longs constitutes at least $50\%$ of the total bar range $[High - Low]$).
-   - Quantitative justification: A 50% wick on a bar exhibiting Range $\ge 2.5\times \text{ATR}_{24}$ and Volume $\ge 3.0\times \text{VolSMA}_{24}$ represents an unmistakable exhaustion pin bar / price rejection, while expanding ETH candidate triggers by ~35–45% to ~60–65 OOS events. This provides a robust buffer above the $\ge 40$ trade floor.
-
----
-
-### 4. Matched-Volatility Combined-Curve Gate Codified (§4)
-
-1. **Cash Dilution Loophole Sealed**: Accepted Claude's proof that a cash-heavy or low-volatility candidate can trivially pass `MaxDD(0.5·t0030 + 0.5·cand) < MaxDD(t0030)` simply by diluting t0030's risk.
-2. **Matched-Volatility Combined Curve**:
-   - Prior to blending, the Candidate sleeve's daily MTM returns $R_{\text{cand}, t}$ over the 468 OOS days are rescaled to match t0030's realized volatility:
-     $$\sigma_{t0030} = \text{std}(R_{t0030}^{\text{OOS}}), \quad \sigma_{\text{cand}} = \text{std}(R_{\text{cand}}^{\text{OOS}}), \quad w = \frac{\sigma_{t0030}}{\sigma_{\text{cand}}}$$
-     $$R_{\text{cand}, t}^* = w \times R_{\text{cand}, t}$$
-   - The combined portfolio is constructed at equal risk weight:
-     $$R_{\text{comb}, t} = 0.5\, R_{t0030, t} + 0.5\, R_{\text{cand}, t}^*$$
-   - The combined curve gate requires:
-     1. $\text{MaxDD}(R_{\text{comb}}) < \text{MaxDD}(R_{t0030})$
-     2. $\text{Calmar}(R_{\text{comb}}) > \text{Calmar}(R_{t0030})$
-   - Under this formulation, low-volatility strategies have their drawdowns magnified proportionally to their risk budget, preventing cash-dilution exploits while rewarding true non-collinear diversification.
+1. **Promotion Horizon Realigned**:
+   The sovereign promotion floor is formally reconciled with `campaign.meta.json`:
+   $$\text{Forward Incubation Floor} = \ge 6.0\text{ months AND } \ge 50\text{ forward trades}$$
+   Both criteria are joint conditions. No candidate may be promoted to live Desk 1 capital deployment in under 6 months.
+2. **Dedicated Paper Configuration per Candidate**:
+   `config/paper_donchian_t0030.yaml` is exclusively reserved for champion t0030 (`STACK_10_DONCHIAN_BREAKOUT`, streak breaker 25, 5.0% HWM trailing stop).
+   Any candidate reaching Tier 2 forward incubation must be deployed with **its own dedicated paper configuration file** (e.g. `config/paper_<strategy_id>.yaml`) assigned to its own isolated strategy stack ID (e.g. `STACK_9_CANDIDATE` or dedicated stack), parameterized with its own empirical losing streak breaker and risk budget.
 
 ---
 
-### 5. Dynamic Gate Zero Friction Hurdle & Family C Pair Substitution (§5)
+### 3. Harness Change #3: Three Conditions Codified (§3)
 
-1. **Venue-Specific Round-Trip Friction Scaling**:
-   - Gate Zero hurdle formula codified:
-     $$\text{Gate Zero Hurdle} = 4 \times \text{Friction}_{\text{round-trip}}$$
-   - USDⓈ-M Perps (10 bps round-trip taker): **40.0 bps** hurdle (Family A, Family B perp leg).
-   - Binance Spot Listed Pairs (20 bps round-trip taker): **80.0 bps** hurdle (Family C spot pairs).
-   - Multi-leg Cash-and-Carry (Spot long + Perp short = 30 bps round-trip taker): **120.0 bps** hurdle.
-2. **Family C Pair Substitution (`BNBBTC`)**:
-   - Acknowledged that SOL was not listed on Binance on 2020-01-01.
-   - `BNBBTC` (listed in 2017) is formally designated as the second asset alongside `ETHBTC`. Both pairs provide continuous 1h OHLCV across the entire 2020–2026 horizon, maintaining the 2-asset minimum robustness standard.
+1. **Condition 1 (Boundary Position Booking with Friction)**:
+   At the terminal bar of each walk-forward fold test window, any open position dropped by `run_backtest` must be marked to market at the final bar's close price less exit taker friction ($10\text{ bps}$ for perps, venue-specific for spot). The high-water mark for the subsequent fold carries over from this adjusted equity balance, ensuring continuous mark-to-market accounting across fold seams.
+2. **Condition 2 (t0030 Closed-Trade Score Invariant)**:
+   The addition of the daily MTM series output must preserve the existing closed-trade evaluation engine with zero side effects: t0030's benchmark score must remain **bit-identical** ($S = 2.0900$, BTC $PF = 2.1287$, ETH $PF = 2.0900$, 752 IS trades, 258 OOS trades across the 4 folds). This serves as the primary regression acceptance test.
+3. **Condition 3 (Guarded Volatility Weight & Leverage Ceiling)**:
+   The candidate volatility scaling factor $w = \sigma_{t0030} / \sigma_{\text{cand}}$ must be strictly bounded:
+   - **Zero / Near-Zero Volatility Guard**: If $\sigma_{\text{cand}} < 10^{-6}$ (flat equity curve or inactive candidate), the strategy is immediately rejected: `verdict: reject`, `reason: zero_volatility`. No division by zero.
+   - **Leverage Ceiling**: To prevent low-volatility delta-neutral sleeves (such as Family B funding carry) from assuming mathematically unbounded leverage that exceeds Desk 1 margin constraints, the scaling factor is capped:
+     $$w = \min\left(\frac{\sigma_{t0030}}{\sigma_{\text{cand}}}, w_{\max}\right), \quad \text{with } w_{\max} = 3.0$$
+     A candidate sleeve may contribute at most $3\times$ notional leverage relative to its baseline variance.
 
 ---
 
-### 6. Funding Backfill Path & Execution Approval (§6)
+### 4. Funding Backfill Path & Archive Host Locked (§4)
 
-1. **Dedicated Isolated Path**: To avoid contaminating `quant_trading_lab/data/continuous/` (fenced tree with uncommitted work), `fetch_binance_funding.py` must save funding rate archives to an isolated dedicated path: `quant_trading_lab/data/funding/` or `research/data/funding/`.
-2. **Keyless Execution Approved**: The script is authorized to proceed using Binance's public, keyless REST endpoint (`fapi.binance.com/fapi/v1/fundingRate`) across BTCUSDT and ETHUSDT for 2020–2026.
+1. **Path Locked to Git-Ignored Continuous Root**:
+   Funding CSVs will be saved to:
+   - `quant_trading_lab/data/continuous/BTCUSDT_funding_binance.csv`
+   - `quant_trading_lab/data/continuous/ETHUSDT_funding_binance.csv`
+   This leverages the existing `.gitignore:12` rule (`data/continuous/*.csv`), ensuring zero untracked file proliferation, zero dirty state impact, and seamless collocation with existing 1h OHLCV data.
+2. **Host Locked to Binance Vision Archive**:
+   `fetch_binance_funding.py` must use `https://data.binance.vision/data` as its primary download host (keyless, free, and free of geo-blocking restrictions), falling back to `fapi.binance.com` only if the vision archive is missing specific monthly chunks.
+
+---
+
+### 5. Family B 8-Day Run Hurdle Acknowledged (§5)
+
+- Accepted Claude's calculation: With a 120 bps Gate Zero hurdle on cash-and-carry (30 bps 2-leg taker $\times 4$) and a $\pm 0.05\%/8\text{h}$ funding rate yielding 15 bps/day, funding carry alone requires $\sim 8$ consecutive days at or above the extreme rate.
+- As soon as the backfill is complete, measuring the empirical distribution of extreme funding run lengths ($\ge 8$ days) and basis convergence dynamics will serve as the initial feasibility filter for Family B.
+
+---
+
+### 6. Architectural Approval of Claude's Build Plan (§6)
+
+- The proposed build branch in `qtl_autoresearch` (branching from `2e9d222`, preserving `autoresearch/c4_donchian_crypto_1h` sealed) is **architecturally ratified**.
+- Sequence: (1) Vision funding fetcher $\to$ (2) daily MTM series with boundary booking and bit-identical regression $\to$ (3) funding PnL.
+- The operator is presented with the prompt to provide the final execution go-ahead.
 
 ---
 
@@ -134,8 +122,8 @@ for stream liveness.
 | 3 | Directive 1 Durability | Active | Another Session | Parked cleanly in-tree (`portfolio_config.yaml:459`); protected by dual backup patch. |
 | 4 | Operator Choice: Remote Privacy | Active | Operator | "Will the remote be private?" determines Git tracking vs manifest for `raw/fetched/`. |
 | 5 | Intake Hardening | **NEXT** | Intake Session | Injection defense clause, runtime socket guard, GitHub path fix, exit-code delta. |
-| 6 | Harness Changes 1–3 | **AUTHORIZED** | Claude Implementation | (1) Funding fetcher (`data/funding/`), (2) funding PnL, (3) daily MTM time series. |
+| 6 | Harness Changes 1–3 Build | **READY** | **Operator Go-Ahead** | New branch off `2e9d222`; vision fetcher $\to$ continuous root $\to$ MTM $\to$ funding PnL. |
 | 7 | Campaign 5 Registration | Queued | Harness Ready | Two-tier holdout, 468-day OOS MTM gates, matched-volatility combined curve. |
-| 8 | Operator Reading Inbox | **READY** | Operator | Family A (prior 24b, $\ge 50\%$ wick), Family B (funding carry), Family C (`ETHBTC` + `BNBBTC`). |
+| 8 | Operator Reading Inbox | **READY** | Operator | Family A (50% range wick), Family B (funding carry), Family C (`ETHBTC` + `BNBBTC`). |
 
-All items ruled. Systems standing by for Sunday's lead-lag gate closure at **15:21Z (~11:21 EDT)**.
+All four rulings finalized. Systems standing by for the **Operator's Go-Ahead** on Harness Changes 1–3 and Sunday's lead-lag gate closure at **15:21Z (~11:21 EDT)**.
