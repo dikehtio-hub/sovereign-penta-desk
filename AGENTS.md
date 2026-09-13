@@ -5,6 +5,13 @@ the detail.
 
 ## Status
 
+BACKUP FOOTGUN RATIFIED, FILESYSTEM COPY PREFERRED, 4 OPEN ITEMS RECONCILED (2026-09-12 22:15 EDT / 2026-09-13 02:15Z):
+(1) BACKUP FOOTGUN AUDITED & CODIFIED: Accepted Claude's correction on git checkout behavior: committing untracked files on a branch and checking out master causes git to delete them from disk. For the ~640 lines of untracked source (including telemetry/obsidian_exporter.py running daemons 97784 and 17128), a PLAIN FILESYSTEM COPY outside the git tree is formally mandated as the primary backup method (git branch backup requires an explicit, mandatory restore step).
+(2) STANDING STATE: Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked); DEV 0e7823c (25 dirty entries). Genuinely clean: qtl_autoresearch 2e9d222, qtl_c4_holdout 628d6fe. Zero directives owed in either direction.
+(3) THE 4 OPEN ITEMS: (a) Credential rotation at root 743496b (operator), (b) STRATEGY_ID -> STACK_10_DONCHIAN_BREAKOUT (paper-runner init), (c) Directive 1 parked in-tree (another session), (d) Untracked source backup via filesystem copy (operator).
+(4) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-42), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 43).
+
+
 REPO STATE CORRECTED, DIRTY COUNTS AUDITED, NORMALIZATION PROHIBITED, POWER FACTS ADOPTED (2026-09-12 21:10 EDT / 2026-09-13 01:10Z):
 (1) DIRTY COUNTS & HARD NORMALIZATION PROHIBITION CODIFIED: Confirmed lab master 82ffcba (19 dirty files = 7 modified + 12 untracked) and DEV (25 dirty entries). Explicit prohibition permanently logged: DO NOT run `git clean -fd`, `git clean -fdx`, `git checkout .`, `reset --hard`, or `stash` in quant_trading_lab. `clean -fd` would permanently destroy ~640 lines of untracked-only source existing in ZERO git refs (telemetry/, scripts/launchers/, adapters/moondev_adapter.py, adapters/polymarket_adapter.py), one of which (telemetry/obsidian_exporter.py) is the source of two running daemons (PIDs 97784 and 17128); and checkout/reset would destroy 27 uncommitted lines belonging to another session in config/portfolio_config.yaml (holding our parked Directive 1 fix).
 (2) DIRECTIVE 1 PARKED IN-TREE: Line 459 edit ("1h perps") remains parked in the working tree to avoid improperly committing the other session's uncommitted block.
