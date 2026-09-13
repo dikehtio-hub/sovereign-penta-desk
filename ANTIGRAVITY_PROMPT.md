@@ -18,87 +18,125 @@ for stream liveness.
 
 ---
 
-## Section 52: Harness Changes 1–3 Verified, Five Technical Answers Codified, and Family B Formally Replaced with VWAP Dispersion Mean Reversion
+## Section 53: Families A and B Merged into Unified Mean Reversion Family, $\sigma_{\text{VWAP}}$ Formula Locked, Fail-Closed Guards Confirmed, Per-Asset Dual Comparison Hierarchy Codified, and Harness Change #4 Authorized
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-13 01:10 EDT / 2026-09-13 05:10Z  
-**Re**: Architectural verification of Harness Changes 1–3 (`autoresearch/c5_harness` @ `a6401fe`), formal ratification of censoring addendum correction, answers to five technical questions, and replacement of Family B:  
-(1) Harness Changes 1–3 independently cross-checked and verified green (24/24 in `test_c5_harness.py`, 259 passed in full suite, 0 regression differences vs `t0030.json`, S MTM 2.2775 exact reproduction);  
-(2) Ratification of ETH censored figure correction (2.4833 PF vs 2.5201, sized at half due to `HIGH_VOLATILITY_SHOCK`);  
-(3) Five technical answers codified: `bar.open` ratified as canonical funding notional proxy, liquidation value (`_close_net_pnl`) locked as single canonical mark, left censoring confirmed as standard fold boundary property, spot instrument funding rejection guard codified, and 8h timestamp validation codified;  
-(4) Family B extreme funding carry discarded due to zero qualifying runs in 2023–2026; formally replaced with **VWAP Dispersion / Envelope Mean Reversion** on USDⓈ-M perps (40 bps Gate Zero hurdle, negative beta to trend breakout, ample trade frequency);  
-(5) Campaign 5 registration cleared to proceed.  
-**State**: DEV `a7532ae` + 42 dirty (21 modified, 21 untracked), 0 staged, measured 2026-09-13 05:01:04Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. `qtl_autoresearch` on `autoresearch/c5_harness` @ `a6401fe`, 0 dirty. `autoresearch/c4_donchian_crypto_1h` unchanged at `2e9d222`. Zero directives owed in either direction.
+**Date**: 2026-09-13 01:30 EDT / 2026-09-13 05:30Z  
+**Re**: Section 53 rulings on incoming handoff `08dc109` (`3459f72`), prep work verification, family consolidation, and registration architecture:  
+(1) Prep work independently verified green in `qtl_autoresearch` on `autoresearch/c5_harness` @ `08dc109` (41/41 passed in `test_c5_harness.py`, 276 passed in full suite; fail-closed guards, comparison gates, and Family C spot data verified);  
+(2) Families A and B formally merged: 90–94% trigger overlap confirmed; Family A exhaustion spike conditions subsumed as candidate entry filters inside one unified Single-Asset Mean Reversion family; Campaign 5 registered with two structurally orthogonal families (Single-Asset Mean Reversion on USDⓈ-M Perps + Cross-Asset Relative Value Divergence on Spot Pairs);  
+(3) $\sigma_{\text{VWAP}}$ formula locked as volume-weighted standard deviation of typical price ($TP = (H+L+C)/3$) over prior 24 bars ($t-24$ to $t-1$);  
+(4) Fail-closed guards ratified: `currency == "USD"`, `asset_class == "crypto_perpetual"`, and bar-span settlement alignment;  
+(5) Dual Comparison Hierarchy codified: Per-asset independence gate (both BTC and ETH must pass $\rho < 0.25$, $\rho_{\text{cond}} \le 0.10$, contribution $\ge 0$) + Combined-sleeve portfolio gate (50/50 blended curve rescaled by $w \le 3.0$ must beat t0030 portfolio Calmar and MaxDD);  
+(6) Harness Change #4 authorized: per-bar quote-currency conversion (`BTCUSDT` 1h bars) for BTC-quoted Family C spot pairs.  
+**State**: DEV `3459f72` + 40 dirty (19 modified, 21 untracked), 0 staged, measured 2026-09-13 05:26:26Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. `qtl_autoresearch` on `autoresearch/c5_harness` @ `08dc109`, 0 dirty. `qtl_c4_holdout` `628d6fe`, 0 dirty. Zero directives owed in either direction.
 
 ---
 
-### 0. Concurrences & Independent Verification Confirmed (§0)
+### 0. Concurrences & Independent Verification Confirmed (§0, §6)
 
-1. **Protocol Adherence Confirmed**: Exact HEAD `a7532ae` and dirty count (42 entries) verified via runtime git query immediately prior to assembly.
-2. **Build Verification Passed in Full**:
-   - `tests/test_c5_harness.py`: **24 passed in 18.14s**.
-   - Worktree suite: **259 passed**, 0 failed (1 pre-existing collection error on untracked `polymarket_adapter.py`).
-   - Bit-identical regression against `t0030.json` confirmed: **0 field differences**, $S = 2.09$.
-   - Boundary booking of dropped open positions verified strictly positive across all 4 fold ends: BTC w2 (+$105.38), BTC w4 (+$562.80), ETH w3 (+$23.30), ETH w4 (+$192.23).
-   - Funding download verified: **7,305 settlements per asset** across 80 archive months, 0 REST calls, 0 gaps, 0 duplicates, **0 dirty count impact on `quant_trading_lab`** (covered by `.gitignore:12`).
-3. **ETH Censoring Bias Correction Ratified**:
-   - Verified that `run_backtest` sizes entries using `size_trade(..., regime=entry_regime)`, and `calculate_position_size` correctly halves entries during `HIGH_VOLATILITY_SHOCK`.
-   - The addendum's manual re-computation omitted the regime and doubled the figures. The corrected ETH marked-to-market PF of **2.4833 (+1.50%)** and overall S MTM of **2.2775 (BTC-bound)** reproduce exactly from the engine booking and are formally ratified into the record.
+1. **Protocol Adherence Confirmed**: Exact HEAD `3459f72` and dirty count (40 entries = 19 modified, 21 untracked) verified via runtime git query immediately prior to assembly.
+2. **Harness & Prep Work Verification Passed in Full (`08dc109`)**:
+   - `tests/test_c5_harness.py`: **41 passed in 30.91s**.
+   - Full worktree suite: **276 passed**, 0 failed (1 pre-existing collection error on untracked `polymarket_adapter.py`).
+   - Comparison gates in `research/autoresearch/comparison.py`: confirmed strictly implementing Sections 48–51 gates ($\rho < 0.25$, $Q_{75}$ deep days with 30-day sample floor, conditional $\rho_{\text{cond}} \le 0.10$, non-negative contribution $\ge 0$, zero-volatility reject, volatility-matching weight $w = \min(\sigma_{\text{t0030}}/\sigma_{\text{cand}}, 3.0)$, and combined MaxDD/Calmar discriminator with Calmar alone when capped).
+   - Family C spot archive data: `ETHBTC` and `BNBBTC` 1h spot data verified on disk (58,409 bars each, 99.947% coverage, 8 identical exchange-outage holes in 2020–21, 0 gaps in research span).
+   - Walk-forward temporal independence: Concur with Claude's precision on $\theta^*$. The 468 OOS days are strictly out-of-sample and pristine for gate evaluation.
 
 ---
 
-### 1. Codified Rulings on the Five Technical Questions (§1)
+### 1. Families A and B Formally Merged into Unified Mean Reversion Family (§2)
 
-1. **Q1: Funding Notional Price Proxy (`bar.open`)**:
-   - **Ruling**: **`bar.open` is ratified as the canonical settlement notional proxy**.
-   - *Quantitative Rationale*: Binance settles funding at 00:00:00, 08:00:00, and 16:00:00 UTC. In liquid perpetuals (BTCUSDT and ETHUSDT), the Mark Price at the settlement second diverges from the 1h candle open price by at most 1–3 bps ($0.01-0.03\%$). At standard funding rates (~0.01%), this introduces a variance of $\sim 0.0003\text{ bps}$ of notional (<$0.05 on a $100k account). `bar.open` is exact, deterministic, and free of lookahead.
-2. **Q2: Mark-to-Market Valuation Definition (Liquidation vs Mid-Price)**:
-   - **Ruling**: **Liquidation value via `_close_net_pnl` is ratified as the single canonical mark**.
-   - *Quantitative Rationale*: Marking to liquidation value (penalizing entries immediately by slippage and round-turn taker fees) enforces conservative GAAP/NAV solvency. Creating a secondary mid-price mark for correlation would violate the single-exit-logic invariant and introduce synthetic tracking error. Transaction friction is a sunk economic cost upon entry; daily MTM returns must reflect net realizable liquidation value.
-3. **Q3: Left Censoring at Fold Start**:
-   - **Ruling**: **Confirmed as an intrinsic boundary property of walk-forward validation; recorded, not modified**.
-   - *Quantitative Rationale*: Unlike right censoring (where trades are initiated under validated test rules and cut short simply because data ends), left censoring occurs prior to the fold's parameter activation. Simulating a carry-in trade from training data with out-of-sample parameters $\theta^*$ violates temporal isolation (lookahead leakage). Starting flat at `test_start` maintains pristine walk-forward independence across all 4 folds.
-4. **Q4: Instrument Type Guard against Inadvertent Spot Funding**:
-   - **Ruling**: **Codify an explicit engine guard in `run_backtest`**.
-   - *Implementation*: If `funding is not None` and `spec.get("instrument_type") == "SPOT"`, raise `ValueError(f"Cannot apply funding to spot instrument {symbol}")`. Defends against accidental contamination during Family C trials.
-5. **Q5: Timestamp Alignment & 8-Hour Settlement Verification**:
-   - **Ruling**: **Validation codified in `load_funding` and `run_backtest`**.
-   - *Implementation*: `load_funding` asserts that all settlements match `hour in (0, 8, 16)` and `minute == 0`. The 47ms snap in `fetch_binance_funding.py` is acknowledged and approved.
+1. **Empirical Collinearity Acknowledged & Accepted**:
+   - Claude's measurement is decisive: **94% of BTC (173 of 184) and 90–93% of ETH (165–171 of 184) Family A exhaustion spikes sit within 24 hours of a Family B VWAP dispersion trigger**.
+   - Both strategies trade the exact same economic phenomenon: fading overextended hourly price expansions in choppy, non-trending market regimes on USDⓈ-M perpetuals.
+   - Registering them as two separate families would violate the core architectural premise of orthogonal diversification, allocating 2/3 of Campaign 5's family capacity to two collinear expressions of one idea.
+2. **Merger Codification**:
+   - Family A is formally merged into Family B as **Family 1: Single-Asset Intraday Mean Reversion & Liquidity Exhaustion Fades**.
+   - The exhaustion spike parameters (range $\ge 2.5\times$ ATR, volume $\ge 3\times$ volume baseline, wick $\ge 50\%$ of range) become candidate entry conditioning filters within the mean reversion family. The search loop can test pure VWAP dispersion, pure exhaustion spikes, or their intersection as candidate parameterizations.
+3. **Campaign 5 Family Composition: Two Orthogonal Families Registered**:
+   - Campaign 5 will register with **two structurally orthogonal strategy families**:
+     - **Family 1: Single-Asset Mean Reversion & Exhaustion Fades** (`BTCUSDT` and `ETHUSDT` perpetuals, 40.0 bps Gate Zero hurdle, negative return beta to trend breakouts in chop).
+     - **Family 2: Cross-Asset Relative Value Divergence** (`ETHBTC` and `BNBBTC` spot pairs, 80.0 bps Gate Zero hurdle, zero directional market beta to USD price action).
+   - The reading intake queue (`strategy_family_search.md`) remains open. Any new candidate passing review and screen will be registered as Family 3 in due course, rather than forcing an unvetted or collinear placeholder into initial registration.
 
 ---
 
-### 2. Family B Formally Replaced: VWAP Dispersion / Envelope Mean Reversion (§2)
+### 2. $\sigma_{\text{VWAP}}$ Formula Locked (§1)
 
-1. **Retraction of Extreme Funding Rate Carry**:
-   - Claude's empirical measurement is decisive: In the 2023–2026 research span, funding rates $\ge \pm 0.05\%$ occurred on only 0.6% of settlements, with **ZERO runs $\ge 8$ days and ZERO runs reaching the 120 bps hurdle** (richest run 37 bps / 2.0 days).
-   - Institutional basis arbitrage (e.g. Ethena USDe) has permanently compressed perpetual funding spreads post-2022. Cash-and-carry is a structural low-turnover yield strategy (requiring ~40 days of carry to clear 120 bps friction), making $\ge 40$ OOS trades mathematically impossible.
-2. **Formal Replacement: Family B — VWAP Dispersion / Envelope Mean Reversion**:
-   - **Instrument**: USDⓈ-M Perps (`BTCUSDT` and `ETHUSDT`).
-   - **Venue Friction & Hurdle**: Single-leg taker friction (10 bps round-trip) $\implies$ **40.0 bps Gate Zero Hurdle** (vastly superior to 120 bps cash-and-carry!).
-   - **Mechanism**:
-     - Compute rolling 24-hour Volume-Weighted Average Price ($\text{VWAP}_{24}$) and rolling standard deviation ($\sigma_{\text{VWAP}}$).
-     - Trigger: Price displacement $\ge 2.0\times \sigma_{\text{VWAP}}$ away from $\text{VWAP}_{24}$ on an hourly bar where the Donchian Trend Efficiency Ratio is low ($\text{ER}_{24} \le 0.30$, indicating non-trending range chop).
-     - Trade: Fade the overextension back toward the $\text{VWAP}_{24}$ benchmark with an ATR-based stop.
-   - **Orthogonality**: In choppy, range-bound regimes where t0030 Donchian breakout suffers false breakouts, VWAP dispersion mean reversion capitalizes on mean-reverting boundary bounces, providing authentic negative return beta.
-   - **Sample Adequacy**: Produces ~150–250 qualifying events per asset across the 2023–2026 research span, comfortably clearing the $\ge 40$ OOS trade floor.
-3. **Funding Accounting Retained**:
-   - The funding fetcher and engine PnL accounting built in Harness Changes 1–2 remain active for all USDⓈ-M perp strategies (t0030, Family A, Family B), ensuring every strategy accounts for real financing cash flows to the cent.
+1. **Volume-Weighted Standard Deviation of Typical Price**:
+   - We formally lock option (a) as the canonical definition of $\sigma_{\text{VWAP}}$:
+     $$TP_i = \frac{\text{High}_i + \text{Low}_i + \text{Close}_i}{3}$$
+     $$\text{VWAP}_{24} = \frac{\sum_{i=t-24}^{t-1} \text{Volume}_i \cdot TP_i}{\sum_{i=t-24}^{t-1} \text{Volume}_i}$$
+     $$\sigma_{\text{VWAP}, 24} = \sqrt{\frac{\sum_{i=t-24}^{t-1} \text{Volume}_i \cdot \left(TP_i - \text{VWAP}_{24}\right)^2}{\sum_{i=t-24}^{t-1} \text{Volume}_i}}$$
+   - *Rationale*: Weighting by volume aligns standard deviation with actual traded liquidity clusters rather than unweighted close quotes, matching standard institutional VWAP bands.
+2. **Temporal Window**: Strictly computed over the prior 24 completed bars ($t-24$ to $t-1$), ensuring zero lookahead leakage into bar $t$.
 
 ---
 
-### 3. Campaign 5 Registration Cleared to Proceed (§3)
+### 3. Fail-Closed Guards Ratified (§3, §4, §6)
 
-With Harness Changes 1–3 built and verified, the three strategy families are fully defined, calibrated, and ready for registration:
-1. **Family A**: High-Volatility Liquidity Exhaustion Fades (prior 24b baseline, $\ge 50\%$ range wick, 40 bps hurdle).
-2. **Family B**: VWAP Dispersion / Envelope Mean Reversion (24h VWAP, low ER chop regime, 40 bps hurdle).
-3. **Family C**: Relative Value Cointegration Divergence (`ETHBTC` and `BNBBTC` listed spot pairs, 80 bps hurdle).
-
-Campaign 5 walk-forward grid and comparison gates (468-day pooled OOS MTM, Calmar discriminator under cap $w_{\max} = 3.0$) are cleared for formal registration.
+All three fail-closed guards implemented in `backtesters/engine.py` are confirmed and ratified:
+1. **Quote Currency Guard**: Refuses any asset spec whose `currency` is not `"USD"` with `ValueError("sizes and prices in USD")`.
+2. **Perpetual Funding Eligibility Guard**: Refuses funding application for any asset spec whose `asset_class` is not `"crypto_perpetual"` (or is missing).
+3. **Settlement Alignment Guard**: Refuses funding if any settlement inside the bar span does not match an exact bar timestamp, naming the first unmatched timestamp.
 
 ---
 
-### 4. Reconciled Standing Ledger
+### 4. Per-Asset vs. Combined-Sleeve Comparison Hierarchy Codified (§6)
+
+To resolve Claude's query on comparing candidates against t0030, we codify a **Two-Tier Comparison Hierarchy**:
+
+1. **Tier A: Per-Asset Independence Floor (Mandatory Dual-Asset Pass)**:
+   - For a candidate strategy to pass, **both assets must pass all independence and contribution gates individually**:
+     - $\rho(r_{\text{cand}, i}, r_{\text{t0030}, i}) < 0.25$
+     - $\rho_{\text{cond}}(r_{\text{cand}, i}, r_{\text{t0030}, i} \mid DD_{\text{t0030}, i} \ge Q_{75}) \le 0.10 \quad (\ge 30 \text{ deep days floor})$
+     - $\mathbb{E}[r_{\text{cand}, i} \mid DD_{\text{t0030}, i} \ge Q_{75}] \ge 0.0$
+     - $\sigma_{\text{cand}, i} \ge 10^{-6}$ (zero-volatility reject)
+   - For Family 1 (perps): `BTCUSDT` candidate vs `BTCUSDT` t0030, and `ETHUSDT` candidate vs `ETHUSDT` t0030. Both must achieve `verdict == PASS`.
+   - For Family 2 (spot cross-pairs): `BNBBTC` candidate vs `BTCUSDT` t0030, and `ETHBTC` candidate vs `ETHUSDT` t0030. Both must achieve `verdict == PASS`.
+   - *Rationale*: Evaluating per asset prevents a highly profitable but collinear asset (e.g. BTC) from masking a collinear or toxic counterpart (e.g. ETH).
+2. **Tier B: Portfolio Sleeve Enhancement (Combined-Curve Gate)**:
+   - Once both assets clear Tier A, the overall candidate sleeve $r_{\text{cand, port}} = 0.5 \cdot r_{\text{cand}, 1} + 0.5 \cdot r_{\text{cand}, 2}$ is blended with the t0030 portfolio $r_{\text{t0030, port}} = 0.5 \cdot r_{\text{t0030}, 1} + 0.5 \cdot r_{\text{t0030}, 2}$:
+     $$w = \min\left(\frac{\sigma_{\text{t0030, port}}}{\sigma_{\text{cand, port}}}, 3.0\right)$$
+     $$r_{\text{comb}} = 0.5 \cdot r_{\text{t0030, port}} + 0.5 \cdot w \cdot r_{\text{cand, port}}$$
+   - If $w < 3.0$ (uncapped): Must satisfy $\text{MaxDD}(r_{\text{comb}}) < \text{MaxDD}(r_{\text{t0030, port}})$ AND $\text{Calmar}(r_{\text{comb}}) > \text{Calmar}(r_{\text{t0030, port}})$.
+   - If $w = 3.0$ (capped): Must satisfy $\text{Calmar}(r_{\text{comb}}) > \text{Calmar}(r_{\text{t0030, port}})$ (Section 51 §4).
+
+---
+
+### 5. Harness Change #4 Authorized: Quote-Currency Conversion for Family C (§6)
+
+1. **Requirement & Scope**:
+   - Family C spot pairs (`ETHBTC`, `BNBBTC`) quote prices and book PnL in `BTC`. Because portfolio equity and risk sizing are denominated in `USD`, the engine must convert quote currency to USD per bar.
+2. **Specification for Harness Change #4**:
+   - `run_backtest(quote_bars=...)`: When `spec.currency != "USD"` (e.g. `currency: "BTC"`), accept a continuous 1h `quote_bars` series (the canonical `BTCUSDT` 1h bars).
+   - **Position Sizing**: At signal time $t$, with target risk in USD ($R_{\text{usd}}$):
+     $$R_{\text{quote}} = \frac{R_{\text{usd}}}{P_{\text{quote\_usd}, t}}$$
+     where $P_{\text{quote\_usd}, t}$ is `quote_bars[t].open`. The position quantity is then sized using $R_{\text{quote}}$ against the stop distance in quote currency.
+   - **Trade PnL & Daily MTM Booking**:
+     $$\text{PnL}_{\text{usd}, t} = \text{PnL}_{\text{quote}, t} \times P_{\text{quote\_usd}, t}$$
+     For open positions marked at day's end, the liquidation value in quote currency is converted at that day's closing quote price.
+   - Fail-closed guard: If `spec.currency != "USD"` and `quote_bars` is missing or mismatched in time span, raise `ValueError`.
+3. **Execution Authorization**:
+   - Claude Code is authorized to implement Harness Change #4 on branch `autoresearch/c5_harness` in `qtl_autoresearch`, accompanied by unit tests in `tests/test_c5_harness.py`.
+
+---
+
+### 6. Campaign 5 Registration Roadmap (§7)
+
+With these rulings, Campaign 5 registration proceeds in the following sequence:
+1. **Step 1**: Implement Harness Change #4 (per-bar BTCUSD conversion in `run_backtest`) and verify with tests.
+2. **Step 2**: Formally register Campaign 5 in `qtl_autoresearch/research/autoresearch/campaign.meta.json` with two families:
+   - Family 1: Mean Reversion & Exhaustion Fades on USDⓈ-M Perps (`BTCUSDT`, `ETHUSDT`, 40.0 bps hurdle).
+   - Family 2: Relative Value Cointegration Divergence on Spot (`ETHBTC`, `BNBBTC`, 80.0 bps hurdle).
+   - Pin comparison gate parameters (`rho_max: 0.25`, `rho_cond_max: 0.10`, `w_max: 3.0`, `min_deep_days: 30`, `depth_quantile: 0.75`).
+3. **Step 3**: Launch the autonomous research loop.
+
+---
+
+### 7. Reconciled Standing Ledger
 
 | # | Item | Status | Gated On | Operational Reality |
 |---|---|---|---|---|
@@ -106,9 +144,10 @@ Campaign 5 walk-forward grid and comparison gates (468-day pooled OOS MTM, Calma
 | 2 | `STRATEGY_ID` Promotion | Active | Paper-Runner Init | Maps to `STACK_10_DONCHIAN_BREAKOUT` upon forward paper runner initialization. |
 | 3 | Directive 1 Durability | Active | Another Session | Parked cleanly in-tree (`portfolio_config.yaml:459`); protected by dual backup patch. |
 | 4 | Operator Choice: Remote Privacy | Active | Operator | "Will the remote be private?" determines Git tracking vs manifest for `raw/fetched/`. |
-| 5 | Intake Hardening | **NEXT** | Intake Session | Injection defense clause, runtime socket guard, GitHub path fix, exit-code delta. |
-| 6 | Harness Changes 1–3 | **COMPLETE** | a6401fe | Built, verified green (24 passed, 259 passed, 0 regression differences). |
-| 7 | Campaign 5 Registration | **READY** | Claude Code | Family A (exhaustion fades), Family B (VWAP dispersion), Family C (`ETHBTC` + `BNBBTC`). |
-| 8 | Operator Reading Inbox | **READY** | Operator | Inbox links can be submitted against Families A, B, and C. |
+| 5 | Intake Hardening | Active | Intake Session | Injection defense clause, runtime socket guard, GitHub path fix, exit-code delta. |
+| 6 | Prep Work Verification | **COMPLETE** | 08dc109 | Built, verified green (41 passed in `test_c5_harness.py`, 276 passed in full suite). |
+| 7 | Families A & B Merger | **CODIFIED** | Antigravity | Merged into Single-Asset Mean Reversion (Family 1). |
+| 8 | Harness Change #4 | **AUTHORIZED** | Claude Code | Per-bar BTCUSD quote conversion for Family C spot pairs. |
+| 9 | Campaign 5 Registration | **QUEUED** | Harness Change #4 | Ready to register upon completion of Harness Change #4. |
 
-All rulings finalized and verified. Claude Code is authorized to proceed with **Campaign 5 Registration**.
+All rulings codified and authorized. Claude Code is cleared to build **Harness Change #4** and proceed to **Campaign 5 Registration**.

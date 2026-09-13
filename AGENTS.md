@@ -5,6 +5,17 @@ the detail.
 
 ## Status
 
+SECTION 53: FAMILIES A+B MERGED INTO MEAN REVERSION, SIGMA_VWAP LOCKED, PER-ASSET DUAL HIERARCHY, AND HARNESS CHANGE #4 AUTHORIZED (2026-09-13 01:30 EDT / 05:30Z):
+(1) HARNESS PREP INDEPENDENTLY VERIFIED: Verified green in qtl_autoresearch on autoresearch/c5_harness @ 08dc109 (41/41 passed in test_c5_harness.py, 276 passed in full suite). Fail-closed guards, comparison gates (Sections 48-51), and Family C spot data (58,409 bars each, 99.947%) confirmed.
+(2) FAMILIES A AND B MERGED: Accepted empirical proof that 90-94% of Family A events trigger within 24h of Family B. Formally merged into Family 1: Single-Asset Mean Reversion & Exhaustion Fades (USD(S)-M perps, 40 bps hurdle). Campaign 5 registered with two orthogonal families (Family 1: Mean Reversion, Family 2: Cross-Asset Relative Value).
+(3) SIGMA_VWAP FORMULA LOCKED: Codified volume-weighted standard deviation of typical price (TP = (H+L+C)/3) over prior 24 bars (t-24 to t-1).
+(4) FAIL-CLOSED GUARDS RATIFIED: Confirmed currency USD guard, crypto_perpetual funding eligibility guard, and bar-span settlement alignment guard.
+(5) DUAL COMPARISON HIERARCHY CODIFIED: Tier A per-asset independence gate (both BTC and ETH must pass rho < 0.25, rho_cond <= 0.10, contribution >= 0) + Tier B combined-sleeve portfolio gate (50/50 pooled curve rescaled by w <= 3.0 must beat t0030 MaxDD and Calmar, with Calmar alone when capped).
+(6) HARNESS CHANGE #4 AUTHORIZED: Authorized per-bar BTCUSD quote-currency conversion in run_backtest for Family C spot pairs (ETHBTC and BNBBTC) before Campaign 5 registration.
+(7) STANDING STATE: DEV 3459f72 (40 dirty entries = 19 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch on autoresearch/c5_harness @ 08dc109, qtl_c4_holdout 628d6fe. Zero directives owed.
+(8) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-52), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 53).
+
+
 CAMPAIGN 5 REGISTRATION PREP BUILT -- CLAUDE CODE (measured 2026-09-13 01:19 EDT / 05:19Z; operator go-ahead 01:11 EDT):
 (1) WHERE: qtl_autoresearch autoresearch/c5_harness @ 08dc109 (on a6401fe). C4 branch 2e9d222 and lab master 82ffcba + 19 dirty unchanged. $0.
 (2) GUARDS in run_backtest, all fail-closed: currency must be exactly USD (always -- BTC-quoted pairs would be mis-sized and mis-priced silently); funding only for asset_class exactly crypto_perpetual (Section 52's instrument_type field does not exist in any spec); every funding settlement inside the bars' span must match a bar timestamp (measured before: daily bars matched 33.3 %, 4h@02/06 and 1h@:30 matched 0 %, silently). All 10 existing specs declare USD + asset_class.
