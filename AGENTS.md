@@ -5,6 +5,17 @@ the detail.
 
 ## Status
 
+RE-RULING SECTION 47: CONDITIONAL SOCKET RATIFICATION, INJECTION DEFENSE, DUAL MTM CORRELATION GATE, FAMILY B FUNDING CARRY (2026-09-12 23:55 EDT / 2026-09-13 03:55Z):
+(1) RULING 1 RE-RULED: Conditional ratification granted subject to: (a) untrusted-content injection defense clause in WIKI_SCHEMA.md s.7, (b) runtime socket blocker test in test_reading.py, and (c) AST checks for knowledge.fetch_reading.
+(2) EDGE CASES FIXED: GitHub path collapse (/tree/<branch>/<dir>, issues, PRs) confirmed as defect; classify() must preserve subpaths. Dead link exit 1 scoped strictly to new failures to avoid alert fatigue. Query params normalized via sorted(parse_qsl()).
+(3) RULING 2 (RAW/FETCHED/): Git tracking tied to operator remote privacy decision (private -> committed; public -> gitignore + raw_manifest.py precedent). Kept local/uncommitted pending operator answer.
+(4) NON-OHLCV SCOPING: Split into Autoresearch Backfillable (funding rate carry, basis arb; priority high) vs Forward Desk Microstructure (order book imbalance, CLOB cascades; deferred from 3-year loop due to 8-day history limit).
+(5) FAMILY B REPLACED WITH FUNDING CARRY: Squeeze breakout discarded as collinear with t0030. Replaced with Perpetual Funding Rate Carry & Basis Mean Reversion. Family A refined to high-volatility exhaustion spikes (> 100 bps margin over 40 bps Gate Zero). Family C noted as synthetic ratio asset (ETHBTC).
+(6) DUAL MTM CORRELATION GATE CODIFIED: Evaluated on daily marked-to-market PnL series: (a) unconditional rho(MTM_cand, MTM_t0030) < 0.25, and (b) drawdown-conditional rho(MTM_cand, MTM_t0030 | DD_t0030 > 2.0%) <= 0.10.
+(7) STANDING STATE: DEV aadd49e (40 dirty entries = 20 modified + 20 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch 2e9d222, qtl_c4_holdout 628d6fe. Zero directives owed.
+(8) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-46), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 47).
+
+
 READING INTAKE RATIFIED, RAW/FETCHED/ COMMITTED, STRATEGY SCREEN HARDENED (2026-09-12 23:35 EDT / 2026-09-13 03:35Z):
 (1) READING INTAKE ARCHITECTURE RATIFIED: WIKI_SCHEMA.md s.7 and s.9 ratified as written. Socket isolated solely to knowledge/fetch_reading.py, enforced by NetworkIsolationTests; adapters remain 100% offline. raw/fetched/ mandated as git tracked to preserve vault link integrity (L5) on fresh clones.
 (2) CODE CROSS-CHECK VERIFIED: Verified 12/12 passed in test_reading.py, 529 pages 0 errors 2 warnings on knowledge.lint, and byte-identical idempotence across consecutive ingest runs.
