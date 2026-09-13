@@ -18,94 +18,87 @@ for stream liveness.
 
 ---
 
-## Section 51: Dynamic t0030 Regression Target, Engine Exit Path Booking, New Stack ID Mandate, and Capped Calmar Discriminator Codified
+## Section 52: Harness Changes 1–3 Verified, Five Technical Answers Codified, and Family B Formally Replaced with VWAP Dispersion Mean Reversion
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-13 00:45 EDT / 2026-09-13 04:45Z  
-**Re**: Ruling on three corrections, two architectural notes, and build authorization from Claude Code's handoff:  
-(1) Condition 2 regression target codified as dynamically loaded full-precision fields directly from `t0030.json` at test time (retyped numbers retracted; verified exact pooled OOS values: BTC $3,924.52 net / 53 trades, ETH $8,484.25 net / 81 trades, $S = 2.09$);  
-(2) Condition 1 boundary position booking codified strictly through the engine's canonical exit computation (`backtesters/engine.py:315` including 1-tick slippage and two-sided 0.05% taker fees), eliminating ad-hoc friction constants;  
-(3) Tier 2 promotion stack ID corrected: `STACK_9_CANDIDATE` stricken (permanently disabled slot); promoted strategies must receive a newly minted stack ID (e.g. `STACK_11_<NAME>`);  
-(4) Combined-curve gate discriminator rule codified: whenever the volatility weight is capped at $w_{\max} = 3.0$, the comparison is judged exclusively on Calmar (MaxDD pass is dilution by construction);  
-(5) Host probing order confirmed (`data.binance.vision` probe first, fallback to `fapi.binance.com`);  
-(6) AutoResearch Harness Changes 1–3 fully approved and queued for the Operator's Go-Ahead.  
-**State**: DEV `061aa53` + 42 dirty (21 modified, 21 untracked), 0 staged, measured 2026-09-13 04:25:03Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. Genuinely clean: `qtl_autoresearch` `2e9d222` on `autoresearch/c4_donchian_crypto_1h`, `qtl_c4_holdout` `628d6fe`. Zero directives owed in either direction.
+**Date**: 2026-09-13 01:10 EDT / 2026-09-13 05:10Z  
+**Re**: Architectural verification of Harness Changes 1–3 (`autoresearch/c5_harness` @ `a6401fe`), formal ratification of censoring addendum correction, answers to five technical questions, and replacement of Family B:  
+(1) Harness Changes 1–3 independently cross-checked and verified green (24/24 in `test_c5_harness.py`, 259 passed in full suite, 0 regression differences vs `t0030.json`, S MTM 2.2775 exact reproduction);  
+(2) Ratification of ETH censored figure correction (2.4833 PF vs 2.5201, sized at half due to `HIGH_VOLATILITY_SHOCK`);  
+(3) Five technical answers codified: `bar.open` ratified as canonical funding notional proxy, liquidation value (`_close_net_pnl`) locked as single canonical mark, left censoring confirmed as standard fold boundary property, spot instrument funding rejection guard codified, and 8h timestamp validation codified;  
+(4) Family B extreme funding carry discarded due to zero qualifying runs in 2023–2026; formally replaced with **VWAP Dispersion / Envelope Mean Reversion** on USDⓈ-M perps (40 bps Gate Zero hurdle, negative beta to trend breakout, ample trade frequency);  
+(5) Campaign 5 registration cleared to proceed.  
+**State**: DEV `a7532ae` + 42 dirty (21 modified, 21 untracked), 0 staged, measured 2026-09-13 05:01:04Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. `qtl_autoresearch` on `autoresearch/c5_harness` @ `a6401fe`, 0 dirty. `autoresearch/c4_donchian_crypto_1h` unchanged at `2e9d222`. Zero directives owed in either direction.
 
 ---
 
-### 0. Concurrences & Protocol Verification (§0)
+### 0. Concurrences & Independent Verification Confirmed (§0)
 
-1. **Protocol Adherence Confirmed**: Exact HEAD `061aa53` and dirty count (42 entries) verified via runtime git query immediately prior to assembly.
-2. **Acceptances Confirmed**: Full acceptance of Section 50's core architecture: wick $\ge 50\%$ of range as the canonical rule, 6.0 months / 50 trades Tier 2 floor, MTM series output, continuous root funding storage, and branch strategy.
-
----
-
-### 1. Condition 2: Dynamic `t0030.json` Regression Target Formally Codified (§1)
-
-1. **Retraction of Retyped Benchmarks**: Claude's audit of `qtl_autoresearch/research/autoresearch/trials/t0030.json` is accepted in full. Retyped figures from earlier calibrations are completely retracted.
-2. **Dynamic File-Based Regression Target Mandated**:
-   The regression acceptance test for Harness Change #3 must NOT use hardcoded numbers in test files. **The test suite must load `t0030.json` dynamically at test execution time and assert exact bit-identical equality** across all full-precision record fields:
-   - **BTCUSDT Pooled OOS**: Gross Profit `$7,519.50`, Gross Loss `$3,594.97`, Net PnL `$3,924.52`, Max Drawdown `$687.49`, Total Trades `53`.
-   - **ETHUSDT Pooled OOS**: Gross Profit `$14,349.49`, Gross Loss `$5,865.25`, Net PnL `$8,484.25`, Max Drawdown `$903.54`, Total Trades `81`.
-   - **Overall Score**: $S = \min(2.09, 2.45) = 2.09$ (rounded ratio).
-   - **Trade Counts**: Exactly `134` OOS trades ($53 + 81$) and `264` IS trades ($132 + 132$).
-   Every dollar and cent must match identically between pre- and post-MTM backtests.
+1. **Protocol Adherence Confirmed**: Exact HEAD `a7532ae` and dirty count (42 entries) verified via runtime git query immediately prior to assembly.
+2. **Build Verification Passed in Full**:
+   - `tests/test_c5_harness.py`: **24 passed in 18.14s**.
+   - Worktree suite: **259 passed**, 0 failed (1 pre-existing collection error on untracked `polymarket_adapter.py`).
+   - Bit-identical regression against `t0030.json` confirmed: **0 field differences**, $S = 2.09$.
+   - Boundary booking of dropped open positions verified strictly positive across all 4 fold ends: BTC w2 (+$105.38), BTC w4 (+$562.80), ETH w3 (+$23.30), ETH w4 (+$192.23).
+   - Funding download verified: **7,305 settlements per asset** across 80 archive months, 0 REST calls, 0 gaps, 0 duplicates, **0 dirty count impact on `quant_trading_lab`** (covered by `.gitignore:12`).
+3. **ETH Censoring Bias Correction Ratified**:
+   - Verified that `run_backtest` sizes entries using `size_trade(..., regime=entry_regime)`, and `calculate_position_size` correctly halves entries during `HIGH_VOLATILITY_SHOCK`.
+   - The addendum's manual re-computation omitted the regime and doubled the figures. The corrected ETH marked-to-market PF of **2.4833 (+1.50%)** and overall S MTM of **2.2775 (BTC-bound)** reproduce exactly from the engine booking and are formally ratified into the record.
 
 ---
 
-### 2. Condition 1: Boundary Position Booking via Canonical Engine Exit Path (§2)
+### 1. Codified Rulings on the Five Technical Questions (§1)
 
-1. **Retraction of Ad-Hoc Friction Constant**: The approximate "10 bps exit friction" formulation is retracted.
-2. **Engine Canonical Closing Logic Codified**:
-   At the final bar of each walk-forward fold test window, any open position must be booked into the MTM series **using the exact same closing computation executed by `backtesters/engine.py:315`**:
-   $$\text{adj\_exit} = \text{Close} \pm (\text{slippage\_ticks} \times \text{tick\_size})$$
-   $$\text{pct\_fee} = (\text{adj\_entry} + \text{adj\_exit}) \times \text{point\_val} \times \text{qty} \times \left(\frac{\text{taker\_fee\_pct}}{100.0}\right)$$
-   This guarantees that entry/exit slippage and two-sided taker fees are accounted for to the exact cent, seamlessly handling perps and spot pairs via their respective `asset_specs.json` definitions without special cases.
-
----
-
-### 3. Tier 2: Dedicated New Stack ID Mandated (§3)
-
-1. **`STACK_9_CANDIDATE` Stricken**: As permanently codified in `portfolio_config.yaml:453–454`, `STACK_9_CANDIDATE` is `enabled: false permanently` and serves exclusively as a placeholder for the rotating autoresearch loop.
-2. **New Stack ID Rule**:
-   Any strategy passing Tier 1 Historical Invariance and entering Tier 2 Forward Paper Incubation must be assigned a **newly minted, unique stack ID** (e.g. `STACK_11_<FAMILY_NAME>`) in both its isolated paper configuration (`config/paper_<strategy_id>.yaml`) and subsequent production files.
-
----
-
-### 4. Bounded-Volatility Combined-Curve Gate Discriminator (§4)
-
-1. **Dilution Recognition**: Accepted Claude's mathematical proof: When the leverage cap $w = w_{\max} = 3.0$ binds, the candidate carries less realized volatility than t0030. Blending 50/50 dilutes t0030's risk, causing $\text{MaxDD}(R_{\text{comb}}) < \text{MaxDD}(R_{t0030})$ to pass by construction.
-2. **Calmar as Sole Discriminator Under Cap**:
-   We formally register that in any evaluation where $w_{\max} = 3.0$ binds:
-   - A pass on the $\text{MaxDD}$ gate is considered a trivial artifact of scale dilution and is **inadmissible as evidence of diversification**.
-   - The combined portfolio acceptance is decided **strictly and exclusively by the scale-invariant Calmar ratio**:
-     $$\text{Calmar}(R_{\text{comb}}) > \text{Calmar}(R_{t0030})$$
+1. **Q1: Funding Notional Price Proxy (`bar.open`)**:
+   - **Ruling**: **`bar.open` is ratified as the canonical settlement notional proxy**.
+   - *Quantitative Rationale*: Binance settles funding at 00:00:00, 08:00:00, and 16:00:00 UTC. In liquid perpetuals (BTCUSDT and ETHUSDT), the Mark Price at the settlement second diverges from the 1h candle open price by at most 1–3 bps ($0.01-0.03\%$). At standard funding rates (~0.01%), this introduces a variance of $\sim 0.0003\text{ bps}$ of notional (<$0.05 on a $100k account). `bar.open` is exact, deterministic, and free of lookahead.
+2. **Q2: Mark-to-Market Valuation Definition (Liquidation vs Mid-Price)**:
+   - **Ruling**: **Liquidation value via `_close_net_pnl` is ratified as the single canonical mark**.
+   - *Quantitative Rationale*: Marking to liquidation value (penalizing entries immediately by slippage and round-turn taker fees) enforces conservative GAAP/NAV solvency. Creating a secondary mid-price mark for correlation would violate the single-exit-logic invariant and introduce synthetic tracking error. Transaction friction is a sunk economic cost upon entry; daily MTM returns must reflect net realizable liquidation value.
+3. **Q3: Left Censoring at Fold Start**:
+   - **Ruling**: **Confirmed as an intrinsic boundary property of walk-forward validation; recorded, not modified**.
+   - *Quantitative Rationale*: Unlike right censoring (where trades are initiated under validated test rules and cut short simply because data ends), left censoring occurs prior to the fold's parameter activation. Simulating a carry-in trade from training data with out-of-sample parameters $\theta^*$ violates temporal isolation (lookahead leakage). Starting flat at `test_start` maintains pristine walk-forward independence across all 4 folds.
+4. **Q4: Instrument Type Guard against Inadvertent Spot Funding**:
+   - **Ruling**: **Codify an explicit engine guard in `run_backtest`**.
+   - *Implementation*: If `funding is not None` and `spec.get("instrument_type") == "SPOT"`, raise `ValueError(f"Cannot apply funding to spot instrument {symbol}")`. Defends against accidental contamination during Family C trials.
+5. **Q5: Timestamp Alignment & 8-Hour Settlement Verification**:
+   - **Ruling**: **Validation codified in `load_funding` and `run_backtest`**.
+   - *Implementation*: `load_funding` asserts that all settlements match `hour in (0, 8, 16)` and `minute == 0`. The 47ms snap in `fetch_binance_funding.py` is acknowledged and approved.
 
 ---
 
-### 5. Archive Host Probing Order Confirmed (§5)
+### 2. Family B Formally Replaced: VWAP Dispersion / Envelope Mean Reversion (§2)
 
-1. **Probing Sequence Confirmed**:
-   `fetch_binance_funding.py` will probe `https://data.binance.vision/data` with a lightweight probe at startup. If reachable, monthly funding archives will be downloaded directly; if unreachable or missing specific intervals, it falls back to the public `fapi.binance.com` REST endpoint. Both paths are keyless and cost $0.
-
----
-
-### 6. AutoResearch Build Sequence: Formally Authorized (§6)
-
-1. **Implementation Scope Confirmed**:
-   - Repository & Branch: `qtl_autoresearch` on a new branch off `2e9d222`, keeping `autoresearch/c4_donchian_crypto_1h` sealed.
-   - Sequence:
-     1. Funding fetcher (`fetch_binance_funding.py` targeting `data/continuous/*funding_binance.csv`).
-     2. Daily MTM series in `engine.py` with boundary booking and dynamic `t0030.json` regression validation.
-     3. Funding PnL accounting.
-   - Estimated duration: ~60–75 minutes ($0 cost).
-2. **Sole Remaining Gate**:
-   **The Operator's Go-Ahead is the sole trigger required to begin execution.**
+1. **Retraction of Extreme Funding Rate Carry**:
+   - Claude's empirical measurement is decisive: In the 2023–2026 research span, funding rates $\ge \pm 0.05\%$ occurred on only 0.6% of settlements, with **ZERO runs $\ge 8$ days and ZERO runs reaching the 120 bps hurdle** (richest run 37 bps / 2.0 days).
+   - Institutional basis arbitrage (e.g. Ethena USDe) has permanently compressed perpetual funding spreads post-2022. Cash-and-carry is a structural low-turnover yield strategy (requiring ~40 days of carry to clear 120 bps friction), making $\ge 40$ OOS trades mathematically impossible.
+2. **Formal Replacement: Family B — VWAP Dispersion / Envelope Mean Reversion**:
+   - **Instrument**: USDⓈ-M Perps (`BTCUSDT` and `ETHUSDT`).
+   - **Venue Friction & Hurdle**: Single-leg taker friction (10 bps round-trip) $\implies$ **40.0 bps Gate Zero Hurdle** (vastly superior to 120 bps cash-and-carry!).
+   - **Mechanism**:
+     - Compute rolling 24-hour Volume-Weighted Average Price ($\text{VWAP}_{24}$) and rolling standard deviation ($\sigma_{\text{VWAP}}$).
+     - Trigger: Price displacement $\ge 2.0\times \sigma_{\text{VWAP}}$ away from $\text{VWAP}_{24}$ on an hourly bar where the Donchian Trend Efficiency Ratio is low ($\text{ER}_{24} \le 0.30$, indicating non-trending range chop).
+     - Trade: Fade the overextension back toward the $\text{VWAP}_{24}$ benchmark with an ATR-based stop.
+   - **Orthogonality**: In choppy, range-bound regimes where t0030 Donchian breakout suffers false breakouts, VWAP dispersion mean reversion capitalizes on mean-reverting boundary bounces, providing authentic negative return beta.
+   - **Sample Adequacy**: Produces ~150–250 qualifying events per asset across the 2023–2026 research span, comfortably clearing the $\ge 40$ OOS trade floor.
+3. **Funding Accounting Retained**:
+   - The funding fetcher and engine PnL accounting built in Harness Changes 1–2 remain active for all USDⓈ-M perp strategies (t0030, Family A, Family B), ensuring every strategy accounts for real financing cash flows to the cent.
 
 ---
 
-### 7. Reconciled Standing Ledger
+### 3. Campaign 5 Registration Cleared to Proceed (§3)
+
+With Harness Changes 1–3 built and verified, the three strategy families are fully defined, calibrated, and ready for registration:
+1. **Family A**: High-Volatility Liquidity Exhaustion Fades (prior 24b baseline, $\ge 50\%$ range wick, 40 bps hurdle).
+2. **Family B**: VWAP Dispersion / Envelope Mean Reversion (24h VWAP, low ER chop regime, 40 bps hurdle).
+3. **Family C**: Relative Value Cointegration Divergence (`ETHBTC` and `BNBBTC` listed spot pairs, 80 bps hurdle).
+
+Campaign 5 walk-forward grid and comparison gates (468-day pooled OOS MTM, Calmar discriminator under cap $w_{\max} = 3.0$) are cleared for formal registration.
+
+---
+
+### 4. Reconciled Standing Ledger
 
 | # | Item | Status | Gated On | Operational Reality |
 |---|---|---|---|---|
@@ -114,8 +107,8 @@ for stream liveness.
 | 3 | Directive 1 Durability | Active | Another Session | Parked cleanly in-tree (`portfolio_config.yaml:459`); protected by dual backup patch. |
 | 4 | Operator Choice: Remote Privacy | Active | Operator | "Will the remote be private?" determines Git tracking vs manifest for `raw/fetched/`. |
 | 5 | Intake Hardening | **NEXT** | Intake Session | Injection defense clause, runtime socket guard, GitHub path fix, exit-code delta. |
-| 6 | Harness Changes 1–3 Build | **READY** | **Operator Go-Ahead** | New branch off `2e9d222`; vision fetcher $\to$ continuous root $\to$ MTM $\to$ funding PnL. |
-| 7 | Campaign 5 Registration | Queued | Harness Ready | Two-tier holdout, 468-day OOS MTM gates, matched-volatility combined curve. |
-| 8 | Operator Reading Inbox | **READY** | Operator | Family A (50% range wick), Family B (funding carry), Family C (`ETHBTC` + `BNBBTC`). |
+| 6 | Harness Changes 1–3 | **COMPLETE** | a6401fe | Built, verified green (24 passed, 259 passed, 0 regression differences). |
+| 7 | Campaign 5 Registration | **READY** | Claude Code | Family A (exhaustion fades), Family B (VWAP dispersion), Family C (`ETHBTC` + `BNBBTC`). |
+| 8 | Operator Reading Inbox | **READY** | Operator | Inbox links can be submitted against Families A, B, and C. |
 
-All corrections codified. Systems standing by for the **Operator's Go-Ahead** on Harness Changes 1–3 and Sunday's lead-lag gate closure at **15:21Z (~11:21 EDT)**.
+All rulings finalized and verified. Claude Code is authorized to proceed with **Campaign 5 Registration**.

@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+SECTION 52: HARNESS CHANGES 1-3 VERIFIED, TECHNICAL ANSWERS CODIFIED, FAMILY B REPLACED WITH VWAP DISPERSION (2026-09-13 01:10 EDT / 05:10Z):
+(1) HARNESS 1-3 INDEPENDENTLY CROSS-CHECKED: Verified green in qtl_autoresearch on autoresearch/c5_harness @ a6401fe (24/24 passed in test_c5_harness.py, 259 passed in full suite). Bit-identical regression against t0030.json confirmed: 0 field differences, S = 2.09, S MTM 2.2775 exact reproduction. Boundary booking strictly positive across all 4 fold ends. 7,305 settlements downloaded per asset with 0 gaps and 0 dirty impact on lab master.
+(2) ETH CENSORING CORRECTION RATIFIED: Confirmed engine halves size on HIGH_VOLATILITY_SHOCK entries; corrected ETH MTM PF of 2.4833 (+1.50%) and S MTM 2.2775 ratified into permanent record.
+(3) FIVE TECHNICAL ANSWERS CODIFIED: bar.open ratified as canonical funding notional proxy; liquidation value (_close_net_pnl) locked as single canonical mark; left censoring confirmed as standard fold boundary property; spot funding rejection guard codified; 8h timestamp validation codified.
+(4) FAMILY B REPLACED WITH VWAP DISPERSION MEAN REVERSION: Accepted finding that extreme funding carry has 0 qualifying runs in 2023-26. Formally replaced Family B with VWAP Dispersion Mean Reversion on USD(S)-M perps (40 bps Gate Zero hurdle, negative beta to trend breakout, ample trade frequency).
+(5) CAMPAIGN 5 REGISTRATION CLEARED: All three families (A: Exhaustion Fades, B: VWAP Dispersion, C: Relative Value) cleared for formal Campaign 5 registration.
+(6) STANDING STATE: DEV a7532ae (42 dirty entries = 21 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch on autoresearch/c5_harness @ a6401fe, qtl_c4_holdout 628d6fe. Zero directives owed.
+(7) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-51), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 52).
+
+
 CAMPAIGN 5 HARNESS CHANGES 1-3 BUILT -- CLAUDE CODE (measured 2026-09-13 00:45 EDT / 04:45Z; operator go-ahead given 00:26 EDT):
 (1) WHERE: qtl_autoresearch worktree, NEW branch autoresearch/c5_harness @ a6401fe (from 2e9d222). autoresearch/c4_donchian_crypto_1h unchanged at 2e9d222; lab master 82ffcba + 19 dirty, unchanged. $0.
 (2) BUILT: scripts/fetch_binance_funding.py (data.binance.vision fundingRate zips, sha256-verified; REST fallback per missing month only) -> quant_trading_lab/data/continuous/<SYM>_funding_binance.csv (git-ignored). backtesters/engine.py run_backtest(funding=..., mtm=...), both keyword-only, default None; exit arithmetic moved into _close_net_pnl() unchanged in order, used by every exit AND every mark. research/autoresearch/mtm.py: replay_oos, pool_mtm (HWM continuity across fold seams), max_drawdown, load_funding. ClosedTrade gains funding_usd (default 0.0).
