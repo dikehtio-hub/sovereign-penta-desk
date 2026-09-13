@@ -514,6 +514,28 @@ THE 9 STRATEGIES ("Stacks"):
 GETTING REAL DATA (instead of made-up/synthetic bars):
   Crypto (Hyperliquid): ./venv/Scripts/python.exe scripts/download_market_data.py --all-intervals
   Futures (NQ/ES/GC/CL, Yahoo Finance): ./venv/Scripts/python.exe scripts/fetch_yahoo_futures.py
+
+10. STACK 11 -- Volatility Squeeze Expansion (stack11_volatility_squeeze.py)
+   RESEARCH SANDBOX ONLY (Antigravity, 2026-09-13; cross-checked by Claude
+   Code the same day). Not registered in portfolio_config.yaml, no Pine
+   script, not a paper-trading candidate.
+   What: Bollinger Bands (20, 2.0) squeezing inside Keltner Channels
+   (20, 1.5 ATR) for >= 3 bars, then a breakout bar in the direction of
+   a linear-regression momentum reading (Carter / TTM-squeeze style);
+   ATR stop, R-multiple target, pit-session flatten for futures.
+   Files: strategies\stack11_volatility_squeeze.py, tests\test_stack11_squeeze.py
+   (3 tests), backtesters\test_stack11_squeeze.py (--5m / --all / --grid /
+   --symbol), backtesters\stack11_out_of_window.py (t-stat + bootstrap,
+   BTC 1h on the 6.67-year file, --btc5m), DEV\STACK_11_RESEARCH_WORKFLOW.md.
+   Verdict (both fixes applied, scaled_500k tier): ES 5m is the only
+   survivor (PF 1.26 baseline / 1.59 best cell, +$28.6k..+$53.6k, but 10
+   weeks of data and t <= 1.45); CL 5m no edge; BTC 1h LOSES on 6.67 years
+   (PF 0.82, t=-2.83, negative 6 of 7 years); 5m crypto dead (PF 0.57).
+   GC 1h (51 trades, PF 1.30, 2.4 y) is the only multi-year positive cell.
+   Run (from quant_trading_lab\, its venv):
+     venv\Scripts\python.exe -m pytest tests\test_stack11_squeeze.py -q
+     venv\Scripts\python.exe -u -m backtesters.test_stack11_squeeze --all
+     venv\Scripts\python.exe -u -m backtesters.stack11_out_of_window --btc5m
   Both of these now ADD new data to what you already have instead of
   overwriting it, so running them again later grows your real-data
   history instead of resetting it.
