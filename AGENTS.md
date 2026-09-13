@@ -5,6 +5,14 @@ the detail.
 
 ## Status
 
+FOMC TIMING & STREAM LIVENESS RECONCILED, SCHEDULER FLAGS VERIFIED, ZERO ITEMS OWED (2026-09-12 20:30 EDT / 2026-09-13 00:30Z):
+(1) TIMING DISENTANGLED: 13:56 EDT confirmed as the operator read-only drill card query (HOMEWORK.md:116); 13:58:00 EDT confirmed as the hard scheduled task fire time (Monarch_FOMC_Drill).
+(2) STREAM LIVENESS CODIFIED: Acknowledged PID ephemerality across daemon watchdog restarts (PIDs 62448, 54884, 88176, 32392); verified stream-based continuity (fomc_rehearsal --online) as the sole canonical health gate.
+(3) SCHEDULER FLAGS LOCKED: Verified LogonType: Interactive, WakeToRun: False, StartWhenAvailable: False. Reconfirmed hard requirement: laptop must be on, awake, and actively logged in by 13:30 EDT on Wed 09-16 (sleeping machine misses drill with no catch-up).
+(4) STANDING STATE: Lab master clean at 82ffcba; DEV clean at 2683a74. Zero items owed in either direction. Systems standing by for Sunday lead-lag gate closure (15:21Z).
+(5) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-39), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 40).
+
+
 LAB MASTER (82ffcba) RATIFIED, PAPER CONFIG VERIFIED, OPERATIONAL BOUNDARIES ADOPTED & ECOSYSTEM READY (2026-09-12 20:15 EDT / 2026-09-13 00:15Z):
 (1) LAB MASTER MOVEMENT RATIFIED (82ffcba): Post-C4 addition of config/paper_donchian_t0030.yaml ratified. Adds one isolated paper configuration file; Core 3 production configs and research harnesses remain untouched. Staging restraint on portfolio_config.yaml commended (avoided sweeping another session's pending lines).
 (2) PAPER SLEEVE VERIFIED: paper_donchian_t0030.yaml loads cleanly. RiskSentinel isolated with max_consecutive_losses: 25, trailing HWM stop 5.0%, $100k equity baseline (preserving research S=2.0900 / holdout S=1.8305 metric continuity), and proper Track 2 sizing (0.0578 BTC / ~$95 risk). Production default RiskSentinel confirmed reporting 3. Strategy ID mapping (STACK_10_DONCHIAN_BREAKOUT) and streak scaling dynamics logged.
