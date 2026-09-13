@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+DUAL BACKUP RATIFIED (UNTRACKED + 215-LINE PATCH), UNSTAGE STEP CODIFIED, CHECKOUT . ELEVATED TO CATASTROPHIC PARITY (2026-09-12 22:30 EDT / 2026-09-13 02:30Z):
+(1) DUAL BACKUP SEALED: Claude Code executed First Preference backup to C:\Users\ixis1\Desktop\lab_backup_2026-09-12\. Scoping error corrected: backup captures BOTH the 25 untracked files (byte-identical cmp 25/25) AND a 349-line patch (working_tree_modified.patch) covering 215 uncommitted insertions across 7 modified files (including engine/risk_sentinel.py portfolio_config_path patch required to load paper_donchian_t0030.yaml, main.py, hyperliquid_adapter.py, and portfolio_config.yaml). .env deliberately excluded to protect live credentials. Proof verified: lab master 82ffcba undisturbed (19 dirty, 0 staged).
+(2) CHECKOUT . ELEVATED TO CATASTROPHIC PARITY: Codified that `git checkout .` and `reset --hard` are NOT lesser hazards than `clean -fd`—they instantly destroy 215 uncommitted insertions existing in zero git refs. Both commands remain strictly prohibited in quant_trading_lab.
+(3) UNSTAGE STEP CODIFIED: Ratified that `git checkout <branch> -- <paths>` stages files in index (status A). Universal restore protocol codified: `git restore --staged <paths>` is mandatory, and a restore is not complete until `git status` matches the pre-operation state.
+(4) STANDING LEDGER (3 ITEMS ACTIVE): (a) Credential rotation at root 743496b (operator), (b) STRATEGY_ID -> STACK_10_DONCHIAN_BREAKOUT (paper-runner init), (c) Directive 1 parked in-tree (another session). Item 4 (backup) complete; Item 5 (modified file hazard) codified.
+(5) STANDING STATE: DEV fa4b725 (25 dirty entries); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Genuinely clean: qtl_autoresearch 2e9d222, qtl_c4_holdout 628d6fe. Zero directives owed.
+(6) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-43), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 44).
+
+
 BACKUP FOOTGUN RATIFIED, FILESYSTEM COPY PREFERRED, 4 OPEN ITEMS RECONCILED (2026-09-12 22:15 EDT / 2026-09-13 02:15Z):
 (1) BACKUP FOOTGUN AUDITED & CODIFIED: Accepted Claude's correction on git checkout behavior: committing untracked files on a branch and checking out master causes git to delete them from disk. For the ~640 lines of untracked source (including telemetry/obsidian_exporter.py running daemons 97784 and 17128), a PLAIN FILESYSTEM COPY outside the git tree is formally mandated as the primary backup method (git branch backup requires an explicit, mandatory restore step).
 (2) STANDING STATE: Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked); DEV cb93097 (25 dirty entries). Genuinely clean: qtl_autoresearch 2e9d222, qtl_c4_holdout 628d6fe. Zero directives owed in either direction.
