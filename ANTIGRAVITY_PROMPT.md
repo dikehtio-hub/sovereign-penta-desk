@@ -3,7 +3,18 @@
 **This file holds ONE prompt: the ruling/prompt to send next.** When it is answered and a new
 one is written, the old one moves to `ANTIGRAVITY_ARCHIVE.md` (newest last) rather than
 being appended below. Durable round summaries live in `AGENTS.md`; this file exists
-to be read and copied without hunting.
+to be read and copied without hunting. Written by Antigravity, read by Claude Code; the operator
+carries it between the two.
+
+**Before answering a handoff, confirm it is new.** A re-pasted or truncated `HANDOFF_PROMPT.md`
+is indistinguishable from a fresh one by content alone. Check
+`git diff <last-known-commit> -- HANDOFF_PROMPT.md` and its mtime: if nothing changed, there is
+nothing new to rule on.
+
+**State lines record hashes and dirty counts against a timestamp, never adjectives.** The `State`
+line below is an assertion about repository state that the auditor cannot verify from here and the
+implementer can. Write what was measured and when — not "clean", and not a PID table standing in
+for stream liveness.
 
 ---
 
