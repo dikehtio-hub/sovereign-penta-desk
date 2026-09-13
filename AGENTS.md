@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+SECTION 57: DEFECT-ENG-001 FIX & AUDIT RATIFIED, PATH B AMENDMENT CODIFIED, COLLECTOR BATCH-LOSS REMEDIATION ARCHITECTURE RULED (POST-DRILL EXECUTION), AND DATA GAPS REGISTERED (2026-09-13 13:45 EDT / 17:45Z):
+(1) DEFECT-ENG-001 AUDITED & RATIFIED: Verified green on bugfix/engine-slippage-signs @ 9c87974 in qtl_slipfix (158 passed in lab suite) and autoresearch/c5_harness @ a3c0464 in qtl_autoresearch (312 passed in c5 suite). Master's three sites (engine.py:306-307, test_portfolio_concurrent.py, test_stack6_smt.py) and c5 _close_net_pnl corrected. t0030 slippage delta confirmed -$7.01 (-$1.59 BTC, -$5.42 ETH); sibling baseline trials/t0030_defect_eng_001_rescore.json pinned; Core 3 baseline re-baselined (-6.1%). Merge scheduled for post-drill.
+(2) PATH B AMENDED & CODIFIED: Campaign 5 formally parked; t0030 confirmed as sovereign champion; forward paper runner STACK_10_DONCHIAN_BREAKOUT deferred to post-09-16 drill to preserve pre-FOMC machine quietude; reading inbox remains open.
+(3) SECTION 56 CORRECTIONS CONFIRMED: Ratified harness site on c5_harness vs master inline; ratified measured t0030 delta of -$7.01; micro contract framing confirmed.
+(4) DEFECT-COL-001 (COLLECTOR BATCH LOSS) CODIFIED: Swapping buffers before DB write on market_collector.py:351 loses batches on sqlite lock during ~7-min prune passes. Fix design ruled: restore unwritten batch to buffer head on exception + chunk prune transactions + WAL checkpoint passive/restart. Execution strictly post-09-16 drill (daemon freeze upheld; asset_snapshots unaffected). Authorized registration of 09-11..13 batch losses and 9.0h overnight sleep gap (07:45Z..16:45Z).
+(5) STANDING STATE: DEV 018e0ea (41 dirty entries = 19 modified + 22 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch on autoresearch/c5_harness @ a3c0464, qtl_slipfix on bugfix/engine-slippage-signs @ 9c87974, qtl_c4_holdout 628d6fe. Zero directives owed.
+(6) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-56), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 57).
+
+
 DEFECT-ENG-001 FIXED + AUDITED, PATH B CHOSEN, COLLECTOR BATCH-LOSS BUG FOUND -- CLAUDE CODE (measured 2026-09-13 13:20 EDT / 17:20Z; operator: "Path B, paper later" + "build the fix now" at ~13:03 EDT):
 (1) SECTION 56 VERIFIED: new (d0d046c), State line accurate (8th round). Rulings accepted. Corrections: s2.3.1 "re-run t0030 on the fix branch" impossible (master has no harness); s2.2's "$15-20 / -$18" is 2.5x the measured -$7.01; master's arithmetic is inline at engine.py:306-307, not :246-249 (that is the c5 branch).
 (2) FIX: quant_trading_lab branch bugfix/engine-slippage-signs @ 9c87974 in NEW worktree qtl_slipfix (off master 82ffcba, NOT merged - operator decision per s2.3, HOMEWORK.md item). entry + d*slip / exit - d*slip in the THREE copies master carries (engine.py, test_portfolio_concurrent.py _close_trade, test_stack6_smt.py). Carried to c5_harness @ a3c0464 in _close_net_pnl + gate_zero.measure (friction now includes the two slippage fills; Gate Zero gross unchanged, friction +314/+446).
