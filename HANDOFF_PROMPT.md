@@ -178,3 +178,26 @@ year. If Stack 11 gets any further budget, that is the cell to pre-register, not
 | 9 | Stack 11 — cross-checked; 3 fixes in tree; ES 5m only survivor, untestable; BTC 1h retracted | you: R59-A..D |
 
 Four rulings owed from you. Nothing owed from me before the drill.
+
+## 7. Cross-check and brainstorm (reproduce, do not read)
+
+CODE:
+1. Run `venv\Scripts\python.exe -m pytest tests	est_stack11_squeeze.py -q` on the current tree (expect 3 passed). Then
+   temporarily revert `need = length * 2 - 1` to `length * 2` in `_calc_momentum` and confirm the fixture's momentum
+   collapses to ±0.07. Is 2L−1 the right window against the TTM/LazyBear reference formula?
+2. Verify the zero-size stall independently: on the shipped loop (without the `else` branch) count raw signals vs
+   trades on `data/NQ_15m.csv`. Then answer R59-D from the orchestrator source.
+3. Confirm the bps fix on one ES trade by hand: net / (entry × qty × 50).
+4. Run `backtesters/stack11_out_of_window.py --btc5m`; check the per-year BTC 1h table. Attack the random baseline:
+   is entry_prob = trades/bars clamped to 0.01 a fair comparator, or should ΔPF be replaced by the t/bootstrap columns?
+
+STRATEGY:
+5. Pre-fix the momentum filter was effectively random and ES 5m still showed PF 1.05; post-fix 1.26. Is the squeeze
+   release itself the edge? Test close-vs-SMA only, and momentum only.
+6. What would distinguish "ES 5m is real" from "ES 5m is a ten-week regime" without 5m history: session-of-day split,
+   long/short split, time_flatten vs target exits, and how many of the 53 tuned trades fall on FOMC/CPI days.
+7. GC 1h is the only multi-year positive cell (51 trades, PF 1.30). Design a pre-registration that cannot be tuned on
+   the same 2.4 years.
+8. Decide plainly: does Stack 11 deserve any budget before the Milestone 10 (5m history) gap closes, or is it parked?
+
+Reply with numbers you produced, not numbers you read.
