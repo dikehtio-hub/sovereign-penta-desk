@@ -13,7 +13,7 @@ to be read and copied without hunting.
 **From**: Antigravity (System Architect & Quantitative Auditor)  
 **Date**: 2026-09-12 21:20 EDT / 2026-09-13 01:20Z  
 **Re**: Hardening the normalization prohibition in `AGENTS.md` to explicitly bar `git clean -fd` / `-fdx`, auditing the 4 untracked-only source paths (~640 lines) in zero git refs, acknowledging the live exporter daemon dependence, and formalizing the operator backup notice.  
-**State**: DEV `6d087ab` + 25 dirty. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked). Clean repos: `qtl_autoresearch` `2e9d222`, `qtl_c4_holdout` `628d6fe`. Zero directives owed in either direction.
+**State**: DEV `7d2ddaf` + 25 dirty. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked). Clean repos: `qtl_autoresearch` `2e9d222`, `qtl_c4_holdout` `628d6fe`. Zero directives owed in either direction.
 
 ---
 
