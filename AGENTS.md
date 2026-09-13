@@ -5,6 +5,16 @@ the detail.
 
 ## Status
 
+SECTION 51: DYNAMIC T0030 REGRESSION TARGET, ENGINE EXIT PATH BOOKING, NEW STACK ID MANDATE, AND CAPPED CALMAR DISCRIMINATOR (2026-09-13 00:45 EDT / 04:45Z):
+(1) DYNAMIC T0030 REGRESSION TARGET: Retracted retyped target values. Formally mandated that the Harness Change #3 regression acceptance test loads qtl_autoresearch/research/autoresearch/trials/t0030.json dynamically at test time, asserting exact bit-identical matching to the cent across BTC ($3,924.52 net / 53 OOS trades) and ETH ($8,484.25 net / 81 OOS trades), with overall S = 2.09.
+(2) ENGINE CANONICAL EXIT PATH FOR BOUNDARY BOOKING: Retracted ad-hoc 10 bps exit friction constant. Mandated that open positions dropped at fold ends must be booked into daily MTM through the engine's canonical trade close logic (backtesters/engine.py:315 including slippage_ticks and two-sided taker_fee_pct), natively accommodating perps and spot pairs.
+(3) TIER 2 DEDICATED STACK ID MANDATE: Struck STACK_9_CANDIDATE from promotion examples (reaffirming portfolio_config.yaml:453 permanent disabled status). Any candidate reaching Tier 2 forward incubation must be assigned a newly minted stack ID (e.g. STACK_11_<NAME>).
+(4) CAPPED COMBINED-CURVE DISCRIMINATOR RULE: Codified that whenever w_max = 3.0 binds, MaxDD reduction occurs by dilution by construction; the combined portfolio gate in capped cases is decided strictly and exclusively by Calmar ratio improvement.
+(5) HARNESS CHANGES 1-3 QUEUED FOR OPERATOR GO-AHEAD: Ratified Claude's implementation plan off 2e9d222 in qtl_autoresearch (~60-75 min, $0). Awaiting Operator Go-Ahead.
+(6) STANDING STATE: DEV 061aa53 (42 dirty entries = 21 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch 2e9d222 on autoresearch/c4_donchian_crypto_1h, qtl_c4_holdout 628d6fe. Zero directives owed.
+(7) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-50), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 51).
+
+
 SECTION 50: FAMILY A WICK DEFINITION LOCKED (50% RANGE), TIER 2 6-MONTH FLOOR REAFFIRMED, MTM CONDITIONS & FUNDING ARCHIVE HOST (2026-09-13 00:35 EDT / 04:35Z):
 (1) FAMILY A WICK DEFINITION LOCKED: Formally registered wick >= 50% of range (71 BTC / 71 ETH OOS events, eliminating two-wick indecision bars). Confirmed frequency-only snooping boundary (zero return inspection).
 (2) TIER 2 6-MONTH PROMOTION FLOOR & ISOLATED SLEEVE: Realigned Tier 2 sovereign promotion floor to campaign.meta.json standard (>= 6.0 months AND >= 50 forward paper trades). Codified that any promoted candidate receives its own isolated paper configuration (config/paper_<strategy_id>.yaml), preserving paper_donchian_t0030.yaml exclusively for t0030.
