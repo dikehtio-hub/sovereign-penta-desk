@@ -5,6 +5,15 @@ the detail.
 
 ## Status
 
+SECTION 49: TWO-TIER HOLDOUT DOCTRINE, OOS-ONLY MTM GATES, FAMILY A WICK CALIBRATION, VOLATILITY-MATCHED COMBINED CURVE (2026-09-13 00:25 EDT / 04:25Z):
+(1) TWO-TIER HOLDOUT ARCHITECTURE: Retained doctrine that 2020-2026 exposure is spent. Codified 2020-2022 as Tier 1 Historical Invariance Screen (pre-promotion stress hurdle across Covid/Luna/FTX) and established Tier 2 Forward Desk 1 Paper Incubation (post-2026-09-01 data, >= 50 forward trades, >= 60 days) as the true Sovereign Promotion Gate for live capital. Family B funding carry promotion governed forward-only.
+(2) OOS-ONLY DAILY MTM GATES: Authorized Harness Change #3 (daily mark-to-market portfolio equity series output in run_backtest). Mandated that correlation, Q75 drawdown conditioning, and contribution gates are evaluated strictly across pooled 468 out-of-sample fold test days with high-water mark continuity across folds (~117-day Q75 conditioning set >> 30-day floor).
+(3) FAMILY A WICK CALIBRATION & VENUE FRICTION: Locked baseline to prior 24 bars (t-24 to t-1). Calibrated wick threshold pre-registration from >= 60% to >= 50% (wick-to-body >= 1.0) to guarantee ETH trade floor safety (~60-65 OOS events vs >= 40 floor). Codified dynamic Gate Zero hurdle = 4x round-trip friction (40 bps USD(S)-M perps, 80 bps Binance Spot). Substituted BNBBTC for unlisted SOLBTC in Family C.
+(4) MATCHED-VOLATILITY COMBINED CURVE: Hardened combined-curve gate by rescaling candidate sleeve to match t0030 realized volatility prior to 50/50 blend, eliminating cash/low-volatility dilution exploits. Authorized keyless Binance funding backfill to isolated directory quant_trading_lab/data/funding/.
+(5) STANDING STATE: DEV 6bd9d6d (42 dirty entries = 21 modified + 21 untracked); Lab master 82ffcba (19 dirty files = 7 modified + 12 untracked, 0 staged). Clean repos: qtl_autoresearch 2e9d222, qtl_c4_holdout 628d6fe. Zero directives owed.
+(6) ARCHIVED: ANTIGRAVITY_ARCHIVE.md (Sections 10-48), HANDOFF_ARCHIVE.md, & ANTIGRAVITY_PROMPT.md (Section 49).
+
+
 SECTION 48: QUANTILE CORRELATION GATE, CONTRIBUTION FLOOR, 6.8-YR BINANCE FUNDING BACKFILL, MULTI-LEG FRICTION CODIFIED (2026-09-13 00:15 EDT / 04:15Z):
 (1) QUANTILE CORRELATION GATE & CONTRIBUTION FLOOR CODIFIED: Replaced empty 2.0% absolute drawdown threshold with top-quartile empirical conditioning (deepest 25% of t0030 MTM drawdowns) with a 30-day sample floor. Added non-negative drawdown contribution gate (E[R_cand | DD_t0030 in Q75] >= 0) to eliminate flat-curve inactivity exploits. Binding arbiter confirmed as Pillar 5 combined-curve improvement (MaxDD and Calmar superior to t0030 standalone at equal risk budget).
 (2) 6-YEAR 8-MONTH HORIZON & KEYLESS BINANCE FUNDING BACKFILL: Registered full 80-month autoresearch span (2020-01-01 to 2026-09-01; 36m holdout + 44m research). Commissioned keyless, free fetch_binance_funding.py to backfill 2020-2026 funding rates; Hyperliquid local database (8 days) reserved for Desk 1 live tracking.
