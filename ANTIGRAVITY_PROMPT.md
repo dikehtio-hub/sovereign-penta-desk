@@ -18,89 +18,94 @@ for stream liveness.
 
 ---
 
-## Section 57: DEFECT-ENG-001 Fix & Audit Ratified, Path B Amendment Codified, Collector Batch-Loss Remediation Architecture Ruled (Post-Drill Execution), and Data Gaps Registered
+## Section 58: Data Gap Registrations Audited & Ratified (Round 128), DEFECT-COL-001 Remediation Architecture Refined (Rowid Chunking & Subquery Materialization), and Pre-Drill Operational Freeze Locked
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-13 13:45 EDT / 2026-09-13 17:45Z  
-**Re**: Section 57 rulings on incoming handoff `018e0ea` (`9c87974` / `a3c0464`), DEFECT-ENG-001 audit, Path B amendment, collector batch-loss defect, and Section 56 corrections:  
-(1) **DEFECT-ENG-001 Fix & Audit Independently Ratified**: Verified green on `bugfix/engine-slippage-signs` @ `9c87974` in `qtl_slipfix` (158 passed in lab suite) and `autoresearch/c5_harness` @ `a3c0464` in `qtl_autoresearch` (312 passed in c5 suite); sign correction across all three master sites (`backtesters/engine.py:306-307`, `test_portfolio_concurrent.py:_close_trade`, `test_stack6_smt.py`) verified; t0030 slippage delta (-$7.01 exact to the cent) confirmed; sibling file `trials/t0030_defect_eng_001_rescore.json` pinning ratified; master merge scheduled for post-drill (§1);  
-(2) **Path B Amended & Codified**: Campaign 5 formally parked; t0030 confirmed as sovereign champion; forward paper runner `STACK_10_DONCHIAN_BREAKOUT` deferred to post-09-16 drill to maintain machine quietude; reading inbox remains open without an active campaign (§2);  
-(3) **Section 56 Corrections Ratified**: Confirmed harness site on `c5_harness` vs master inline; ratified measured t0030 delta of -$7.01; micro contract framing confirmed (§3);  
-(4) **Collector Batch-Loss Defect Codified & Remediation Ruled**: Formally codified as **DEFECT-COL-001**; fix design ratified (restore unwritten batch to buffer head on transient write error + SQLite contention mitigation); execution strictly scheduled for **post-09-16 drill** (preserving daemon freeze while `asset_snapshots` remains 100% healthy); data gap registration ordered for trade/liquidation losses and 9.0h overnight sleep gap (§4).  
-**State**: DEV `018e0ea` + 41 dirty (19 modified, 22 untracked), 0 staged, measured 2026-09-13 17:36:49Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. `qtl_autoresearch` on `autoresearch/c5_harness` @ `a3c0464`, 0 dirty. `qtl_slipfix` on `bugfix/engine-slippage-signs` @ `9c87974`, 0 dirty. `qtl_c4_holdout` `628d6fe`, 0 dirty. Zero directives owed in either direction.
+**Date**: 2026-09-13 14:40 EDT / 2026-09-13 18:40Z  
+**Re**: Section 58 rulings on incoming handoff `dc451f5` (`78377f8` / `cacf86d`), data gap registrations, Section 57 corrections, DEFECT-COL-001 chunking implementation details, and pre-drill posture:  
+(1) **Data Gap Registrations Audited & Ratified**: Verified green at commit `dc451f5` (`knowledge/data_gaps.json` + 3 compiled Event pages, byte-identical on double compilation, lint 532 pages 0 errors); round 128 registration confirmed; Kernel-Power 42 sleep root cause acknowledged across both 09-12 and 09-13; OPEN gap registration for `DEFECT-COL-001` (181 batches, 25,366 trades, 99 liquidation events, 45 order-book sample drops, 37 whale persist errors) confirmed and will remain open until post-drill fix deployment (§1);  
+(2) **DEFECT-COL-001 Technical Corrections Confirmed & Architecture Refined**: Confirmed `busy_timeout = 30000` already active on all connections (`storage/db.py:203`); confirmed prune locus in `storage/repository.py:449-499`; confirmed Python SQLite 3.45.3 lacks `DELETE ... LIMIT`; chunking design refined to `DELETE FROM t WHERE rowid IN (SELECT rowid FROM t WHERE ... LIMIT 5000)` with discrete per-chunk transactions, coupled with one-time pre-materialization of `asset_snapshots` max IDs per pass (§2);  
+(3) **Pre-Drill Operational Freeze Locked**: Desk daemons, collectors, and lab master remain under strict code freeze ahead of the September 16 FOMC rate decision print (14:00 EDT / 18:00Z); `asset_snapshots` confirmed 100% healthy and completely isolated from `DEFECT-COL-001`; zero tasks owed by either agent prior to the drill (§3);  
+(4) **Post-Drill Execution Roadmap Locked**: Post-09-16 queue locked: (1) merge `bugfix/engine-slippage-signs` (`9c87974`) into master; (2) implement `DEFECT-COL-001` collector buffer restoration + prune chunking and close open data gap; (3) launch `STACK_10_DONCHIAN_BREAKOUT` Track 2 forward paper runner (§4).  
+**State**: DEV `cacf86d` + 40 dirty (19 modified, 21 untracked), 0 staged, measured 2026-09-13 18:35:00Z. Lab master `82ffcba` + 19 dirty (7 modified, 12 untracked), 0 staged. `qtl_autoresearch` on `autoresearch/c5_harness` @ `a3c0464`, 0 dirty. `qtl_slipfix` on `bugfix/engine-slippage-signs` @ `9c87974`, 0 dirty. `qtl_c4_holdout` `628d6fe`, 0 dirty. Zero directives owed.
 
 ---
 
 ### 0. Concurrences & Independent Verification Confirmed (§0, §1)
 
-1. **Protocol Adherence Confirmed**: Exact HEAD `018e0ea` and dirty count (41 entries = 19 modified, 22 untracked, including new worktree `qtl_slipfix/`) verified via runtime git query immediately prior to assembly.
-2. **DEFECT-ENG-001 Fix & Audit Independently Verified**:
-   - `qtl_slipfix` on `bugfix/engine-slippage-signs` @ `9c87974`: Tracked lab suite **158 passed, 0 failed** (+ 1 pre-existing collection error).
-   - `qtl_autoresearch` on `autoresearch/c5_harness` @ `a3c0464`: Worktree suite **312 passed, 0 failed** (expanded from 310; tests 75 -> 77 in `test_c5_harness.py`).
-   - Sibling baseline approach ratified: Preserving `trials/t0030.json` with its pinned sha256 in `ledger.tsv` while adding `trials/t0030_defect_eng_001_rescore.json` is quantitatively sound and preserves the historical audit trail of what the autonomous loop generated.
-   - Measured slippage delta across t0030's 134 pooled trades: BTC -$1.5878, ETH -$5.4133 -> Total **-$7.0011 (-$7.01 to the cent)**. Theta*, fold trade counts, S = 2.09, and all gate verdicts remain bit-identical.
-   - Core 3 baseline re-baselined cleanly: 150 trades identical; net $8,636.18 -> $8,112.06 (-6.1%); max DD $1,678.12 -> $1,815.13; `hwm_halted` remains False.
-   - Validate real edge audit: 18 runs before/after confirm trade counts identical; 0 profit factors cross 1.0; single sign flip on low-confidence 1m Stack 0 (+$153 -> -$7 on 14 trades).
+1. **State Line & Worktree Hygiene Verified**:
+   - Exact HEAD `cacf86d` (+40 dirty: 19 modified, 21 untracked, 0 staged) verified via runtime git query.
+   - The addition of `qtl_slipfix/` to DEV `.gitignore` in `dc451f5` restored dirty count consistency (40 dirty).
+2. **Data Gap Registrations Independently Audited (`dc451f5`)**:
+   - `knowledge/data_gaps.json` correctly updated with three entries using integer `dev.round: 128`.
+   - Double-compilation to vault Event pages confirmed byte-identical with **0 lint errors across 532 pages**:
+     - `obsidian_vault/wiki/events/data_gap_2026-09-13_hl_sleep.md` (Desk 1, 07:45:38Z → 16:45:46Z, 9.00 h; subscribe-time backfill delivered 998 rows across 9 hours, <1% of live ~60k/h rate; 4 liquidation rows).
+     - `obsidian_vault/wiki/events/data_gap_2026-09-13_polymarket_drops_sleep.md` (Desk 3, 07:45:06Z → 16:45:16Z, 9.00 h; watcher process resumed cleanly as PID 95876).
+     - `obsidian_vault/wiki/events/data_gap_2026-09-11_hl_trade_batches_defect_col_001.md` (Desk 1, OPEN: 181 batches discarded to date: 4,963 / 5,460 / 14,943 trades across 09-11, 09-12, 09-13 = 25,366 trades; 99 liquidation events: 46 / 11 / 42; 45 order-book sample drops; 37 whale persist errors).
+   - Sleep vs Shutdown Clarification Ratified: Confirmed Windows Kernel-Power Event ID 42 (system entering sleep) at 01:55:39 EDT on 09-12 and 03:45:55 EDT on 09-13. The record is formally corrected from "powered off" to laptop sleep.
+   - S57 cross-reference preserved in each entry `cause` string.
 
 ---
 
-### 1. Ruling 1: Path B Amended & Codified (§2)
+### 1. Ruling 1: Confirm Section 57 Corrections & Refine DEFECT-COL-001 Remediation Architecture (§2)
 
-1. **Operator Determination Accepted**: Path B is formally selected.
-2. **Campaign 5 Formal Status**: **PARKED**.
-   - All multi-family autoresearch loop activities are halted.
-   - All harness capabilities engineered during Campaign 5 (keyless continuous funding fetcher, funding cash-flow settlement engine, continuous daily MTM equity pool, Hyperliquid two-perp dollar-neutral pair engine, and dual-tier comparison hierarchy) are preserved as permanent, family-agnostic sovereign assets.
-3. **Paper Runner Amendment Codified**:
-   - Initiation of the Track 2 forward paper trading runner (`STACK_10_DONCHIAN_BREAKOUT`) is formally **deferred until after the September 16 FOMC live event-study drill**.
-   - *Quantitative & Operational Rationale*: Prevents introducing a new persistent daemon process, socket connections, and database writes to the machine during the final 72-hour stabilization and code-freeze window preceding the high-priority FOMC print.
-4. **Reading Inbox**: Remains open for opportunistic ingestion and structural concept archiving without requiring an active autoresearch campaign.
+All four technical corrections in §2 of the handoff are confirmed and codified into the permanent engineering specification:
 
----
-
-### 2. Ruling 2: Collector Batch-Loss Defect Codified (DEFECT-COL-001) (§4)
-
-1. **Defect Codification**:
-   - Formally logged as **`DEFECT-COL-001: Hyperliquid Collector Silent Batch Dropping on Database Lock`**.
-   - *Mechanism*: In `HyperLiquid/HL_Monarch/collectors/market_collector.py::_flush_loop`, write buffers (`self._trade_buffer`, `self._liq_buffer`) are swapped out to local variables *before* attempting the blocking SQLite write in `_flush_buffers_sync`. On transient `sqlite3.OperationalError: database is locked` (triggered during ~7-minute prune passes on the 8.1 GB database), the exception is logged, but the swapped batches are discarded permanently.
-   - *Impact*: 4,963 trades + 46 liquidations (09-11); 5,460 trades + 11 liquidations (09-12); 14,226 trades + 42 liquidations (09-13).
-   - *Isolation*: `asset_snapshots` (the 1-second price stream that the FOMC drill and lead-lag analysis consume) writes via a separate path and is **completely unaffected**.
-2. **Remediation Architecture Ruled**:
-   - **(a) Buffer Restoration**: In `market_collector.py`, if `_flush_buffers_sync` encounters an exception, restore the unwritten `trades` and `liqs` batches back to the head of `self._trade_buffer` and `self._liq_buffer`, bounded by `MAX_BUFFERED_TRADES` and `MAX_BUFFERED_LIQ_EVENTS` (dropping oldest only if buffer capacity is saturated).
-   - **(b) Prune Contention Mitigation**: In `storage/db.py` / maintenance loops, prevent long exclusive locks:
-     1. Chunk table prunes into smaller micro-transactions (e.g. 5,000 rows per batch) rather than massive monolithic DELETE queries.
-     2. Avoid `PRAGMA wal_checkpoint(TRUNCATE)` during active collection; use `PASSIVE` or `RESTART`.
-3. **Deployment Timing**: **POST-09-16 DRILL (STRICT)**.
-   - The daemon code freeze is in effect. Because `asset_snapshots` is unaffected and zero lock errors have occurred since the morning restart, the collector will **NOT** be modified prior to the Wednesday FOMC print.
-4. **Data Gap Registration Mandated**:
-   - Claude Code is authorized to formally register the data gaps in the next round:
-     1. Trade & liquidation batch drops across 09-11, 09-12, and 09-13.
-     2. The 9.0-hour overnight laptop sleep gap: **2026-09-13 07:45Z to 16:45Z** (noted in morning start check).
-
----
-
-### 3. Ruling 3: DEFECT-ENG-001 Master Merge Protocol (§1, §5)
-
-1. **Short-Side Sign Symmetry Verified**:
-   - `adj_entry = entry + direction * slip`: For a short ($d = -1$), entry fills at $	ext{entry} - 	ext{slip}$ (selling lower).
-   - `adj_exit = exit_price - direction * slip`: For a short ($d = -1$), exit fills at $	ext{exit} + 	ext{slip}$ (buying higher).
-   - Verified mathematically exact and sign-symmetric across both directions.
-2. **Merge Timing**:
-   - Merging `bugfix/engine-slippage-signs` into `master` is approved for **post-09-16 drill**, aligned with the Operator's directive.
-   - When merging `c5_harness` in the future, the merge conflict at `engine.py` will be resolved by keeping the `_close_net_pnl` functional factorization.
+1. **Existing `busy_timeout` Confirmed & Prune Transaction Root Cause**:
+   - Verified: `storage/db.py:203` enforces `PRAGMA busy_timeout = 30000;` on connection initialization, and `sqlite3.connect(..., timeout=30.0)`.
+   - The root cause is not client impatience. A single transaction wrapping five sequential table prunes in `storage/repository.py:485-499` inside `with self.db.connection as conn:` holds the exclusive SQLite write lock for well over 30 seconds against the 8.1 GB database, starving concurrent writes.
+   - Extending `busy_timeout` is rejected: it would stall collector flush threads and risk buffer exhaustion. Chunking the prune transactions is the correct structural solution.
+2. **Locus of Prune vs DB Connection Confirmed**:
+   - Confirmed: Prune logic resides in `storage/repository.py::prune_old_data`, while connection management and checkpointing reside in `storage/db.py`.
+   - `storage/repository.py:513` executes `self.db.checkpoint("TRUNCATE")` at the completion of maintenance.
+3. **SQLite Rowid Chunking & Subquery Materialization Codified**:
+   - Confirmed via runtime introspection: Python 3.13's bundled SQLite 3.45.3 lacks `ENABLE_UPDATE_DELETE_LIMIT`. Standard `DELETE ... LIMIT` syntax cannot be used.
+   - **Rowid Chunking Syntax**: Chunked deletion will be implemented using rowid subqueries in an iterative loop:
+     ```python
+     while True:
+         with self.db.connection as conn:
+             cur = conn.execute(
+                 f"DELETE FROM {table} WHERE rowid IN (SELECT rowid FROM {table} WHERE {time_col} < ? LIMIT ?);",
+                 (cutoff, chunk_size),
+             )
+             if cur.rowcount == 0:
+                 break
+     ```
+   - **Subquery Materialization**: For `asset_snapshots` and `liquidation_clusters`, the `id NOT IN (SELECT MAX(id) ... GROUP BY coin)` predicate will be computed **once** per maintenance pass into a memory set or temporary table, rather than re-evaluating the expensive grouping aggregation for every 5,000-row chunk.
+4. **Buffer Restoration & Overflow Cap Verified**:
+   - Confirmed: the overflow cap has never tripped in production (`Write buffer overflow` appears 0 times in the log).
+   - On caught `sqlite3.OperationalError: database is locked` in `market_collector.py`, prepend the unsent batch back to the head of `_trade_buffer` / `_liq_buffer`:
+     ```python
+     self._trade_buffer = (unwritten_trades + self._trade_buffer)[-MAX_BUFFERED_TRADES:]
+     ```
+   - A unit test simulating write contention and buffer saturation up to `MAX_BUFFERED_TRADES` will be required when building the fix post-drill.
 
 ---
 
-### 4. Confirmation of Section 56 Corrections (§3)
+### 2. Ruling 2: Pre-Drill Operational Freeze Locked (§3)
 
-All three technical corrections in §3 are confirmed and ratified into the record:
-1. **Harness Location & Inline Site**: Confirmed. `t0030` re-score lives on `c5_harness` because master carries no autoresearch harness. Master's inline arithmetic is at `engine.py:306-307` vs c5 `_close_net_pnl:246-249`.
-2. **Measured Slippage Delta**: Ratified. The exact measured delta for t0030 is **-$7.01** across 134 trades (-$1.59 BTC, -$5.42 ETH), striking the previous theoretical ~$15-$20 estimate.
-3. **Micro Contract Sizing**: Confirmed. Audit reporting reflects actual micro contract tick values ($2 MNQ, $5 MES).
+1. **Freeze Mandate**:
+   - Daemons, collector services, adapters, and `quant_trading_lab` master remain under **STRICT CODE FREEZE** until after the Wednesday, September 16 FOMC live event-study drill.
+   - `asset_snapshots` (the 1-second price stream) has zero dropped rows from `DEFECT-COL-001` and is operating with 100% data integrity.
+   - Zero deliverables or code modifications are required from either agent prior to the drill.
+2. **Rehearsal Stance**:
+   - Operator dress rehearsal scheduled for today or tomorrow.
+   - Laptop on AC power and logged in by 13:30 EDT Wednesday, Sept 16.
+   - Reading inbox remains open for passive reference ingestion.
 
 ---
 
-### 5. Reconciled Standing Ledger
+### 3. Ruling 3: Post-09-16 Drill Execution Roadmap (§3)
+
+The three post-drill execution items are formally locked in priority order:
+1. **Merge Slippage Fix**: Merge `bugfix/engine-slippage-signs` (`9c87974`) into master.
+2. **Deploy DEFECT-COL-001 Remediation**: Implement buffer restoration and chunked prune transactions with WAL passive mode in `HL_Monarch`, deploy to collector, verify zero dropped batches, and extend/close the open data gap in `knowledge/data_gaps.json`.
+3. **Launch Champion Paper Runner**: Initialize Track 2 forward paper trading runner for `STACK_10_DONCHIAN_BREAKOUT` (`t0030` champion).
+
+---
+
+### 4. Reconciled Standing Ledger
 
 | # | Item | Status | Gated On | Operational Reality |
 |---|---|---|---|---|
@@ -109,11 +114,9 @@ All three technical corrections in §3 are confirmed and ratified into the recor
 | 3 | Directive 1 Durability | Active | Another Session | Parked cleanly in-tree (`portfolio_config.yaml:459`); protected by dual backup patch. |
 | 4 | Operator Choice: Remote Privacy | Active | Operator | "Will the remote be private?" determines Git tracking vs manifest for `raw/fetched/`. |
 | 5 | Intake Hardening | Active | Intake Session | Injection defense clause, runtime socket guard, GitHub path fix, exit-code delta. |
-| 6 | DEFECT-ENG-001 (Engine Slippage) | **FIXED & AUDITED** | 9c87974 / a3c0464 | Three master sites + c5 fixed; t0030 re-score -$7.01 pinned; audit complete. |
-| 7 | Merge `bugfix/engine-slippage-signs` | **QUEUED** | Post-09-16 Drill | Operator to merge fix into master following the FOMC drill. |
-| 8 | Campaign 5 Status | **PARKED** | Path B Codified | Infrastructure preserved; t0030 stands as champion; reading inbox remains open. |
-| 9 | DEFECT-COL-001 (Collector Loss) | **RULED** | Post-09-16 Drill | Buffer restoration + prune chunking ruled; execution strictly post-drill. |
-| 10 | Data Gap Registration | **QUEUED** | Claude Code | Register 09-11..13 batch losses and 9.0h overnight sleep gap (07:45Z..16:45Z). |
-| 11 | Section 56 Corrections | **RATIFIED** | Antigravity | Harness location, -$7.01 t0030 delta, and micro contract framing confirmed. |
+| 6 | Merge `bugfix/engine-slippage-signs` | **QUEUED** | Post-09-16 Drill | Operator to merge `9c87974` into master following FOMC drill. |
+| 7 | DEFECT-COL-001 Remediation | **DESIGN RATIFIED** | Post-09-16 Drill | Buffer restoration + rowid chunking + subquery materialization ruled; post-drill deploy. |
+| 8 | Data Gap Registration | **COMPLETE (ROUND 128)** | `dc451f5` | Sleep gaps (09-12, 09-13) registered; DEFECT-COL-001 registered OPEN; extend/close on fix deploy. |
+| 9 | Section 57 Corrections | **RATIFIED** | Antigravity | `busy_timeout` sufficiency, prune locus, and rowid chunking syntax confirmed. |
 
 All architectural rulings codified. Focus is now locked on **FOMC Rehearsal and the September 16 live drill**.
