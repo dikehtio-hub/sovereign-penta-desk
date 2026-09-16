@@ -5,7 +5,7 @@ tags:
   - sports-desk
   - execution-telemetry
   - tax-bridge
-last_synced: "2026-09-05 07:34:59 UTC"
+last_synced: "2026-09-07 06:06:08 UTC"
 ---
 
 # 🏈 Sports Desk - Fair Value, Execution & Tax Bridge
@@ -16,12 +16,13 @@ last_synced: "2026-09-05 07:34:59 UTC"
 > - **Settled / Pending**: `0` / `0`
 > - **Average Execution CLV**: `n/a` over `0` measured bet(s)
 > - **Open Exposure**: **`$0.00`**
-> - **Feed Liveness**: `15.7h ago` [STALE]
+> - **Feed Liveness**: `62.2h ago` [STALE]
 > - **Un-exported > 3d**: `0`
 > - **Bankroll Gate**: `[TAX] ledger EMPTY and no bankroll declared - order gating is FAIL-CLOSED (seed a deposit, or pass --paper-bankroll)`
-> - **Last Synchronized**: `2026-09-05 07:34:59 UTC`
+> - **Last Synchronized**: `2026-09-07 06:06:08 UTC`
 
 > **Cockpit Navigation**: [[Monarch_Hub|👑 Master Hub]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]] • [[HyperLiquid_Monarch|🏛 HyperLiquid]] • [[Polymarket_Monarch|🌐 Polymarket]]
+> **Desk**: [[Desk_02_Sports_Desk|Desk 2: Sports Desk]] · Shell twin: `python -m Sports_Desk.interfaces.obsidian_exporter --once`
 
 ---
 
@@ -50,9 +51,9 @@ _Nothing settled yet (0 bet(s) pending)._
 
 ## 🕒 Stale Quotes & Market Consensus Latency
 
-> [!INFO] **Feed:** feed stale / no recent quotes in window (newest 942.4 min ago, lookback 180 min)
+> [!INFO] **Feed:** feed stale / no recent quotes in window (newest 3733.6 min ago, lookback 180 min)
 >
-> [!NOTE] No sharp moves detected in last 180m (newest quote 942m ago).
+> [!NOTE] No sharp moves detected in last 180m (newest quote 3734m ago).
 > Display only. Sharp books: Pinnacle, Circa, Bookmaker, Betcris; a move is >= 2 pts at >= 0.5 pt/min; a stale retail quote is >= 60 s behind it, <= 15 min old and >= 2 pts cheap.
 
 ---

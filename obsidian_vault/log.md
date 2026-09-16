@@ -1,3 +1,13 @@
+## 2026-09-16
+* **Ingest**: survival curve for [[fomc_2026-09-16]]: 3 reaction profile(s); [[latency_decay]] now 3 row(s).
+* **Ingest**: survival curve for [[fomc_2026-09-16]]: 3 reaction profile(s); [[latency_decay]] now 3 row(s).
+* **Ingest**: event study for `fomc_2026-09-16`: 3 reaction profile(s) (uninformative-shock, lead None s, not counted); [[lead_lag_phase2_panel]] insufficient (0 of 3 informative events).
+
+## 2026-09-13
+* **Ingest**: reading inbox: 0 source(s), 0 awaiting review -> [[strategy_family_search]].
+* **Ingest**: reading inbox: 0 source(s), 0 awaiting review -> [[strategy_family_search]].
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 9 page(s) -> [[events_register]].
+
 ## 2026-09-12
 * **Ingest**: data gaps from `knowledge/data_gaps.json`: 6 page(s) -> [[events_register]].
 

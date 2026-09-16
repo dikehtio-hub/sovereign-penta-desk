@@ -8,6 +8,8 @@ opens a socket or touches a daemon-owned file. Every CLI refuses on HALT.flag
   experiments  cross_market/experiments/*.json  -> Experiment pages (pre-registrations)
   lead_lag     lead_lag --json result           -> Experiment (verdict) + Regime history
   clob         latency_sniper --survival-curve --json -> Reaction Profile + Event + latency-decay Concept
+  reading      raw/inbox/ links + raw/fetched/ snapshots -> Source Summary pages + the strategy family search
+               (the snapshots are written by knowledge.fetch_reading, the package's only networked module)
 """
 from __future__ import annotations
 

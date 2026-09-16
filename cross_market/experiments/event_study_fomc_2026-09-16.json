@@ -1,0 +1,144 @@
+{
+  "experiment": "lead_lag_phase2_event_study",
+  "protocol": "event_study",
+  "event": {
+    "id": "fomc_2026-09-16",
+    "kind": "fed_rate",
+    "label": "FOMC rate decision, 2026-09-16 14:00 EDT",
+    "release_utc": "2026-09-16T18:00:00Z"
+  },
+  "coin": "BTC",
+  "T_utc": "2026-09-16T18:00:00Z",
+  "grid_s": 1,
+  "baseline_utc": "2026-09-16T17:59:55Z",
+  "window_last_utc": "2026-09-16T18:05:00Z",
+  "measured_at": "2026-09-16T18:46:37.524429+00:00",
+  "sufficient": true,
+  "reasons": [],
+  "markets": [
+    {
+      "token": "5615282760875985231868508008056959876238536896643315063916840237042205273721",
+      "label": "FOMC 2026-09-16: no change",
+      "stamps": 418,
+      "sufficient": true,
+      "reasons": [
+        "uninformative: hyperliquid |dP| 6.47 bps < bar 17.43 bps"
+      ],
+      "baseline": 0.135,
+      "final": 0.08,
+      "dp": -0.055,
+      "displaced": true,
+      "t_star_utc": "2026-09-16T18:00:01Z",
+      "t_star_rel_s": 1,
+      "lead_s": null,
+      "class": "uninformative-shock",
+      "informative": false
+    },
+    {
+      "token": "63842529068710005716169325380315470359047749786610778647370693404952498013178",
+      "label": "FOMC 2026-09-16: hike 25 bps",
+      "stamps": 418,
+      "sufficient": true,
+      "reasons": [
+        "uninformative: hyperliquid |dP| 6.47 bps < bar 17.43 bps"
+      ],
+      "baseline": 0.875,
+      "final": 0.975,
+      "dp": 0.1,
+      "displaced": true,
+      "t_star_utc": "2026-09-16T18:00:01Z",
+      "t_star_rel_s": 1,
+      "lead_s": null,
+      "class": "uninformative-shock",
+      "informative": false
+    },
+    {
+      "token": "88912926533493988427719291698947688154042720958310632316541141466409683822293",
+      "label": "FOMC 2026-09-16: hike 50+ bps",
+      "stamps": 418,
+      "sufficient": true,
+      "reasons": [
+        "uninformative: polymarket |dP| 0.0060 < 0.02; hyperliquid |dP| 6.47 bps < bar 17.43 bps"
+      ],
+      "baseline": 0.0075,
+      "final": 0.0015,
+      "dp": -0.006,
+      "displaced": false,
+      "t_star_utc": null,
+      "t_star_rel_s": null,
+      "lead_s": null,
+      "class": "uninformative-shock",
+      "informative": false
+    }
+  ],
+  "class": "uninformative-shock",
+  "lead_s": null,
+  "informative": false,
+  "T0_utc": "2026-09-16T17:58:01Z",
+  "window_first_utc": "2026-09-16T17:58:01Z",
+  "sufficiency": {
+    "polymarket": {
+      "5615282760875985231868508008056959876238536896643315063916840237042205273721": {
+        "stamps": 418,
+        "largest_gap_s": 2.0,
+        "ok": true,
+        "reasons": []
+      },
+      "63842529068710005716169325380315470359047749786610778647370693404952498013178": {
+        "stamps": 418,
+        "largest_gap_s": 2.0,
+        "ok": true,
+        "reasons": []
+      },
+      "88912926533493988427719291698947688154042720958310632316541141466409683822293": {
+        "stamps": 418,
+        "largest_gap_s": 2.0,
+        "ok": true,
+        "reasons": []
+      }
+    },
+    "hyperliquid": {
+      "prints": 72768,
+      "largest_gap_s": 0.29,
+      "ok": true,
+      "reasons": [],
+      "baseline_age_s": 0.319
+    }
+  },
+  "bars": {
+    "pm_min_displacement": 0.02,
+    "hl_bar_bps": 17.4292,
+    "hl_bar_source": "trailing_60m_relative",
+    "hl_median_5m_bps": 5.8097,
+    "hl_marks": 244,
+    "lead_tolerance_s": 1.0,
+    "half_life_fraction": 0.5
+  },
+  "hyperliquid": {
+    "coin": "BTC",
+    "prints": 10274,
+    "baseline_px": 75783.0,
+    "baseline_age_s": 0.319,
+    "final_px": 75832.0,
+    "dp_rel_bps": 6.4658,
+    "t_star_utc": null,
+    "t_star_rel_s": null,
+    "displaced": false
+  },
+  "primary_market": {
+    "token": "63842529068710005716169325380315470359047749786610778647370693404952498013178",
+    "label": "FOMC 2026-09-16: hike 25 bps"
+  },
+  "_artifact": {
+    "written_at": "2026-09-16T18:46:41.398823Z",
+    "writer": "cross_market.event_study",
+    "registration": "C:\\Users\\ixis1\\Desktop\\DEV\\cross_market\\experiments\\lead_lag_phase2_fomc.meta.json",
+    "books_dir": "C:\\Users\\ixis1\\Desktop\\DEV\\cross_market\\data\\clob_books\\fomc_2026-09-16",
+    "db": "C:\\Users\\ixis1\\Desktop\\DEV\\HyperLiquid\\HL_Monarch\\data\\hyperliquid_data.db",
+    "argv": [
+      "--event",
+      "fomc_2026-09-16",
+      "--json"
+    ]
+  }
+}

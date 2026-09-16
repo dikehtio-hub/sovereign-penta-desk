@@ -1,6 +1,9 @@
 ====================================================================
 COMMANDS — Bots & Strategies Inventory — C:\Users\ixis1\Desktop\DEV
-Generated: 2026-08-26 | Last updated: 2026-08-28 (the decision from the
+Generated: 2026-08-26 | Last updated: 2026-09-12 (added READING INTAKE:
+a free research tool that turns links you paste into vault pages, aimed
+at finding the autoresearch loop's second strategy family - see that
+heading). Earlier update 2026-08-28 (the decision from the
 previous update is in: turned the "move stop to breakeven" feature back
 off on both strategies — the user/Antigravity independently re-ran the
 same real comparison and confirmed it really was hurting profit, not
@@ -511,9 +514,6 @@ THE 9 STRATEGIES ("Stacks"):
    Stack 6/7 write-ups above -- this stack remains a real, inherently
    rare setup on the data tested, not a bug.
 
-GETTING REAL DATA (instead of made-up/synthetic bars):
-  Crypto (Hyperliquid): ./venv/Scripts/python.exe scripts/download_market_data.py --all-intervals
-  Futures (NQ/ES/GC/CL, Yahoo Finance): ./venv/Scripts/python.exe scripts/fetch_yahoo_futures.py
 
 10. STACK 11 -- Volatility Squeeze Expansion (stack11_volatility_squeeze.py)
    RESEARCH SANDBOX ONLY (Antigravity, 2026-09-13; cross-checked by Claude
@@ -536,9 +536,278 @@ GETTING REAL DATA (instead of made-up/synthetic bars):
      venv\Scripts\python.exe -m pytest tests\test_stack11_squeeze.py -q
      venv\Scripts\python.exe -u -m backtesters.test_stack11_squeeze --all
      venv\Scripts\python.exe -u -m backtesters.stack11_out_of_window --btc5m
+GETTING REAL DATA (instead of made-up/synthetic bars):
+  Crypto (Hyperliquid): ./venv/Scripts/python.exe scripts/download_market_data.py --all-intervals
+  Futures (NQ/ES/GC/CL, Yahoo Finance): ./venv/Scripts/python.exe scripts/fetch_yahoo_futures.py
   Both of these now ADD new data to what you already have instead of
   overwriting it, so running them again later grows your real-data
   history instead of resetting it.
+
+  NEW (2026-09-11) — DEEP crypto history from Binance's public archive
+  (AUTORESEARCH_BLUEPRINT.md Phase 0; free, no key, no account):
+    ./venv/Scripts/python.exe -m scripts.fetch_binance_archive --symbol BTCUSDT,ETHUSDT --interval 5m,1h --start 2023-01 --end 2026-08
+  Writes data/continuous/<SYMBOL>_<interval>_binance.csv in the same
+  six-column shape as every other file there (naive UTC timestamps, so
+  load with --source-tz UTC like the Hyperliquid files). Why it exists:
+  Hyperliquid's API keeps only ~5,000 candles per interval (~17 days of
+  5m) and Yahoo's intraday futures stop at 60 days -- not enough for a
+  walk-forward loop to learn anything but noise. USDT-margined perps
+  (--market um, default) go back to 2019-12 for BTC. First run 2026-09-11:
+  BTC + ETH, 5m + 1h, 2023-01..2026-08 = 44 months each, 385,632 5m rows
+  and 32,136 1h rows per symbol, 100.0000 % coverage, 0 holes, 0 dupes,
+  all four series PASS, ~8 min end to end. Monthly zips are cached under
+  data/binance_archive/ (git-ignored, 38 MB) and checksum-verified
+  (sha256 from the archive's .CHECKSUM files); re-running only fetches
+  months that are missing, so extend the series by bumping --end.
+  Reports, never fills: duplicates dropped and counted, rows sorted,
+  every hole of >= 2 bars printed with its span; row count checked
+  against the theoretical bar count and a shortfall beyond --tolerance
+  (1 %) still writes the CSV but exits 2. --dry-run lists the URLs;
+  --allow-missing skips months the archive lacks; --market spot for spot
+  pairs. Timestamp unit (ms vs the microseconds Binance moved SPOT files
+  to from 2025-01) is detected by magnitude, never by date. Tests:
+  tests/test_fetch_binance_archive.py (22, fully offline via an injected
+  fetcher). Lab suite 202 passed after adding it (was 180).
+
+  NEW (2026-09-13) — FUNDING-RATE history for the perps (Campaign 5 harness
+  change #1; free, no key). Run from the qtl_autoresearch worktree on branch
+  autoresearch/c5_harness:
+    ..\quant_trading_lab\venv\Scripts\python.exe scripts\fetch_binance_funding.py --symbols BTCUSDT ETHUSDT --start 2020-01 --end 2026-08 --out-dir ..\quant_trading_lab\data\continuous
+  Writes <SYMBOL>_funding_binance.csv (funding_time, funding_rate as a
+  decimal, interval_hours) beside the 1h bars -- git-ignored there. Monthly
+  zips from data.binance.vision, sha256-checked, cached in
+  data/binance_archive/; falls back to Binance's REST API only for a month
+  the archive lacks, and refuses to write a series with a hole. First run
+  2026-09-13: 7,305 settlements per symbol, 80/80 months, 0 gaps, ~3 min.
+  What reads it: backtesters/engine.py run_backtest(funding=...) charges it
+  to open positions, and run_backtest(mtm=...) now also returns a daily
+  mark-to-market equity series (research/autoresearch/mtm.py pools the four
+  OOS windows). Both are OFF unless asked for, so nothing existing changes.
+  Tests: tests/test_c5_harness.py (24; includes a real-data check that
+  t0030's score reproduces field for field). Worktree suite 259 passed.
+
+  NEW (2026-09-13, later) — SPOT PAIRS for Campaign 5's Family C, same
+  archive fetcher, --market spot:
+    ..\quant_trading_lab\venv\Scripts\python.exe scripts\fetch_binance_archive.py --market spot --symbol ETHBTC,BNBBTC --interval 1h --start 2020-01 --end 2026-08 --out-dir ..\quant_trading_lab\data\continuous
+  First run: 58,409 of 58,440 hourly bars per pair (99.9 %), ~2 min; the 8
+  short holes are exchange outages in 2020-21. These pairs are priced in
+  BTC, not dollars, so the backtester REFUSES them on purpose until a
+  BTC->USD conversion is built -- a clear error, not wrong numbers.
+  Also new: research/autoresearch/comparison.py (the "does a new strategy
+  actually diversify t0030" gates) and three safety checks in the engine
+  (USD-only, funding only for perps, funding times must line up with the
+  bars). Tests: test_c5_harness.py 41; worktree suite 276 passed.
+
+  NEW (2026-09-13, latest) — BNB PERP for Family 2's second pair, plus the
+  pair engine. BNB's perp only exists from 2020-02-10, so start there:
+    ..\quant_trading_lab\venv\Scripts\python.exe scripts\fetch_binance_archive.py --market um --symbol BNBUSDT --interval 1h --start 2020-02 --end 2026-08 --out-dir ..\quant_trading_lab\data\continuous
+    ..\quant_trading_lab\venv\Scripts\python.exe scripts\fetch_binance_funding.py --symbols BNBUSDT --start 2020-02 --end 2026-08 --out-dir ..\quant_trading_lab\data\continuous
+  (Starting at 2020-01 makes the funding fetcher refuse to write -- it will
+  not save a series with a missing month. That is on purpose.)
+  What reads them: backtesters/engine.py run_pair_backtest -- "long ETH perp,
+  short BTC perp" (or BNB) as ONE trade, with fees and funding on both legs.
+  ETHBTC and BNBBTC in config/asset_specs.json are now these pairs, traded on
+  Hyperliquid. Tests: test_c5_harness.py 59; worktree suite 294 passed.
+
+  NEW (2026-09-13, 03:20) — GATE ZERO FOR CAMPAIGN 5's two strategy families
+  (the "does it earn more per trade than it pays in costs" screen that must
+  pass BEFORE a campaign registers). Result: BOTH FAIL, so nothing was
+  registered and no loop runs. Re-run any time, ~1 min each, free, offline:
+    set AUTORESEARCH_DATA_ROOT=C:\Users\ixis1\Desktop\DEV\quant_trading_lab\data\continuous
+    ..\quant_trading_lab\venv\Scripts\python.exe -m research.autoresearch.gate_zero --candidate strategies.c5_meanrev_candidate:MeanReversionCandidate --assets BTCUSDT,ETHUSDT --hurdle 40 --grid --workers 4
+    ..\quant_trading_lab\venv\Scripts\python.exe -m research.autoresearch.gate_zero --candidate strategies.c5_pair_candidate:PairDivergenceCandidate --assets ETHBTC,BNBBTC --hurdle 80 --grid --workers 4
+  (Swap in ExhaustionFadeCandidate or PureExhaustionCandidate from the same
+  c5_meanrev_candidate module for Family 1's other two forms.) Exit code 0
+  pass / 1 fail / 2 never traded. The strategies are in
+  strategies/c5_meanrev_candidate.py and strategies/c5_pair_candidate.py;
+  the full write-up is research/autoresearch/C5_GATE_ZERO.md. Tests:
+  test_c5_harness.py 75; worktree suite 310 passed.
+
+  BUG FIX, NOT MERGED (2026-09-13, 13:30) — DEFECT-ENG-001: the shared
+  backtester (backtesters/engine.py, plus the copies in
+  test_portfolio_concurrent.py and test_stack6_smt.py) never charged
+  slippage: both fills were shifted the same way, so it cancelled out of
+  every single-instrument trade since 2026-08-18. Fixed on branch
+  bugfix/engine-slippage-signs in the worktree C:\Users\ixis1\Desktop\DEV\qtl_slipfix
+  (off lab master 82ffcba). Every pinned test number that included PnL was
+  regenerated on the corrected engine; the impact audit (all stacks
+  before/after, the Core 3 portfolio baseline, t0030) is
+  backtesters\DEFECT_ENG_001_SLIPPAGE_AUDIT.md on that branch. Merging it
+  into master is the operator's call (HOMEWORK.md). To re-run the audit:
+    cmd /c mklink /J C:\Users\ixis1\Desktop\DEV\qtl_slipfix\data C:\Users\ixis1\Desktop\DEV\quant_trading_lab\data
+    cd C:\Users\ixis1\Desktop\DEV\qtl_slipfix
+    ..\quant_trading_lab\venv\Scripts\python.exe backtesters\validate_real_edge.py
+    cmd /c rmdir C:\Users\ixis1\Desktop\DEV\qtl_slipfix\data
+  The same fix is on autoresearch/c5_harness (qtl_autoresearch), where
+  t0030's corrected score lives at
+  research\autoresearch\trials\t0030_defect_eng_001_rescore.json.
+
+STRATEGY AUTORESEARCH LOOP (new 2026-09-11, AUTORESEARCH_BLUEPRINT.md at the
+DEV root) — an overnight research loop that edits ONE strategy file, scores
+every change out-of-sample, and keeps only what improves. Built, tested, and
+proven end to end; NOT yet run for real (Phase 2 = 5 supervised trials with
+you watching, then Phase 3 = the first overnight).
+
+  What it is, in plain terms: the agent writes a trading idea into one file,
+  the harness backtests it across 8 rolling train/test splits of 41 months of
+  BTC and ETH 5-minute data, and then either KEEPS the change (if it beats
+  the best so far by 5% AND passes 7 quality gates) or throws it away. It
+  never sees the last 3 months of data — that is the locked holdout you run
+  separately, once, on anything that survives.
+
+  Why it is not the YouTube version: those loops optimise on one fixed
+  stretch of data with no holdout, which manufactures a fake Sharpe 20. This
+  one is fenced. It literally cannot read the holdout, cannot edit the engine
+  or the cost model, cannot hard-code a price level or a date, cannot add
+  more than 6 tunable knobs, and cannot run a trial without writing down the
+  market mechanism it is betting on.
+
+  SET UP A CAMPAIGN (once, from quant_trading_lab/):
+    git worktree add ../qtl_autoresearch -b autoresearch/c1_donchian_crypto_5m
+    ./venv/Scripts/python.exe -m research.autoresearch.config --pin-folds
+  The worktree is a separate copy of the repo on its own branch, so the loop
+  can never touch your main working files. --pin-folds records a fingerprint
+  of the 8 train/test splits; if the data ever changes underneath, every
+  later trial refuses to score rather than producing a number that cannot be
+  compared to earlier ones.
+
+  RUN ONE TRIAL (from the worktree):
+    set AUTORESEARCH_DATA_ROOT=C:\Users\ixis1\Desktop\DEV\quant_trading_lab\data\continuous
+    ..\quant_trading_lab\venv\Scripts\python.exe -m research.autoresearch.run_trial --hypothesis "why this should work"
+  Takes about 3 minutes. Prints one line: KEEP, DISCARD, CRASH, REFUSED, or
+  CAMPAIGN_CAP_REACHED. Exit codes 0/1/2/3/4 in that order.
+
+  CHECK A SURVIVOR ON THE LOCKED HOLDOUT (you, on master, after cherry-picking):
+    ./venv/Scripts/python.exe -m research.autoresearch.holdout --trial t0007
+  Refuses to run on a loop branch, and refuses if the strategy file is not
+  byte-identical to the one that was kept. This is the real test — expect
+  most keeps to die here, which is the system working, not failing.
+
+  READ THE RESULTS:
+    research/autoresearch/ledger.tsv        one row per trial, ever
+    research/autoresearch/trials/<id>.json  the full per-fold detail
+  The ledger is append-only and each row carries the sha256 of its JSON, so a
+  trial cannot be quietly rewritten or deleted after the fact.
+
+  THE RULES ARE IN ONE FILE:
+    research/autoresearch/campaign.meta.json
+  Every gate, span, cap and bar lives there and nowhere else. Campaign 1
+  (`c1_donchian_crypto_5m`): BTC + ETH 5-minute, research 2023-01-01 to
+  2026-05-31, holdout 2026-06-01 to 2026-08-31, 8 folds, 40 trials/night,
+  5 nights. Gates: >=100 out-of-sample trades per asset, >=5 of 8 folds
+  profitable, walk-forward efficiency >=0.5, drawdown <=8% of equity,
+  plateau ratio >=0.6, <=6 tunables, <=27 grid combinations.
+  research/autoresearch/PROGRAM.md is the instruction sheet the loop follows.
+
+  PROVEN BEHAVIOUR (real data, 2026-09-11): the starting Donchian-breakout
+  baseline was DISCARDED — profit factor 0.68, losing in all 8 folds on both
+  assets — and also FAILED the holdout (BTC 0.48, -$26,391; ETH 0.68,
+  -$8,736). Five deliberate cheating attempts were all refused: importing the
+  data loader inside the strategy, hard-coding a price level, editing the
+  engine, leaving the hypothesis blank, and leaving a stray file in the tree.
+  Tests: tests/test_autoresearch.py (41, fully offline). Lab suite 243.
+
+  DEEP CRYPTO DATA for it (also new 2026-09-11) is the fetch_binance_archive
+  entry above under GETTING REAL DATA.
+
+  PHASE 2 RESULT (2026-09-11, five supervised trials): the harness works and
+  it just told us something useful. Two real trading ideas were tested and
+  BOTH were rejected (a volatility-compression filter, and fading breakouts
+  instead of following them); two cheating attempts were refused; one buggy
+  strategy crashed and was logged without killing the loop. The reason
+  nothing passed is NOT the ideas -- it is the timeframe. At 5-minute bars
+  the strategy makes ~7,000 trades and pays $281,916 in fees and slippage
+  against a gross edge of about zero: fees are 15x the edge. The same
+  strategy on 1-HOUR bars makes 552 trades, has a POSITIVE gross edge, and
+  pays only 1.4x it in fees. So before any overnight run, campaign 1 should
+  move to the 1h data (already downloaded) and its "100 trades minimum" gate
+  should drop, since 1h makes about a tenth the trades. That change is NOT
+  made -- it is the operator's and Antigravity's decision.
+  Where to look: the campaign lives in ../qtl_autoresearch (a separate copy
+  of the lab on branch autoresearch/c1_donchian_crypto_5m), and the five
+  trials are in research/autoresearch/ledger.tsv there.
+
+  PHASE 3 RESULT (2026-09-11): THE LOOP RAN ITS FULL 40 TRIALS AND THE
+  ANSWER WAS NO. It found one strategy good enough to keep -- on the data
+  it was allowed to see, that strategy made $1.28 for every $1.00 it lost
+  on Bitcoin and $1.26 on Ethereum, with 6 of 8 time periods profitable on
+  both. Then the final test, three months of 2026 data the loop could never
+  touch, returned $0.75 and $0.97. It fails. Nothing goes to paper trading.
+  That is the system working. Twelve quality checks and an eight-period
+  walk-forward were not enough to guarantee the strategy would survive on
+  fresh data, and the one test the loop was fenced out of caught it. A loop
+  without that fence would have reported the 1.26 as a discovery.
+  Biggest lesson for next time: the setting the optimiser picked EVERY time
+  it was offered a choice turned out to be actively harmful on fresh data
+  (score 0.91), while the setting that worked (score 1.26) was one it never
+  picked -- it survived only because that knob had been dropped from the
+  search and left alone. What the search prefers is not what survives.
+  Where everything lives: ../qtl_autoresearch on branch
+  autoresearch/c2_donchian_crypto_1h (40 trials in
+  research/autoresearch/ledger.tsv, one JSON per trial), and the holdout
+  verdict in ../qtl_holdout on branch holdout/c2_verify. The lab's own
+  master branch was never touched.
+
+  5-MINUTE SCREEN - RAN, AND 5-MINUTE IS DEAD (2026-09-11). The test:
+  how much does each signal earn per trade BEFORE fees, versus the 10
+  basis points of fees and slippage actually paid? Eight runs, four signal
+  families on two assets, over 359,000 bars. Every single one failed. The
+  BEST earned 0.71 basis points against a 10 basis point hurdle - fourteen
+  times short - and five of the eight lost money even before fees were
+  counted. Because these are in-sample figures, which flatter everything,
+  nothing here can be rescued by a better filter or a longer campaign.
+  5-minute crypto breakouts are closed by measurement.
+  For contrast the 1-HOUR version of the same strategy earns 32 and 21
+  basis points per trade gross, comfortably clear of the same hurdle. The
+  timeframe was the whole problem.
+  Runtime ~20 min. Script: qtl_holdout/research/autoresearch/gross_edge_screen.py
+  (uncommitted). Antigravity has ruled this test should become mandatory
+  BEFORE any future campaign is registered, so no one ever again spends
+  hours proving a timeframe cannot pay its own costs.
+
+  (superseded) 5-MINUTE SCREEN, PARKED (2026-09-11): one cheap test of whether
+  5-minute data is worth a campaign at all. It measures what each signal
+  earns per trade BEFORE fees and compares that to the 10 basis points of
+  fees and slippage actually paid. Anything that cannot clear the bar even
+  before costs is dead, and we learn that in minutes instead of hours.
+  Script: qtl_holdout/research/autoresearch/gross_edge_screen.py
+  (uncommitted). Started once and killed after 12 minutes with no output --
+  385,000 bars per asset across four signal families is slower than
+  expected and it needs a faster rewrite first. Budget 20-30 minutes.
+  WHEN: only after Antigravity answers the cross-check, and only if that
+  answer does not already settle the 5-minute question.
+
+  READING INTAKE: FIND THE LOOP'S SECOND STRATEGY FAMILY (new 2026-09-12).
+  Every campaign so far searched ONE family, the Donchian channel breakout
+  (champion t0030). This is how research for a second family gets in. It
+  is a research tool, not a bot: it reads, it never trades, and it costs
+  nothing (public web pages only, no API keys).
+
+    1. You paste links into obsidian_vault\raw\inbox\READING.md, one per
+       line: the URL, then " — " and a note. YouTube, articles, arXiv
+       papers, GitHub repos and PDFs all work.
+    2. From the DEV root:
+         python -m knowledge.fetch_reading
+       downloads each NEW link once (a YouTube video's captions, a page's
+       readable text, a paper's PDF text) into obsidian_vault\raw\fetched\,
+       then builds one vault page per source. Re-running never downloads a
+       link twice; a failed link is retried next time. --dry-run lists
+       what it would fetch without touching the network.
+    3. Ask Claude Code to "review the reading inbox". It reads each saved
+       text and records a summary and a verdict:
+         python -m knowledge.ingest.reading --pending      (what is waiting)
+         python -m knowledge.ingest.reading --review <stem> --from review.json
+       Verdicts: candidate | needs-harness-change | reject | not-a-strategy.
+
+  WHERE TO LOOK: the vault page wiki\concepts\strategy_family_search.md.
+  It lists what a second family must clear (read live from the campaign
+  registration: 1h bars, at least 40 bps gross edge per trade, at most 6
+  tunable settings, and so on), the families already measured and closed,
+  and every source ranked by verdict.
+  Plain-English glossary: "needs-harness-change" means a real idea the
+  test harness cannot score yet, usually because it needs data other than
+  price bars (funding rates, order books, news).
+  Tests: knowledge/tests/test_reading.py (12, fully offline).
 
   NEW (2026-08-27) — multi-month "continuous" data for research/
   walk-forward tools below:

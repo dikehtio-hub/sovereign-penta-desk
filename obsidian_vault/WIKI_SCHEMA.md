@@ -296,6 +296,27 @@ Antigravity ratification: it appends `{by: antigravity/architect, at}` to
 type's register and logs one `**Ratify**` bullet. It is the only way an
 agent writes a `verified` entry, and the entry names a ruling.
 
+### Reading intake (added 2026-09-12; AWAITING ANTIGRAVITY RATIFICATION)
+
+The operator's research aim for this intake is **find a second strategy family for the autoresearch
+loop**. Sources arrive as links in `raw/inbox/` (exempt from lint, Ruling R124-1.C) and flow through
+two commands, split so the package's no-socket rule has exactly one named exception:
+
+1. `knowledge.fetch_reading` is the **only module in the package that opens a socket**. It GETs the
+   URLs the operator typed (no credentials, no keys, nothing metered) and writes one immutable text
+   snapshot per source to `raw/fetched/<stem>.txt` with a `key: value` header (url, kind, title,
+   fetched_at, fetcher, chars, sha256). A snapshot is never rewritten without `--refetch`; a failure
+   writes `<stem>.failed.txt` and is retried every run. Stems are `source_<kind>_<sha256(url)[:10]>`.
+2. `knowledge.ingest.reading` compiles offline like every other adapter: one Source Summary page per
+   source (`wiki/sources/`), the sources register, and `wiki/concepts/strategy_family_search.md`, whose
+   harness criteria are read from the live campaign registration and pinned by `dev.parameters`
+   (lint C1 fires when the next campaign moves them).
+3. **Review** is a reviewer's act, never the adapter's: a Claude Code session reads each snapshot and
+   records `summary` plus a screen (`family, mechanism, data_needed, horizon, tunables, evidence,
+   reason`) and a `verdict` in `candidate | needs-harness-change | reject | not-a-strategy` with
+   `--review STEM --from review.json`. Re-ingest keeps the `## Summary` section and every review field
+   (the CRM Judgement invariant). A review is `generated`, never `verified`.
+
 ### Lint
 
 `python -m knowledge.lint [--json]` (exit 0 clean, 1 findings, 3 refused).
@@ -357,6 +378,11 @@ python -m knowledge.journal --predict --event fomc_2026-09-16 --field change_bps
 python -m knowledge.journal --score [--event E --outcome 0|1]          scores predictions (hand outcome for free-text claims); rebuilds calibration.md
 python -m knowledge.views [--force]                                -> wiki/_views/*.base (Obsidian Bases) and wiki/_templates/*.md
 python -m knowledge.ingest.theses [--root DIR ...] [--force]       -> wiki/concepts/thesis_*.md from desk module docstrings (pinned by C1)
+python -m knowledge.fetch_reading [--refetch] [--dry-run] [--no-compile]
+                                                                   raw/inbox/ links -> raw/fetched/ snapshots (THE ONE NETWORKED COMMAND), then compiles
+python -m knowledge.ingest.reading [--campaign-meta FILE]          -> wiki/sources/, sources_register, wiki/concepts/strategy_family_search.md
+python -m knowledge.ingest.reading --pending                       lists sources awaiting review with their snapshot paths
+python -m knowledge.ingest.reading --review STEM --from review.json  records a reviewer's summary, screen and verdict
 python -m unittest knowledge.tests.test_knowledge                  (Master Module 23)
 ```
 

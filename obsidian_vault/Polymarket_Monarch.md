@@ -5,15 +5,16 @@ tags:
   - prediction-markets
   - alpha
   - dashboard
-last_synced: "2026-09-04 22:44:52 UTC"
+last_synced: "2026-09-16 21:12:56 UTC"
 ---
 
 # 👑 Polymarket Monarch • Real-Time Intelligence
 
 > **Vault Navigation**: [[Monarch_Hub|👑 Monarch Intelligence Hub]] • [[HyperLiquid_Monarch|👑 HyperLiquid Monarch]] • [[Quant_Trading_Lab|⚡ Quant Trading Lab]] • [[Sports_Desk|🏈 Sports Desk]] • [[Cross_Market_Arb|⚖️ Cross-Market Arb]]
+> **Desk**: [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]] · Shell twin: `python Polymarket/Polymarket_Monarch/obsidian_sync.py --once`
 
 > [!TIP] **System Status: LIVE**
-> - **Last Synchronized**: `2026-09-04 22:44:52 UTC`
+> - **Last Synchronized**: `2026-09-16 21:12:56 UTC`
 > - **Active Sharp Traders ($300+ 7D Realized)**: `41`
 > - **Public Polymarket Data Engine**: 100% Free / Native Public APIs (No Paid Keys)
 
@@ -59,14 +60,14 @@ last_synced: "2026-09-04 22:44:52 UTC"
 
 | Category | Top Volume Market | 24h Vol | Yes Odds / Probability |
 | :--- | :--- | :---: | :--- |
-| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$2.03M` | `█░░░░░░░░░` **14.5%** |
-| 🪙 Crypto | Bitcoin above ___ on September 5? | `$648.2K` | `██████████` **100.0%** |
-| 🪙 Crypto | What price will Bitcoin hit in September? | `$641.9K` | `░░░░░░░░░░` **4.7%** |
-| 🌐 Politics | Fed Decision in September? | `$10.15M` | `░░░░░░░░░░` **0.1%** |
-| 🌐 Politics | Clarity Act (H.R.3633) signed into law in 2026? | `$2.03M` | `█░░░░░░░░░` **14.5%** |
-| 🌐 Politics | Republican Presidential Nominee 2028 | `$1.56M` | `░░░░░░░░░░` **2.1%** |
-| 🏛 Economics | US announces another yen intervention by...? | `$0` | `██░░░░░░░░` **17.5%** |
-| 🏛 Economics | Will Argentina dollarize by...? | `$0` | `█░░░░░░░░░` **5.7%** |
+| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$932.3K` | `█░░░░░░░░░` **6.7%** |
+| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$562.2K` | `█████░░░░░` **50.0%** |
+| 🪙 Crypto | Bitcoin above ___ on September 17? | `$517.2K` | `██████████` **99.8%** |
+| 🌐 Politics | Fed Decision in September? | `$27.60M` | `░░░░░░░░░░` **0.0%** |
+| 🌐 Politics | Which party will gain most seats in Russian Parliamentary Election? | `$1.63M` | `███████░░░` **73.5%** |
+| 🌐 Politics | Republican Presidential Nominee 2028 | `$1.02M` | `░░░░░░░░░░` **1.9%** |
+| 🏛 Economics | US announces another yen intervention by...? | `$0` | `████░░░░░░` **38.5%** |
+| 🏛 Economics | Will Argentina dollarize by...? | `$0` | `█░░░░░░░░░` **5.3%** |
 
 ---
 *Generated automatically by Polymarket Monarch Obsidian Sync.*

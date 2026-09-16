@@ -69,6 +69,7 @@
 * [Experiment: baseline_unfiltered](wiki/experiments/baseline_unfiltered_N12_2026-09-01_meta.md) - TERMINATED EARLY at N=12 of a pre-registered N=50
 * [Experiment: latency_sniper_fomc_2026-09-16](wiki/experiments/fomc_2026-09-16_rules.md) - PRE-REGISTERED (Ruling R2c).
 * [Experiment: lead_lag_phase2_event_study](wiki/experiments/lead_lag_phase2_fomc_meta.md) - PRE-REGISTERED (Round 126; protocol by Antigravity, Rulings R125-2 sections 6, 7 and 8 of 2026-09-09/10; artifact by Claude Code).
+* [Item 18 Phase 2 panel](wiki/experiments/lead_lag_phase2_panel.md) - Event-driven lead-lag panel: insufficient (0 of 3 informative events).
 * [Lead-lag verdict: Tier 1, macro, 2026-09-06 01:42Z](wiki/experiments/lead_lag_tier1_macro_20260906T0142Z.md) - Tier 1 lead-lag verdict for macro: no-lead.
 * [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-07 02:30Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260907T0230Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
 * [Lead-lag verdict: Tier 2, macro / crypto, 2026-09-08 03:29Z](wiki/experiments/lead_lag_tier2_macro_crypto_20260908T0329Z.md) - Tier 2 lead-lag verdict for macro / crypto: no-lead.
@@ -86,6 +87,9 @@
 * [Experiment: lead_lag_tier2b_dual_tag_membership](wiki/experiments/lead_lag_tier2b_meta.md) - PRE-REGISTERED - runs only after (1) the Tier 1 maiden verdict is in Cross_Market_Titans.md, (2) the watcher has been restarted with the Round 76 code, and (3) the TAGGED macro series clears the readiness bar on its own
 * [Experiment: passive_fade_rebenchmark](wiki/experiments/passive_fade_rebenchmark_meta.md) - PASSIVE - the fade does not trade; sweeps accumulate with execution disabled
 * [Passive fade rebenchmark - verdict](wiki/experiments/passive_fade_rebenchmark_verdict.md) - Reopening question graded against the pre-registered bar: **INSUFFICIENT** over `trade_sweep` (ratio_30m 0.7896, P 0.0000, 13,645 events on 46 coins, top coin 0.268). The fade stays retired either way.
+* [Reaction profile: fomc_2026-09-16 / FOMC 2026-09-16: hike 25 bps](wiki/experiments/reaction_profile_fomc_2026-09-16__FOMC_2026_09_16_hike_25_bps.md) - fomc_2026-09-16: FOMC 2026-09-16: hike 25 bps - uninformative-shock.
+* [Reaction profile: fomc_2026-09-16 / FOMC 2026-09-16: hike 50+ bps](wiki/experiments/reaction_profile_fomc_2026-09-16__FOMC_2026_09_16_hike_50_bps.md) - fomc_2026-09-16: FOMC 2026-09-16: hike 50+ bps - uninformative-shock.
+* [Reaction profile: fomc_2026-09-16 / FOMC 2026-09-16: no change](wiki/experiments/reaction_profile_fomc_2026-09-16__FOMC_2026_09_16_no_change.md) - fomc_2026-09-16: FOMC 2026-09-16: no change - uninformative-shock.
 * [Experiment: regime_filtered_v1](wiki/experiments/regime_filtered_v1_meta.md) - regime_filtered_v1
 * [Experiment: whale_sweeper_cascade_replay](wiki/experiments/whale_sweeper_cascade_replay_meta.md) - PRE-REGISTERED (Round 103, backlog B15).
 * [Whale sweeper cascade replay - verdict](wiki/experiments/whale_sweeper_cascade_replay_verdict.md) - Item 14 retrospective replay graded against its pre-registered bar: **INSUFFICIENT** (ratio 0.9029, P 0.1167, 18,669 events on 62 coins). Retrospective replay, not a forward test.
@@ -94,14 +98,22 @@
 * [Data gap: 2026-09-06_hl_asset_snapshots](wiki/events/data_gap_2026-09-06_hl_asset_snapshots.md) - 9.32 h with no recording in asset_snapshots, latest_snapshots: 2026-09-06T15:46:10Z to 2026-09-07T01:05:10Z. Round 119.
 * [Data gap: 2026-09-08_hl_asset_snapshots_2](wiki/events/data_gap_2026-09-08_hl_asset_snapshots_2.md) - 26.42 h with no recording in asset_snapshots, latest_snapshots: 2026-09-08T16:01:22Z to 2026-09-09T18:26:39Z. Round 125.
 * [Data gap: 2026-09-11_hl_sleep](wiki/events/data_gap_2026-09-11_hl_sleep.md) - 10.75 h with no recording in asset_snapshots, trades: 2026-09-11T05:43:07Z to 2026-09-11T16:27:59Z. Round 127.
+* [Data gap: 2026-09-11_hl_trade_batches_defect_col_001](wiki/events/data_gap_2026-09-11_hl_trade_batches_defect_col_001.md) - 48.33 h with no recording in trades, liquidation_events: 2026-09-11T16:37:01Z to 2026-09-13T16:56:47Z. Round 128.
 * [Data gap: 2026-09-11_polymarket_drops_sleep](wiki/events/data_gap_2026-09-11_polymarket_drops_sleep.md) - 10.82 h with no recording in Sports_Desk/data/polymarket_drops stamped drops: 2026-09-11T05:38:27Z to 2026-09-11T16:27:57Z. Round 127.
 * [Data gap: 2026-09-12_hl_shutdown](wiki/events/data_gap_2026-09-12_hl_shutdown.md) - 9.57 h with no recording in asset_snapshots, liquidation_events: 2026-09-12T05:46:48Z to 2026-09-12T15:21:06Z. Round 127.
 * [Data gap: 2026-09-12_polymarket_drops_shutdown](wiki/events/data_gap_2026-09-12_polymarket_drops_shutdown.md) - 9.44 h with no recording in Sports_Desk/data/polymarket_drops stamped drops: 2026-09-12T05:54:25Z to 2026-09-12T15:21:01Z. Round 127.
-* [Event: fomc_2026-09-16](wiki/events/fomc_2026-09-16.md) - FOMC statement 2026-09-16T18:00:00Z (SEP meeting); window T-2..T+5 registered.
+* [Data gap: 2026-09-13_hl_sleep](wiki/events/data_gap_2026-09-13_hl_sleep.md) - 9.0 h with no recording in asset_snapshots, liquidation_clusters: 2026-09-13T07:45:38Z to 2026-09-13T16:45:46Z. Round 128.
+* [Data gap: 2026-09-13_polymarket_drops_sleep](wiki/events/data_gap_2026-09-13_polymarket_drops_sleep.md) - 9.0 h with no recording in Sports_Desk/data/polymarket_drops stamped drops: 2026-09-13T07:45:06Z to 2026-09-13T16:45:16Z. Round 128.
+* [Event: fomc_2026-09-16](wiki/events/fomc_2026-09-16.md) - fed_rate event fomc_2026-09-16: 3 reaction profile(s) recorded.
 * [Event: fomc_2026-10-28](wiki/events/fomc_2026-10-28.md) - FOMC statement 2026-10-28T18:00:00Z (no SEP); window T-2..T+5 registered.
 * [Event: fomc_2026-12-09](wiki/events/fomc_2026-12-09.md) - FOMC statement 2026-12-09T19:00:00Z (SEP meeting); window T-2..T+5 registered.
 * [Event: tax_estimated_2026_q3](wiki/events/tax_estimated_2026_q3.md) - Estimated tax Q3 2026 due 2026-09-15.
 * [Event: tax_estimated_2026_q4](wiki/events/tax_estimated_2026_q4.md) - Estimated tax Q4 2026 due 2027-01-15.
+
+# Reaction Profile
+* [Reaction profile: FOMC 2026-09-16: hike 25 bps](wiki/profiles/fomc_2026-09-16__FOMC_2026_09_16_hike_25_bps.md) - fomc_2026-09-16: FOMC 2026-09-16: hike 25 bps - half of the resting depth survived 1.939 s after the print; $162,777 dollar-seconds post-print.
+* [Reaction profile: FOMC 2026-09-16: hike 50+ bps](wiki/profiles/fomc_2026-09-16__FOMC_2026_09_16_hike_50_bps.md) - fomc_2026-09-16: FOMC 2026-09-16: hike 50+ bps (no series).
+* [Reaction profile: FOMC 2026-09-16: no change](wiki/profiles/fomc_2026-09-16__FOMC_2026_09_16_no_change.md) - fomc_2026-09-16: FOMC 2026-09-16: no change (no series).
 
 # Regime
 * [BTC macro regime](wiki/regimes/btc_macro_regime.md) - Rolling classification of the Polymarket macro / Hyperliquid BTC lead-lag verdicts, per tier and scope, with the full history.
@@ -212,13 +224,16 @@
 * [Computations register](wiki/concepts/computations_register.md) - Every shell twin and knowledge CLI filed as an OKF Attested Computation (declarative only, R95-C). 17 page(s) today.
 * [CRM register](wiki/concepts/crm_register.md) - Every counterparty page under crm/: titans (both venues), Hyperliquid whales, Polymarket sharps, sportsbooks. Judgement is human; evidence is appended. 185 page(s) today.
 * [Digests register](wiki/concepts/digests_register.md) - Every round of the sovereign work chain as its own page, compiled from AGENTS.md. The log stays the record; a digest loses to it wherever they disagree. 80 page(s) today.
-* [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 11 page(s) today.
-* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 23 page(s) today.
+* [Events register](wiki/concepts/events_register.md) - Every Event page: scheduled prints with their windows, tax deadlines, and recorded events. 14 page(s) today.
+* [Experiments register](wiki/concepts/experiments_register.md) - Every Experiment page: pre-registrations (draft until a verdict lands), archived controls, and verdicts as measured. 27 page(s) today.
 * [Journal register](wiki/concepts/journal_register.md) - Every trading-day journal page: paper executions, the calibration ledger, the debrief. Plan and Open sections are human. 2 page(s) today.
+* [Latency decay across events](wiki/concepts/latency_decay.md) - Seconds of resting depth that survive a scheduled print, per recorded event and market; the cross-event table for the sniper thesis.
 * [Markets register](wiki/concepts/markets_register.md) - Every Market page the wiki is bound to; lint C2 warns when a token leaves the drops and --fix-safe deprecates it. 97 page(s) today.
 * [Filed queries register](wiki/concepts/queries_register.md) - Every question filed with `knowledge.query --file`. The scaffold records the question and what was open when it was asked; the ANSWER is the operator's to write. 0 page(s) today.
-* [Registers catalogue](wiki/concepts/registers_register.md) - Every machine-maintained register in the vault, one hop from any Desk page. Each register lists every page of its type; this page lists the registers. 10 page(s) today.
+* [Registers catalogue](wiki/concepts/registers_register.md) - Every machine-maintained register in the vault, one hop from any Desk page. Each register lists every page of its type; this page lists the registers. 11 page(s) today.
 * [Rulings register](wiki/concepts/rulings_register.md) - Every Ruling page: the R-series, and every Directive, Ratification and numbered Ruling extracted from the handoff log. 36 page(s) today.
+* [Sources register](wiki/concepts/sources_register.md) - Every external source filed from the reading inbox (videos, articles, papers, repositories), with the reviewer's verdict against the second-strategy-family aim. 0 page(s) today.
+* [Second strategy family search](wiki/concepts/strategy_family_search.md) - The operator's research aim: find a second strategy family for the autoresearch loop. Harness criteria, families already measured, and every source ranked by verdict. 0 live, 0 awaiting review.
 * [Theses register](wiki/concepts/theses_register.md) - Every module thesis compiled from a desk docstring; each heading is pinned to its source so a silent deletion is a lint C1 finding. 35 page(s) today.
 * [Thesis: HyperLiquid/HL_Monarch/analytics/wick_benchmark.py](wiki/concepts/thesis_HyperLiquid_HL_Monarch_analytics_wick_benchmark.md) - After a forced-sell cascade the fade buys, betting on a snapback. For every historical event we measure, over a forward window: MFE = maximum favourable excursion (how far it moved our way) MAE = maximum adverse excursion (how far it moved against us) MFE/MAE >= 1.50 means th…
 * [Thesis: HyperLiquid/HL_Monarch/collectors/orderbook_sampler.py](wiki/concepts/thesis_HyperLiquid_HL_Monarch_collectors_orderbook_sampler.md) - The cost model behind the 7-day basis hold amortises a spread that nothing in the repository measured: orderbook_snapshots existed, the repository could write it, and no caller ever did. Every persisted basis window therefore carried fee_basis='unmeasured' and a NULL net rate. Th…
@@ -551,6 +566,11 @@
 # Journal Entry
 * [Journal 2026-09-05](journal/2026-09-05.md) - Journal 2026-09-05: 0 paper execution(s), $0 turnover.
 * [Journal 2026-09-06](journal/2026-09-06.md) - Journal 2026-09-06: 0 paper execution(s), $0 notional, 0/1 prediction(s) scored.
+
+# Untyped
+* [How to Connect Claude to TradingView (AI Trading Setup)](raw/inbox/How to Connect Claude to TradingView (AI Trading Setup).md) - Thanks for watching this guide on how to connect Claude to TradingView, friends ❤️Everything you need to set up the AI trading connection is right here 👇📖 Free Step-by-Step Guide (with the full
+* [I Gave Claude Fable 5.1 Full Access to TradingView… Here’s What Happened](raw/inbox/I Gave Claude Fable 5.1 Full Access to TradingView… Here’s What Happened.md) - 👉🏻 Get access my AI trading bots & TradingView Strategies:https://www.skool.com/daviddtech/about?sl=yt_UGDIdJh0w_0I gave Claude Fable 5.1 eight hours to research, code and backtest trading strate
+* [moondevonyt/Trading-View-MCP-for-AI-by-Moon-Dev: Trading view MCP for AI so you can build anything into your trading view charts with AI](raw/inbox/moondevonytTrading-View-MCP-for-AI-by-Moon-Dev Trading view MCP for AI so you can build anything into your trading view charts with AI.md) - Trading view MCP for AI so you can build anything into your trading view charts with AI - moondevonyt/Trading-View-MCP-for-AI-by-Moon-Dev
 
 # raw
 * [READING](raw/inbox/READING.md) - (no description)

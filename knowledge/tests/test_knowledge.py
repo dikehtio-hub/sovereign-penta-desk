@@ -1280,7 +1280,7 @@ class RegistersAndSeedLinksTests(IngestFixture):
             if stem != registers.HUB_STEM:
                 self.assertIn(f"[[{stem}\\|", hub)          # and every one of them is in the hub
         self.assertNotIn(f"[[{registers.HUB_STEM}\\|", hub)   # which does not list itself
-        self.assertEqual(len(registers.REGISTER_STEMS), 11)
+        self.assertEqual(len(registers.REGISTER_STEMS), 12)   # 12th: sources_register (reading intake, 2026-09-12)
         self.assertEqual(registers.REGISTER_STEMS[-1], registers.HUB_STEM)   # LAST: seed writes in order
 
     def test_register_columns_and_cells(self):

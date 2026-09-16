@@ -12,7 +12,11 @@ goes through ``pages.write_page`` which refuses any path outside the four
 owned folders and the three owned files; a page whose ``dev.window`` contains
 now is refused too (registration files are never amended inside a window).
 Nothing here opens a socket, imports an executor or writes to a dashboard,
-an entity note, a drop folder, a stamp folder or a database.
+an entity note, a drop folder, a stamp folder or a database. The ONE named
+exception to the socket rule is ``knowledge.fetch_reading`` (2026-09-12),
+which GETs the public URLs the operator dropped in ``raw/inbox/`` into text
+snapshots under ``raw/fetched/``; a test fails if any other module imports a
+network library.
 
 FRONTMATTER. OKF v0.2 (GoogleCloudPlatform/knowledge-catalog, okf/SPEC.md):
 ``type`` is the only required field; ``generated``, ``verified``, ``status``,

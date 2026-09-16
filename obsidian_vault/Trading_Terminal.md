@@ -5,19 +5,19 @@ tags:
   - trading-terminal
   - hurdle-tracker
   - execution-telemetry
-last_synced: "2026-09-06 07:18:23 UTC"
+last_synced: "2026-09-13 22:49:58 UTC"
 ---
 
 # 📈 Monarch Trading Terminal & 50-Trade Hurdle Tracker
 
 > [!INFO] **Live Delta-Neutral Harvester Telemetry**
 > - **Total Account Equity**: **`$100.4K`** (Starting: `$100.0K`)
-> - **Available Cash Balance**: **`$80.4K`** • Deployed Collateral: **`$20.0K`**
-> - **Net Realized Yield / PnL**: **`+$402.94`**
-> - **Accrued Funding Yield**: **`+$445.94`** (82 accrual cycles)
-> - **Total Execution Fees Paid**: `$43.00` (Net of maker/taker accounting)
-> - **Active Basis Pairs**: `1 pairs deployed`
-> - **Last Synchronized**: `2026-09-06 07:18:23 UTC`
+> - **Available Cash Balance**: **`$100.4K`** • Deployed Collateral: **`$0.00`**
+> - **Net Realized Yield / PnL**: **`+$432.32`**
+> - **Accrued Funding Yield**: **`+$477.31`** (234 accrual cycles)
+> - **Total Execution Fees Paid**: `$45.00` (Net of maker/taker accounting)
+> - **Active Basis Pairs**: `0 pairs deployed`
+> - **Last Synchronized**: `2026-09-13 22:49:58 UTC`
 
 ---
 
@@ -46,7 +46,7 @@ last_synced: "2026-09-06 07:18:23 UTC"
 
 | Asset | Spot Pair | Leg Notional | Spot Entry | Perp Entry | Entry APR | Realised APR | Funding Accrued | Duration |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`XPL`** | `UXPL` | $10.0K | `$0.0843` | `$0.0843` | `+31.58%` | `+14.96%` | **`+$8.03`** | `77.6h` |
+| — | — | — | — | — | — | — | *No active open delta-neutral basis positions.* | — |
 
 ---
 
@@ -66,6 +66,7 @@ last_synced: "2026-09-06 07:18:23 UTC"
 | **`para:AVGO`** | 🟢 **$0.15** | `16.0h` | `ILLIQUID_SPOT_LEG: AVGO is synthetic TradFi (quarantined)` |
 | **`xyz:AVGO`** | 🔴 **-$7.28** | `16.0h` | `ILLIQUID_SPOT_LEG: AVGO is synthetic TradFi (quarantined)` |
 | **`para:ANSEM`** | 🟢 **$404.96** | `79.0h` | `funding turned adverse (-66.5% < 0.0%)` |
+| **`XPL`** | 🟢 **$30.40** | `199.0h` | `funding turned adverse (-27.3% < 0.0%)` |
 
 ---
 

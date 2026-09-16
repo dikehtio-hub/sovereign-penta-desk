@@ -1,0 +1,9 @@
+{
+  "kind": "fed_rate",
+  "payload": {
+    "change_bps": 25
+  },
+  "source": "federalreserve.gov statement",
+  "confidence": 0.995,
+  "observed_at": "2026-09-16T18:00:00Z"
+}

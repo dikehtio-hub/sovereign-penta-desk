@@ -58,6 +58,11 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "Thesis": ("theses_register", "Theses register",
                "Every module thesis compiled from a desk docstring; each heading is pinned to its source so a silent deletion is a lint C1 finding.",
                ("module", "desk")),
+    # Reading intake (2026-09-12): every external source the operator dropped in raw/inbox/, compiled by
+    # knowledge.ingest.reading. The verdict and family columns make this the sortable shortlist.
+    "Source Summary": ("sources_register", "Sources register",
+                       "Every external source filed from the reading inbox (videos, articles, papers, repositories), with the reviewer's verdict against the second-strategy-family aim.",
+                       ("source_kind", "verdict", "family")),
     # "Register" is the HUB (Ruling R111-1.C): it selects every page that IS a register, so a desk
     # links this one page instead of ten. Built by the same update_register as the others, on
     # purpose - Round 110 showed what a bespoke second builder for a register does (two writers,
@@ -68,6 +73,12 @@ SPECS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                  ("register_for", "count")),
 }
 HUB_STEM = "registers_register"
+
+# type -> extra Related links as (page type, stem, label). Emitted only when the page exists, so a vault seeded
+# before the linked page is compiled carries no dangling link (L8). The search page is the register's reason to exist.
+RELATED: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "Source Summary": (("Concept", "strategy_family_search", "Second strategy family search"),),
+}
 
 
 def matches(page_type: str | None, type_: str, dev: dict | None = None) -> bool:
@@ -128,7 +139,8 @@ def update_register(vault, type_: str, *, at: datetime, by: str = GENERATED_BY) 
         gen = (p.meta.get("generated") or {}).get("at", "")
         cells = " | ".join(_cell(p, c) for c in cols)
         lines.append(f"| [[{p.path.stem}\\|{safe_title(p.title)}]] | {cells} | {p.meta.get('status', 'stable')} | {gen} |")
-    lines += ["", f"{len(pages)} page(s).", "", "## Related", "", "- [[WIKI_SCHEMA|Constitution]] s.4 (registers)", ""]
+    extra = [f"- [[{stem_}|{label}]]" for t, stem_, label in RELATED.get(type_, ()) if page_path(vault, t, stem_).is_file()]
+    lines += ["", f"{len(pages)} page(s).", "", "## Related", "", "- [[WIKI_SCHEMA|Constitution]] s.4 (registers)", *extra, ""]
     meta = make_meta("Concept", title, f"{description} {len(pages)} page(s) today.",
                      tags=["concept", "register", type_.lower().replace(" ", "-").replace("/", "-")],
                      generated_by=by, at=at, status="draft",

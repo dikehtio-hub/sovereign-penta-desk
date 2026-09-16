@@ -3,18 +3,18 @@ type: Concept
 title: Registers catalogue
 description: Every machine-maintained register in the vault, one hop from any Desk
   page. Each register lists every page of its type; this page lists the registers.
-  10 page(s) today.
+  11 page(s) today.
 tags:
 - concept
 - register
 - register
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-12T15:59:45Z'
+  at: '2026-09-16T21:13:59Z'
 status: draft
 dev:
   register_for: Register
-  count: 10
+  count: 11
   pages:
   - computations_register
   - crm_register
@@ -25,6 +25,7 @@ dev:
   - markets_register
   - queries_register
   - rulings_register
+  - sources_register
   - theses_register
 ---
 # Registers catalogue
@@ -37,15 +38,16 @@ dev:
 | [[computations_register\|Computations register]] | Attested Computation | 17 | draft | 2026-09-06T00:57:24Z |
 | [[crm_register\|CRM register]] | Entity | 185 | draft | 2026-09-06T06:28:48Z |
 | [[digests_register\|Digests register]] | Digest | 80 | draft | 2026-09-10T21:28:16Z |
-| [[events_register\|Events register]] | Event | 11 | draft | 2026-09-12T15:59:45Z |
-| [[experiments_register\|Experiments register]] | Experiment | 23 | draft | 2026-09-10T21:28:10Z |
+| [[events_register\|Events register]] | Event | 14 | draft | 2026-09-13T18:19:00Z |
+| [[experiments_register\|Experiments register]] | Experiment | 27 | draft | 2026-09-16T21:13:59Z |
 | [[journal_register\|Journal register]] | Journal Entry | 2 | draft | 2026-09-06T00:57:21Z |
 | [[markets_register\|Markets register]] | Market | 97 | draft | 2026-09-06T07:00:50Z |
 | [[queries_register\|Filed queries register]] | Filed Query | 0 | draft | 2026-09-06T01:10:25Z |
 | [[rulings_register\|Rulings register]] | Ruling | 36 | draft | 2026-09-06T01:33:00Z |
+| [[sources_register\|Sources register]] | Source Summary | 0 | draft | 2026-09-13T03:01:13Z |
 | [[theses_register\|Theses register]] | Thesis | 35 | draft | 2026-09-06T00:57:17Z |
 
-10 page(s).
+11 page(s).
 
 ## Related
 
