@@ -168,3 +168,10 @@ qtl_slipfix/
 # Credential modules -- never track secrets (AGENTS.md item 532)
 *_key.py
 *.key
+
+# secrets: never track these (Section 93 s.7 - empty today, a hot-wallet key tomorrow)
+dontshare.py
+**/dontshare.py
+.env
+**/.env
+!**/.env.example
