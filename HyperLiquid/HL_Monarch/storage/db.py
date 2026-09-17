@@ -244,6 +244,21 @@ class DatabaseManager:
         finally:
             conn.isolation_level = ""
 
+    def wal_bytes(self) -> int:
+        """
+        Size of the -wal sidecar in bytes, 0 when it is absent.
+
+        DEFECT-COL-001: run_maintenance chooses PASSIVE or TRUNCATE from this. A
+        PASSIVE checkpoint never blocks a writer but also never shrinks a WAL that
+        a long-lived reader is pinning, so the size is what decides when one
+        blocking TRUNCATE is worth paying for.
+        """
+        try:
+            wal = Path(str(self._db_path) + "-wal")
+            return wal.stat().st_size if wal.exists() else 0
+        except OSError:
+            return 0
+
     def page_size_bytes(self) -> int:
         """Current on-disk size of the main database file in bytes."""
         conn = self.connection

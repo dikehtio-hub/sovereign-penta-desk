@@ -5,7 +5,7 @@ tags:
   - prediction-markets
   - alpha
   - dashboard
-last_synced: "2026-09-16 23:35:52 UTC"
+last_synced: "2026-09-17 01:43:37 UTC"
 ---
 
 # 👑 Polymarket Monarch • Real-Time Intelligence
@@ -14,7 +14,7 @@ last_synced: "2026-09-16 23:35:52 UTC"
 > **Desk**: [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]] · Shell twin: `python Polymarket/Polymarket_Monarch/obsidian_sync.py --once`
 
 > [!TIP] **System Status: LIVE**
-> - **Last Synchronized**: `2026-09-16 23:35:52 UTC`
+> - **Last Synchronized**: `2026-09-17 01:43:37 UTC`
 > - **Active Sharp Traders ($300+ 7D Realized)**: `41`
 > - **Public Polymarket Data Engine**: 100% Free / Native Public APIs (No Paid Keys)
 
@@ -60,13 +60,13 @@ last_synced: "2026-09-16 23:35:52 UTC"
 
 | Category | Top Volume Market | 24h Vol | Yes Odds / Probability |
 | :--- | :--- | :---: | :--- |
-| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$833.0K` | `█░░░░░░░░░` **6.7%** |
-| 🪙 Crypto | Bitcoin above ___ on September 17? | `$566.5K` | `██████████` **100.0%** |
-| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$537.0K` | `█████░░░░░` **50.0%** |
-| 🌐 Politics | Which party will gain most seats in Russian Parliamentary Election? | `$1.62M` | `███████░░░` **73.5%** |
+| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$806.0K` | `█░░░░░░░░░` **6.8%** |
+| 🪙 Crypto | Bitcoin above ___ on September 17? | `$678.0K` | `██████████` **99.9%** |
+| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$592.7K` | `█████░░░░░` **50.0%** |
+| 🌐 Politics | Which party will gain most seats in Russian Parliamentary Election? | `$1.64M` | `███████░░░` **73.5%** |
 | 🌐 Politics | Republican Presidential Nominee 2028 | `$1.02M` | `░░░░░░░░░░` **1.9%** |
-| 🌐 Politics | Clarity Act (H.R.3633) signed into law in 2026? | `$833.0K` | `█░░░░░░░░░` **6.7%** |
-| 🏛 Economics | US announces another yen intervention by...? | `$0` | `████░░░░░░` **37.5%** |
+| 🌐 Politics | Clarity Act (H.R.3633) signed into law in 2026? | `$806.0K` | `█░░░░░░░░░` **6.8%** |
+| 🏛 Economics | US announces another yen intervention by...? | `$0` | `████░░░░░░` **38.5%** |
 | 🏛 Economics | Will Argentina dollarize by...? | `$0` | `█░░░░░░░░░` **5.3%** |
 
 ---

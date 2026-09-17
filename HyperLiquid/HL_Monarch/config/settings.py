@@ -136,6 +136,22 @@ DB_FLUSH_INTERVAL = 2.0        # Database batch insert flush interval
 # so without retention the DB grows without bound (~12M rows/day at 436 assets).
 DB_MAINTENANCE_INTERVAL = 300.0     # seconds between prune + WAL checkpoint passes
 
+# --- DEFECT-COL-001: THE PRUNE MUST NOT HOLD THE WRITE LOCK ------------------
+# Until 2026-09-16 prune_old_data ran all five DELETEs inside ONE transaction and
+# run_maintenance followed it with a blocking TRUNCATE checkpoint. On an 8.5 GB
+# database that held the single SQLite writer for long enough that the trade
+# flush timed out against busy_timeout (30 s) and DROPPED its buffer: 393
+# "database is locked" errors on 2026-09-16, ~2,794 trades lost in the three
+# minutes around the FOMC print alone. Chunking bounds how long the lock is held;
+# the flush now re-buffers instead of dropping; the periodic checkpoint is
+# PASSIVE, which never blocks a writer.
+DB_PRUNE_CHUNK_ROWS = 5_000         # rows deleted per transaction, per table
+DB_PRUNE_MAX_CHUNKS = 400           # per table per pass; 2M rows, then leave the rest
+DB_PRUNE_CHUNK_PAUSE = 0.05         # seconds between chunks, so a waiting writer gets in
+# Periodic passes use PASSIVE (never blocks). A WAL above this escalates to
+# TRUNCATE on that pass only, so the file cannot grow without bound.
+WAL_TRUNCATE_ABOVE_BYTES = 256 * 1024 * 1024
+
 # --- Round 33: RETENTION MUST OUTLAST THE HOLDING PERIOD IT EVALUATES --------
 # These were 72 / 24 / 168, and the 72 was the binding defect of the whole
 # analytics stack. BASIS_MIN_HOLD_DAYS is 7 (168h) and the price series needed to

@@ -18,55 +18,64 @@ for stream liveness.
 
 ---
 
-## Section 93: Post-Drill Audit Rulings — Anchor Correction Ratified (Precedent Clause 3), Verdict Mathematically Unbiased, Collector Completeness Bar, Lint Provenance Ranking, Post-Drill Queue (2026-09-16 17:30 EDT / 21:30Z)
+## Section 94: Secret Remediation Ratified (Option A), Arbitrage Agent Retirement Confirmed, Phase 0 Bar Stratification, 4-Week Strategic Priority (2026-09-16 21:00 EDT / 2026-09-17 01:00Z)
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-16 17:30 EDT / 21:30Z (Wednesday, Post-FOMC Drill Audit)  
-**Re**: Comprehensive audit rulings on Section 93 handoff: ratification of anchor correction under Clause 3 of the Section 82 precedent, mathematical proof that the noise bar hole did not bias the verdict, dual completeness bar for DEFECT-COL-001, provenance store ranking for DEFECT-LINT-001, post-drill queue re-ranking, and silent-failure audit.
+**Date**: 2026-09-16 21:00 EDT / 2026-09-17 01:00Z (Wednesday evening post-drill)  
+**Re**: Comprehensive audit rulings on Section 94 handoff: credential remediation protocol, ratification of dontshare.py untracking, formal retirement of Funding_Arbitrage_Agent, Phase 0 bar stratification for live paper trading, and strategic roadmap for the 4-week inter-drill window.
 
-### 1. Ruling on the Anchor Incident (§1): RATIFIED under Clause 3
-- **Ruling**: **ADMISSIBLE and RATIFIED in full.**
-- **Rationale**: The release time was pre-registered in `cross_market/experiments/lead_lag_phase2_fomc.meta.json` line 23 (`release_utc: 2026-09-16T18:00:00Z`, `baseline_offset_s: -5`). The initial 10-minute delay was a runtime artifact of `event_json` defaulting to `now()`. Restoring `18:00:00Z` does not select a favorable parameter post-hoc; it enforces the pre-registered specification.
-- **Section 82 Precedent Amended (Clause 3: Clerical Restoration of Pre-Registered Constants)**:
-  > *Post-disclosure modification of an operational parameter is admissible under Clause 3 if and only if: (a) it constitutes a verified clerical correction restoring an explicitly pre-registered constant; (b) the corrupted value was caused by operational tooling runtime defaults (such as `now()`); (c) zero analytical degrees of freedom were exercised; and (d) full disclosure, sha256 hashes, and original artifacts are durably preserved in an immutable incident directory.*
-- Preserving originals in `cross_market/experiments/fomc_2026-09-16_anchor_incident/` satisfies all audit standards.
+### 1. Secret Remediation & Git Remote Protocol (§1): OPTION (a) RATIFIED
+- **Forensic Verification**:
+  - `743496b:BOTS/Phemex/Phem_key.py`: Confirmed active string `key = '59fcd1fc...'` and `secret = 'fcunlq55...'`.
+  - `743496b:Polymarket/Polymarket_Moondev/poly_whale_monitor.py`: Confirmed fallback `'moongroup_31a630c54125eab9'`.
+  - `HEAD:BOTS/HYPERLIQUID/key_file.py`: Confirmed public EVM wallet address `0xD78A1bF07F211f11B08Cc48C4F51D3BE9d2CeeA8`.
+- **Ruling on Remedy**: **OPTION (a) RATIFIED**.
+  - Rewriting git history (Option b) breaks the cryptographic SHA-1 hashes of all 171+ historical commits cited across vault wiki pages, L5 provenance entries, and `HOMEWORK.md`. It is disproportionate and structurally destructive.
+  - The standard cryptographic and operational remedy is **immediate credential rotation and revocation at the issuer**. The operator must rotate/revoke keys at Phemex and Moon Dev. Once revoked, the strings in git history become inert dead text.
+  - Pushing to a strictly **private** authenticated remote (GitHub private or self-hosted bare git) with revoked credentials in history is safe and standard practice.
+  - **Wallet Address (`key_file.py`)**: The `0xD78A...` string is an on-chain public address, not a private key. However, linking this address to an external GitHub account is an **operator privacy decision**. If desired, replace `key_file.py` with an environment variable lookup `os.getenv("HL_ACCOUNT_ADDRESS")` in working tree before setting up the remote.
 
-### 2. Verdict Falsification (§2): Uninformative-Shock is Mathematically & Economically Unbiased
-- **Verification of `Bar_HL`**:
-  - `event_study_fomc_2026-09-16.json` records: `Bar_HL = 17.4292 bps` (trailing 60m relative, median 5m move = 5.8097 bps across 244 marks).
-  - BTC actual displacement: `dp_rel_bps = 6.4658 bps` ($75,783 -> 75,832$).
-- **Mathematical Invariant Defeats Hole Bias**:
-  - In `cross_market/event_study.py:224`, `Bar_HL = max(floor_bps, multiplier * med)`.
-  - In `lead_lag_phase2_fomc.meta.json`, `floor_bps = 10.0 bps`.
-  - **Even if the median 5-minute move were zero**, `Bar_HL` has a hard statutory floor of **10.0 bps**.
-  - BTC's move of **6.47 bps is strictly below the 10.0 bps floor**. Under no mathematical scenario could the 232s hole have prevented BTC from displacing.
-- **Economic Truth**: Polymarket was already at 87.5% probability at T-5s. Consensus was delivered; crypto had no pricing shock to absorb. The `uninformative-shock` verdict is 100% sound.
+### 2. Untracking `dontshare.py` & `.gitignore` Negation (§2): RATIFIED
+- Commit `c0ff089` untracking `BOTS/HYPERLIQUID/dontshare.py` with `git rm --cached` and adding `.gitignore` rules (`dontshare.py`, `**/.env`, `!**/.env.example`) is **RATIFIED in full**.
+- Leaving an empty tracked file that is intended to hold secrets is an extreme hazard under `git add -A`. Removing it from the index permanently defuses the trap.
 
-### 3. DEFECT-COL-001 Completeness Bar Ratified (§3)
-- **Audit**: Measuring gaps alone (0.29s gap passing while 2,794 trades were dropped) is a confirmed architectural blind spot.
-- **Ratification**: **Option B (Zero Tolerated Flush Failures) adopted as primary gate**, combined with an absolute floor:
-  > **Collector Completeness Rule**: *A drill window [T - 60s, T + 300s] is ruled INSUFFICIENT if: (1) `collector.log` records any "Failed to flush" error inside the window; OR (2) aggregate trade prints fall below an absolute floor of 10 prints/second.*
+### 3. Retirement of `Funding_Arbitrage_Agent` (§3): RATIFIED
+- **Audit Findings Verified**:
+  - `execution_manager.py:161`: `_place_single_live_leg` sleeps 0.5s and unconditionally returns `status='FILLED'`.
+  - `execution_manager.py:173`: `_handle_leg_imbalance` calls `_place_single_live_leg` for unwinds, faking the emergency unwind too.
+  - `execution_manager.py:54`: `get_account_balance` returns `paper_balance_usd` in both dry-run and live modes.
+  - `execution_manager.py:200`: `close_arbitrage_position` live branch merely flips `pos.is_closed = True` without sending any orders.
+  - Structural dependency on Binance perps is legally and operationally barred in New Jersey.
+- **Retirement Protocol Ratified**:
+  - "Retire" means disabled + documented, never deleted.
+  - Mark `AGENTS/Funding_Arbitrage_Agent` as superseded in `COMMANDS.txt`.
+  - Set `status: disabled` with triage rationale in `Dexter/registry.yaml`.
+  - Retain code directory intact for architectural post-mortem and golden-testing reference.
 
-### 4. DEFECT-LINT-001 Provenance Fix Ranked (§4)
-- **Rank 1 (RECOMMENDED)**: **Immutable Provenance Store at Ingest**. At ingest time, copy cited drop files to an immutable store (e.g. `knowledge/provenance/`) or store the exact JSON extract in the note frontmatter. Provenance is meaningless if cited files are pruned from disk.
-- **Rank 2**: Store sha256 content hash in note metadata. Useful for integrity, but does not solve retrieval if the file is gone.
-- **Rank 3**: Exempt retention-pruned paths from L5. Merely hides broken citations.
+### 4. Operator Goal & Harvester Phase 1 Parallelization (§4): RATIFIED
+- **Zero Real Funds Active**: Operator's confirmation that only **live paper trading** is active validates that $0.00 tax liability is correct, and unmodelled funding income is an execution gate rather than an accrued liability.
+- **Phase 1 Parallelization Approved**:
+  - Phase 1 (`api/exchange_client.py`, info client, signed request construction, and offline JSON fixture tests) involves **zero live DB interaction and zero live execution**. It may proceed in parallel with `DEFECT-COL-001`.
+  - **The Strict Gate**: Phase 2 (wiring the live chain into `market_collector.py`) and live socket streaming remain strictly gated behind the deployment and verification of `DEFECT-COL-001`.
 
-### 5. Post-Drill Queue Re-Ranked (§5)
-1. **DEFECT-COL-001** (Desk 1 trade loss mitigation: chunk prunes, retry buffer on lock, passive checkpoint).
-2. **DEFECT-EXP-001** (Two commits: (1) `_safe_mtime` catch; (2) index/cache `load_questions` to eliminate 5.5GB re-reading).
-3. **Drill Tooling Hardening** (`event_json` default to `release_utc`, `--survival-curve` hard failure on `post_print_stamps == 0`).
-4. **DEFECT-LINT-001** (Provenance store implementation).
-5. **TradingView MCP Integration into DEV** (move standalone implementation to `DEV/tradingview_mcp/`).
-6. **S92 Ground-Truth Gate Upgrades** (COM object NextRunTime, console session check).
-7. **Housekeeping & Gap Register** (register 09-13 268.4s reboot gap, add `--status` guards).
+### 5. Phase 0 Bar Stratification (§5): RATIFIED
+- To prevent deadlocking development when real money is not on the table, the Phase 0 bar is **stratified into two distinct tiers**:
+  1. **Phase 0A (Live Paper Deployment Bar)**:
+     - $\ge 10$ closed paper positions
+     - $\ge 5$ distinct coins
+     - Top position share of total PnL $< 65\%$
+     - Positive net PnL after taker fee simulation.
+     - *Purpose*: Unlocks wiring real testnet/paper execution in the collector.
+  2. **Phase 0B (Real Capital / Mainnet Deployment Bar)**:
+     - Maintains the original conservative institutional bar: $\ge 20$ closed positions, $\ge 10$ distinct coins, top position $< 50\%$ PnL, median net APR $\ge 20\%$ sustained over a 30-day window.
 
-### 6. Brainstorm: Top 3 Most Dangerous Silent Failures (§6)
-1. **`lead_lag.py` Cross-Correlation on Desynchronized / Flat Series**: Computing numerical correlation against zero-variance or time-shifted series without raising an error, producing plausible-looking r coefficients from garbage.
-2. **`noise_bar()` Floor Fallback Masking Total DB Death**: Catching generic `Exception` and smoothly returning 10.0 bps, allowing a dead collector to pass as a valid noise bar.
-3. **`Tax_Reserve_Agent` Realized-Only Output**: Emitting a pristine $0.00 tax bill while omitting taxable funding income and unrealized perp events.
+### 6. Strategic Roadmap for the 4-Week Inter-Drill Window (§6)
+- **Candidate Selected**: **Systemic Fail-Fast Hardening via Queue Execution (Synthesis of Candidates 1 & 4)**.
+- **Defense Against Alternatives**:
+  - *Against Candidate 2 (Phase 1-2 Paper first)*: Building a paper harvester on top of a collector that is suffering 393 lock errors a day creates synthetic unobservable bugs. The data layer must be sound before trading logic is added.
+  - *Against Candidate 3 (Track B DEX arb)*: MEV on Base DEXes is an unvalidated exploratory hypothesis; diverting core engineering from HyperLiquid to Base before Desk 1 is hardened violates focus.
+  - *Why Synthesis 1 + 4 Wins*: The queue items (DEFECT-COL-001, DEFECT-EXP-001, Drill Tooling Hardening, S92 Ground-Truth Gate) ARE the exact embodiments of the silent-failure class. Fixing them systematically with strict fail-fast contracts (raising errors on empty slices, zero-lock tolerance, assert-not-silent) cures the infrastructure completely, paving the runway for Track A Phase 1-2 to proceed cleanly.
 
-### 7. Git Remote & Backup Strategy (§7)
-- Packaging CLOB books into `cross_market/data/archives/fomc_2026-09-16_drill_raw.zip` and committing to git history is ratified.
-- Operating without a remote is a catastrophic single-point-of-failure risk. A private GitHub or self-hosted bare git remote must be added once secret-scanning verifies zero API keys or private credentials in git history.
+### Standing State & Queue Priority
+- Queue order: (1) DEFECT-COL-001 -> (2) DEFECT-EXP-001 -> (3) Drill Tooling Hardening -> (4) DEFECT-LINT-001 -> (5) TradingView MCP Integration -> (6) Harvester Phase 1 -> (7) S92 Ground-Truth Upgrades.

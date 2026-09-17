@@ -95,7 +95,7 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       (`cross_market/experiments/lead_lag_phase2_fomc.meta.json`, compiled to the vault), the engine
       (`python -m cross_market.event_study`) and the vault adapter (`knowledge.ingest.event_study`) are built and
       tested, and the whole thing is committed. Nothing for you Friday. **The laptop can be off tonight and Friday.**
-- [ ] **Wed 09-16, ~14:06 EDT, one extra step after the recorder stops** (added to the drill list below): the Phase 2
+- [x] ~~**Wed 09-16, ~14:06 EDT, one extra step after the recorder stops**~~ DONE 14:46, ingested. (added to the drill list below): the Phase 2
       run is mine - say "event study" once the survival curve and CLOB ingest are done, or paste:
       `python -m cross_market.event_study --event fomc_2026-09-16 --json > cross_market/experiments/event_study_fomc_2026-09-16.json`
       then `python -m knowledge.ingest.event_study --result cross_market/experiments/event_study_fomc_2026-09-16.json`.
@@ -171,23 +171,23 @@ If you read nothing else, read this block. Each line is one thing, when to do it
       crash windows are computable: drops stamped 09-08T17:50:51Z / 17:55:54Z / **18:00:58Z** age out at 13:50:51 /
       13:55:54 / **14:00:58 EDT** - the last one is 58 s after the print, inside the recording window. ~1% per event
       and harmless to the data, but if the vault cards freeze mid-drill, that is why. Do NOT patch it today.
-- [ ] **13:55** - _(RATIFIED 09-14 by Antigravity R128 / Section 85)_
+- [x] ~~**13:55**~~ DONE 13:30:44 (0.3 min, GREEN) _(RATIFIED 09-14 by Antigravity R128 / Section 85)_
       collector liveness, 10 seconds, read-only. The morning rehearsal allows the collector 15 minutes of silence, but
       the measurement itself is ruled INSUFFICIENT on any feed gap over 5 seconds, so a collector that dies after the
       morning check would pass the rehearsal and still void the drill. Nothing between the morning and 13:58 catches it:
       `python -c "import sqlite3,time;c=sqlite3.connect('file:HyperLiquid/HL_Monarch/data/hyperliquid_data.db?mode=ro',uri=True);print(round((time.time()*1000-c.execute('SELECT MAX(timestamp) FROM asset_snapshots').fetchone()[0])/60000,1),'min since last snapshot')"`
       Under ~0.5 min: fine, carry on. Over ~1 min: the collector is stalled - call me before 13:58 rather than after.
 
-- [ ] **13:56** - `python -m knowledge.query --drill-card fomc-2026-09-16`  (read-only; countdown + the paste-ready commands).
-- [ ] **13:58** - the scheduled task fires by itself and records for 420 s (until 14:05). Touch nothing.
-- [ ] **14:00** - the statement prints. READ the rate decision yourself, then:
+- [x] ~~**13:56**~~ card printed at 14:10 (post-print form). `python -m knowledge.query --drill-card fomc-2026-09-16`  (read-only; countdown + the paste-ready commands).
+- [x] ~~**13:58** - the scheduled task fires by itself and records for 420 s (until 14:05). Touch nothing.~~ FIRED 13:58:00.80, exit 0 at 14:05:02.48. 419 polls, 1257 stamps, 0 failures, 0 rate-limits.
+- [x] ~~**14:00** - the statement prints. READ the rate decision yourself, then:~~ HIKE +25 bps to 3.75-4.00%. event.json written 14:06 as 0 (wrong), corrected 14:10 with --force, then re-anchored to 18:00:00Z - see the anchor incident in AGENTS.md.
       `python -m knowledge.drills.event_json --bps <n>`   (0 = hold, 25 = quarter-point hike, -25 = cut).
       Wrong number? `--force` overwrites. Nothing automated may decide this.
-- [ ] **14:06 (after the recorder stops)** - the survival curve, then `knowledge.ingest.clob`, exactly as the card prints them.
+- [x] ~~**14:06 (after the recorder stops)** - the survival curve, then `knowledge.ingest.clob`.~~ DONE (twice - the first curve was anchored late and measured nothing). Final: baseline 87,221 notional at T-0.062 s, first change +0.939 s, half +1.939 s, 90% gone +5.942 s.
       Your p = 0.90 "no change" forecast scores itself once the event and the books are in the vault.
-- [ ] **14:08** - then the Phase 2 event study (Round 126): say "event study", or paste the two commands from the
+- [x] ~~**14:08** - the Phase 2 event study (Round 126).~~ DONE. Verdict **uninformative-shock**, informative false, lead_s null: Polymarket displaced (0.875 -> 0.975) but BTC moved 6.47 bps against a 17.43 bps bar. Panel: insufficient, 0 of 3 informative. Original line kept: paste the two commands from the
       "Wed 09-16, ~14:06" line above. It writes one Reaction Profile page per Fed market and the Phase 2 panel.
-- [ ] **Afterwards** - tell me it ran (or send the output of anything that did not).
+- [x] ~~**Afterwards** - tell me it ran.~~ Reported, audited, committed (067fdf7).
 
 - [ ] **14:05-14:30 - save the statement text (1 min).** Copy the Fed press release (federalreserve.gov, the 14:00
       statement) into `obsidian_vault/raw/inbox/fomc_statement_2026-09-16.md`. The inbox is lint-exempt. It is the input

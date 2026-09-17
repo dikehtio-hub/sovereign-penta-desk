@@ -5,12 +5,16 @@ Provides high-speed batch inserts and analytical queries.
 import logging
 import time
 import sqlite3
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from storage.db import DatabaseManager
 from config.settings import (
     SNAPSHOT_RETENTION_HOURS,
     CLUSTER_RETENTION_HOURS,
     TRADE_RETENTION_HOURS,
+    DB_PRUNE_CHUNK_ROWS,
+    DB_PRUNE_MAX_CHUNKS,
+    DB_PRUNE_CHUNK_PAUSE,
+    WAL_TRUNCATE_ABOVE_BYTES,
 )
 
 logger = logging.getLogger("Repository")
@@ -20,6 +24,8 @@ class MarketRepository:
         self.db = db_manager or DatabaseManager()
         # What the last prune's measurement pass did (Round 34), for run_maintenance.
         self.last_persistence: Optional[Dict[str, Any]] = None
+        # Tables whose prune hit the per-pass chunk ceiling (DEFECT-COL-001).
+        self.last_prune_truncated: List[str] = []
 
     def upsert_assets(self, assets_data: List[Dict[str, Any]]):
         """Insert or update asset metadata."""
@@ -482,21 +488,64 @@ class MarketRepository:
             ),
         ]
 
-        with self.db.connection as conn:
-            for table, sql, hours in plan:
-                if not hours or hours <= 0:
-                    continue
-                if table in skip_tables:
-                    deleted[table] = 0
-                    continue
-                cutoff = now_ms - int(hours * hour_ms)
-                try:
-                    cursor = conn.execute(sql, (cutoff,))
-                    deleted[table] = max(0, cursor.rowcount)
-                except Exception as e:
-                    logger.warning(f"Prune failed for {table}: {e}")
-                    deleted[table] = 0
+        self.last_prune_truncated = []
+        for table, sql, hours in plan:
+            if not hours or hours <= 0:
+                continue
+            if table in skip_tables:
+                deleted[table] = 0
+                continue
+            cutoff = now_ms - int(hours * hour_ms)
+            try:
+                removed, exhausted = self._prune_chunked(table, sql, cutoff)
+                deleted[table] = removed
+                if not exhausted:
+                    self.last_prune_truncated.append(table)
+            except Exception as e:
+                logger.warning(f"Prune failed for {table}: {e}")
+                deleted[table] = 0
+        if self.last_prune_truncated:
+            logger.info(
+                "Prune hit the per-pass chunk ceiling on %s; the remainder ages out next pass "
+                "(DEFECT-COL-001: a bounded prune is better than a blocked writer)",
+                ", ".join(self.last_prune_truncated))
         return deleted
+
+    def _prune_chunked(self, table: str, sql: str, cutoff: int) -> Tuple[int, bool]:
+        """
+        Delete `table`'s expired rows in bounded transactions.
+
+        DEFECT-COL-001. The single-transaction prune this replaces held SQLite's
+        one writer for the length of five DELETEs over an 8.5 GB file, and the
+        collector's trade flush - which had already swapped its buffer out - hit
+        busy_timeout and dropped the rows on the floor.
+
+        `DELETE ... LIMIT` needs SQLITE_ENABLE_UPDATE_DELETE_LIMIT, which the
+        stock CPython build does NOT set (verified on 3.45.3), so the chunk is
+        expressed as `rowid IN (SELECT rowid ... LIMIT n)`. Each chunk is its own
+        transaction: the lock is taken and released ~5,000 rows at a time instead
+        of once for the whole retention backlog.
+
+        Returns (rows_deleted, exhausted) where exhausted is False when the
+        per-pass ceiling was reached and expired rows remain.
+        """
+        where = sql.split("WHERE", 1)[1].rstrip().rstrip(";")
+        chunk_sql = (
+            f"DELETE FROM {table} WHERE rowid IN "
+            f"(SELECT rowid FROM {table} WHERE {where} LIMIT ?);"
+        )
+        total = 0
+        conn = self.db.connection
+        for _ in range(int(DB_PRUNE_MAX_CHUNKS)):
+            with conn:                                  # one transaction per chunk
+                cursor = conn.execute(chunk_sql, (cutoff, int(DB_PRUNE_CHUNK_ROWS)))
+                n = max(0, cursor.rowcount)
+            total += n
+            if n < int(DB_PRUNE_CHUNK_ROWS):
+                return total, True                      # nothing expired left
+            if DB_PRUNE_CHUNK_PAUSE > 0:
+                time.sleep(float(DB_PRUNE_CHUNK_PAUSE))  # let a waiting writer through
+        return total, False
 
     def run_maintenance(self, vacuum: bool = False) -> Dict[str, Any]:
         """Prune expired rows, then checkpoint the WAL back into the main DB file."""
@@ -510,13 +559,24 @@ class MarketRepository:
                 self.db.vacuum()
             except Exception as e:
                 logger.warning(f"VACUUM skipped: {e}")
-        busy, wal_pages, checkpointed = self.db.checkpoint("TRUNCATE")
+        # DEFECT-COL-001: TRUNCATE takes SQLite's exclusive checkpoint lock and
+        # blocks writers for the length of the fold-back. On a 26 MB WAL that was
+        # long enough to time the trade flush out. PASSIVE checkpoints whatever it
+        # can without blocking anyone and yields the rest to the next pass. The WAL
+        # cannot grow without bound because a file over the threshold still gets
+        # one TRUNCATE - a rare blocking pass instead of one every 300 s.
+        wal_bytes = self.db.wal_bytes()
+        mode = "TRUNCATE" if wal_bytes >= int(WAL_TRUNCATE_ABOVE_BYTES) else "PASSIVE"
+        busy, wal_pages, checkpointed = self.db.checkpoint(mode)
         return {
             "deleted": deleted,
             "total_deleted": total_deleted,
             "persisted": self.last_persistence,
+            "prune_truncated": list(self.last_prune_truncated),
             "wal_busy": busy,
             "wal_pages": wal_pages,
             "checkpointed_pages": checkpointed,
+            "checkpoint_mode": mode,
+            "wal_bytes": wal_bytes,
             "db_bytes": self.db.page_size_bytes(),
         }

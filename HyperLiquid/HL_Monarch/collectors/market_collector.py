@@ -340,15 +340,36 @@ class MarketCollector:
             self._dropped_rows += 1
         self._liq_buffer.append(row)
 
-    def _flush_buffers_sync(self, trades: List[Dict[str, Any]], liqs: List[Dict[str, Any]]):
-        """Blocking DB write, always executed on the DB worker thread."""
-        try:
-            if trades:
+    def _flush_buffers_sync(self, trades: List[Dict[str, Any]],
+                            liqs: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Blocking DB write, always executed on the DB worker thread.
+
+        Returns the rows that did NOT land, for the caller to re-buffer.
+
+        DEFECT-COL-001: this used to log the exception and return, and because
+        _flush_loop had already swapped the buffers out, the rows were gone. On
+        2026-09-16 that lost ~2,794 trades in the three minutes around the FOMC
+        print and 393 batches over the day, every one of them to "database is
+        locked" - a transient condition whose whole point is that retrying works.
+        The two tables are independent, so a failure in one never discards the
+        other.
+        """
+        failed_trades: List[Dict[str, Any]] = []
+        failed_liqs: List[Dict[str, Any]] = []
+        if trades:
+            try:
                 self.repo.insert_trades(trades)
-            if liqs:
+            except Exception as e:
+                failed_trades = trades
+                logger.error(f"Failed to flush {len(trades)} trades: {e} - re-buffering for the next pass")
+        if liqs:
+            try:
                 self.repo.insert_liquidation_events(liqs)
-        except Exception as e:
-            logger.error(f"Failed to flush {len(trades)} trades / {len(liqs)} liq events: {e}")
+            except Exception as e:
+                failed_liqs = liqs
+                logger.error(f"Failed to flush {len(liqs)} liq events: {e} - re-buffering for the next pass")
+        return failed_trades, failed_liqs
 
     async def _flush_loop(self):
         """Drain the write buffers into SQLite on a fixed cadence."""
@@ -362,7 +383,30 @@ class MarketCollector:
             if self._dropped_rows:
                 logger.warning(f"Write buffer overflow: dropped {self._dropped_rows} rows")
                 self._dropped_rows = 0
-            await loop.run_in_executor(self._db_executor, self._flush_buffers_sync, trades, liqs)
+            failed_trades, failed_liqs = await loop.run_in_executor(
+                self._db_executor, self._flush_buffers_sync, trades, liqs)
+            # DEFECT-COL-001: put what did not land back at the FRONT, ahead of
+            # whatever arrived while the write was in flight, so the tables stay
+            # in time order. The buffer cap still applies - _buffer_trade drops
+            # the OLDEST on overflow - so a permanently failing DB degrades to
+            # the old behaviour instead of growing this process without bound.
+            if failed_trades or failed_liqs:
+                self._trade_buffer[:0] = failed_trades
+                self._liq_buffer[:0] = failed_liqs
+                overflow_t = max(0, len(self._trade_buffer) - MAX_BUFFERED_TRADES)
+                overflow_l = max(0, len(self._liq_buffer) - MAX_BUFFERED_LIQ_EVENTS)
+                if overflow_t:
+                    del self._trade_buffer[:overflow_t]
+                if overflow_l:
+                    del self._liq_buffer[:overflow_l]
+                if overflow_t or overflow_l:
+                    self._dropped_rows += overflow_t + overflow_l
+                logger.warning(
+                    "Re-buffered %d trades / %d liq events after a failed flush "
+                    "(buffer now %d/%d trades, %d/%d liq)",
+                    len(failed_trades), len(failed_liqs),
+                    len(self._trade_buffer), MAX_BUFFERED_TRADES,
+                    len(self._liq_buffer), MAX_BUFFERED_LIQ_EVENTS)
 
     def _owns_maintenance(self) -> bool:
         """
