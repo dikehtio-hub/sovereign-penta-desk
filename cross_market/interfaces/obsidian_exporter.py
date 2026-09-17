@@ -30,6 +30,7 @@ from Sports_Desk.interfaces.obsidian_exporter import (HUB_NOTE, fmt_usd, resolve
 from cross_market.hud import _adverse_hurdle, scan_cross_market
 from cross_market.hybrid_arb import MIN_CAPITAL
 from cross_market.ingestors import pid_lock
+from cross_market.ingestors.polymarket_fetcher import STAMPED_PATTERN
 from cross_market.matcher import DEFAULT_DB_PATH
 
 CROSS_MARKET_ARB_NOTE = "Cross_Market_Arb"
@@ -81,6 +82,53 @@ def _safe_mtime(path: Path) -> float:
         return -1.0
 
 
+def _drop_family(path: Path) -> Tuple[str, Tuple[int, str]]:
+    """
+    (family, rank) for one drop file. Higher rank wins its family.
+
+    A stamped drop carries its family and its UTC moment in its NAME - which is
+    the honest ordering, as `prune_stamped_drops` says in its own docstring: "a
+    copied file's mtime lies; its name does not". An unstamped file is the
+    canonical current drop for its family, rewritten in place on every change,
+    so it always outranks any stamp (rank 1 beats rank 0).
+    """
+    match = STAMPED_PATTERN.match(path.name)
+    if match:
+        return (match.group(1) or "sports"), (0, match.group(2))
+    stem = path.stem
+    family = stem[len("polymarket_"):] if stem.startswith("polymarket_") else stem
+    return family, (1, "")
+
+
+def _current_drops(drop_dir: Path) -> List[Path]:
+    """
+    The newest drop per family - which is all `load_questions` has ever needed.
+
+    DEFECT-EXP-001, second half. Every drop is a FULL snapshot of its family's
+    questions at one moment (`poll` writes `subset`, the whole batch for that
+    family), so "one row per market, the newest wins" is answered by the newest
+    file per family. Reading the rest only re-derives rows that the newest drop
+    already supersedes.
+
+    The live folder held 3,857 files totalling 5.5 GB - 1,928 sports drops up to
+    4.9 MB each - and all of it was parsed EVERY cycle. That is why the loop ran
+    at ~54 s against `--interval 15`, and why the stat pass was wide enough to
+    lose the prune race that commit 1 guards. This takes the cycle to the two or
+    three files that actually carry the current book.
+
+    Deliberate behaviour change: a token that has left the newest drop no longer
+    appears. That aligns the exporter with lint C2, which already reports such a
+    token as "not in the newest drops: resolved, delisted or never listed" - and
+    pricing a market from an eight-day-old quote was never right.
+    """
+    best: Dict[str, Tuple[Tuple[int, str], Path]] = {}
+    for path in drop_dir.glob("*.json"):
+        family, rank = _drop_family(path)
+        if family not in best or rank > best[family][0]:
+            best[family] = (rank, path)
+    return [path for _, path in sorted((f, p) for f, (_, p) in best.items())]
+
+
 def load_questions(drop_dir: Path = DEFAULT_QUESTIONS_DIR) -> List[Dict[str, Any]]:
     """
     Polymarket questions from dropped JSON files. Never the network.
@@ -95,7 +143,7 @@ def load_questions(drop_dir: Path = DEFAULT_QUESTIONS_DIR) -> List[Dict[str, Any
     if not drop_dir.exists():
         return []
     found: Dict[str, Dict[str, Any]] = {}
-    paths = sorted(drop_dir.glob("*.json"), key=lambda p: (_safe_mtime(p), p.name))
+    paths = _current_drops(drop_dir)
     for path in paths:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))

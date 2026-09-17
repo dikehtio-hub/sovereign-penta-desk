@@ -5,7 +5,7 @@ tags:
   - prediction-markets
   - alpha
   - dashboard
-last_synced: "2026-09-17 02:14:16 UTC"
+last_synced: "2026-09-17 02:40:06 UTC"
 ---
 
 # 👑 Polymarket Monarch • Real-Time Intelligence
@@ -14,7 +14,7 @@ last_synced: "2026-09-17 02:14:16 UTC"
 > **Desk**: [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]] · Shell twin: `python Polymarket/Polymarket_Monarch/obsidian_sync.py --once`
 
 > [!TIP] **System Status: LIVE**
-> - **Last Synchronized**: `2026-09-17 02:14:16 UTC`
+> - **Last Synchronized**: `2026-09-17 02:40:06 UTC`
 > - **Active Sharp Traders ($300+ 7D Realized)**: `41`
 > - **Public Polymarket Data Engine**: 100% Free / Native Public APIs (No Paid Keys)
 
@@ -60,12 +60,12 @@ last_synced: "2026-09-17 02:14:16 UTC"
 
 | Category | Top Volume Market | 24h Vol | Yes Odds / Probability |
 | :--- | :--- | :---: | :--- |
-| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$770.7K` | `█░░░░░░░░░` **7.0%** |
-| 🪙 Crypto | Bitcoin above ___ on September 17? | `$692.4K` | `██████████` **99.9%** |
-| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$595.6K` | `█████░░░░░` **50.0%** |
-| 🌐 Politics | Which party will gain most seats in Russian Parliamentary Election? | `$1.62M` | `███████░░░` **73.5%** |
+| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$803.3K` | `█░░░░░░░░░` **8.2%** |
+| 🪙 Crypto | Bitcoin above ___ on September 17? | `$708.8K` | `██████████` **99.9%** |
+| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$593.5K` | `█████░░░░░` **50.0%** |
+| 🌐 Politics | Which party will gain most seats in Russian Parliamentary Election? | `$1.64M` | `███████░░░` **73.5%** |
 | 🌐 Politics | Republican Presidential Nominee 2028 | `$1.02M` | `░░░░░░░░░░` **1.9%** |
-| 🌐 Politics | Clarity Act (H.R.3633) signed into law in 2026? | `$770.7K` | `█░░░░░░░░░` **7.0%** |
+| 🌐 Politics | Clarity Act (H.R.3633) signed into law in 2026? | `$803.3K` | `█░░░░░░░░░` **8.2%** |
 | 🏛 Economics | US announces another yen intervention by...? | `$0` | `████░░░░░░` **38.5%** |
 | 🏛 Economics | Will Argentina dollarize by...? | `$0` | `█░░░░░░░░░` **5.3%** |
 
