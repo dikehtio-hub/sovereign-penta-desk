@@ -60,6 +60,27 @@ EXPORTER_MARK = "cross_market"
 STATUS_EXIT_STOPPED = 3                                 # --status: 0 = a loop holds the lock, 3 = none does
 
 
+def _safe_mtime(path: Path) -> float:
+    """
+    `path`'s mtime, or -1.0 if it is already gone.
+
+    DEFECT-EXP-001. The Polymarket watcher's retention sweep
+    (`prune_stamped_drops`, 192 h) deletes drops on its own 300 s cycle, and a
+    file listed by `glob()` can be unlinked before `stat()` reaches it. The
+    unguarded sort key raised FileNotFoundError straight out of the cycle and
+    killed the exporter three times in ten days - 2026-09-14 06:28, 2026-09-14
+    21:20 and 2026-09-16 03:55 - each time needing a human to restart it.
+
+    A drop that vanished mid-listing sorts first and is then skipped by the
+    read below, which has always caught OSError. -1.0 rather than 0.0 so it can
+    never tie with a real epoch-0 mtime.
+    """
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return -1.0
+
+
 def load_questions(drop_dir: Path = DEFAULT_QUESTIONS_DIR) -> List[Dict[str, Any]]:
     """
     Polymarket questions from dropped JSON files. Never the network.
@@ -74,7 +95,7 @@ def load_questions(drop_dir: Path = DEFAULT_QUESTIONS_DIR) -> List[Dict[str, Any
     if not drop_dir.exists():
         return []
     found: Dict[str, Dict[str, Any]] = {}
-    paths = sorted(drop_dir.glob("*.json"), key=lambda p: (p.stat().st_mtime, p.name))
+    paths = sorted(drop_dir.glob("*.json"), key=lambda p: (_safe_mtime(p), p.name))
     for path in paths:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
