@@ -9,24 +9,26 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Status
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · AGENTS_ARCHIVE.md — Superseded Handoff History and Operational
+    Archive
   author: human:operator
 dev:
   round: 63
   ruling_id: R63-1
   kind: ruling
   citations:
-  - section: Status
-    line: 511
+  - file: AGENTS_ARCHIVE.md
+    section: AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive
+    line: 2206
     excerpt: …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Ruling\s+63-1\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -40,7 +42,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 511): …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
+- **AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive** (`AGENTS_ARCHIVE.md` line 2206): …_measure_sports_history excludes bet_kind "arbitrage" (Ruling 63-1).…
 
 ## Related
 

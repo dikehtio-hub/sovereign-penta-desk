@@ -4101,5 +4101,106 @@ class TelemetryHealthTests(unittest.TestCase):
         self.assertEqual(out2["sports"]["action"], "would-launch")
 
 
+# --------------------------------------------------------------------------------------
+# 2026-09-20: AGENTS.md was rotated into AGENTS_ARCHIVE.md and 109 pinned asserts broke at once
+# --------------------------------------------------------------------------------------
+
+class LogRotationTests(IngestFixture):
+    """The handoff log is a PAIR: the live file and the archive beside it."""
+
+    def setUp(self):
+        super().setUp()
+        self.agents = self.dev_root / "AGENTS.md"
+        self.archive = self.dev_root / "AGENTS_ARCHIVE.md"
+
+    def _c1(self):
+        return [x for x in lint.lint_vault(self.vault, self.dev_root, now=NOW) if x.code == "C1"]
+
+    def _rotate_digest_log(self):
+        """Rounds 73 and 50 leave the live log verbatim; Round 109 stays."""
+        live, _, old = AGENTS_DIGEST_FIXTURE.partition("Round 73 complete")
+        self.agents.write_text(live + "## Round 109 findings\n\nNot part of any round entry.\n", encoding="utf-8")
+        self.archive.write_text("# Archive\n\n" + "Round 73 complete" + old, encoding="utf-8")
+
+    def test_a_rotation_trips_c1_and_a_recompile_follows_the_entries(self):
+        self.agents.write_text(AGENTS_DIGEST_FIXTURE, encoding="utf-8")
+        ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW)
+        self.assertEqual(self._c1(), [])
+        self._rotate_digest_log()
+        drifted = sorted(x.path for x in self._c1())           # the check fires: that is its job
+        self.assertEqual(drifted, ["wiki/digests/round_50.md", "wiki/digests/round_73.md"])
+        total, written = ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW + timedelta(hours=1))
+        self.assertEqual((total, written), (3, 2))              # Round 109 never moved, so it is not rewritten
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(hours=1)), [])
+        moved, body = fm.parse((self.vault / "wiki/digests/round_50.md").read_text(encoding="utf-8"))
+        self.assertEqual(moved["dev"]["asserts"][0]["file"], "AGENTS_ARCHIVE.md")
+        self.assertEqual(moved["sources"][0]["resource"], "AGENTS_ARCHIVE.md#round-50-complete")
+        self.assertIn("compiled from `AGENTS_ARCHIVE.md`", body)
+        stayed, _ = fm.parse((self.vault / "wiki/digests/round_109.md").read_text(encoding="utf-8"))
+        self.assertEqual(stayed["dev"]["asserts"][0]["file"], "AGENTS.md")
+        self.assertIn("`AGENTS.md` (1), `AGENTS_ARCHIVE.md` (2)", (self.vault / "log.md").read_text(encoding="utf-8"))
+        # and a second pass over the unchanged pair writes nothing at all
+        self.assertEqual(ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW + timedelta(hours=2)), (3, 0))
+
+    def test_the_live_entry_wins_when_both_files_carry_a_round(self):
+        self.agents.write_text("# DEV\n\n## Status\n\nRound 7 complete (2026-09-06): THE LIVE WORDING.\n", encoding="utf-8")
+        self.archive.write_text("# Archive\n\nRound 7 complete (2026-09-01): an older restatement.\n\nRound 6 complete: only here.\n",
+                                encoding="utf-8")
+        self.assertEqual(ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW)[0], 2)
+        seven, body = fm.parse((self.vault / "wiki/digests/round_7.md").read_text(encoding="utf-8"))
+        self.assertIn("THE LIVE WORDING", body)
+        self.assertEqual((seven["dev"]["date"], seven["dev"]["asserts"][0]["file"]), ("2026-09-06", "AGENTS.md"))
+        six, _ = fm.parse((self.vault / "wiki/digests/round_6.md").read_text(encoding="utf-8"))
+        self.assertEqual(six["dev"]["asserts"][0]["file"], "AGENTS_ARCHIVE.md")
+
+    def test_without_an_archive_nothing_changes_and_the_flag_overrides_the_default(self):
+        self.agents.write_text(AGENTS_DIGEST_FIXTURE, encoding="utf-8")
+        self.assertEqual(ingest_dg.log_files(self.agents), [self.agents])
+        self.assertEqual(ingest_dg.log_files(self.agents, self.agents), [self.agents])     # never read one file twice
+        elsewhere = self.root / "history.md"
+        elsewhere.write_text("Round 3 complete: kept somewhere else.\n", encoding="utf-8")
+        out = io.StringIO()
+        self.assertEqual(ingest_dg.main(["--vault", str(self.vault), "--dev-root", str(self.dev_root),
+                                         "--archive", str(elsewhere)], out=out), EXIT_OK)
+        self.assertIn("4 round(s)", out.getvalue())
+
+    def test_rulings_follow_their_citations_and_keep_a_ratification(self):
+        self.agents.write_text(AGENTS_FIXTURE, encoding="utf-8")
+        ingest_rl.ingest_rulings(self.agents, self.vault, self.dev_root, at=NOW)
+        ratify_mod.ratify(self.vault, type_="Ruling", tag="extracted", ruling="98-1", at=NOW + timedelta(hours=1))
+        self.assertEqual(self._c1(), [])
+        # the whole log is rotated; the live file keeps one NEW mention of an old ruling
+        self.archive.write_text(AGENTS_FIXTURE, encoding="utf-8")
+        self.agents.write_text("# DEV log\n\n## Status\n\nTonight's entry applies Ruling 39-1 again.\n", encoding="utf-8")
+        self.assertEqual(len(self._c1()), 4)                    # every page but Ruling 39-1, which the live file still names
+        report = ingest_rl.ingest_rulings(self.agents, self.vault, self.dev_root, at=NOW + timedelta(hours=2), force=True)
+        self.assertEqual(report.found, 5)
+        self.assertEqual(lint.lint_vault(self.vault, self.dev_root, now=NOW + timedelta(hours=2)), [])
+        d, body = fm.parse((self.vault / "wiki/rulings/Directive_75-1.md").read_text(encoding="utf-8"))
+        self.assertEqual((d["dev"]["asserts"][0]["file"], d["sources"][0]["resource"]), ("AGENTS_ARCHIVE.md", "AGENTS_ARCHIVE.md"))
+        self.assertEqual(d["sources"][0]["title"], "AGENTS_ARCHIVE.md · Status")
+        self.assertIn("**Status** (`AGENTS_ARCHIVE.md` line 5)", body)
+        self.assertEqual((d["status"], d["verified"][0]["by"], d["dev"]["ratified_by"]), ("stable", "antigravity/architect", "98-1"))
+        # a ruling cited in BOTH files: live first, and the page pins the live file
+        r39, body39 = fm.parse((self.vault / "wiki/rulings/Ruling_39-1.md").read_text(encoding="utf-8"))
+        self.assertEqual([c["file"] for c in r39["dev"]["citations"]], ["AGENTS.md", "AGENTS_ARCHIVE.md", "AGENTS_ARCHIVE.md"])
+        self.assertEqual(r39["dev"]["asserts"][0]["file"], "AGENTS.md")
+        self.assertIn("**Status** (line 5)", body39)             # the primary log keeps the short form
+        # a forced pass over the unchanged pair moves no page AND leaves no line in the log (R104-3)
+        before = {p: p.read_bytes() for p in (self.vault / "wiki/rulings").glob("*.md")}
+        log_before = (self.vault / "log.md").read_bytes()
+        again = ingest_rl.ingest_rulings(self.agents, self.vault, self.dev_root, at=NOW + timedelta(hours=3), force=True)
+        self.assertEqual((len(again.written), again.changed), (5, 0))
+        self.assertEqual(before, {p: p.read_bytes() for p in (self.vault / "wiki/rulings").glob("*.md")})
+        self.assertEqual(log_before, (self.vault / "log.md").read_bytes())
+
+    def test_a_truncation_warning_is_logged_once_not_once_per_pass(self):
+        long_log = "# DEV\n\n## Status\n\nRound 42 complete (2026-09-06): LONG.\n" + "\n".join(f"line {i}" for i in range(400)) + "\n"
+        self.agents.write_text(long_log, encoding="utf-8")
+        for hours in (0, 1, 2):
+            ingest_dg.ingest_digests(self.vault, self.dev_root, agents=self.agents, at=NOW + timedelta(hours=hours))
+        self.assertEqual((self.vault / "log.md").read_text(encoding="utf-8").count("Round 42 digest truncated"), 1)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

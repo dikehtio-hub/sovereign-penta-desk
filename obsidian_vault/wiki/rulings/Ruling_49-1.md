@@ -10,25 +10,26 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Round 49 findings
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · Round 49 findings
   author: human:operator
 dev:
   round: 49
   ruling_id: R49-1
   kind: ruling
   citations:
-  - section: Round 49 findings
-    line: 1963
+  - file: AGENTS_ARCHIVE.md
+    section: Round 49 findings
+    line: 4558
     excerpt: '…The supervisor still does not manage the dashboard (Ruling 49-1: it
       is an optional viewer).…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Ruling\s+49-1\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -42,7 +43,7 @@ verified:
 
 ## Citations
 
-- **Round 49 findings** (line 1963): …The supervisor still does not manage the dashboard (Ruling 49-1: it is an optional viewer).…
+- **Round 49 findings** (`AGENTS_ARCHIVE.md` line 4558): …The supervisor still does not manage the dashboard (Ruling 49-1: it is an optional viewer).…
 
 ## Related
 

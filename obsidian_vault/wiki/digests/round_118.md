@@ -10,12 +10,12 @@ tags:
 - round-118
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-07T00:20:00Z'
+  at: '2026-09-20T07:10:30Z'
 status: draft
 sources:
 - id: agents-log
-  resource: AGENTS.md#round-118-complete
-  title: AGENTS.md - Round 118 complete
+  resource: AGENTS_ARCHIVE.md#round-118-complete
+  title: AGENTS_ARCHIVE.md - Round 118 complete
   author: claude-code/fable-5.1
 dev:
   round: 118
@@ -24,13 +24,13 @@ dev:
   truncated: false
   dropped_lines: 0
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: ^Round 118 complete
     claim: the round heading this digest was compiled from is still in the log
 ---
 # Round 118 digest
 
-> 2026-09-06 · compiled from `AGENTS.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
+> 2026-09-06 · compiled from `AGENTS_ARCHIVE.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
 
 ## What the log says
 

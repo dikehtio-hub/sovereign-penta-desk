@@ -10,12 +10,12 @@ tags:
 - round-126
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-10T21:28:16Z'
+  at: '2026-09-20T07:10:30Z'
 status: draft
 sources:
 - id: agents-log
-  resource: AGENTS.md#round-126-complete
-  title: AGENTS.md - Round 126 complete
+  resource: AGENTS_ARCHIVE.md#round-126-complete
+  title: AGENTS_ARCHIVE.md - Round 126 complete
   author: claude-code/fable-5.1
 dev:
   round: 126
@@ -25,13 +25,13 @@ dev:
   truncated: true
   dropped_lines: 6
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: ^Round 126 complete
     claim: the round heading this digest was compiled from is still in the log
 ---
 # Round 126 digest
 
-> 2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock · compiled from `AGENTS.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
+> 2026-09-10 17:10-17:40 EDT, Antigravity R125-2 s.6-8 authorisation, one day ahead of the Friday lock · compiled from `AGENTS_ARCHIVE.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
 
 ## What the log says
 
@@ -69,7 +69,7 @@ quiet-BTC forward-fill never voids; late T0; window-not-complete refusal and --f
 real registration is self-consistent); knowledge/tests/test_event_study_ingest.py 5 (the REAL registration compiles
 lint-clean with parameters/tokens/window and C1 fires on a corrupted bar; writes refused inside the window; profiles +
 panel written, registered, lint-clean, idempotent, tests_run 1; CLI refusal; stopping-rule sequences). Suites: pytest
-cross_market/tests 242/242; pytest knowledge/tests KNOWLEDGE_COUNT_PENDING. Vault: registration page compiled live,
+cross_market/tests 242/242; pytest knowledge/tests 419/419 in 338 s. Vault: registration page compiled live,
 lint 521 pages 0 errors 1 warning (L11 whale cascade, unrelated). SMOKE TEST on real data: the engine run over the
 09-06 rehearsal's 60-second stamps and the live database -> stamps parsed, 1,005 BTC prints, baseline age 0.37 s,
 noise bar floor_fallback (that hour sits inside the Round 119 hole - correctly flagged), INSUFFICIENT exit 2 (60 < 300
@@ -287,7 +287,7 @@ stream has 2 hole(s) > 60 min inside the window (largest 1585 min: 16:01:22Z -> 
 while its unbounded window (the whole continuous stamp segment) spans the hole - the auto-run is a cumulative-window
 
 > [!NOTE]
-> Entry truncated at 250 of 256 lines. The full text is in `AGENTS.md` under `Round 126 complete`.
+> Entry truncated at 250 of 256 lines. The full text is in `AGENTS_ARCHIVE.md` under `Round 126 complete`.
 
 ## Related
 

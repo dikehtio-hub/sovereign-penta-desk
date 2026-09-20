@@ -13,27 +13,29 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Status
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · AGENTS_ARCHIVE.md — Superseded Handoff History and Operational
+    Archive
   author: human:operator
 dev:
   round: 69
   ruling_id: R69-2
   kind: ruling
   citations:
-  - section: Status
-    line: 443
+  - file: AGENTS_ARCHIVE.md
+    section: AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive
+    line: 2138
     excerpt: '…onds N` (and the module CLI) skips rewriting the market dashboard while
       its last write is younger than N seconds, judged on the file''s mtime so it
       holds across processes; every other note and every number are untouched (Ruling
       69-2: no coarsening).…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Ruling\s+69-2\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -47,7 +49,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 443): …onds N` (and the module CLI) skips rewriting the market dashboard while its last write is younger than N seconds, judged on the file's mtime so it holds across processes; every other note and every number are untouched (Ruling 69-2: no coarsening).…
+- **AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive** (`AGENTS_ARCHIVE.md` line 2138): …onds N` (and the module CLI) skips rewriting the market dashboard while its last write is younger than N seconds, judged on the file's mtime so it holds across processes; every other note and every number are untouched (Ruling 69-2: no coarsening).…
 
 ## Related
 

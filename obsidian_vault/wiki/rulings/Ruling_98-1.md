@@ -2,7 +2,7 @@
 type: Ruling
 title: 'Ruling 98-1: Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) +
   DIRECTIVES RATIFIED (B4'
-description: 'Ratification of 27 wiki page(s): Round 99 complete (2026-09-05): KNOWLEDGE
+description: 'Ratification of 28 wiki page(s): Round 99 complete (2026-09-05): KNOWLEDGE
   - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1).…'
 tags:
 - ruling
@@ -11,25 +11,27 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Status
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · AGENTS_ARCHIVE.md — Superseded Handoff History and Operational
+    Archive
   author: human:operator
 dev:
   round: 98
   ruling_id: R98-1
   kind: ruling
   citations:
-  - section: Status
-    line: 33
+  - file: AGENTS_ARCHIVE.md
+    section: AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive
+    line: 1728
     excerpt: 'Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES
       RATIFIED (B4, Ruling 98-1).…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Ruling\s+98-1\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -43,11 +45,11 @@ verified:
 
 ## Citations
 
-- **Status** (line 33): Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1).…
+- **AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive** (`AGENTS_ARCHIVE.md` line 1728): Round 99 complete (2026-09-05): KNOWLEDGE - CRM SEEDS (B8) + DIRECTIVES RATIFIED (B4, Ruling 98-1).…
 
 ## Effect in this wiki
 
-This ruling ratified 27 page(s) (`dev.ratified_by: 98-1`), each carrying `verified: antigravity/architect` and `status: stable`:
+This ruling ratified 28 page(s) (`dev.ratified_by: 98-1`), each carrying `verified: antigravity/architect` and `status: stable`:
 
 - [[Directive_74-1]]
 - [[Directive_75-1]]
@@ -76,6 +78,7 @@ This ruling ratified 27 page(s) (`dev.ratified_by: 98-1`), each carrying `verifi
 - [[Ruling_70-1]]
 - [[Ruling_74-2]]
 - [[Ruling_79-3]]
+- [[Ruling_98-1]]
 
 ## Related
 

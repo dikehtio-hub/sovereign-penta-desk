@@ -2651,6 +2651,23 @@ esults_drops\.
      Every hurdle was too strict and every escrow too high. The W-2G credit
      ceiling moves the OTHER way: 24% not 28%, so it credits less.
 
+     2026-09-20 - THE HANDOFF LOG IS A PAIR: AGENTS.md + AGENTS_ARCHIVE.md (digests + rulings adapters)
+     AGENTS.md was rotated on 2026-09-20 (everything before Section 82 moved verbatim into AGENTS_ARCHIVE.md).
+     Every Digest and extracted Ruling page pins its text with dev.asserts against a FILE, so the move broke
+     109 lint C1 checks at once (80 digests + 29 rulings). Both adapters now read the live log, then the
+     archive beside it, and each page cites and pins the file its entry was FOUND in.
+     python -m knowledge.ingest.digests [--agents AGENTS.md] [--archive AGENTS_ARCHIVE.md] [--since N]
+     python -m knowledge.ingest.rulings --force [--agents AGENTS.md] [--archive AGENTS_ARCHIVE.md]
+         AFTER ANY FUTURE ROTATION RUN BOTH, then `python -m knowledge.lint`. C1 firing after a rotation is
+         the check working (the pinned text left the file it names); the recompile re-points source + assert.
+         --archive defaults to AGENTS_ARCHIVE.md beside --agents. A round or citation present in both files
+         resolves live-first, which is the newest-first order the single file had. Ratifications
+         (verified / status / dev.ratified_by) survive --force through carry_human_fields.
+         A pass that changes nothing now writes nothing: no register, no index, no log line, and the
+         truncation **Warning** is logged when the truncated page is written, not once per run.
+         COMMIT AGENTS.md AND AGENTS_ARCHIVE.md TOGETHER - the archive is the only copy of the rotated text.
+     Test: python -m pytest knowledge/tests/test_knowledge.py -k LogRotation
+
      ROUND 124 - RUN 2 COMMITTED; RUN 3 BOUND; raw/inbox EXEMPT FROM LINT (R124-1.A/B/C/D)
      Run 2 committed f72f1cb (all no-lead; run 1's Tier 2b polymarket-leads did NOT replicate on the clean window).
      Run 3 (Tue 09-08 ~23:27 EDT): the four registered commands with --since 2026-09-08T03:27:29Z --json into

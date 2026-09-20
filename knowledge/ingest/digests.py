@@ -1,6 +1,6 @@
 """AGENTS.md -> one Digest page per round (Round 109, backlog B5).
 
-    python -m knowledge.ingest.digests [--agents AGENTS.md] [--since N] [--at ISO]
+    python -m knowledge.ingest.digests [--agents AGENTS.md] [--archive AGENTS_ARCHIVE.md] [--since N] [--at ISO]
 
 WHY THIS EXISTS. AGENTS.md is 210 KB of 63 chronological "Round N complete" entries, and every
 round re-greps the whole monolith to answer "what happened in Round 97?". Splitting it into one
@@ -18,7 +18,14 @@ link anywhere. Copied verbatim into a page these become dangling links (lint L8)
 points at a git-ignored dashboard (lint L9). They are neutralised into code spans, which both checks
 correctly skip: the digest is QUOTING a link, and a quoted link is not a link.
 
-Read-only on AGENTS.md. Writes only through pages.write_page.
+THE LOG IS A PAIR. On 2026-09-20 AGENTS.md was rotated: everything before Section 82 - all 80 round
+entries - moved verbatim into AGENTS_ARCHIVE.md beside it, and every digest's `dev.asserts` (which
+named AGENTS.md) became a lint C1 error at once. So the adapter reads the live log AND its archive,
+live first, and each digest cites the file its entry was actually FOUND in. A later rotation moves
+entries again and C1 will say so again - that is the check working; the cure is to re-run this
+adapter, which re-points source and assert at the file that now holds the entry.
+
+Read-only on both logs. Writes only through pages.write_page.
 """
 from __future__ import annotations
 
@@ -36,6 +43,7 @@ from ..registers import write_register
 from . import add_common_args, at_from, guard, page_changed, rel_to
 
 DEFAULT_AGENTS = Path("AGENTS.md")
+ARCHIVE_NAME = "AGENTS_ARCHIVE.md"      # sits beside the live log, wherever that is
 REGISTER_STEM = "digests_register"
 # THE LOG HAS THREE ENTRY FORMATS, and a regex for only the newest silently covers a third of it.
 # Rounds 74+ carry a date:      "Round 104 complete (2026-09-06, corrected in 104b): TWO NEW..."
@@ -82,6 +90,29 @@ def parse_rounds(text: str) -> list[dict[str, Any]]:
     return sorted(uniq, key=lambda r: r["round"])
 
 
+def log_files(agents: Path, archive: Path | None = None) -> list[Path]:
+    """The live log, then its archive - only the files that exist, live first.
+
+    The order is load-bearing twice over: a round restated in both files resolves to the LIVE entry,
+    and live-then-archive is the same newest-first order the single file had before it was rotated.
+    """
+    archive = archive if archive is not None else agents.parent / ARCHIVE_NAME
+    out = [p for p in (agents, archive) if p.is_file()]
+    return out if len({p.resolve() for p in out}) == len(out) else out[:1]
+
+
+def parse_logs(logs: list[Path]) -> list[dict[str, Any]]:
+    """`parse_rounds` over every log; each entry remembers the file it was found in."""
+    seen: set[int] = set()
+    merged: list[dict[str, Any]] = []
+    for log in logs:
+        for e in parse_rounds(log.read_text(encoding="utf-8", errors="replace")):
+            if e["round"] not in seen:
+                seen.add(e["round"])
+                merged.append({**e, "log": log})
+    return sorted(merged, key=lambda r: r["round"])
+
+
 def first_sentence(summary: str, limit: int = 240) -> str:
     flat = " ".join(summary.split())
     cut = flat.split(". ")[0].strip()
@@ -93,7 +124,7 @@ def first_sentence(summary: str, limit: int = 240) -> str:
 def build_digest(entry: dict[str, Any], vault: Path, dev_root: Path, agents: Path, at: datetime,
                  by: str = GENERATED_BY) -> Page:
     n = entry["round"]
-    rel = rel_to(agents, dev_root)
+    rel = rel_to(entry.get("log") or agents, dev_root)     # the file the entry was FOUND in
     all_lines = neutralise(entry["summary"]).splitlines()
     lines = all_lines[:MAX_BODY_LINES]
     if len(all_lines) > MAX_BODY_LINES:
@@ -131,13 +162,14 @@ def load_page_safe(path: Path):
     return load_page(path) if path.is_file() else None
 
 
-def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, since: int | None = None,
-                   at: datetime | None = None, by: str = GENERATED_BY) -> tuple[int, int]:
+def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, archive: Path | None = None,
+                   since: int | None = None, at: datetime | None = None, by: str = GENERATED_BY) -> tuple[int, int]:
     at = at or now_utc()
     agents = agents or (dev_root / DEFAULT_AGENTS)
     if not agents.is_file():
         return 0, 0
-    entries = parse_rounds(agents.read_text(encoding="utf-8", errors="replace"))
+    logs = log_files(agents, archive)
+    entries = parse_logs(logs)
     if since is not None:
         entries = [e for e in entries if e["round"] >= since]
     if not entries:
@@ -145,10 +177,12 @@ def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, s
     written, truncated = 0, []
     for e in entries:
         page = build_digest(e, vault, dev_root, agents, at, by)
-        if page_changed(page, vault):
-            written += 1
-        if (page.meta.get("dev") or {}).get("truncated"):
-            truncated.append((e["round"], (page.meta.get("dev") or {}).get("dropped_lines", 0)))
+        changed = page_changed(page, vault)
+        written += changed
+        # warn when the truncated page is WRITTEN, not on every pass: a recompile is now the routine
+        # cure after a log rotation, and a warning repeated per run is the false record R104-3 is about
+        if changed and (page.meta.get("dev") or {}).get("truncated"):
+            truncated.append((e["round"], (page.meta.get("dev") or {}).get("dropped_lines", 0), rel_to(e["log"], dev_root)))
         write_page(page, vault, now=at)
     # ONE writer for this page. Ruling R109-1.F made Digest a registers.SPECS type so seed can
     # guarantee the register exists; keeping a bespoke builder here as well meant seed and this
@@ -158,14 +192,15 @@ def ingest_digests(vault: Path, dev_root: Path, *, agents: Path | None = None, s
     # Ruling R110-1.E: a truncation warning on stdout is gone the moment an unattended run ends.
     # log.md is the durable record, and a digest that silently dropped the end of a round is exactly
     # the kind of thing an operator should find later without having to have been watching.
-    for n, dropped in truncated:
+    for n, dropped, where in truncated:
         append_log(vault, "Warning", f"Round {n} digest truncated at {MAX_BODY_LINES} lines "
-                   f"({dropped} line(s) omitted); the full text is in `{rel_to(agents, dev_root)}` "
+                   f"({dropped} line(s) omitted); the full text is in `{where}` "
                    f"under `Round {n} complete`.", when=at)
     if written or reg_changed:
         write_index(vault, load_pages(vault))
-        append_log(vault, "Ingest", f"work-chain digests: {len(entries)} round(s) from "
-                   f"`{rel_to(agents, dev_root)}`; {written} page(s) written -> [[{REGISTER_STEM}]].", when=at)
+        per_log = ", ".join(f"`{rel_to(log, dev_root)}` ({sum(1 for e in entries if e['log'] == log)})" for log in logs)
+        append_log(vault, "Ingest", f"work-chain digests: {len(entries)} round(s) from {per_log}; "
+                   f"{written} page(s) written -> [[{REGISTER_STEM}]].", when=at)
     return len(entries), written
 
 
@@ -174,15 +209,16 @@ def main(argv: list[str] | None = None, out=None) -> int:
     ap = argparse.ArgumentParser(prog="knowledge.ingest.digests", description=__doc__.split("\n\n")[0])
     add_common_args(ap)
     ap.add_argument("--agents", type=Path, default=None, help=f"default <dev-root>/{DEFAULT_AGENTS.as_posix()}")
+    ap.add_argument("--archive", type=Path, default=None, help=f"rotated history; default {ARCHIVE_NAME} beside --agents")
     ap.add_argument("--since", type=int, default=None, help="only rounds >= N")
     args = ap.parse_args(argv)
     code = guard(args, out)
     if code is not None:
         return code
-    total, written = ingest_digests(args.vault, args.dev_root, agents=args.agents, since=args.since,
-                                    at=at_from(args))
+    total, written = ingest_digests(args.vault, args.dev_root, agents=args.agents, archive=args.archive,
+                                    since=args.since, at=at_from(args))
     if not total:
-        print("[REFUSE] no `Round N complete (date):` entries found in the log (exit 3)", file=out)
+        print("[REFUSE] no `Round N complete (date):` entries found in the log or its archive (exit 3)", file=out)
         return 3
     print(f"digests: {total} round(s), {written} page(s) written, {total - written} unchanged", file=out)
     return EXIT_OK

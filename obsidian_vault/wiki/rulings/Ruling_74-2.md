@@ -13,27 +13,29 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Status
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · AGENTS_ARCHIVE.md — Superseded Handoff History and Operational
+    Archive
   author: human:operator
 dev:
   round: 74
   ruling_id: R74-2
   kind: ruling
   citations:
-  - section: Status
-    line: 391
+  - file: AGENTS_ARCHIVE.md
+    section: AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive
+    line: 2086
     excerpt: '…Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json
       (counts only, no subfamily correlation run) and enforced in code: lead_lag --subfamily
       fed-rates|crypto reads the `sport` label the fetcher stamped (drops carry no
       tag_slug), --latency-minutes 5 reports a peak inside the poll…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Ruling\s+74-2\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -47,7 +49,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 391): …Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json (counts only, no subfamily correlation run) and enforced in code: lead_lag --subfamily fed-rates|crypto reads the `sport` label the fetcher stamped (drops carry no tag_slug), --latency-minutes 5 reports a peak inside the poll…
+- **AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive** (`AGENTS_ARCHIVE.md` line 2086): …Ruling 74-2: Tier 1 untouched; Tier 2 pre-registered in cross_market/experiments/lead_lag_tier2.meta.json (counts only, no subfamily correlation run) and enforced in code: lead_lag --subfamily fed-rates|crypto reads the `sport` label the fetcher stamped (drops carry no tag_slug), --latency-minutes 5 reports a peak inside the poll…
 
 ## Related
 

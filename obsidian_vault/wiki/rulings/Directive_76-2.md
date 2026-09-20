@@ -13,27 +13,29 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Status
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · AGENTS_ARCHIVE.md — Superseded Handoff History and Operational
+    Archive
   author: human:operator
 dev:
   round: 76
   ruling_id: D76-2
   kind: directive
   citations:
-  - section: Status
-    line: 358
+  - file: AGENTS_ARCHIVE.md
+    section: AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive
+    line: 2053
     excerpt: '…Directive 76-2 is implemented but INERT: collect_live_questions records
       every tag a market was fetched under in `tags` (list, --tags order) while `sport`
       keeps the first tag''s label, so the matcher, Tier 1 and the registered Tier
       2 filter read what they read before.…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Directive\s+76-2\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -47,7 +49,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 358): …Directive 76-2 is implemented but INERT: collect_live_questions records every tag a market was fetched under in `tags` (list, --tags order) while `sport` keeps the first tag's label, so the matcher, Tier 1 and the registered Tier 2 filter read what they read before.…
+- **AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive** (`AGENTS_ARCHIVE.md` line 2053): …Directive 76-2 is implemented but INERT: collect_live_questions records every tag a market was fetched under in `tags` (list, --tags order) while `sport` keeps the first tag's label, so the matcher, Tier 1 and the registered Tier 2 filter read what they read before.…
 
 ## Related
 

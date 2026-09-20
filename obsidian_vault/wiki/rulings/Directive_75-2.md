@@ -13,28 +13,30 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Status
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · AGENTS_ARCHIVE.md — Superseded Handoff History and Operational
+    Archive
   author: human:operator
 dev:
   round: 75
   ruling_id: D75-2
   kind: directive
   citations:
-  - section: Status
-    line: 372
+  - file: AGENTS_ARCHIVE.md
+    section: AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive
+    line: 2067
     excerpt: '…3 not yet / 1 a check failed) runs Directive 75-1 (lock, READY, last
       run, the `lead-lag: RAN` log line, the run-at marker under the Item 18 header,
       the cooldown count-down) and, ONLY once Tier 1 has written its verdict, Directive
       75-2 (both subfamilies under the registered bars, the meta file read, never
       written).…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Directive\s+75-2\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -48,7 +50,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 372): …3 not yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag: RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down) and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies under the registered bars, the meta file read, never written).…
+- **AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive** (`AGENTS_ARCHIVE.md` line 2067): …3 not yet / 1 a check failed) runs Directive 75-1 (lock, READY, last run, the `lead-lag: RAN` log line, the run-at marker under the Item 18 header, the cooldown count-down) and, ONLY once Tier 1 has written its verdict, Directive 75-2 (both subfamilies under the registered bars, the meta file read, never written).…
 
 ## Related
 

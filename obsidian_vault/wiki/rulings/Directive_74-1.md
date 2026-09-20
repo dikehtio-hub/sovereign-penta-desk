@@ -13,28 +13,30 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Status
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · AGENTS_ARCHIVE.md — Superseded Handoff History and Operational
+    Archive
   author: human:operator
 dev:
   round: 74
   ruling_id: D74-1
   kind: directive
   citations:
-  - section: Status
-    line: 391
+  - file: AGENTS_ARCHIVE.md
+    section: AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive
+    line: 2086
     excerpt: '…Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds
       cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word
       "cross_market" so a Sports Desk exporter never passes as the holder), --status
       (exit 0 running / 3 stopped; also prints the Item 18 state: last lead-lag run
       from the Titans note, macro serie…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Directive\s+74-1\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -48,7 +50,7 @@ verified:
 
 ## Citations
 
-- **Status** (line 391): …Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word "cross_market" so a Sports Desk exporter never passes as the holder), --status (exit 0 running / 3 stopped; also prints the Item 18 state: last lead-lag run from the Titans note, macro serie…
+- **AGENTS_ARCHIVE.md — Superseded Handoff History and Operational Archive** (`AGENTS_ARCHIVE.md` line 2086): …Directive 74-1: cross_market/interfaces/obsidian_exporter.py holds cross_market/data/cross_market_exporter.pid for --watch (pid_lock, mark word "cross_market" so a Sports Desk exporter never passes as the holder), --status (exit 0 running / 3 stopped; also prints the Item 18 state: last lead-lag run from the Titans note, macro serie…
 
 ## Related
 

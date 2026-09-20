@@ -12,12 +12,12 @@ tags:
 - round-121
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-07T03:46:05Z'
+  at: '2026-09-20T07:10:30Z'
 status: draft
 sources:
 - id: agents-log
-  resource: AGENTS.md#round-121-complete
-  title: AGENTS.md - Round 121 complete
+  resource: AGENTS_ARCHIVE.md#round-121-complete
+  title: AGENTS_ARCHIVE.md - Round 121 complete
   author: claude-code/fable-5.1
 dev:
   round: 121
@@ -29,14 +29,14 @@ dev:
   truncated: false
   dropped_lines: 0
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: ^Round 121 complete
     claim: the round heading this digest was compiled from is still in the log
 ---
 # Round 121 digest
 
 > 2026-09-06 23:55 EDT, operator: "proceed" on Antigravity's Round 120 rulings + the
-operator's own five decisions · compiled from `AGENTS.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
+operator's own five decisions · compiled from `AGENTS_ARCHIVE.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
 
 ## What the log says
 

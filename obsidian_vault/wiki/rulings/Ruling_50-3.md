@@ -12,26 +12,27 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Round 53 findings
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · Round 53 findings
   author: human:operator
 dev:
   round: 50
   ruling_id: R50-3
   kind: ruling
   citations:
-  - section: Round 53 findings
-    line: 1763
+  - file: AGENTS_ARCHIVE.md
+    section: Round 53 findings
+    line: 4358
     excerpt: '…- **Live activation**: the real drop dir now carries live sports (410)
       and macro (300) questions from a one-shot run; the WATCHER itself is an operator-session
       process in start_all_ecosystem_sync.bat (Ruling 50-3).…'
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Ruling\s+50-3\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -45,7 +46,7 @@ verified:
 
 ## Citations
 
-- **Round 53 findings** (line 1763): …- **Live activation**: the real drop dir now carries live sports (410) and macro (300) questions from a one-shot run; the WATCHER itself is an operator-session process in start_all_ecosystem_sync.bat (Ruling 50-3).…
+- **Round 53 findings** (`AGENTS_ARCHIVE.md` line 4358): …- **Live activation**: the real drop dir now carries live sports (410) and macro (300) questions from a one-shot run; the WATCHER itself is an operator-session process in start_all_ecosystem_sync.bat (Ruling 50-3).…
 
 ## Related
 

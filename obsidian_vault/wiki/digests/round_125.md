@@ -10,12 +10,12 @@ tags:
 - round-125
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-10T21:28:16Z'
+  at: '2026-09-20T07:10:30Z'
 status: draft
 sources:
 - id: agents-log
-  resource: AGENTS.md#round-125-complete
-  title: AGENTS.md - Round 125 complete
+  resource: AGENTS_ARCHIVE.md#round-125-complete
+  title: AGENTS_ARCHIVE.md - Round 125 complete
   author: claude-code/fable-5.1
 dev:
   round: 125
@@ -24,13 +24,13 @@ dev:
   truncated: false
   dropped_lines: 0
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: ^Round 125 complete
     claim: the round heading this digest was compiled from is still in the log
 ---
 # Round 125 digest
 
-> 2026-09-09 14:00-14:45 EDT, Antigravity R125-1.A/B/C/D, operator-authorised · compiled from `AGENTS.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
+> 2026-09-09 14:00-14:45 EDT, Antigravity R125-1.A/B/C/D, operator-authorised · compiled from `AGENTS_ARCHIVE.md`. **The log is the record**; this page is an index into it, and loses to it wherever they disagree.
 
 ## What the log says
 

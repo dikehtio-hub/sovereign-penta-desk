@@ -12,26 +12,27 @@ tags:
 - extracted
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-06T00:57:10Z'
+  at: '2026-09-20T07:10:35Z'
 status: stable
 stale_after: '2027-03-05T00:28:46Z'
 sources:
 - id: agents-md
-  resource: AGENTS.md
-  title: AGENTS.md · Round 40 findings
+  resource: AGENTS_ARCHIVE.md
+  title: AGENTS_ARCHIVE.md · Round 40 findings
   author: human:operator
 dev:
   round: 40
   ruling_id: R40-4
   kind: ruling
   citations:
-  - section: Round 40 findings
-    line: 2145
+  - file: AGENTS_ARCHIVE.md
+    section: Round 40 findings
+    line: 4740
     excerpt: …- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP
       base name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and
       `matched_leg_size` sized off the perp leg alone.…
   asserts:
-  - file: AGENTS.md
+  - file: AGENTS_ARCHIVE.md
     pattern: Ruling\s+40-4\b
     claim: the citation still exists in the handoff log
   ratified_by: 98-1
@@ -45,7 +46,7 @@ verified:
 
 ## Citations
 
-- **Round 40 findings** (line 2145): …- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP base name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and `matched_leg_size` sized off the perp leg alone.…
+- **Round 40 findings** (`AGENTS_ARCHIVE.md` line 4740): …- **Decimals bug (Ruling 40-4).** `spot_sz_decimals` looked up the PERP base name in the spot table, so UBTC/UFART/UANSEM hedges all reported None and `matched_leg_size` sized off the perp leg alone.…
 
 ## Related
 
