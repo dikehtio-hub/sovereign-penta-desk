@@ -38,6 +38,14 @@ terms - the gates read funding only - so they re-price and re-filter the same po
       spot hedge had already traded); `volume` is the bot's real rule, day by day (previous
       day's spot turnover >= $100k). Both gate ENTRIES only.
 
+SECTION 101 ADDED THE PURR ABLATION, pre-registered before it was run. The touch is the
+price of the first dollar: walked at $2,500 a leg (18:22Z) XMR cost 53.5 bps, FARTCOIN 35.0,
+and PURR - 41 % of P0's gross - could not be filled at all ($1,265 of visible perp depth).
+  --exclude-coins PURR            the desk without the name it cannot enter
+  --spread-model s2500            that walk's costs; REFUSES to run with PURR in the universe
+  hurdle                          P0 without PURR must net >= 9.36 %, the ruled number
+Excluding a coin is not subtracting its P&L: its slot goes to the next-ranked name.
+
 ACCOUNTING. One slot = one unit of notional. Idle slots earn 0 % - the harvester's own
 docstring: "idle cash at 0 % outranks churning it". Net APR is on ALL slot capital, idle
 included, because that is the capital the desk ties up.
@@ -101,10 +109,38 @@ SPOT_VOLUME_FLOOR_USD = 100_000.0   # the bot's own spot-liquidity floor (effect
 DAY_HOURS = 24
 
 
+# --- Section 101 s4: the PURR ablation, pre-registered before it was run -----------------
+# Walked at $2,500 a leg, both legs, ONE snapshot 2026-09-21 18:22:22Z. PURR is absent on
+# purpose: its perp showed $1,265 of visible depth, so $2,500 could not be filled at all.
+S2500_SPREAD_BPS = {"XMR": 53.5, "FARTCOIN": 35.0}
+S2500_DEFAULT_BPS = 20.0
+S2500_UNFILLABLE = ("PURR",)
+ABLATION_HURDLE_APR = 9.36      # "Passive BTC + 4.0 % (9.36 %)" - the ruled NUMBER, not recomputed
+
+SPREAD_TABLES = {
+    "per-coin": (PER_COIN_SPREAD_BPS, PER_COIN_DEFAULT_BPS),
+    "s2500": (S2500_SPREAD_BPS, S2500_DEFAULT_BPS),
+}
+
+
 def spread_bps_for(coin: str, spread_model: str, flat_bps: float, scale: float = 1.0) -> float:
-    if spread_model == "per-coin":
-        return PER_COIN_SPREAD_BPS.get(coin, PER_COIN_DEFAULT_BPS) * scale
+    if spread_model in SPREAD_TABLES:
+        table, default = SPREAD_TABLES[spread_model]
+        return table.get(coin, default) * scale
     return flat_bps * scale
+
+
+def check_spread_model(spread_model: str, coins) -> None:
+    """
+    The $2,500 table has no price for a coin that could not be filled at $2,500. Left in
+    the universe it would fall through to "others 20 bps" and price an impossible trade
+    as a cheap one. Refuse, rather than trust the next caller to remember why.
+    """
+    if spread_model == "s2500":
+        present = [c for c in S2500_UNFILLABLE if c in coins]
+        if present:
+            raise ValueError(f"--spread-model s2500 needs --exclude-coins {' '.join(present)}: at $2,500 a leg "
+                             f"{', '.join(present)} was UNFILLABLE, and the table would price it at the 20 bps default")
 
 Rates = Dict[str, Dict[int, float]]          # coin -> hour index -> settled HOURLY rate
 
@@ -211,6 +247,8 @@ def simulate(rates: Rates, arm: str, slots: int = DEFAULT_SLOTS, spread_bps: flo
     held is never closed by it: the mask answers "could the bot have opened this then?",
     not "should it have left?". PASSIVE is a benchmark and is never masked.
     """
+    check_spread_model(spread_model, rates)
+
     def friction_of(coin: str) -> float:
         return ROUND_TRIP_FEE_PCT / 100.0 + spread_bps_for(coin, spread_model, spread_bps, spread_scale) / 10_000.0
 
@@ -378,8 +416,10 @@ def main() -> int:
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--slots", type=int, default=DEFAULT_SLOTS)
     ap.add_argument("--spread-bps", type=float, default=DEFAULT_SPREAD_BPS)
-    ap.add_argument("--spread-model", choices=("flat", "per-coin"), default="flat",
-                    help="per-coin = Section 100 s2's snapshot values, both legs")
+    ap.add_argument("--spread-model", choices=("flat", "per-coin", "s2500"), default="flat",
+                    help="per-coin = Section 100 s2's touch values; s2500 = Section 101 s4's cost of $2,500 a leg")
+    ap.add_argument("--exclude-coins", nargs="*", default=[],
+                    help="drop these perps from the universe entirely (Section 101 s4: the PURR ablation)")
     ap.add_argument("--eligibility", choices=("none", "listed", "volume"), default="none",
                     help="gate ENTRIES on the spot hedge's history (Section 100 s4); needs --spot-daily in the store")
     args = ap.parse_args()
@@ -389,15 +429,27 @@ def main() -> int:
     if not rates:
         print("the store is empty - run fetch_hyperliquid_funding_history.py first", file=sys.stderr)
         return 1
+    excluded = sorted(c for c in args.exclude_coins if c in rates)
+    for c in excluded:
+        del rates[c]
+    try:
+        check_spread_model(args.spread_model, rates)
+    except ValueError as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return 2
     elig = load_eligibility(args.db, args.eligibility)
     pop = (f"{len(rates)} perps spot-backed on 2026-09-21 (look-ahead), settled hourly funding"
+           + (f", EXCLUDING {' '.join(excluded)}" if excluded else "")
            + ("" if elig is None else f", entries masked by spot '{args.eligibility}'"))
     kw = dict(spread_model=args.spread_model, eligible=elig)
     print("=" * 100 + "\nBASIS POLICY REPLAY (Section 99 WP2; spreads and mask per Section 100)\n" + "=" * 100)
     print(f"script sha256 : {digest}\nslots {args.slots}   fee {ROUND_TRIP_FEE_PCT:.4f} % a round trip   eligibility: {args.eligibility}")
-    if args.spread_model == "per-coin":
-        print("spread        : PER-COIN, both legs, bps  " + "  ".join(f"{c} {b:.0f}" for c, b in PER_COIN_SPREAD_BPS.items())
-              + f"  others {PER_COIN_DEFAULT_BPS:.0f}   <- ONE snapshot, 2026-09-21 18:04Z: an instant, not a distribution")
+    if args.spread_model in SPREAD_TABLES:
+        table, default = SPREAD_TABLES[args.spread_model]
+        what = ("the TOUCH, 2026-09-21 18:04Z" if args.spread_model == "per-coin"
+                else "WALKED AT $2,500 A LEG, 2026-09-21 18:22Z")
+        print(f"spread        : {args.spread_model}, both legs, bps  " + "  ".join(f"{c} {b:g}" for c, b in table.items())
+              + f"  others {default:g}   <- {what}: ONE snapshot, an instant, not a distribution")
     else:
         print(f"spread        : FLAT {args.spread_bps:.0f} bps a round trip")
     arms = ("P0", "A", "D", "PASSIVE")
@@ -405,7 +457,7 @@ def main() -> int:
     for r in results:
         report(r, pop)
     monthly(results)
-    if args.spread_model == "per-coin":
+    if args.spread_model in SPREAD_TABLES:
         print("\nIF THE TRUE SPREADS ARE A MULTIPLE OF THE SNAPSHOT - NET APR")
         print(f"{'scale':<10}" + "".join(f"{a:>11}" for a in arms))
         for sc in (0.5, 1.0, 1.5):
@@ -417,7 +469,13 @@ def main() -> int:
         for bps in (0.0, 10.0, 20.0):
             print(f"{bps:>4.0f} bps  " + "".join(f"{simulate(rates, a, args.slots, bps, **kw).net_apr():>+10.2f}%" for a in arms))
     p0, a, d, pas = (r.net_apr() for r in results)
-    if args.spread_model == "per-coin":
+    if excluded:
+        print(f"\nSECTION 101 s4 ABLATION, PRE-REGISTERED: P0 without {' '.join(excluded)} must net >= {ABLATION_HURDLE_APR:.2f} % "
+              "(the ruled number: passive BTC +5.36 at the touch, +4.0)")
+        print(f"    P0 {p0:+.2f} %  vs  {ABLATION_HURDLE_APR:.2f} %    ->  "
+              + ("CLEARS" if p0 >= ABLATION_HURDLE_APR else "FAILS") + f" by {p0 - ABLATION_HURDLE_APR:+.2f} %"
+              + f"        (passive BTC inside THIS run's spread table: {pas:+.2f} %)")
+    elif args.spread_model == "per-coin":
         print(f"\nSECTION 100 s3 DESK VIABILITY: P0 at realised spreads must beat passive BTC by >= +{VIABILITY_MARGIN_APR:.1f} % net")
         print(f"    P0 {p0:+.2f} %  -  PASSIVE {pas:+.2f} %  =  {p0 - pas:+.2f} %    ->  "
               + ("PASSES" if p0 - pas >= VIABILITY_MARGIN_APR else "FAILS") + f" by {p0 - pas - VIABILITY_MARGIN_APR:+.2f} %")

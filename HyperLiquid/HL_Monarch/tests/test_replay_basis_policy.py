@@ -217,3 +217,32 @@ def test_the_mask_also_applies_to_the_name_d_would_rotate_into():
 def test_passive_btc_is_a_benchmark_and_is_never_masked():
     res = rp.simulate({"BTC": path((30, 11.0))}, "PASSIVE", eligible=lambda coin, t: False)
     assert [t.coin for t in res.trades] == ["BTC"]
+
+
+# --- Section 101: the PURR ablation and the $2,500-a-leg cost table -----------------------
+
+def test_the_2500_table_refuses_to_price_a_coin_that_could_not_be_filled():
+    with pytest.raises(ValueError, match="UNFILLABLE"):
+        rp.simulate({"PURR": path((50, 40.0)), "XMR": path((50, 40.0))}, "P0", slots=2, spread_model="s2500")
+
+
+def test_the_2500_table_charges_the_walked_cost_once_purr_is_out():
+    fee = rp.ROUND_TRIP_FEE_PCT / 100.0
+    for coin, bps in (("XMR", 53.5), ("FARTCOIN", 35.0), ("ZEC", rp.S2500_DEFAULT_BPS), ("BTC", rp.S2500_DEFAULT_BPS)):
+        res = rp.simulate({coin: path((50, 40.0))}, "P0", slots=1, spread_model="s2500")
+        assert res.costs == pytest.approx(fee + bps / 10_000.0), coin
+
+
+def test_excluding_a_coin_hands_its_slot_to_the_next_ranked_name():
+    """The ablation is not a subtraction: PURR's slot does not sit empty."""
+    rates = {"PURR": path((60, 90.0)), "XMR": path((60, 60.0)), "ZEC": path((60, 30.0))}
+    assert {t.coin for t in rp.simulate(rates, "P0", slots=2).trades} == {"PURR", "XMR"}
+    without = {c: v for c, v in rates.items() if c != "PURR"}
+    res = rp.simulate(without, "P0", slots=2)
+    assert {t.coin for t in res.trades} == {"XMR", "ZEC"}
+    assert res.gross > 0 and res.occupied == 2 * (res.span - 1), "both slots full from the first decision on"
+
+
+def test_the_ablation_hurdle_is_the_ruled_number_not_a_recomputation():
+    assert rp.ABLATION_HURDLE_APR == 9.36
+    assert "PURR" in rp.S2500_UNFILLABLE and "PURR" not in rp.S2500_SPREAD_BPS
