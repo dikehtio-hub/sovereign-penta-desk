@@ -164,3 +164,56 @@ def test_net_apr_is_on_all_slot_capital_idle_included():
     one = rp.simulate(rates, "P0", slots=1)
     two = rp.simulate(rates, "P0", slots=2)
     assert two.net_apr() == pytest.approx(one.net_apr() / 2), "a second, empty slot halves the yield on capital"
+
+
+# --- Section 100: per-coin spreads and the spot-history entry mask -----------------------
+
+def test_per_coin_spread_charges_each_name_its_own_round_trip():
+    fee = rp.ROUND_TRIP_FEE_PCT / 100.0
+    for coin, bps in (("PURR", 38.0), ("XMR", 31.0), ("FARTCOIN", 10.0), ("BTC", 2.0), ("ZEC", rp.PER_COIN_DEFAULT_BPS)):
+        res = rp.simulate({coin: path((50, 40.0))}, "P0", slots=1, spread_model="per-coin")
+        assert res.costs == pytest.approx(fee + bps / 10_000.0), coin
+
+
+def test_the_flat_model_is_unchanged_by_the_per_coin_table():
+    rates = {"PURR": path((50, 40.0))}
+    assert rp.simulate(rates, "P0", slots=1).costs == pytest.approx(FRICTION), "20 bps, whatever the coin"
+
+
+def test_spread_scale_multiplies_the_spread_and_never_the_fee():
+    fee = rp.ROUND_TRIP_FEE_PCT / 100.0
+    half = rp.simulate({"PURR": path((50, 40.0))}, "P0", slots=1, spread_model="per-coin", spread_scale=0.5)
+    assert half.costs == pytest.approx(fee + 19.0 / 10_000.0)
+
+
+def test_per_coin_spreads_reprice_the_policy_without_changing_one_decision():
+    rates = {"PURR": path((5, 40.0), (5, -10.0), (30, 60.0)), "XMR": path((40, 35.0))}
+    flat, per = rp.simulate(rates, "P0", slots=2), rp.simulate(rates, "P0", slots=2, spread_model="per-coin")
+    sig = lambda r: [(t.coin, t.opened, t.closed, t.reason) for t in r.trades]
+    assert sig(flat) == sig(per), "the gates read funding only"
+    assert flat.gross == pytest.approx(per.gross) and flat.costs != pytest.approx(per.costs)
+
+
+def test_the_eligibility_mask_blocks_an_entry_and_never_closes_a_position():
+    rates = {"X": path((100, 40.0))}
+    late = rp.simulate(rates, "P0", slots=1, eligible=lambda coin, t: t >= 50)
+    (trade,) = late.trades
+    assert trade.opened == 50, "hot from hour 0, but the spot hedge did not exist until hour 50"
+    early = rp.simulate(rates, "P0", slots=1, eligible=lambda coin, t: t < 10)
+    (trade,) = early.trades
+    assert trade.opened == 0 and "marked out" in trade.reason, "entered while eligible; the mask never evicts"
+
+
+def test_the_mask_also_applies_to_the_name_d_would_rotate_into():
+    rates = {
+        "OLD1": path((30, 60.0), (170, 11.0)),
+        "OLD2": path((30, 60.0), (170, 11.0)),
+        "NEW": path((60, 11.0), (140, 80.0)),
+    }
+    d = rp.simulate(rates, "D", slots=2, eligible=lambda coin, t: coin != "NEW")
+    assert "NEW" not in {t.coin for t in d.trades}
+
+
+def test_passive_btc_is_a_benchmark_and_is_never_masked():
+    res = rp.simulate({"BTC": path((30, 11.0))}, "PASSIVE", eligible=lambda coin, t: False)
+    assert [t.coin for t in res.trades] == ["BTC"]

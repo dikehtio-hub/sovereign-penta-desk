@@ -28,6 +28,16 @@ FRICTIONS. The project's own ROUND_TRIP_FEE_PCT (0.0900 %) plus a round-trip spr
 (default 20 bps, the entry gate's ceiling, per Section 99). Half on entry, half on exit;
 positions still open at the end are MARKED OUT, so every arm pays whole round trips.
 
+SECTION 100 ADDED TWO OPTIONS. Neither changes a single entry or exit decision on its own
+terms - the gates read funding only - so they re-price and re-filter the same policy.
+  --spread-model per-coin   the 20 bps was the gate's CEILING, not a cost. The first look
+      at the spot leg (one snapshot, 2026-09-21 18:04Z) put PURR at 38 bps and XMR at 31 for
+      both legs, and those two are four fifths of P0's gross. The values are fixed by ruling;
+      they are an instant, not a distribution, and the run prints x0.5 / x1.5 beside them.
+  --eligibility listed|volume   the 13 names are today's. `listed` is the ruled mask (the
+      spot hedge had already traded); `volume` is the bot's real rule, day by day (previous
+      day's spot turnover >= $100k). Both gate ENTRIES only.
+
 ACCOUNTING. One slot = one unit of notional. Idle slots earn 0 % - the harvester's own
 docstring: "idle cash at 0 % outranks churning it". Net APR is on ALL slot capital, idle
 included, because that is the capital the desk ties up.
@@ -79,6 +89,22 @@ DEFAULT_SLOTS = 2               # BASIS_MAX_CONCURRENT                  (setting
 DEFAULT_SPREAD_BPS = 20.0       # Section 99 s4
 FLASH_HOURS = 3                 # an episode under 3 h is a flash spike (Section 99 s2)
 BREADTH_LOW, BREADTH_HIGH = 0.10, 0.15
+
+# --- Section 100 s2: per-coin round-trip spread, BOTH legs (perp + spot), in bps -------
+# Fixed by ruling before any run used them. They come from ONE order-book snapshot,
+# 2026-09-21 18:04:08Z - an instant, not a distribution. WP3 (spot-book sampling in the
+# collector) exists to replace them with a median and a p95.
+PER_COIN_SPREAD_BPS = {"PURR": 38.0, "XMR": 31.0, "FARTCOIN": 10.0, "BTC": 2.0, "ETH": 2.0}
+PER_COIN_DEFAULT_BPS = 10.0
+VIABILITY_MARGIN_APR = 4.0      # Section 100 s3: P0 at realised spreads must beat passive BTC by this
+SPOT_VOLUME_FLOOR_USD = 100_000.0   # the bot's own spot-liquidity floor (effective_spot_min_volume)
+DAY_HOURS = 24
+
+
+def spread_bps_for(coin: str, spread_model: str, flat_bps: float, scale: float = 1.0) -> float:
+    if spread_model == "per-coin":
+        return PER_COIN_SPREAD_BPS.get(coin, PER_COIN_DEFAULT_BPS) * scale
+    return flat_bps * scale
 
 Rates = Dict[str, Dict[int, float]]          # coin -> hour index -> settled HOURLY rate
 
@@ -178,8 +204,17 @@ def episode_length(rates: Rates, coin: str, t: int) -> int:
 
 
 def simulate(rates: Rates, arm: str, slots: int = DEFAULT_SLOTS, spread_bps: float = DEFAULT_SPREAD_BPS,
-             hours: Optional[List[int]] = None) -> Result:
-    friction = ROUND_TRIP_FEE_PCT / 100.0 + spread_bps / 10_000.0
+             hours: Optional[List[int]] = None, spread_model: str = "flat", spread_scale: float = 1.0,
+             eligible=None) -> Result:
+    """
+    `eligible(coin, hour) -> bool` gates ENTRIES only (Section 100 s4). A position already
+    held is never closed by it: the mask answers "could the bot have opened this then?",
+    not "should it have left?". PASSIVE is a benchmark and is never masked.
+    """
+    def friction_of(coin: str) -> float:
+        return ROUND_TRIP_FEE_PCT / 100.0 + spread_bps_for(coin, spread_model, spread_bps, spread_scale) / 10_000.0
+
+    friction = friction_of("")            # the flat figure; per-coin runs report the model instead
     if hours is None:
         lo = min(min(v) for v in rates.values() if v)
         hi = max(max(v) for v in rates.values() if v)
@@ -194,16 +229,16 @@ def simulate(rates: Rates, arm: str, slots: int = DEFAULT_SLOTS, spread_bps: flo
         nonlocal net
         held[coin] = Trade(coin=coin, opened=t, entry_metric=m, breadth=breadth,
                            episode_hours=episode_length(rates, coin, t) if arm != "PASSIVE" else 0)
-        res.costs += friction / 2
-        net -= friction / 2
+        res.costs += friction_of(coin) / 2
+        net -= friction_of(coin) / 2
 
     def close_(coin: str, t: int, reason: str) -> None:
         nonlocal net
         tr = held.pop(coin)
         tr.closed, tr.reason = t, reason
         res.trades.append(tr)
-        res.costs += friction / 2
-        net -= friction / 2
+        res.costs += friction_of(coin) / 2
+        net -= friction_of(coin) / 2
 
     for t in hours:
         # 1. accrue hour t on what was held through it (opened at t-1 or earlier)
@@ -228,9 +263,9 @@ def simulate(rates: Rates, arm: str, slots: int = DEFAULT_SLOTS, spread_bps: flo
             if not held and not res.trades and "BTC" in rates and t in rates["BTC"]:
                 open_("BTC", t, apr(rates["BTC"][t]), 0.0)
         else:
-            eligible = [c for c in rates if t in rates[c]]
-            breadth = (sum(1 for c in eligible if apr(rates[c][t]) >= GATE_APR) / len(eligible)) if eligible else 0.0
-            cands = sorted(((m, c) for c in eligible if c not in held
+            quoted = [c for c in rates if t in rates[c]]
+            breadth = (sum(1 for c in quoted if apr(rates[c][t]) >= GATE_APR) / len(quoted)) if quoted else 0.0
+            cands = sorted(((m, c) for c in quoted if c not in held and (eligible is None or eligible(c, t))
                             for m in [metric(rates, arm if arm != "D" else "A", c, t)] if m is not None), reverse=True)
             for m, c in cands[: max(0, slots - len(held))]:
                 open_(c, t, m, breadth)
@@ -264,6 +299,35 @@ def load_rates(db: Path) -> Rates:
         conn.close()
 
 
+def load_eligibility(db: Path, mode: str):
+    """
+    None, or eligible(coin, hour), built from the store's spot_daily table
+    (fetch_hyperliquid_funding_history.py --spot-daily). Section 100 s4.
+
+      listed  the ruled mask: the spot hedge had traded on an EARLIER day than this one.
+      volume  [CHOICE, beyond the ruling] the bot's actual rule, day by day: the spot pair's
+              turnover on the PREVIOUS UTC day was >= $100k. Previous, because today's
+              turnover is not known while today is still happening.
+    A perp with no spot_daily rows is never eligible under either mask.
+    """
+    if mode == "none":
+        return None
+    conn = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
+    try:
+        first: Dict[str, int] = {}
+        liquid: Dict[str, set] = {}
+        for coin, day_ms, notional in conn.execute("SELECT coin, day, notional FROM spot_daily"):
+            d = int(day_ms) // (DAY_HOURS * HOUR_MS)
+            first[coin] = min(first.get(coin, d), d)
+            if float(notional) >= SPOT_VOLUME_FLOOR_USD:
+                liquid.setdefault(coin, set()).add(d)
+    finally:
+        conn.close()
+    if mode == "listed":
+        return lambda coin, t: coin in first and t // DAY_HOURS > first[coin]
+    return lambda coin, t: (t // DAY_HOURS - 1) in liquid.get(coin, ())
+
+
 def day(h: int) -> str:
     return datetime.fromtimestamp(h * 3600, tz=timezone.utc).strftime("%Y-%m-%d")
 
@@ -277,7 +341,7 @@ def report(res: Result, pop: str) -> None:
     print(f"\n--- {res.arm}   [n={n} entries, m={m} coins, K={k} entry-days | Pop: {pop} | "
           f"{day(res.hours[0])} .. {day(res.hours[-1])}, {res.span:,} h] ---")
     print(f"    NET APR {res.net_apr():+7.2f} %   gross {res.gross_apr():+7.2f} %   friction "
-          f"{res.gross_apr() - res.net_apr():6.2f} %   ({res.friction * 100:.2f} % a round trip)")
+          f"{res.gross_apr() - res.net_apr():6.2f} %")
     print(f"    round trips {n:>4}   median hold {statistics.median(holds) if holds else 0:>7.0f} h   "
           f"slot use {util:5.1f} %   max drawdown {res.max_drawdown_pct():+6.2f} % of capital")
     if res.arm != "PASSIVE" and closed:
@@ -314,6 +378,10 @@ def main() -> int:
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--slots", type=int, default=DEFAULT_SLOTS)
     ap.add_argument("--spread-bps", type=float, default=DEFAULT_SPREAD_BPS)
+    ap.add_argument("--spread-model", choices=("flat", "per-coin"), default="flat",
+                    help="per-coin = Section 100 s2's snapshot values, both legs")
+    ap.add_argument("--eligibility", choices=("none", "listed", "volume"), default="none",
+                    help="gate ENTRIES on the spot hedge's history (Section 100 s4); needs --spot-daily in the store")
     args = ap.parse_args()
 
     digest = hashlib.sha256(Path(__file__).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
@@ -321,18 +389,38 @@ def main() -> int:
     if not rates:
         print("the store is empty - run fetch_hyperliquid_funding_history.py first", file=sys.stderr)
         return 1
-    pop = f"{len(rates)} perps spot-backed on 2026-09-21 (look-ahead), settled hourly funding"
-    print("=" * 100 + "\nBASIS POLICY REPLAY (Section 99 WP2)\n" + "=" * 100)
-    print(f"script sha256 : {digest}\nslots {args.slots}   spread {args.spread_bps:.0f} bps   fee {ROUND_TRIP_FEE_PCT:.4f} % a round trip")
-    results = [simulate(rates, arm, args.slots, args.spread_bps) for arm in ("P0", "A", "D", "PASSIVE")]
+    elig = load_eligibility(args.db, args.eligibility)
+    pop = (f"{len(rates)} perps spot-backed on 2026-09-21 (look-ahead), settled hourly funding"
+           + ("" if elig is None else f", entries masked by spot '{args.eligibility}'"))
+    kw = dict(spread_model=args.spread_model, eligible=elig)
+    print("=" * 100 + "\nBASIS POLICY REPLAY (Section 99 WP2; spreads and mask per Section 100)\n" + "=" * 100)
+    print(f"script sha256 : {digest}\nslots {args.slots}   fee {ROUND_TRIP_FEE_PCT:.4f} % a round trip   eligibility: {args.eligibility}")
+    if args.spread_model == "per-coin":
+        print("spread        : PER-COIN, both legs, bps  " + "  ".join(f"{c} {b:.0f}" for c, b in PER_COIN_SPREAD_BPS.items())
+              + f"  others {PER_COIN_DEFAULT_BPS:.0f}   <- ONE snapshot, 2026-09-21 18:04Z: an instant, not a distribution")
+    else:
+        print(f"spread        : FLAT {args.spread_bps:.0f} bps a round trip")
+    arms = ("P0", "A", "D", "PASSIVE")
+    results = [simulate(rates, arm, args.slots, args.spread_bps, **kw) for arm in arms]
     for r in results:
         report(r, pop)
     monthly(results)
-    print("\nSPREAD SENSITIVITY - NET APR")
-    print(f"{'spread':<10}" + "".join(f"{a:>11}" for a in ("P0", "A", "D", "PASSIVE")))
-    for bps in (0.0, 10.0, 20.0):
-        print(f"{bps:>4.0f} bps  " + "".join(f"{simulate(rates, a, args.slots, bps).net_apr():>+10.2f}%" for a in ("P0", "A", "D", "PASSIVE")))
+    if args.spread_model == "per-coin":
+        print("\nIF THE TRUE SPREADS ARE A MULTIPLE OF THE SNAPSHOT - NET APR")
+        print(f"{'scale':<10}" + "".join(f"{a:>11}" for a in arms))
+        for sc in (0.5, 1.0, 1.5):
+            print(f"  x {sc:<5} " + "".join(
+                f"{simulate(rates, a, args.slots, args.spread_bps, spread_scale=sc, **kw).net_apr():>+10.2f}%" for a in arms))
+    else:
+        print("\nSPREAD SENSITIVITY - NET APR")
+        print(f"{'spread':<10}" + "".join(f"{a:>11}" for a in arms))
+        for bps in (0.0, 10.0, 20.0):
+            print(f"{bps:>4.0f} bps  " + "".join(f"{simulate(rates, a, args.slots, bps, **kw).net_apr():>+10.2f}%" for a in arms))
     p0, a, d, pas = (r.net_apr() for r in results)
+    if args.spread_model == "per-coin":
+        print(f"\nSECTION 100 s3 DESK VIABILITY: P0 at realised spreads must beat passive BTC by >= +{VIABILITY_MARGIN_APR:.1f} % net")
+        print(f"    P0 {p0:+.2f} %  -  PASSIVE {pas:+.2f} %  =  {p0 - pas:+.2f} %    ->  "
+              + ("PASSES" if p0 - pas >= VIABILITY_MARGIN_APR else "FAILS") + f" by {p0 - pas - VIABILITY_MARGIN_APR:+.2f} %")
     print("\nSECTION 98 s4 HURDLE FOR D: beat P0 by >= +3.0 % net AND passive BTC by >= +3.0 % net")
     print(f"    D - P0 = {d - p0:+.2f} %    D - PASSIVE = {d - pas:+.2f} %    ->  "
           + ("CLEARS BOTH" if d - p0 >= 3.0 and d - pas >= 3.0 else "DOES NOT CLEAR"))

@@ -67,7 +67,54 @@ CREATE TABLE IF NOT EXISTS funding_history (
     PRIMARY KEY (coin, timestamp)
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS spot_daily (
+    coin      TEXT    NOT NULL,             -- the PERP this spot pair would hedge
+    pair      TEXT    NOT NULL,             -- the spot PAIR name: "@260", "PURR/USDC". NOT a token index
+    day       INTEGER NOT NULL,             -- candle open, ms, 00:00 UTC
+    close     REAL    NOT NULL,
+    notional  REAL    NOT NULL,             -- close * base volume: the day's spot turnover in USD
+    PRIMARY KEY (coin, day)
+) WITHOUT ROWID;
 """
+SPOT_GENESIS_MS = 1_711_382_400_000        # 2024-03-25, Section 100 s4: early enough to find any genesis candle
+ITEMS_PER_CANDLE_SURCHARGE_UNIT = 60
+
+
+def fetch_spot_daily(client: HyperliquidRestClient, conn: sqlite3.Connection, coins: List[str], end_ms: int) -> None:
+    """
+    Section 100 s4: when did each perp's spot hedge first trade, and how much a day?
+
+    The pair is resolved by the bot's OWN rule (spot_symbol_for at its own volume floor),
+    so the mapping is as of today; what this recovers is the HISTORY of that pair. Candles
+    are keyed by the spot PAIR name. The ruling wrote "@<token_index>"; probed 2026-09-21,
+    XMR1 is token 404 and pair "@260" - "@404" returns HTTP 500, "@260" returns candles.
+    """
+    from types import SimpleNamespace
+    from analytics.funding_arbitrage import (FundingArbitrageEngine, effective_spot_min_volume,
+                                             spot_symbol_for)
+    meta, ctxs = client.get_spot_meta_and_asset_ctxs()
+    shim = SimpleNamespace(client=SimpleNamespace(get_spot_meta_and_asset_ctxs=lambda: (meta, ctxs)),
+                           _spot_volumes=None)                  # the project's parser, no engine, no DB handle
+    volumes = FundingArbitrageEngine.get_spot_volumes(shim) or {}
+    universe = {t for t, v in volumes.items() if v >= effective_spot_min_volume()}
+    names = {int(t["index"]): str(t["name"]).upper() for t in meta.get("tokens", [])}
+    pair_volume = {str(c.get("coin")): float(c.get("dayNtlVlm") or 0.0) for c in ctxs or []}
+    for coin in coins:
+        token = spot_symbol_for(coin, universe, volumes)
+        pairs = [(pair_volume.get(str(p["name"]), 0.0), str(p["name"])) for p in meta.get("universe", [])
+                 if p.get("tokens") and names.get(int(p["tokens"][0])) == token]
+        if not token or not pairs:
+            print(f"   {coin}: no spot hedge by the bot's rule today - skipped", flush=True)
+            continue
+        pair = max(pairs)[1]
+        candles = client._post({"type": "candleSnapshot", "req": {
+            "coin": pair, "interval": "1d", "startTime": SPOT_GENESIS_MS, "endTime": end_ms}})
+        client.rate_limiter.acquire(len(candles) / ITEMS_PER_CANDLE_SURCHARGE_UNIT)
+        with conn:
+            conn.executemany("INSERT OR REPLACE INTO spot_daily VALUES (?, ?, ?, ?, ?)",
+                             [(coin, pair, int(x["t"]), float(x["c"]), float(x["c"]) * float(x["v"])) for x in candles])
+        first = iso(int(candles[0]["t"])) if candles else "none"
+        print(f"   {coin}: {token} on {pair}, {len(candles)} daily candles, first {first}", flush=True)
 
 
 def iso(ms: int) -> str:
@@ -140,6 +187,8 @@ def main() -> int:
     ap.add_argument("--weight-per-minute", type=int, default=180,
                     help="PRIVATE budget. The IP ceiling is 1200 and the live collector uses ~750 of it.")
     ap.add_argument("--coverage-only", action="store_true", help="report what the store holds; fetch nothing")
+    ap.add_argument("--spot-daily", action="store_true",
+                    help="pull each perp's spot-hedge daily candles instead of funding (Section 100 s4)")
     args = ap.parse_args()
 
     end_ms = int(time.time() * 1000) // HOUR_MS * HOUR_MS
@@ -148,6 +197,13 @@ def main() -> int:
     conn = sqlite3.connect(str(args.db))
     conn.executescript(SCHEMA)
     try:
+        if args.spot_daily:
+            client = HyperliquidRestClient(
+                rate_limiter=TokenBucketRateLimiter(weight_per_minute=args.weight_per_minute, safety_factor=1.0))
+            print(f"spot-hedge daily candles for {len(args.coins)} perps at {args.weight_per_minute} weight/min "
+                  f"-> {args.db}", flush=True)
+            fetch_spot_daily(client, conn, list(args.coins), int(time.time() * 1000))
+            return 0
         if not args.coverage_only:
             digest = hashlib.sha256(Path(__file__).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
             with conn:
