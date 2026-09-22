@@ -3996,3 +3996,67 @@ esults_drops\.
      effective rate is roughly max(NJ, work-state) - higher in NY, lower in PA.
 
      Suites: HL_Monarch 904 | Tax_Reserve_Agent 524 | master+bridges 678.
+
+
+====================================================================
+TIER 8: DEV\tradingview_mcp\ — DRIVE A REAL TRADINGVIEW CHART FROM AI
+(Not a strategy and not a bot: it places no orders and reads no
+account. It is a remote control for a TradingView chart in a
+dedicated Chrome window, so an AI assistant can set the symbol,
+write Pine Script, add indicators and read values off the chart.)
+====================================================================
+
+WHAT IT IS:
+  Moon Dev's TradingView MCP server, vendored into DEV on
+  2026-09-20 from the public repo
+  moondevonyt/Trading-View-MCP-for-AI-by-Moon-Dev at commit 60f12fd.
+  "MCP" just means Claude can call its 16 tools directly, the same
+  way it reads your files. Claude Code must be RESTARTED after any
+  path or config change before the tools appear.
+
+WHAT IT CAN DO (16 tools, all prefixed tv_):
+  Set the chart's symbol and timeframe; open the Pine editor; write,
+  save, compile and validate Pine Script; add and remove indicators;
+  read an indicator's current values off the chart legend; run the
+  Strategy Tester and read back the backtest results; screenshot.
+
+THE BROWSER IT DRIVES:
+  A DEDICATED Chrome, separate from your normal browsing, talking
+  over debug port 9222. Its profile — and therefore your TradingView
+  LOGIN — lives at C:\Users\ixis1\.tradingview_mcp_chrome, in your
+  home folder, NOT in the project. That is deliberate: the project
+  can be moved or deleted without losing the login.
+
+HOW TO RUN IT BY HAND:
+  Launch (or reuse) the dedicated Chrome:
+    DEV\tradingview_mcp\venv\Scripts\python.exe -m tradingview_mcp.chrome_launcher
+
+  One-shot end-to-end proof (compile a Pine file, paste it into the
+  editor, add it to the chart, read the legend, screenshot):
+    cd DEV\tradingview_mcp
+    venv\Scripts\python.exe mount_pine.py examples\moon_dev_rainbow_ribbon_10_50.pine
+    -> expect valid=True, legend contains "MD RIBBON", MOUNTED: True
+
+  Confirm the server itself is healthy (no browser needed):
+    DEV\tradingview_mcp\venv\Scripts\python.exe -c "import asyncio; from tradingview_mcp.server import build_server; print(len(asyncio.run(build_server().list_tools())), 'tools')"
+    -> expect: 16 tools
+
+MCP REGISTRATION (already done; kept here for re-registration):
+    claude mcp add --scope user tradingview -- C:\Users\ixis1\Desktop\DEV\tradingview_mcp\venv\Scripts\python.exe -m tradingview_mcp.server
+
+STATUS / CAVEATS:
+  - Five files are DELIBERATELY changed from upstream and must not
+    be "fixed" back: the mcp<2 pin (2.x renames FastMCP and breaks
+    the import), a UTF-8 read in mount_pine.py (this machine's
+    locale is cp1252 and garbled the moon glyph in the title), and
+    DOM fallbacks in chart.py and indicators.py because
+    TradingView's old legend selectors are dead. All five are
+    captured in local_deviations_vs_upstream_60f12fd.patch and
+    explained in MIGRATION_TO_DEV.md.
+  - Because TradingView changes its page markup, those selectors
+    rot. If tv_list_indicators suddenly returns an empty legend,
+    that is the cause, not your chart.
+  - The venv is gitignored; rebuild it with
+    python -m venv venv, pip install -r requirements.txt,
+    then pip install -e . (the editable install is REQUIRED — it is
+    what lets the server be launched from any folder).

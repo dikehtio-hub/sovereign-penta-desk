@@ -5,7 +5,7 @@ tags:
   - prediction-markets
   - alpha
   - dashboard
-last_synced: "2026-09-17 02:40:06 UTC"
+last_synced: "2026-09-22 03:42:19 UTC"
 ---
 
 # 👑 Polymarket Monarch • Real-Time Intelligence
@@ -14,7 +14,7 @@ last_synced: "2026-09-17 02:40:06 UTC"
 > **Desk**: [[Desk_03_Cross_Market_Desk|Desk 3: Cross-Market Desk]] · Shell twin: `python Polymarket/Polymarket_Monarch/obsidian_sync.py --once`
 
 > [!TIP] **System Status: LIVE**
-> - **Last Synchronized**: `2026-09-17 02:40:06 UTC`
+> - **Last Synchronized**: `2026-09-22 03:42:19 UTC`
 > - **Active Sharp Traders ($300+ 7D Realized)**: `41`
 > - **Public Polymarket Data Engine**: 100% Free / Native Public APIs (No Paid Keys)
 
@@ -60,14 +60,15 @@ last_synced: "2026-09-17 02:40:06 UTC"
 
 | Category | Top Volume Market | 24h Vol | Yes Odds / Probability |
 | :--- | :--- | :---: | :--- |
-| 🪙 Crypto | Clarity Act (H.R.3633) signed into law in 2026? | `$803.3K` | `█░░░░░░░░░` **8.2%** |
-| 🪙 Crypto | Bitcoin above ___ on September 17? | `$708.8K` | `██████████` **99.9%** |
-| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$593.5K` | `█████░░░░░` **50.0%** |
-| 🌐 Politics | Which party will gain most seats in Russian Parliamentary Election? | `$1.64M` | `███████░░░` **73.5%** |
-| 🌐 Politics | Republican Presidential Nominee 2028 | `$1.02M` | `░░░░░░░░░░` **1.9%** |
-| 🌐 Politics | Clarity Act (H.R.3633) signed into law in 2026? | `$803.3K` | `█░░░░░░░░░` **8.2%** |
+| 🪙 Crypto | What price will Bitcoin hit in September? | `$1.61M` | `░░░░░░░░░░` **2.9%** |
+| 🪙 Crypto | What price will Bitcoin hit in 2026? | `$1.00M` | `█████░░░░░` **50.0%** |
+| 🪙 Crypto | What price will Ethereum hit in September? | `$782.6K` | `░░░░░░░░░░` **0.5%** |
+| 🌐 Politics | Brazil Presidential Election | `$1.06M` | `░░░░░░░░░░` **0.1%** |
+| 🌐 Politics | Presidential Election Winner 2028 | `$844.9K` | `██░░░░░░░░` **20.6%** |
+| 🌐 Politics | Will the US confirm that aliens exist by...? | `$614.9K` | `░░░░░░░░░░` **0.0%** |
+| 🏛 Economics | Will gas be below $3.75 in any state on...? | `$436` | `░░░░░░░░░░` **0.5%** |
+| 🏛 Economics | US Announces Diesel Export ban by...? | `$246` | `█░░░░░░░░░` **13.0%** |
 | 🏛 Economics | US announces another yen intervention by...? | `$0` | `████░░░░░░` **38.5%** |
-| 🏛 Economics | Will Argentina dollarize by...? | `$0` | `█░░░░░░░░░` **5.3%** |
 
 ---
 *Generated automatically by Polymarket Monarch Obsidian Sync.*

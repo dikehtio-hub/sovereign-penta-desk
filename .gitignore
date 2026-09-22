@@ -175,3 +175,49 @@ dontshare.py
 .env
 **/.env
 !**/.env.example
+
+# ---------------------------------------------------------------------------
+# tradingview_mcp - VENDORED (Model A) from moondevonyt/Trading-View-MCP-for-AI-by-Moon-Dev
+# @ 60f12fd, migrated from Desktop into DEV on 2026-09-20 per MIGRATION_TO_DEV.md.
+# The nested .git was dropped deliberately: upstream is public and all 3 commits
+# were upstream's, so nothing local lived in that history. The 5 local deviations
+# were uncommitted working-tree edits; they survive as files and as
+# tradingview_mcp/local_deviations_vs_upstream_60f12fd.patch (79 ins / 15 del).
+# Secrets, the local venv and the dedicated Chrome profile (a LOGGED-IN browser
+# session) must never be committed.
+# ---------------------------------------------------------------------------
+tradingview_mcp/.env
+tradingview_mcp/venv/
+tradingview_mcp/.tradingview_mcp_chrome/
+.tradingview_mcp_chrome/
+tradingview_mcp/moon_dev_chart.png
+tradingview_mcp/_debug_state.png
+tradingview_mcp/.claude/settings.local.json
+tradingview_mcp/tradingview_mcp.egg-info/
+
+# ---------------------------------------------------------------------------
+# OPERATOR SCRATCH, MOVED IN FROM THE DESKTOP on 2026-09-20. Neither is DEV's work.
+#
+# ANCHORED WITH A LEADING SLASH deliberately - see the `data/odds_drops/` note at
+# the top of this file. Bare `parsed/` would silence ANY future directory named
+# `parsed` at any depth, including a desk's own output dir. There is exactly one
+# today, at the root; the anchor keeps the rule from growing teeth later.
+#
+# `parsed/` is the extraction pipeline behind MoonDev_Quant_Elite_Code: a 3 MB
+# export of scraped paid-course Discord attachments plus the 5 scripts that parsed
+# it. Third-party course material, so committing it is a licensing question as
+# well as a size one. Its scripts still read/write `C:\Users\ixis1\Desktop\...`
+# absolute paths and no longer resolve after the move - rerunning them needs edits.
+#
+# `lab_backup_2026-09-12/` is a point-in-time copy of quant_trading_lab working
+# files; the lab itself is already excluded at :97 for its own reasons.
+#
+# Both scanned for credentials 2026-09-20: none. The only hits were an env-var
+# lookup with a dry-run fallback and two dataset content hashes.
+# ---------------------------------------------------------------------------
+/parsed/
+/lab_backup_*/
+
+# Google Drive for desktop staging folders (2026-09-22): never content, never committed
+.tmp.driveupload/
+.tmp.drivedownload/

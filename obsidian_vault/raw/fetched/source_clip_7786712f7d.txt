@@ -1,0 +1,238 @@
+url: https://www.youtube.com/watch?v=UGDIdJh0w_0
+canonical: https://www.youtube.com/watch?v=UGDIdJh0w_0
+kind: clip
+status: ok
+title: I Gave Claude Fable 5.1 Full Access to TradingView… Here’s What Happened
+fetched_at: 2026-09-20T07:11:08Z
+fetcher: clip
+chars: 21747
+sha256: 0a7aefd1763ea66b4ce9ac300b0a906b61cd593e297758955c1d444e789e3938
+---
+![](https://www.youtube.com/watch?v=UGDIdJh0w_0)
+
+👉🏻 Get access my AI trading bots & TradingView Strategies:  
+https://www.skool.com/daviddtech/about?sl=yt\_UGDIdJh0w\_0  
+  
+I gave Claude Fable 5.1 eight hours to research, code and backtest trading strategies from scratch.  
+  
+No existing trading bot. No indicator recipe. No strategy for Claude to copy.  
+  
+Could it move beyond writing code and discover a trading strategy worth taking further?  
+  
+In this step-by-step video, I connect Claude to TradingKit / TraderDEV’s backtesting tools, give it my research instructions and let it work through an eight-hour strategy-development challenge.  
+  
+TradingKit handles the backtesting without requiring Claude to control my TradingView account. Once the research is finished, I take one of Claude’s strategies into TradingView to inspect the code, trading rules and historical results.  
+  
+By the end of the run, the dashboard reports 113 strategies, more than 410 backtests and 14 candidates flagged as profitable on historical data.  
+  
+But finding an attractive backtest is only the beginning.  
+  
+You’ll see the dashboard, the strategy Claude selected, its MACD-based trading logic, the drawdown behind the returns, and how the results compare with buying and holding the same market.  
+  
+In this video, you’ll discover:  
+  
+✅ My overview of Claude Fable 5.1’s benchmarks  
+✅ How to set up Claude and choose its reasoning effort  
+✅ How to install and authenticate TradingKit’s backtesting tools  
+✅ The prompt behind the eight-hour research challenge  
+✅ How three-minute optimization and ten-minute research schedules work together  
+✅ How Claude decides when to move on from an unpromising strategy  
+✅ The control panel used to review strategies and backtest results  
+✅ What the AI found after four hours—and after the full eight hours  
+✅ How to import a generated strategy into TradingView  
+✅ The MNT strategy’s MACD histogram and ATR-based exit rules  
+✅ How I assess returns, drawdown, win rate and profit factor  
+✅ How the historical results compare with buy and hold  
+✅ Why promising strategies still need forward testing  
+✅ My observations on model usage and choosing the right AI for each task  
+  
+⏰ Video Chapters  
+  
+0:00 – Giving Claude Fable 5.1 Eight Hours  
+1:31 – Reviewing the Model Benchmarks  
+3:31 – Setting Up Claude and Choosing Reasoning Effort  
+4:35 – TradingKit: The Backtesting Tools  
+5:18 – Installing and Authenticating TradingKit  
+6:42 – The Eight-Hour Research Prompt  
+7:34 – Optimization and Research Schedules  
+8:45 – Four-Hour Update: Dashboard and Early Results  
+9:36 – Reviewing the Final Eight-Hour Results  
+10:15 – 113 Strategies and More Than 410 Backtests  
+11:23 – Checking the MNT Strategy in TradingView  
+12:13 – Backtest Results, Drawdown and Buy-and-Hold Comparison  
+13:34 – Forward Testing and Strategy Incubation  
+14:07 – Model Usage During the Experiment  
+14:30 – Using Different AI Models for Different Jobs  
+15:18 – My Verdict: Building Strategies vs Letting AI Trade  
+  
+The strategy examined in TradingView  
+  
+I inspect an MNTUSD strategy on the one-hour chart, using MACD histogram signals and ATR-based exits.  
+  
+The walkthrough covers its entry and exit logic, historical performance, maximum drawdown, win rate and profit factor—not just the final return.  
+  
+These are historical backtest results, not live trading profits. Moving a candidate into forward testing starts another evaluation stage; it does not mean that the strategy has already passed it.  
+  
+Tools Used  
+  
+👉🏻 Get the FREE Claude prompts, AI monitoring tools, workbooks, checklists and resources:  
+DM me “AI TRADING” on Instagram:  
+https://instagram.com/DaviddTech  
+  
+Claude Fable 5.1  
+Claude desktop  
+TradingKit / TraderDEV  
+TradingView  
+Pine Script  
+MCP backtesting tools  
+Scheduled AI research and optimization  
+  
+Explore TradingKit https://tradingkit.com/  
+  
+💬 Would you keep testing this strategy or reject it? Tell me which result matters most to you: drawdown, profit factor, trade count or performance against buy and hold.  
+  
+⚠️ Everything shown is for education and entertainment only—not financial advice. Backtests do not guarantee future performance. Account for fees, slippage and position sizing, and forward-test strategies before deciding whether to risk capital.  
+  
+Indicators don’t make money by themselves. The complete strategy—and how it is tested—is what matters.  
+  
+The edge isn’t blindly asking AI to trade.  
+  
+It’s giving AI useful tools, inspecting the results and building systems you understand.  
+  
+Trade smarter.  
+Test everything.  
+Let the data do the talking.  
+  
+#AITrading #ClaudeAI #TradingView
+
+## Transcript
+
+### Giving Claude Fable 5.1 Eight Hours
+
+**0:00** · This strategy here was coded by the brand new Claude Fable 5.1 after I gave it full access to my TradingView account for eight hours. My community is already getting pretty excited about the new release, but being good at coding doesn't mean that Claude can actually discover a profitable trading strategy.
+
+**0:19** · Therefore, I'm going to start with a blank canvas, give it no strategy indicators, and tell it to do its own research, code them, backtest the ideas, and I'm going to give it eight hours to finish. I'm going to just show you the complete setup step-by-step so you can steal my entire process. And at the end, I'm going to reveal exactly what it found. But for that to happen, we're going to have to start right now. The roadmap. Okay, guys, here's the plan.
+
+**0:44** · First of all, we're going to lock in the benchmarks, have a look to see whether this Claude model is really worth our time, and if it is as good as they say.
+
+**0:54** · Then we're going to connect Claude Fable 5.1 over to TradingView and our free MCP tools. After that, I'll give you the complete prompt, start the eight-hour loop, and leave it to research and backtest strategies on its own. When the timer ends, we're going to go through the results together one by one to see whether or not this model can actually really find a profitable trading strategy that actually works. And finally, we'll do some real talk where I go through the strategies, tell you what I really think about these strategies, and whether I would actually trust these strategies with real money.
+
+**1:24** · Okay, without further ado, let's get over to my screen, let's have a look at this new model. Okay, so before we get over to the eight-hour challenge where I'm going to give it access to my TradingView account, let's have a look very quickly at the benchmarks. Obviously, I'm not going to go deep into this because there's plenty of channels out there that do a much better job than me. What I've seen in this article is that Fable 5.1 was released a couple of days ago.
+
+### Reviewing the Model Benchmarks
+
+**1:51** · It has topped all of the artificial analysis intelligence indexes, but does cost up to 20% extra per task. Now, that isn't the official stance on this.
+
+**2:03** · Anthropic seems to think that it's actually cheaper because the cash rate has been cut by 75%.
+
+**2:09** · Let's have a look at the models. As expected, artificial intelligence index Fable 5.1 Max with full back has actually dominated that chart and most of the other charts as well. Coming up as expected at the top, including the Omni Science index score, every index, every chart they seem to have topped and seem to be better at actually the hallucination rate. One benchmark that did impress me was the arena.ai web dev benchmark.
+
+**2:41** · Claude Fable 5.1 ranked number one by a mile. They really did smash this benchmark with a significant improvement as you can see just here, well above Quinn 3.8 and Opus 5 Max. You can see that there was an incredible improvement on that benchmark. So, obviously, that is what I expected.
+
+**3:03** · There's another channel that calls this the trust me, bro chart because a lot of these models are now trained just to top the actual charts themselves instead of actually really getting better. I don't know really what the case is, but the most important thing is can this thing actually produce a profitable trades for us as traders. Okay, that was a high-end overview of the benchmark. Let's move over straight over to number two. We're going to go through what we're going to actually need \[music\] to backtest strategies. First of all, of course, we're going to be downloading the Claude desktop version.
+
+### Setting Up Claude and Choosing Reasoning Effort
+
+**3:35** · I'm currently on Mac, just hit that, install it, and it should look something like this. We're going to be using Claude Fable 5.1 down the bottom here. I'm going to set this to maximum effort to give it as much power to backtest those strategies as possible. I won't use Ultra code because I found in the past that when using Ultra code for strategies, it just ended up going in an infinitive circle overthinking the actual actions and never actually really backtesting a strategy.
+
+**4:05** · So, I'm going to use Max effort for it to go away and research those strategies and backtest them.
+
+**4:10** · Now, of course, any of these AI agents can't actually backtest strategies themselves and don't have access to a TradingView account. There are some MCP servers out there that allow you to connect the actual TradingView account, but they're not official and they can get you banned from using TradingView. A couple of members in my community have had their accounts banned, so we decided to go away and build an alternative.
+
+### TradingKit: The Backtesting Tools
+
+**4:35** · This is tradingkit.com. It allows us to actually backtest trading strategies that are made for TradingView without actually having to use your account.
+
+**4:44** · It's free of charge, very easy to install, and we will collaborate together to build the best library of backtested strategies. We have done almost 1 million strategy backtests, and every single day there are tens of thousands of new backtests done by all of the members of the community. This works on Forex, stocks, crypto, pretty much anything you want to backtest, you'll be able to backtest with tradingkit.com. So, as I said, it is absolutely free. We're going to install that directly inside of Claude so that Claude has the tools that it needs to be able to backtest the strategies.
+
+**5:14** · And it's done in a couple of lines, no code needed. Okay, so I've already got an account. It's free, as I said. Sign up, click on account at the top here. You'll get this line of code. We're just going to copy that over to Claude. I'm going to paste it in here like this. You don't have to use Fable 5 for this. Set it to Opus 4 so you don't use all your credits, and like I said, it doesn't overthink. Set it to medium effort, hit and say, "Hey there, buddy. Could you please install this globally for me so I can backtest trading strategies?"
+
+### Installing and Authenticating TradingKit
+
+**5:45** · Once that's done, hit enter and Bob's your uncle, that will install globally so that you can backtest trading strategies. It will ask you to authenticate your access. To do so, just go back over to tradingkit.com and copy this code here. Paste it in the same chat window, hit enter and it will automatically authenticate and then allow you to backtest strategies all the way back as far as it possibly can on data. It's fast, efficient, and free of charge.
+
+**6:14** · Now once that's done, Claude has access to its own backtesting tool so that it can backtest and optimize trading strategies without using too many tokens. All of the optimization is done on the server, not the AI, and Claude has simple instructions to understand how to backtest its strategies. I said it was going to be quick. That was it. That's everything we're going to install. I'm going to now go back over to Claude and give it my prompt, asking it to use its superpowers and a slash loop. We're going to go back. We're going to set to Fable 5.1.
+
+### The Eight-Hour Research Prompt
+
+**6:47** · We're going to smarten it up up to max.
+
+**6:50** · Okay, so I'm now going to paste in here the prompt from earlier. This prompt asks Claude to go away and take top priority for 8 hours and build and create strategies. It's going to also through some documentation that you'll be able to find all of the prompts and the documentation down in the That documentation is going to explain exactly how Trader Dever works and gives it a set of rules for a trading strategy. So we're also going to ask it to go away and research.
+
+**7:20** · If I go down to the bottom here, you can see that we're creating a loop where it's going to research and create a list of strategies, pick a strategy from that list, and sweep through the parameters to find its own edge. So what this does is it creates multiple schedules. The first schedule is the 3-minute schedule where it's going to be optimizing constantly strategies to try and find the best settings. It's then going to have another 10-minute schedule.
+
+### Optimization and Research Schedules
+
+**7:48** · That 10-minute schedule is for it to go away and research strategies and make decisions on previous strategies. If Claude Fable 5.1 feels that we're in a dead end, it will stop the optimization and move on to the next strategy. Now, I've been building trading desks for research for around 3 to 5 months now, and this seems to have been the best method that I've found.
+
+**8:14** · Whether it's on Grok Bot, Claude, or any other AI agent, setting up several schedules and giving it individual tasks for each and every schedule has built me the best results.
+
+**8:27** · Okay, so I'm going to hit enter. It's going to go away go away and set up those schedules. Let's put 8 hours on our clock, and I'll be back here in a couple of seconds to give you the results. Okay, guys, we've been going for just over 4 hours. So, I thought I'd jump in and have a look at how it's actually going. One thing I didn't talk about was the control panel. Now, in those documentations that I spoke about earlier, there is full instructions for Claude to build out a full control panel.
+
+### Four-Hour Update: Dashboard and Early Results
+
+**8:57** · And I've got to say, this is one of the most impressive control panels I've seen so far. If we go back over to Claude, you can see we have a couple of promising results so far. One on LDO, one on MNTC. We have a profit factor of 1.42 and 222 closed trades with a net profit of a 347%.
+
+**9:19** · Looks pretty impressive. I'm going to leave it for another 4 hours, and I'll be back in a jiffy. Okay, \[snorts\] time is almost up. We've been backtesting for 8 hours. We've got 4, 3, 2, 1, and there you go. 8 hours of backtesting is up.
+
+### Reviewing the Final Eight-Hour Results
+
+**9:36** · Let's get back over to my screen. Let's have a look at what Claude has actually created and whether these strategies are any good. So, as you can see when we left off, we had that those two strategies that looked pretty promising.
+
+**9:47** · It has gone through a lot of time. I thought it was stuck at one point and eventually it came back to me after the four period. As you can see, I asked it if it had any good strategies and it just refused to reply to me until the actual 8 hours were up and here is what we've got so far. We have tons of back-tested strategies. This is more than I've ever seen before. Normally the AI agent, including Grok Bot that that deploys multiple agents, only comes back with one profitable setup.
+
+### 113 Strategies and More Than 410 Backtests
+
+**10:15** · So, let's go over to the control panel and have a look. So, we are back at the control panel. As you can see, the control panel is absolutely beautiful. I think it's a brilliant. Claude Fable 5S back-tested 113 strategies. 14 of them seem to have been profitable. To do this, it set up three active agents and gave it up to 22 slots and run over 410 back-tests.
+
+**10:39** · If I click on these side buttons, you can see it's made a beautiful control panel with all of the profitable strategies and I even have a table of all of the strategies that it actually back-tested.
+
+**10:55** · So, let's have a look at some of these.
+
+**10:56** · The ones that it said was the most profitable was MNT. So, let's have a look at MNT. You can see the back-testing results were all the way up to 1,698%.
+
+**11:07** · The best strategy was 244%.
+
+**11:11** · So, if I click on this one here, you can see the back-testing results highlight and we will import one of these over directly to TradingView. You can see they actually back-tested on multiple coins exactly the same strategy with different settings. MNT baseline, this is the best strategy. I think I can download it by clicking up here. Okay, for verification purposes, I've copied and pasted the strategy over to a MNTUSD chart on the 1-hour time frame. Let's go down to the main code here.
+
+### Checking the MNT Strategy in TradingView
+
+**11:42** · And as you can see, this strategy is based on the MACD histogram. Absolutely incredible.
+
+**11:51** · If I look at the main settings, we can see that we are only using the MACD histogram with zero confluence whatsoever. I cannot believe this strategy actually works. We are using an ATR band with risk to reward. The risk to reward has been at 1.5 for longs and 1.4 for shorts. Let's have a look at the backtesting results to make sure that it actually is working. And boom, there you go. All of the backtesting results all the way back to October 2023 up until today's date. You can see that we had 1,637%.
+
+### Backtest Results, Drawdown and Buy-and-Hold Comparison
+
+**12:26** · The max drawdown was 38.37%, which is very high, but we can reduce our position sizing, which obviously will reduce that the net profit as well.
+
+**12:36** · But preserving capital is obviously our most important objective. The win rate was 48.1% and the profit factor 1.278%.
+
+**12:47** · The equity curve looks absolutely amazing. Let's compare it to the buy and hold. If you were buying MNT here, you would currently be up around 30% as this strategy is currently up 1,636%.
+
+**13:01** · We absolutely smashed the benchmarks, whether it's on long or shorting the actual strategies. But I've got to say that I'm very, very impressed with Fable 5. Not only have we managed to build one profitable strategy, but multiple profitable strategies in an 8-hour period.
+
+**13:19** · Now, I've been backtesting strategies for over 5 years in my community with the 9,000 members that we are on Discord and it used to take us days on end to come up with one profitable setup and Claude Fable just nailed it in a couple of hours. Now that being said, that 99% of strategies that are back-tested will fail on live trading. I did notice on the control panel that 20 of the strategies were put into forward testing.
+
+### Forward Testing and Strategy Incubation
+
+**13:47** · So Claude even had the initiative to put these strategies into an incubation period. This allows Claude to sit on these strategies for up to 3 months retesting the strategies on a daily basis to make sure that they still work on live markets and data that they haven't seen before. Another thing that I did notice was that I've used around 15% of my model in an 8-hour period. Now my personal opinion in comparison to Fable 5, this is a lot less than what we used before.
+
+### Model Usage During the Experiment
+
+**14:18** · With Fable 5, I used up 100% of my model no problem whatsoever within a day. This has been going for 8 hours back-testing, reviewing, and creating strategies and it has only used 15%. Now personally, in my real-life situation, I use Claude Fable 5 or Opus 5 as an orchestrator.
+
+### Using Different AI Models for Different Jobs
+
+**14:37** · I use Sonnet, Crockpot, and other models to actually go and do research, build the strategies, send them back to a more capable model for actually checking and putting them into a forward testing period. This saves me a huge amount of money on tokens and generally with one makes a plan, I never ever hit my limits. So it's just creating a balance of which model actually does which job best at the right price. Now we all know that as an AI trader, inference is one of the big costs.
+
+**15:08** · That's why I think the future of AI trading is systems like this where we're actually going away back-testing, creating new strategies, and looking for our own edge on the market. Then using Claude or other systems to automate those strategies.
+
+### My Verdict: Building Strategies vs Letting AI Trade
+
+**15:24** · So, you don't have to sit in front of a computer all day long. And the final point is is do these models actually trade very well by themselves?
+
+**15:30** · Personally, I find that the inference cost on a AI model without a back-tested strategy is like giving your money to a black box, actually having to pay for it, and the latency creates even more of a problem. Whether it's Claude, Grok, whatever, they're absolutely brilliant at creating strategies and helping us to automate from A to Z. That's why I'm going to be putting all of my time and effort with you guys if you want to join me in my school. If you want to access to all of these strategies, you're going to find the links down in the description.
+
+**16:00** · Without further ado, take care, keep safe, trade like a boss, and I'll see you in the next one, guys. Take care. Goodbye.
+
+**16:05** · Come on, David. And once again, \[music\] he's gone to code a new strategy. He'll be back in just 5 minutes. RSI and MACD. \[music\] If it doesn't \[singing\] run into any bugs, there will be a new strategy.

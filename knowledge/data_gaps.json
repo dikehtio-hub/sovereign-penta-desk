@@ -1,187 +1,390 @@
 {
- "_about": "Known intervals in which a desk's measurement stream did not record. Compiled into wiki/events/data_gap_<id>.md by knowledge.ingest.data_gaps; lint L12 warns when an evaluation window overlaps a gap it does not acknowledge. Append, never edit a closed gap.",
- "gaps": [
-  {
-   "id": "2026-09-06_hl_asset_snapshots",
-   "desk": 1,
-   "start_utc": "2026-09-06T15:46:10Z",
-   "end_utc": "2026-09-07T01:05:10Z",
-   "tables": [
-    "asset_snapshots (no rows written)",
-    "latest_snapshots (stale for the whole interval)",
-    "cascade_excursions (no forward excursions measured: 'persisted 0 windows / 0 events' on every maintenance pass)",
-    "basis_realised_windows (0 windows opened inside; 1,764 overlapping windows carry coverage 0.61-0.99)"
-   ],
-   "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: para:CIFR was listed on the exchange (para DEX) with no row in assets; the collector syncs assets only at startup and writes each batch as one transaction, so one unknown coin rejected all 442 rows per pass. The process never crashed, so the supervisor's crash policy never fired. Round 119.",
-   "detected_utc": "2026-09-07T00:55:00Z",
-   "resolved_utc": "2026-09-07T01:05:10Z",
-   "resolution": "Collector restarted on the operator's word (supervisor 24504, collector 60756); assets re-synced (441 -> 442); stop_collector.bat fixed (it had never killed anything); hardening staged on branch feat/collector-hardening per Ruling R119-1.B.",
-   "affected_evaluations": [
-    "lead_lag Tier 2 and Tier 2b runs ingested 2026-09-07T02:30Z (Round 120): BTC prices come from asset_snapshots, so about 9.3 h of the 24 h window had no price series. The registration's readiness bar covers the tagged Polymarket stamps only. The readings stand as recorded; this caveat is now attached to them.",
-    "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
-    "basis windows: none opened inside the gap; the 1,764 that span it are marked by their own coverage column."
-   ],
-   "round": 119
-  },
-  {
-   "id": "2026-09-08_hl_asset_snapshots_2",
-   "desk": 1,
-   "start_utc": "2026-09-08T16:01:22Z",
-   "end_utc": "2026-09-09T18:26:39Z",
-   "tables": [
-    "asset_snapshots (no rows written; last old row 16:01:22.392Z, first new row 18:26:39.445Z)",
-    "latest_snapshots (stale for the whole interval)",
-    "cascade_excursions (no forward excursions measured inside the interval)",
-    "basis_realised_windows (no windows opened inside; overlapping windows carry their own coverage column)"
-   ],
-   "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: USELESS (main DEX) and para:TREAD (para DEX) were listed after the 2026-09-07 01:05Z restart with no row in assets (442 rows), and the pre-hardening collector synced assets only at startup and wrote each batch as one transaction, so two unknown coins rejected every row of every pass (8,206 errors in collector.log from 2026-09-08 12:01:37 EDT). The process never crashed (supervisor 24504 / collector 60756 stayed alive), so the crash-only policy never fired; collector_service.jsonl logged coverage_pct 0.0, samples 0, restarts 0 every 15 min. Second occurrence of the Round 119 failure; the fix had been staged on feat/collector-hardening since Round 121. Round 125.",
-   "detected_utc": "2026-09-09T18:03:00Z",
-   "resolved_utc": "2026-09-09T18:26:39Z",
-   "resolution": "Hardening 70bd232 merged to master as d3df1cb (8/8 tests) and deployed on the operator's authorisation (Ruling R125-1.B): stop_collector.bat at 18:26:30Z (pids 24504/60756 gone), start_collector.bat at 18:26:34Z (supervisor 16844, collector 74972); universe re-synced 442 -> 444; first new snapshot 18:26:39.445Z. The hardened collector re-syncs the universe every 60 polls and at once after a batch skips an unknown coin, inserts row-by-row, and the supervisor carries a silent-failure watchdog. Readiness gate hardened the same round (R125-1.C): cross_market.lead_lag --check-data now judges the price stream too.",
-   "affected_evaluations": [
-    "lead_lag Tier 2 and Tier 2b run 3 (executed 2026-09-09T18:02Z over --since 2026-09-08T03:27:29Z, all four no-lead): 26.0 h of the 38.5 h window had no price series; declared VOID by Ruling R125-1.A, never ingested, the four _run3.json artifacts discarded; run 3 re-bound to a fresh disjoint window from 2026-09-09T18:26:39Z.",
-    "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
-    "basis windows: none opened inside the gap; overlapping windows are marked by their own coverage column."
-   ],
-   "round": 125
-  },
-  {
-   "id": "2026-09-11_hl_sleep",
-   "desk": 1,
-   "start_utc": "2026-09-11T05:43:07Z",
-   "end_utc": "2026-09-11T16:27:59Z",
-   "tables": [
-    "asset_snapshots (no rows 05:43:07.623Z -> 16:27:59.397Z, 10.75 h)",
-    "trades (WebSocket silent 05:43:14Z -> 12:49Z, 7.1 h; then a modern-standby trickle of 5-42 prints/h until 16:20:43Z; largest gaps 25,573 s, 1,680 s, 1,392 s)",
-    "latest_snapshots (stale for the whole interval)",
-    "cascade_excursions / basis_realised_windows (no forward measurements inside; overlapping basis windows carry their coverage column)"
-   ],
-   "cause": "The laptop entered sleep at 2026-09-11 01:43:25 EDT (Kernel-Power 42 after a user-mode SetSuspendState call at 01:43:23 - lid or power menu) and returned from low power at 12:21:50 EDT (Kernel-Power 1). Every daemon died with it: supervisor, collector, watcher, exporter, all five telemetry exporters (telemetry_health 0/5 at 12:24). The machine was not rebooted (last boot 09-04). resume_all.bat relaunched everything at 12:27:53 EDT (watcher 31600, exporter 69348). No 24 h series was accumulating (Item 18 Phase 1 closed 09-10; Phase 2 needs only the 09-16 window), so no registered evaluation is affected - the first sleep gap since the standing keep-awake rule, taken while nothing was owed. Round 127 (pre-round).",
-   "detected_utc": "2026-09-11T16:24:00Z",
-   "resolved_utc": "2026-09-11T16:27:59Z",
-   "resolution": "resume_all.bat at 12:27:53 EDT; collector newest snapshot 0.0 min at 12:28; exporter and watcher RUNNING on fresh pids; telemetry 5/5. Nothing else touched (freeze approaching 09-15).",
-   "affected_evaluations": [
-    "none registered: no lead-lag window was open; the Phase 2 event study reads only [T-60 min, T+300 s] around 2026-09-16T18:00Z",
-    "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions measured inside; their gates clear later by the gap length",
-    "basis windows: overlapping windows are marked by their own coverage column"
-   ],
-   "round": 127
-  },
-  {
-   "id": "2026-09-11_polymarket_drops_sleep",
-   "desk": 3,
-   "start_utc": "2026-09-11T05:38:27Z",
-   "end_utc": "2026-09-11T16:27:57Z",
-   "tables": [
-    "Sports_Desk/data/polymarket_drops stamped drops (last polymarket_macro_20260911T053827Z, first new polymarket_macro_20260911T162757Z; 10.8 h with no stamp)"
-   ],
-   "cause": "Same sleep as 2026-09-11_hl_sleep: the watcher (pid 17688 since 09-05) died when the laptop slept at 01:43 EDT; relaunched by resume_all.bat at 12:27:53 EDT as pid 31600.",
-   "detected_utc": "2026-09-11T16:24:00Z",
-   "resolved_utc": "2026-09-11T16:27:57Z",
-   "resolution": "resume_all.bat; watcher RUNNING; stamps resumed at the 5-minute cadence.",
-   "affected_evaluations": [
-    "none registered: Item 18 Phase 1 is closed; the tagged-stamp series restarts a new continuous segment from 16:27:57Z, which the two-stream gate will report on any future unbounded check"
-   ],
-   "round": 127
-  },
-  {
-   "id": "2026-09-12_hl_shutdown",
-   "desk": 1,
-   "start_utc": "2026-09-12T05:46:48Z",
-   "end_utc": "2026-09-12T15:21:06Z",
-   "tables": [
-    "asset_snapshots (no rows 05:49:29Z -> 15:21:06Z, 9.53 h; point-in-time polls, unrecoverable)",
-    "liquidation_events (no rows 05:46:48Z -> 15:20:53Z, 9.57 h; unrecoverable)",
-    "trades (LARGELY RECOVERED: exchange-side timestamps let the collector backfill on resume, so the residual gap is only 05:49:36Z -> 06:58:22Z, 1.15 h. The backfill reached back to ~06:58 and no further, consistent with an API lookback limit)",
-    "latest_snapshots (stale for the whole interval)",
-    "cascade_excursions (NOT part of this event: its largest nearby gap is 04:08:21Z -> 04:57:13Z, 0.81 h, which predates the shutdown)"
-   ],
-   "cause": "Planned overnight shutdown, taken deliberately after confirming the autoresearch campaign reads only historical archive data and so was unaffected. The collector supervisor and its child were stopped and the machine powered off; resume_all.bat brought the pipeline back at 11:21 EDT (supervisor pid 54884, collector 88176). This was the first shutdown after run_collector_service.py gained a --stop flag (commit ca02ca7): the WAL was checkpointed and the sentinel cleaned up, though the then-running supervisor predated the sentinel and so took the forced path, exactly as that commit predicted.",
-   "detected_utc": "2026-09-12T15:22:00Z",
-   "resolved_utc": "2026-09-12T15:21:06Z",
-   "resolution": "resume_all.bat; supervisor RUNNING pid 54884 with child 88176; --status confirmed running:true after a brief startup race in which the pid lock was not yet held. Trades partially self-healed by backfill; snapshots and liquidations did not and cannot.",
-   "affected_evaluations": [
-    "none registered: Campaign 4 autoresearch reads data/continuous (historical Binance archive, research span ends 2026-09-01) and is not fed by this collector",
-    "Item 18 Phase 2 needs the 09-16 window, which is unaffected"
-   ],
-   "round": 127
-  },
-  {
-   "id": "2026-09-12_polymarket_drops_shutdown",
-   "desk": 3,
-   "start_utc": "2026-09-12T05:54:25Z",
-   "end_utc": "2026-09-12T15:21:01Z",
-   "tables": [
-    "Sports_Desk/data/polymarket_drops stamped drops (last stamp 20260912T055425Z, first new 20260912T152101Z; 9.44 h with no stamp)"
-   ],
-   "cause": "Same planned shutdown as 2026-09-12_hl_shutdown. The watcher died with the machine and was relaunched by resume_all.bat as pid 62448.",
-   "detected_utc": "2026-09-12T15:22:00Z",
-   "resolved_utc": "2026-09-12T15:21:01Z",
-   "resolution": "resume_all.bat; watcher RUNNING pid 62448; stamps resumed at the 5-minute cadence.",
-   "affected_evaluations": [
-    "none registered: the tagged-stamp series restarts a new continuous segment from 15:21:01Z, which the two-stream gate will report on any future unbounded check"
-   ],
-   "round": 127
-  },
-  {
-   "id": "2026-09-13_hl_sleep",
-   "desk": 1,
-   "start_utc": "2026-09-13T07:45:38Z",
-   "end_utc": "2026-09-13T16:45:46Z",
-   "tables": [
-    "asset_snapshots (no rows 07:45:38Z -> 16:45:46Z, 9.00 h; point-in-time polls, unrecoverable)",
-    "liquidation_clusters (no rows 07:45:38Z -> 16:45:46Z, 9.00 h; unrecoverable)",
-    "orderbook_snapshots (no rows 07:45:29Z -> 16:47:58Z, 9.04 h; unrecoverable)",
-    "trades (EFFECTIVELY EMPTY: the subscribe-time backfill on resume delivered 998 rows spread 09:04Z -> 16:44Z against a live rate of ~60,000 an hour, so the interval holds well under 1 % of what was traded; unrecoverable)",
-    "liquidation_events (4 rows in the interval, 10:03Z and 14:27Z; effectively empty, unrecoverable)",
-    "latest_snapshots (stale for the whole interval)"
-   ],
-   "cause": "Overnight sleep, not a shutdown. The operator ran shutdown_all.bat and then the machine entered sleep at 03:45:55 EDT (Kernel-Power 42; a lid close or power-menu sleep) - the same shape as 2026-09-11 - and resumed at 12:41 EDT. The collector's last persisted snapshot was 03:45:40 EDT (07:45:38Z). resume_all.bat at 12:45 EDT relaunched the supervisor (pid 83292, service_start 16:45:43Z); its first child (42868) was restarted 8 s later by the silent-failure watchdog, which saw the 9-hour-old newest snapshot before the first new one landed, and the second child (64720) has run since. First new snapshot 16:45:46Z.",
-   "detected_utc": "2026-09-13T16:50:00Z",
-   "resolved_utc": "2026-09-13T16:45:46Z",
-   "resolution": "resume_all.bat; supervisor RUNNING pid 83292 with child 64720; snapshots every ~9 s across 445 assets confirmed at 16:48Z; fomc_rehearsal --online 33 checks 0 FAIL at 16:51Z.",
-   "affected_evaluations": [
-    "none registered: the FOMC drill of 2026-09-16 has not run; the Item 18 lead-lag price series restarts a new continuous segment from 16:45:46Z (exporter ETA 2026-09-14T16:45Z), which the two-stream gate will report on any future unbounded check"
-   ],
-   "round": 128
-  },
-  {
-   "id": "2026-09-13_polymarket_drops_sleep",
-   "desk": 3,
-   "start_utc": "2026-09-13T07:45:06Z",
-   "end_utc": "2026-09-13T16:45:16Z",
-   "tables": [
-    "Sports_Desk/data/polymarket_drops stamped drops (last stamps polymarket_macro_20260913T074506Z / polymarket_sports_20260913T074506Z, first new 20260913T164516Z; 9.00 h with no stamp)"
-   ],
-   "cause": "Same sleep as 2026-09-13_hl_sleep: the watcher (pid 62448 since 09-12) died with the sleep and was relaunched by resume_all.bat at 12:45 EDT as pid 95876 (16:45:12Z).",
-   "detected_utc": "2026-09-13T16:50:00Z",
-   "resolved_utc": "2026-09-13T16:45:16Z",
-   "resolution": "resume_all.bat; watcher RUNNING pid 95876; stamps resumed at the 5-minute cadence (macro and sports stamps 3.4 min old at 16:49Z).",
-   "affected_evaluations": [
-    "none registered: the tagged-stamp series restarts a new continuous segment from 16:45:16Z, which the two-stream gate will report on any future unbounded check"
-   ],
-   "round": 128
-  },
-  {
-   "id": "2026-09-11_hl_trade_batches_defect_col_001",
-   "desk": 1,
-   "start_utc": "2026-09-11T16:37:01Z",
-   "end_utc": "2026-09-13T16:56:47Z",
-   "tables": [
-    "trades (OPEN, PARTIAL: 181 flush batches discarded to date - 4,963 rows on 09-11, 5,460 on 09-12, 14,943 on 09-13 (14,226 before the sleep, 717 after the 16:45Z restart) - about 1 % of the ~60,000 trades an hour the feed records; each loss is a 10-second batch, unrecoverable)",
-    "liquidation_events (OPEN, PARTIAL: 99 events discarded in the same batches - 46 / 11 / 42 by day; unrecoverable)",
-    "orderbook_snapshots (45 sampling passes failed on the same lock; the 30-second cadence resumes on the next pass)",
-    "whale_wallets (37 persist failures on the same lock)",
-    "asset_snapshots (NOT affected: the 1 s price stream writes on a separate path and shows no hole in this interval outside the registered sleep gaps)"
-   ],
-   "cause": "DEFECT-COL-001 (Antigravity Section 57). Every ~7 minutes storage/repository.py prune_old_data runs five DELETEs in one transaction on the 8.1 GB database and run_maintenance follows with checkpoint(TRUNCATE); the exclusive lock outlasts the 30-second busy_timeout every connection already sets, so the flush thread's write fails with 'database is locked'. collectors/market_collector.py _flush_loop swaps the trade and liquidation buffers out BEFORE writing and only logs on failure (~line 351), so the swapped batch is dropped. First failed flush 2026-09-11 12:37:01 EDT, 86 seconds before the first logged maintenance pass; clusters of lock errors precede each pass since. Errors continue after the 09-13 restart (2 batches, 717 trades, at 16:55-16:56Z). Found in the 2026-09-13 morning start check; recorded nowhere before.",
-   "detected_utc": "2026-09-13T16:55:00Z",
-   "resolved_utc": null,
-   "resolution": "OPEN. Section 57 rules the fix for after the 2026-09-16 FOMC drill (daemon freeze): restore an unwritten batch to the head of its buffer on a transient write error, bounded by MAX_BUFFERED_TRADES / MAX_BUFFERED_LIQ_EVENTS; chunk the prunes into small transactions (Python's SQLite 3.45.3 is built without DELETE ... LIMIT, so chunk by rowid IN (SELECT rowid ... LIMIT n)); checkpoint PASSIVE or RESTART during collection. end_utc is the last measured failed flush and is extended when the fix deploys - this is an open gap, not a closed one.",
-   "affected_evaluations": [
-    "any evaluation over this interval that reads trades or liquidation_events - cascade_excursions and basis_realised_windows are persisted from those tables by storage/incremental_persistence - runs on streams missing ~1 % of trades and 99 liquidation events; asset_snapshots-based evaluations (Item 18 lead-lag, the FOMC drill) are unaffected"
-   ],
-   "round": 128
-  }
- ]
+  "_about": "Known intervals in which a desk's measurement stream did not record. Compiled into wiki/events/data_gap_<id>.md by knowledge.ingest.data_gaps; lint L12 warns when an evaluation window overlaps a gap it does not acknowledge. Append, never edit a closed gap.",
+  "gaps": [
+    {
+      "id": "2026-09-06_hl_asset_snapshots",
+      "desk": 1,
+      "start_utc": "2026-09-06T15:46:10Z",
+      "end_utc": "2026-09-07T01:05:10Z",
+      "tables": [
+        "asset_snapshots (no rows written)",
+        "latest_snapshots (stale for the whole interval)",
+        "cascade_excursions (no forward excursions measured: 'persisted 0 windows / 0 events' on every maintenance pass)",
+        "basis_realised_windows (0 windows opened inside; 1,764 overlapping windows carry coverage 0.61-0.99)"
+      ],
+      "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: para:CIFR was listed on the exchange (para DEX) with no row in assets; the collector syncs assets only at startup and writes each batch as one transaction, so one unknown coin rejected all 442 rows per pass. The process never crashed, so the supervisor's crash policy never fired. Round 119.",
+      "detected_utc": "2026-09-07T00:55:00Z",
+      "resolved_utc": "2026-09-07T01:05:10Z",
+      "resolution": "Collector restarted on the operator's word (supervisor 24504, collector 60756); assets re-synced (441 -> 442); stop_collector.bat fixed (it had never killed anything); hardening staged on branch feat/collector-hardening per Ruling R119-1.B.",
+      "affected_evaluations": [
+        "lead_lag Tier 2 and Tier 2b runs ingested 2026-09-07T02:30Z (Round 120): BTC prices come from asset_snapshots, so about 9.3 h of the 24 h window had no price series. The registration's readiness bar covers the tagged Polymarket stamps only. The readings stand as recorded; this caveat is now attached to them.",
+        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
+        "basis windows: none opened inside the gap; the 1,764 that span it are marked by their own coverage column."
+      ],
+      "round": 119
+    },
+    {
+      "id": "2026-09-08_hl_asset_snapshots_2",
+      "desk": 1,
+      "start_utc": "2026-09-08T16:01:22Z",
+      "end_utc": "2026-09-09T18:26:39Z",
+      "tables": [
+        "asset_snapshots (no rows written; last old row 16:01:22.392Z, first new row 18:26:39.445Z)",
+        "latest_snapshots (stale for the whole interval)",
+        "cascade_excursions (no forward excursions measured inside the interval)",
+        "basis_realised_windows (no windows opened inside; overlapping windows carry their own coverage column)"
+      ],
+      "cause": "Every 10-second snapshot batch failed with FOREIGN KEY constraint failed: USELESS (main DEX) and para:TREAD (para DEX) were listed after the 2026-09-07 01:05Z restart with no row in assets (442 rows), and the pre-hardening collector synced assets only at startup and wrote each batch as one transaction, so two unknown coins rejected every row of every pass (8,206 errors in collector.log from 2026-09-08 12:01:37 EDT). The process never crashed (supervisor 24504 / collector 60756 stayed alive), so the crash-only policy never fired; collector_service.jsonl logged coverage_pct 0.0, samples 0, restarts 0 every 15 min. Second occurrence of the Round 119 failure; the fix had been staged on feat/collector-hardening since Round 121. Round 125.",
+      "detected_utc": "2026-09-09T18:03:00Z",
+      "resolved_utc": "2026-09-09T18:26:39Z",
+      "resolution": "Hardening 70bd232 merged to master as d3df1cb (8/8 tests) and deployed on the operator's authorisation (Ruling R125-1.B): stop_collector.bat at 18:26:30Z (pids 24504/60756 gone), start_collector.bat at 18:26:34Z (supervisor 16844, collector 74972); universe re-synced 442 -> 444; first new snapshot 18:26:39.445Z. The hardened collector re-syncs the universe every 60 polls and at once after a batch skips an unknown coin, inserts row-by-row, and the supervisor carries a silent-failure watchdog. Readiness gate hardened the same round (R125-1.C): cross_market.lead_lag --check-data now judges the price stream too.",
+      "affected_evaluations": [
+        "lead_lag Tier 2 and Tier 2b run 3 (executed 2026-09-09T18:02Z over --since 2026-09-08T03:27:29Z, all four no-lead): 26.0 h of the 38.5 h window had no price series; declared VOID by Ruling R125-1.A, never ingested, the four _run3.json artifacts discarded; run 3 re-bound to a fresh disjoint window from 2026-09-09T18:26:39Z.",
+        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions were measured inside the gap; their window gates clear later by its length.",
+        "basis windows: none opened inside the gap; overlapping windows are marked by their own coverage column."
+      ],
+      "round": 125
+    },
+    {
+      "id": "2026-09-11_hl_sleep",
+      "desk": 1,
+      "start_utc": "2026-09-11T05:43:07Z",
+      "end_utc": "2026-09-11T16:27:59Z",
+      "tables": [
+        "asset_snapshots (no rows 05:43:07.623Z -> 16:27:59.397Z, 10.75 h)",
+        "trades (WebSocket silent 05:43:14Z -> 12:49Z, 7.1 h; then a modern-standby trickle of 5-42 prints/h until 16:20:43Z; largest gaps 25,573 s, 1,680 s, 1,392 s)",
+        "latest_snapshots (stale for the whole interval)",
+        "cascade_excursions / basis_realised_windows (no forward measurements inside; overlapping basis windows carry their coverage column)"
+      ],
+      "cause": "The laptop entered sleep at 2026-09-11 01:43:25 EDT (Kernel-Power 42 after a user-mode SetSuspendState call at 01:43:23 - lid or power menu) and returned from low power at 12:21:50 EDT (Kernel-Power 1). Every daemon died with it: supervisor, collector, watcher, exporter, all five telemetry exporters (telemetry_health 0/5 at 12:24). The machine was not rebooted (last boot 09-04). resume_all.bat relaunched everything at 12:27:53 EDT (watcher 31600, exporter 69348). No 24 h series was accumulating (Item 18 Phase 1 closed 09-10; Phase 2 needs only the 09-16 window), so no registered evaluation is affected - the first sleep gap since the standing keep-awake rule, taken while nothing was owed. Round 127 (pre-round).",
+      "detected_utc": "2026-09-11T16:24:00Z",
+      "resolved_utc": "2026-09-11T16:27:59Z",
+      "resolution": "resume_all.bat at 12:27:53 EDT; collector newest snapshot 0.0 min at 12:28; exporter and watcher RUNNING on fresh pids; telemetry 5/5. Nothing else touched (freeze approaching 09-15).",
+      "affected_evaluations": [
+        "none registered: no lead-lag window was open; the Phase 2 event study reads only [T-60 min, T+300 s] around 2026-09-16T18:00Z",
+        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions measured inside; their gates clear later by the gap length",
+        "basis windows: overlapping windows are marked by their own coverage column"
+      ],
+      "round": 127
+    },
+    {
+      "id": "2026-09-11_polymarket_drops_sleep",
+      "desk": 3,
+      "start_utc": "2026-09-11T05:38:27Z",
+      "end_utc": "2026-09-11T16:27:57Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last polymarket_macro_20260911T053827Z, first new polymarket_macro_20260911T162757Z; 10.8 h with no stamp)"
+      ],
+      "cause": "Same sleep as 2026-09-11_hl_sleep: the watcher (pid 17688 since 09-05) died when the laptop slept at 01:43 EDT; relaunched by resume_all.bat at 12:27:53 EDT as pid 31600.",
+      "detected_utc": "2026-09-11T16:24:00Z",
+      "resolved_utc": "2026-09-11T16:27:57Z",
+      "resolution": "resume_all.bat; watcher RUNNING; stamps resumed at the 5-minute cadence.",
+      "affected_evaluations": [
+        "none registered: Item 18 Phase 1 is closed; the tagged-stamp series restarts a new continuous segment from 16:27:57Z, which the two-stream gate will report on any future unbounded check"
+      ],
+      "round": 127
+    },
+    {
+      "id": "2026-09-12_hl_shutdown",
+      "desk": 1,
+      "start_utc": "2026-09-12T05:46:48Z",
+      "end_utc": "2026-09-12T15:21:06Z",
+      "tables": [
+        "asset_snapshots (no rows 05:49:29Z -> 15:21:06Z, 9.53 h; point-in-time polls, unrecoverable)",
+        "liquidation_events (no rows 05:46:48Z -> 15:20:53Z, 9.57 h; unrecoverable)",
+        "trades (LARGELY RECOVERED: exchange-side timestamps let the collector backfill on resume, so the residual gap is only 05:49:36Z -> 06:58:22Z, 1.15 h. The backfill reached back to ~06:58 and no further, consistent with an API lookback limit)",
+        "latest_snapshots (stale for the whole interval)",
+        "cascade_excursions (NOT part of this event: its largest nearby gap is 04:08:21Z -> 04:57:13Z, 0.81 h, which predates the shutdown)"
+      ],
+      "cause": "Planned overnight shutdown, taken deliberately after confirming the autoresearch campaign reads only historical archive data and so was unaffected. The collector supervisor and its child were stopped and the machine powered off; resume_all.bat brought the pipeline back at 11:21 EDT (supervisor pid 54884, collector 88176). This was the first shutdown after run_collector_service.py gained a --stop flag (commit ca02ca7): the WAL was checkpointed and the sentinel cleaned up, though the then-running supervisor predated the sentinel and so took the forced path, exactly as that commit predicted.",
+      "detected_utc": "2026-09-12T15:22:00Z",
+      "resolved_utc": "2026-09-12T15:21:06Z",
+      "resolution": "resume_all.bat; supervisor RUNNING pid 54884 with child 88176; --status confirmed running:true after a brief startup race in which the pid lock was not yet held. Trades partially self-healed by backfill; snapshots and liquidations did not and cannot.",
+      "affected_evaluations": [
+        "none registered: Campaign 4 autoresearch reads data/continuous (historical Binance archive, research span ends 2026-09-01) and is not fed by this collector",
+        "Item 18 Phase 2 needs the 09-16 window, which is unaffected"
+      ],
+      "round": 127
+    },
+    {
+      "id": "2026-09-12_polymarket_drops_shutdown",
+      "desk": 3,
+      "start_utc": "2026-09-12T05:54:25Z",
+      "end_utc": "2026-09-12T15:21:01Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last stamp 20260912T055425Z, first new 20260912T152101Z; 9.44 h with no stamp)"
+      ],
+      "cause": "Same planned shutdown as 2026-09-12_hl_shutdown. The watcher died with the machine and was relaunched by resume_all.bat as pid 62448.",
+      "detected_utc": "2026-09-12T15:22:00Z",
+      "resolved_utc": "2026-09-12T15:21:01Z",
+      "resolution": "resume_all.bat; watcher RUNNING pid 62448; stamps resumed at the 5-minute cadence.",
+      "affected_evaluations": [
+        "none registered: the tagged-stamp series restarts a new continuous segment from 15:21:01Z, which the two-stream gate will report on any future unbounded check"
+      ],
+      "round": 127
+    },
+    {
+      "id": "2026-09-13_hl_sleep",
+      "desk": 1,
+      "start_utc": "2026-09-13T07:45:38Z",
+      "end_utc": "2026-09-13T16:45:46Z",
+      "tables": [
+        "asset_snapshots (no rows 07:45:38Z -> 16:45:46Z, 9.00 h; point-in-time polls, unrecoverable)",
+        "liquidation_clusters (no rows 07:45:38Z -> 16:45:46Z, 9.00 h; unrecoverable)",
+        "orderbook_snapshots (no rows 07:45:29Z -> 16:47:58Z, 9.04 h; unrecoverable)",
+        "trades (EFFECTIVELY EMPTY: the subscribe-time backfill on resume delivered 998 rows spread 09:04Z -> 16:44Z against a live rate of ~60,000 an hour, so the interval holds well under 1 % of what was traded; unrecoverable)",
+        "liquidation_events (4 rows in the interval, 10:03Z and 14:27Z; effectively empty, unrecoverable)",
+        "latest_snapshots (stale for the whole interval)"
+      ],
+      "cause": "Overnight sleep, not a shutdown. The operator ran shutdown_all.bat and then the machine entered sleep at 03:45:55 EDT (Kernel-Power 42; a lid close or power-menu sleep) - the same shape as 2026-09-11 - and resumed at 12:41 EDT. The collector's last persisted snapshot was 03:45:40 EDT (07:45:38Z). resume_all.bat at 12:45 EDT relaunched the supervisor (pid 83292, service_start 16:45:43Z); its first child (42868) was restarted 8 s later by the silent-failure watchdog, which saw the 9-hour-old newest snapshot before the first new one landed, and the second child (64720) has run since. First new snapshot 16:45:46Z.",
+      "detected_utc": "2026-09-13T16:50:00Z",
+      "resolved_utc": "2026-09-13T16:45:46Z",
+      "resolution": "resume_all.bat; supervisor RUNNING pid 83292 with child 64720; snapshots every ~9 s across 445 assets confirmed at 16:48Z; fomc_rehearsal --online 33 checks 0 FAIL at 16:51Z.",
+      "affected_evaluations": [
+        "none registered: the FOMC drill of 2026-09-16 has not run; the Item 18 lead-lag price series restarts a new continuous segment from 16:45:46Z (exporter ETA 2026-09-14T16:45Z), which the two-stream gate will report on any future unbounded check"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-13_polymarket_drops_sleep",
+      "desk": 3,
+      "start_utc": "2026-09-13T07:45:06Z",
+      "end_utc": "2026-09-13T16:45:16Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last stamps polymarket_macro_20260913T074506Z / polymarket_sports_20260913T074506Z, first new 20260913T164516Z; 9.00 h with no stamp)"
+      ],
+      "cause": "Same sleep as 2026-09-13_hl_sleep: the watcher (pid 62448 since 09-12) died with the sleep and was relaunched by resume_all.bat at 12:45 EDT as pid 95876 (16:45:12Z).",
+      "detected_utc": "2026-09-13T16:50:00Z",
+      "resolved_utc": "2026-09-13T16:45:16Z",
+      "resolution": "resume_all.bat; watcher RUNNING pid 95876; stamps resumed at the 5-minute cadence (macro and sports stamps 3.4 min old at 16:49Z).",
+      "affected_evaluations": [
+        "none registered: the tagged-stamp series restarts a new continuous segment from 16:45:16Z, which the two-stream gate will report on any future unbounded check"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-11_hl_trade_batches_defect_col_001",
+      "desk": 1,
+      "start_utc": "2026-09-11T16:37:01Z",
+      "end_utc": "2026-09-13T16:56:47Z",
+      "tables": [
+        "trades (OPEN, PARTIAL: 181 flush batches discarded to date - 4,963 rows on 09-11, 5,460 on 09-12, 14,943 on 09-13 (14,226 before the sleep, 717 after the 16:45Z restart) - about 1 % of the ~60,000 trades an hour the feed records; each loss is a 10-second batch, unrecoverable)",
+        "liquidation_events (OPEN, PARTIAL: 99 events discarded in the same batches - 46 / 11 / 42 by day; unrecoverable)",
+        "orderbook_snapshots (45 sampling passes failed on the same lock; the 30-second cadence resumes on the next pass)",
+        "whale_wallets (37 persist failures on the same lock)",
+        "asset_snapshots (NOT affected: the 1 s price stream writes on a separate path and shows no hole in this interval outside the registered sleep gaps)"
+      ],
+      "cause": "DEFECT-COL-001 (Antigravity Section 57). Every ~7 minutes storage/repository.py prune_old_data runs five DELETEs in one transaction on the 8.1 GB database and run_maintenance follows with checkpoint(TRUNCATE); the exclusive lock outlasts the 30-second busy_timeout every connection already sets, so the flush thread's write fails with 'database is locked'. collectors/market_collector.py _flush_loop swaps the trade and liquidation buffers out BEFORE writing and only logs on failure (~line 351), so the swapped batch is dropped. First failed flush 2026-09-11 12:37:01 EDT, 86 seconds before the first logged maintenance pass; clusters of lock errors precede each pass since. Errors continue after the 09-13 restart (2 batches, 717 trades, at 16:55-16:56Z). Found in the 2026-09-13 morning start check; recorded nowhere before.",
+      "detected_utc": "2026-09-13T16:55:00Z",
+      "resolved_utc": null,
+      "resolution": "OPEN. Section 57 rules the fix for after the 2026-09-16 FOMC drill (daemon freeze): restore an unwritten batch to the head of its buffer on a transient write error, bounded by MAX_BUFFERED_TRADES / MAX_BUFFERED_LIQ_EVENTS; chunk the prunes into small transactions (Python's SQLite 3.45.3 is built without DELETE ... LIMIT, so chunk by rowid IN (SELECT rowid ... LIMIT n)); checkpoint PASSIVE or RESTART during collection. end_utc is the last measured failed flush and is extended when the fix deploys - this is an open gap, not a closed one.",
+      "affected_evaluations": [
+        "any evaluation over this interval that reads trades or liquidation_events - cascade_excursions and basis_realised_windows are persisted from those tables by storage/incremental_persistence - runs on streams missing ~1 % of trades and 99 liquidation events; asset_snapshots-based evaluations (Item 18 lead-lag, the FOMC drill) are unaffected"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-17_hl_shutdown_sleep",
+      "desk": 1,
+      "start_utc": "2026-09-17T04:27:31Z",
+      "end_utc": "2026-09-17T19:25:19Z",
+      "tables": [
+        "asset_snapshots (no rows 04:27:27.270Z -> 19:25:19.410Z, 14.97 h; point-in-time polls, unrecoverable)",
+        "liquidation_clusters (no rows 04:27:27.726Z -> 19:25:19.653Z, 14.97 h; unrecoverable)",
+        "orderbook_snapshots (no rows 04:26:42.534Z -> 19:27:28.175Z, 15.01 h; unrecoverable)",
+        "trades (EFFECTIVELY EMPTY: 1,373 subscribe-time backfill rows spread 15:42:23Z -> 19:25:24Z against a live rate of ~160,000 an hour (159,771 rows in 03:00-04:00Z on 09-18), so the interval holds under 0.1 % of what was traded; unrecoverable)",
+        "liquidation_events (0 rows 04:27:06.724Z -> 19:25:47.039Z; unrecoverable)",
+        "latest_snapshots (stale for the whole interval)"
+      ],
+      "cause": "Operator night shutdown followed by sleep, found and registered a day late. shutdown_all.bat ran at 00:27 EDT Wed 09-17: stop_file_observed 04:27:31.862Z, collector_stopped_by_operator after 293,899 s (3.4 days) of runtime. The laptop then slept at 04:53:53Z (Kernel-Power 42, RuntimeBroker-initiated power transition at 04:53:40Z), returned from low power at 16:32:33Z (12:32 EDT), slept again 16:39:08Z and returned 18:51:23Z (14:51 EDT). resume_all.bat at 15:25 EDT: service_start 19:25:15.708Z pid 10968; the first child (53556) was restarted 6 s later by the silent-failure watchdog, which saw the 897.9-minute-old newest snapshot before the first new one was counted (same shape as 2026-09-13_hl_sleep), and the second child (89344) ran from 19:25:24.5Z until the 01:30Z reboot (2026-09-18_hl_reboot). First new snapshot 19:25:19.410Z. Not registered on the day: no AGENTS.md or HOMEWORK.md line mentions the 09-17 stop or resume; discovered on 09-18 from collector_service.jsonl while registering that night's gap. Section 94 era (rounds frozen at 128 since the section-numbered exchange took over).",
+      "detected_utc": "2026-09-18T20:15:00Z",
+      "resolved_utc": "2026-09-17T19:25:19Z",
+      "resolution": "resume_all.bat 09-17 15:25 EDT (operator). Registered retroactively 09-18 16:20 EDT by Claude Code from collector_service.jsonl, the Windows System log and hyperliquid_data.db bounds.",
+      "affected_evaluations": [
+        "none registered: the FOMC drill window [2026-09-16T17:00Z, 18:05Z] was complete and ingested before the stop; Phase 2 event 2 is the CPI print of 2026-10-14",
+        "the Item 18 lead-lag price series restarts a new continuous segment from 19:25:19Z; it was cut again by 2026-09-18_hl_reboot and 2026-09-18_hl_shutdown_sleep before reaching 24 h",
+        "OPEN NOTE for the auditor: the cross-market exporter's lead-lag gate reported 'price stream has 1 hole(s) > 60 min ... largest 61 min: 2026-09-17T18:24:25Z -> 2026-09-17T19:25:19Z', but asset_snapshots holds no row between 04:27:27Z and 19:25:19Z, so the 18:24:25Z point is not a database row; where the exporter's series got it is unexplained"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-17_polymarket_drops_shutdown_sleep",
+      "desk": 3,
+      "start_utc": "2026-09-17T04:51:38Z",
+      "end_utc": "2026-09-17T19:25:25Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last stamps polymarket_macro_20260917T045138Z / polymarket_sports at the same poll, first new polymarket_sports_20260917T192524Z and polymarket_macro_20260917T192525Z; 14.56 h with no stamp)"
+      ],
+      "cause": "Same night as 2026-09-17_hl_shutdown_sleep, with a twist that exposed a script defect: shutdown_all.bat's layer-2 stop (taskkill /FI WINDOWTITLE) cannot match the detached pythonw watcher, so the watcher kept stamping at the 5-minute cadence for 24 minutes after the collector stop (stamps 04:31, 04:36, 04:41, 04:46, 04:51:38Z) and only died with the 04:53:53Z sleep. Defect and fix ruling logged in AGENTS.md on 09-18 (layer 2 must call polymarket_fetcher --stop). Relaunched by resume_all.bat at 19:25Z on 09-17.",
+      "detected_utc": "2026-09-18T20:15:00Z",
+      "resolved_utc": "2026-09-17T19:25:25Z",
+      "resolution": "resume_all.bat 09-17 15:25 EDT; stamps resumed at the 5-minute cadence (19:25, 19:30, 19:35 ... on 09-17). Registered retroactively 09-18.",
+      "affected_evaluations": [
+        "none registered: the tagged-stamp series restarts a new continuous segment from 19:25:25Z, which the two-stream gate will report on any future unbounded check"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-18_hl_reboot",
+      "desk": 1,
+      "start_utc": "2026-09-18T01:25:47Z",
+      "end_utc": "2026-09-18T02:05:37Z",
+      "tables": [
+        "asset_snapshots (no rows 01:25:47.385Z -> 02:05:37.218Z, 0.66 h; unrecoverable)",
+        "liquidation_clusters (no rows 01:25:48.670Z -> 02:05:37.451Z, 0.66 h; unrecoverable)",
+        "orderbook_snapshots (no rows 01:24:59.290Z -> 02:07:37.931Z, 0.71 h; unrecoverable)",
+        "trades (PARTIAL: 4,901 rows between the last snapshot and the 02:05:27Z restart against ~160,000 an hour live - the ~4 minutes of live feed before the 01:30Z reboot plus the subscribe-time backfill; the ~35 minutes in between are effectively empty; unrecoverable)",
+        "liquidation_events (10 rows 01:27:38.949Z -> 02:05:27.169Z; effectively empty; unrecoverable)",
+        "latest_snapshots (stale for the interval)"
+      ],
+      "cause": "Windows REBOOT, not a sleep, at 21:30 EDT Wed 09-17: EventLog 6006 service stopped 01:30:07Z, Kernel-Power 109 shutdown transition 01:30:12Z, LastBootUpTime 01:30:28Z, EventLog 6005 service started 01:30:49Z. No User32 1074 line names an initiator, so whether this was a manual restart or Windows Update is not in the System log - operator to say. The supervisor (pid 10968, running since 19:25Z) died with the reboot with no service_stop line; its last coverage_report was 01:25:30Z. resume_all.bat at 22:05 EDT: service_start 02:05:27.826Z pid 20396; first child 11312 restarted by the watchdog 4 s later (newest snapshot 39.7 min old), second child 23252 from 02:05:35Z until the 04:13Z operator stop. First new snapshot 02:05:37.218Z. Not registered on the day; found 09-18 16:00 EDT.",
+      "detected_utc": "2026-09-18T20:15:00Z",
+      "resolved_utc": "2026-09-18T02:05:37Z",
+      "resolution": "resume_all.bat 09-17 22:05 EDT (operator). Registered retroactively 09-18 by Claude Code.",
+      "affected_evaluations": [
+        "none registered: the lead-lag segment that began 19:25:19Z was 6.0 h long when cut, short of the 24 h the exporter gate needs; a new segment starts 02:05:37Z and is itself cut at 04:13:04Z by 2026-09-18_hl_shutdown_sleep"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-18_polymarket_drops_reboot",
+      "desk": 3,
+      "start_utc": "2026-09-18T01:24:44Z",
+      "end_utc": "2026-09-18T02:05:34Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last stamp polymarket_macro_20260918T012444Z, first new polymarket_macro_20260918T020534Z; 0.68 h with no stamp)"
+      ],
+      "cause": "Same reboot as 2026-09-18_hl_reboot: the watcher died at 01:30Z and was relaunched by resume_all.bat at 02:05Z (22:05 EDT 09-17).",
+      "detected_utc": "2026-09-18T20:15:00Z",
+      "resolved_utc": "2026-09-18T02:05:34Z",
+      "resolution": "resume_all.bat; stamps resumed at the 5-minute cadence. Registered retroactively 09-18.",
+      "affected_evaluations": [
+        "none registered: the tagged-stamp series restarts a new continuous segment from 02:05:34Z"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-18_hl_shutdown_sleep",
+      "desk": 1,
+      "start_utc": "2026-09-18T04:13:04Z",
+      "end_utc": "2026-09-18T20:05:57Z",
+      "tables": [
+        "asset_snapshots (no rows after the final poll at 04:13:04.254Z until 20:05:57.270Z, 15.88 h; point-in-time polls, unrecoverable)",
+        "liquidation_clusters (no rows 04:13:04.777Z -> 20:05:57.877Z, 15.88 h; unrecoverable)",
+        "orderbook_snapshots (no rows 04:11:26.454Z -> 20:07:58.407Z, 15.94 h; unrecoverable)",
+        "trades (EFFECTIVELY EMPTY: 1,111 subscribe-time backfill rows strictly inside the interval against ~160,000 an hour live; unrecoverable)",
+        "liquidation_events (0 rows 04:12:53.612Z -> 20:06:41.988Z; unrecoverable)",
+        "latest_snapshots (stale for the whole interval)"
+      ],
+      "cause": "Planned operator night shutdown, run by Claude Code at the operator's request. shutdown_all.bat at 00:13 EDT Thu 09-18: stop_file_observed 04:13:08.103Z, collector_stopped_by_operator (runtime 7,652.9 s since the 02:05Z restart), keep_awake_released, service_stop 04:13:10.402Z, graceful=true forced=false, WAL checkpointed (0 bytes before and after). The script's layer-2 and layer-3 stops (taskkill /FI WINDOWTITLE) matched nothing because every daemon runs as detached pythonw; the 8 survivors were stopped by PID at about 04:14Z (defect and fix ruling in AGENTS.md 09-18). The laptop slept at 04:52:21Z (Kernel-Power 42, 00:52 EDT), woke at 16:42:32Z (Kernel-General time sync and Kernel-Power 566 session transition, 12:42 EDT) and then sat awake with the pipeline down for 3.4 h until resume_all.bat at 16:05 EDT: service_start 20:05:45.451Z pid 39344; first child 52288 restarted by the watchdog at 20:05:50.996Z (newest snapshot 952.8 min old, coverage 31.1 %), logged as collector_crashed_early exit 1 after 6.5 s; second child 47588 from 20:05:54.003Z. First new snapshot 20:05:57.270Z; 448 assets in the last 30 s and 2,240 snapshot rows a minute at 20:10Z.",
+      "detected_utc": "2026-09-18T04:13:03Z",
+      "resolved_utc": "2026-09-18T20:05:57Z",
+      "resolution": "resume_all.bat 09-18 16:05 EDT run by Claude Code: collector/supervisor RUNNING pid 39344 (child 47588), Polymarket watcher pid 57524, cross-market exporter pid 54828, telemetry 5/5 (hyperliquid 56652, polymarket 60824, tax 50012, sports 56964, quantlab 49636).",
+      "affected_evaluations": [
+        "none registered: Phase 2 event 2 is the CPI print of 2026-10-14; the lead-lag price series restarts a new continuous segment from 20:05:57Z (exporter gate at 20:06Z: NOT READY, span 0.0 h < 24 h, points 1 < 200; earliest READY 2026-09-19T20:06Z if nothing cuts it)",
+        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions measured inside; their gates clear later by the gap length",
+        "basis windows: overlapping windows are marked by their own coverage column"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-18_polymarket_drops_shutdown_sleep",
+      "desk": 3,
+      "start_utc": "2026-09-18T04:12:03Z",
+      "end_utc": "2026-09-18T20:05:55Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last stamps polymarket_macro_20260918T041203Z / polymarket_sports_20260918T041203Z, first new polymarket_sports_20260918T200555Z / polymarket_macro_20260918T200555Z; 15.90 h with no stamp)"
+      ],
+      "cause": "Same night as 2026-09-18_hl_shutdown_sleep: the watcher (pid 6300) survived shutdown_all.bat's window-title stop and was stopped by PID at about 04:14Z, 2 minutes after its 04:12:03Z stamp; relaunched by resume_all.bat at 20:05Z as pid 57524 after sweeping its stale lock.",
+      "detected_utc": "2026-09-18T04:13:03Z",
+      "resolved_utc": "2026-09-18T20:05:55Z",
+      "resolution": "resume_all.bat 09-18 16:05 EDT; watcher RUNNING pid 57524; first poll stamped macro (286 questions) and sports at 20:05:55Z and pruned 376 stamps older than 192 h.",
+      "affected_evaluations": [
+        "none registered: the tagged-stamp series restarts a new continuous segment from 20:05:55Z, which the two-stream gate will report on any future unbounded check"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-19_hl_shutdown_update_sleep",
+      "desk": 1,
+      "start_utc": "2026-09-19T02:28:44Z",
+      "end_utc": "2026-09-19T17:29:36Z",
+      "tables": [
+        "asset_snapshots (last row 02:28:44.191Z, first new row 17:29:36.327Z, 15.01 h, 0 rows strictly inside; point-in-time polls, unrecoverable)",
+        "trades (EFFECTIVELY EMPTY: 1,485 subscribe-time backfill rows strictly inside 02:28:44.085Z -> 17:29:36.392Z against a live baseline of 93,409/h in the hour before the stop and 100,862/h in the hour after the resume; unrecoverable)",
+        "orderbook_snapshots (no rows 02:28:29.165Z -> 17:31:37.293Z, 15.05 h; unrecoverable)",
+        "liquidation_events (3 rows strictly inside 02:28:43.263Z -> 17:29:41.705Z, 15.02 h; unrecoverable)",
+        "liquidation_clusters (cannot be bounded from below: the earliest row in the table overall is 17:29:36.590Z, i.e. the resume instant, so retention has already consumed everything before the gap)",
+        "latest_snapshots (stale for the whole interval)"
+      ],
+      "cause": "Operator night shutdown on Friday 09-18 22:28 EDT followed by an Intel driver restart storm, a second failed Windows 11 25H2 upgrade, and a 10.4 h sleep. NOT REGISTERED AT THE TIME - reconstructed and appended 2026-09-20 by Claude Code while running the shutdown routine, which is why the round field is unchanged. Sequence, all UTC: collector stopped cleanly at 02:28:52.650Z (stop_file_observed, collector_stopped_by_operator runtime 22,978.7 s, keep_awake_released, service_stop 02:28:54.725Z, restarts 1, coverage 33.81 %); five full shutdown/boot cycles between 02:29:54Z and 03:04:51Z (EventLog 6006/6005 + Kernel-Power 109 + Kernel-General 13/12, boot type 0x0 every time), initiated by User32 1074 as RuntimeBroker.exe on behalf of ixis1 at 02:31:32Z, 02:50:41Z and 03:03:40Z and by msiexec.exe on behalf of SYSTEM at 02:34:08Z; the driver payload behind them was Intel Display 31.0.101.5187 and Intel Extension 32.0.101.6733, installed at 02:42:39-02:44:37Z and installed a SECOND time at 02:57:44-03:00:02Z, plus Defender KB2267602 1.459.280.0 and a Store app. Windows 11 version 25H2 then started installing at 05:09:07Z and FAILED at 05:15:01Z with 0xC1900208, the same compatibility hold that failed it on 09-17. RuntimeBroker initiated a power off on behalf of ixis1 at 05:38:49Z, which the kernel recorded as sleep (Kernel-Power 566 then 42 at 05:39:00-05:39:02Z); the machine stayed asleep until 16:03:23Z, proved by the Kernel-General 1 clock restore reading 'changed to 2026-09-19T16:03:23Z from 2026-09-19T05:39:0x'. Session transitions 16:03:26-16:08:57Z, .NET KB5126106 and KB5126104 installed 16:04-16:56Z, and the machine then sat AWAKE with the pipeline down for 1.43 h until resume_all.bat at 17:29:25.810Z (service_start pid 57784; first child 22476 restarted by the watchdog 4.7 s later - snapshot_age 54,046.3 s, coverage 26.6 % - logged as collector_crashed_early exit 1 after 5.7 s; second child 55588 from 17:29:33.497Z). That resume-time false restart is the same first-tick watchdog defect ruled on 09-18 and still unfixed (HOMEWORK go/no-go item (b)).",
+      "detected_utc": "2026-09-20T06:18:14Z",
+      "resolved_utc": "2026-09-19T17:29:36Z",
+      "resolution": "resume_all.bat 09-19 13:29 EDT: collector/supervisor pid 57784 (child 55588), watcher, cross-market exporter and 5/5 telemetry exporters all recovered; first new snapshot 17:29:36.327Z. Verified retrospectively 2026-09-20 from collector_service.jsonl, the Windows System event log and the tables themselves.",
+      "affected_evaluations": [
+        "lead-lag: the continuous price/stamp segment that began 2026-09-18T20:05:57Z was cut at 02:28:44Z after 6.4 h, well short of the 24 h bar; a new segment ran 17:29:36Z -> 2026-09-20T06:20:54Z (12.86 h) and was cut again by tonight's shutdown. No Item 18 run was executed against either segment.",
+        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions measured inside; their window gates clear later by the gap length",
+        "basis windows: overlapping windows carry their own coverage column - the supervisor reported coverage 26.6 % at resume, recovering to 53.56 % by tonight's stop"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-19_polymarket_drops_shutdown_update_sleep",
+      "desk": 3,
+      "start_utc": "2026-09-19T02:26:05Z",
+      "end_utc": "2026-09-19T17:29:34Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last stamp polymarket_sports_20260919T022605Z, first new polymarket_macro_20260919T172934Z; 15.06 h with no stamp)"
+      ],
+      "cause": "Same night as 2026-09-19_hl_shutdown_update_sleep. The watcher's last stamp is 02:26:05Z, 2.8 minutes before the collector's clean stop at 02:28:52Z: shutdown_all.bat's layer-2 stop is a taskkill /FI WINDOWTITLE filter that cannot match a detached pythonw process, so the watcher was stopped by PID (or died with the 02:29:54Z reboot) rather than by its own --stop CLI. Relaunched by resume_all.bat at 17:29Z after its stale lock was swept. NOT REGISTERED AT THE TIME - appended 2026-09-20 from the stamps on disk.",
+      "detected_utc": "2026-09-20T06:18:14Z",
+      "resolved_utc": "2026-09-19T17:29:34Z",
+      "resolution": "resume_all.bat 09-19 13:29 EDT; first new stamp polymarket_macro_20260919T172934Z. 3,019 stamped drops on disk at the time of writing, spanning 2026-09-12T15:21:01Z to 2026-09-20T06:19:45Z under the 192 h retention.",
+      "affected_evaluations": [
+        "the tagged-stamp series restarts a new continuous segment from 17:29:34Z, which the two-stream gate reports on any unbounded check"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-20_hl_shutdown_awake_no_resume",
+      "desk": 1,
+      "start_utc": "2026-09-20T06:20:54Z",
+      "end_utc": "2026-09-21T02:04:43Z",
+      "tables": [
+        "asset_snapshots (last row 06:20:54.663Z, first new row 2026-09-21T02:04:43.373Z, 19.73 h, 0 rows strictly inside; point-in-time polls, unrecoverable)",
+        "trades (EFFECTIVELY EMPTY: 1,066 subscribe-time backfill rows strictly inside 06:20:54.354Z -> 02:04:43.375Z against a live baseline of 70,665/h in the hour before the stop; unrecoverable)",
+        "liquidation_clusters (last row 06:20:55.424Z, first new 02:04:43.612Z. 212 rows carry in-gap timestamps but ALL fall in the single second 06:20:54-06:20:55Z: that is the collector's final flush at shutdown, not in-gap data - 11/h against a live rate of 87,476/h, 0.01 %. The gap itself is clean.)",
+        "orderbook_snapshots (last row 06:20:11.866Z; no new row yet at the time of registration - the L2 sampler runs on a ~2 min cadence and had not completed a pass; unrecoverable)",
+        "liquidation_events (1 row strictly inside 06:19:45.273Z -> 02:04:43.577Z, 19.75 h; unrecoverable)",
+        "latest_snapshots (stale for the whole interval)"
+      ],
+      "cause": "Planned operator night shutdown - but THE MACHINE NEVER SLEPT AND WAS NEVER POWERED OFF, and nobody resumed for 19.7 h. This is the longest of the four recent outages and the only one with no power event behind it. shutdown_all.bat was run by Claude Code at the operator's request at 02:20 EDT Sun 09-20: stop_file_observed 06:20:58.850Z, collector_stopped_by_operator runtime 46,285.4 s, keep_awake_released, service_stop 06:21:00.648Z, graceful=true forced=false waited 2.5 s, WAL checkpointed (0 bytes before and after), restarts 1, coverage 53.56 %. Layers 2 and 3 again survived the WINDOWTITLE stops and were taken down by their own --stop CLIs and a command-line PID sweep; 0 Monarch processes remained, verified. The Windows System log then records ZERO Kernel-Power 42/107, zero 109/13/12 and zero User32 1074 between 06:21Z on 09-20 and 02:04Z on 09-21: uptime ran continuously from the 09-19T03:04Z boot to 46.7 h at the point of detection, on mains at 98 %. So the host sat awake and idle with the pipeline down for the whole interval. Two other Claude Code sessions did work in DEV inside the window without restarting it - commits 4efdfff and ccdfa5c at 07:23Z (the digest/ruling adapters taught to read AGENTS_ARCHIVE.md, clearing the 109 C1 errors) and an uncommitted TradingView MCP vendoring at 23:48Z - which is the operational lesson here: a session that edits the repo does not imply a session that watches the pipeline. Detected at 01:47Z on 09-21 only because the operator asked what was running. resume_all.bat at 02:04:30Z: service_start pid 48420, keep_awake re-held 02:04:34Z, first child 16544 restarted by the watchdog 4 s later (snapshot_age 71,023.5 s, coverage 17.79 %) and logged as collector_crashed_early exit 1 after 5.0 s, second child 17852 from 02:04:41Z. That resume-time false restart is the same unfixed first-tick watchdog defect seen on 09-13, 09-17, 09-18 and 09-19 (HOMEWORK go/no-go item (b)); it is now 5 for 5 and is the single most reliably reproducible defect in the system.",
+      "detected_utc": "2026-09-21T01:47:32Z",
+      "resolved_utc": "2026-09-21T02:04:43Z",
+      "resolution": "resume_all.bat 09-20 22:04 EDT run by Claude Code at the operator's request: collector/supervisor pid 48420 (child 17852), Polymarket watcher and cross-market exporter both relaunched after their stale locks were swept, telemetry 5/5 (hyperliquid 35852, polymarket 66736, tax 63376, sports 52848, quantlab 65176 with its interpreter pair). Verified WRITING, not merely launched: 1,796 asset_snapshot rows in the first 120 s, newest trade 1.0 s old, new Polymarket stamps at 02:04:39Z.",
+      "affected_evaluations": [
+        "lead-lag: the continuous segment that began 2026-09-19T17:29:36Z was cut at 06:20:54Z after 12.86 h, short of the 24 h bar; a new segment starts 2026-09-21T02:04:43Z. The exporter's own gate at resume reported NOT READY (span 12.8 h < 24 h, points 147 < 200) and also flagged a 61-min hole 2026-09-19T16:28:34Z -> 17:29:36Z, which is the synthetic max_lag+1 lookback edge meeting the previous resume, not a data defect (ruled 09-18, AGENTS.md).",
+        "passive_fade_rebenchmark and whale_sweeper_cascade_replay: no forward excursions measured inside; their window gates clear later by the gap length",
+        "basis windows: overlapping windows carry their own coverage column - the supervisor reported coverage 17.79 % at resume, the lowest of any recent restart"
+      ],
+      "round": 128
+    },
+    {
+      "id": "2026-09-20_polymarket_drops_shutdown_awake_no_resume",
+      "desk": 3,
+      "start_utc": "2026-09-20T06:19:45Z",
+      "end_utc": "2026-09-21T02:04:39Z",
+      "tables": [
+        "Sports_Desk/data/polymarket_drops stamped drops (last stamp polymarket_sports_20260920T061945Z, first new polymarket_macro_20260921T020439Z; 19.75 h with no stamp)"
+      ],
+      "cause": "Same shutdown as 2026-09-20_hl_shutdown_awake_no_resume. The watcher was stopped cleanly at 06:21Z through its own `polymarket_fetcher --stop` CLI (pid 24528 terminated, lock swept) rather than by the window-title filter, which cannot match a detached pythonw - the first live use of the ratified shutdown fix (a). It was then simply never restarted for 19.7 h while the machine stayed awake. Relaunched by resume_all.bat at 02:04Z after its stale lock was swept; --status at resume confirmed the newest stamp was 1,184.8 min old and that the Round 76 tags code is still live.",
+      "detected_utc": "2026-09-21T01:47:32Z",
+      "resolved_utc": "2026-09-21T02:04:39Z",
+      "resolution": "resume_all.bat 09-20 22:04 EDT; first new stamps polymarket_macro_20260921T020439Z and polymarket_sports_20260921T020439Z, both written within 9 s of the watcher launching.",
+      "affected_evaluations": [
+        "the tagged-stamp series restarts a new continuous segment from 02:04:39Z; the two-stream gate reports it on any unbounded check"
+      ],
+      "round": 128
+    }
+  ]
 }

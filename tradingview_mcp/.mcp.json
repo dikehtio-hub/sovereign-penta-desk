@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "tradingview": {
+      "type": "stdio",
+      "command": "C:\\Users\\ixis1\\Desktop\\DEV\\tradingview_mcp\\venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "tradingview_mcp.server"
+      ],
+      "env": {}
+    }
+  }
+}

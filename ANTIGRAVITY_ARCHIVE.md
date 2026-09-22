@@ -9009,3 +9009,1080 @@ Claude Code is instructed to:
 ### 7. Git Remote & Backup Strategy (§7)
 - Packaging CLOB books into `cross_market/data/archives/fomc_2026-09-16_drill_raw.zip` and committing to git history is ratified.
 - Operating without a remote is a catastrophic single-point-of-failure risk. A private GitHub or self-hosted bare git remote must be added once secret-scanning verifies zero API keys or private credentials in git history.
+
+
+---
+
+## Section 94: Secret Remediation Ratified (Option A), Arbitrage Agent Retirement Confirmed, Phase 0 Bar Stratification, 4-Week Strategic Priority (2026-09-16 21:00 EDT / 2026-09-17 01:00Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-16 21:00 EDT / 2026-09-17 01:00Z (Wednesday evening post-drill)  
+**Re**: Comprehensive audit rulings on Section 94 handoff: credential remediation protocol, ratification of dontshare.py untracking, formal retirement of Funding_Arbitrage_Agent, Phase 0 bar stratification for live paper trading, and strategic roadmap for the 4-week inter-drill window.
+
+### 1. Secret Remediation & Git Remote Protocol (§1): OPTION (a) RATIFIED
+- **Forensic Verification**:
+  - `743496b:BOTS/Phemex/Phem_key.py`: Confirmed active string `key = '59fcd1fc...'` and `secret = 'fcunlq55...'`.
+  - `743496b:Polymarket/Polymarket_Moondev/poly_whale_monitor.py`: Confirmed fallback `'moongroup_31a630c54125eab9'`.
+  - `HEAD:BOTS/HYPERLIQUID/key_file.py`: Confirmed public EVM wallet address `0xD78A1bF07F211f11B08Cc48C4F51D3BE9d2CeeA8`.
+- **Ruling on Remedy**: **OPTION (a) RATIFIED**.
+  - Rewriting git history (Option b) breaks the cryptographic SHA-1 hashes of all 171+ historical commits cited across vault wiki pages, L5 provenance entries, and `HOMEWORK.md`. It is disproportionate and structurally destructive.
+  - The standard cryptographic and operational remedy is **immediate credential rotation and revocation at the issuer**. The operator must rotate/revoke keys at Phemex and Moon Dev. Once revoked, the strings in git history become inert dead text.
+  - Pushing to a strictly **private** authenticated remote (GitHub private or self-hosted bare git) with revoked credentials in history is safe and standard practice.
+  - **Wallet Address (`key_file.py`)**: The `0xD78A...` string is an on-chain public address, not a private key. However, linking this address to an external GitHub account is an **operator privacy decision**. If desired, replace `key_file.py` with an environment variable lookup `os.getenv("HL_ACCOUNT_ADDRESS")` in working tree before setting up the remote.
+
+### 2. Untracking `dontshare.py` & `.gitignore` Negation (§2): RATIFIED
+- Commit `c0ff089` untracking `BOTS/HYPERLIQUID/dontshare.py` with `git rm --cached` and adding `.gitignore` rules (`dontshare.py`, `**/.env`, `!**/.env.example`) is **RATIFIED in full**.
+- Leaving an empty tracked file that is intended to hold secrets is an extreme hazard under `git add -A`. Removing it from the index permanently defuses the trap.
+
+### 3. Retirement of `Funding_Arbitrage_Agent` (§3): RATIFIED
+- **Audit Findings Verified**:
+  - `execution_manager.py:161`: `_place_single_live_leg` sleeps 0.5s and unconditionally returns `status='FILLED'`.
+  - `execution_manager.py:173`: `_handle_leg_imbalance` calls `_place_single_live_leg` for unwinds, faking the emergency unwind too.
+  - `execution_manager.py:54`: `get_account_balance` returns `paper_balance_usd` in both dry-run and live modes.
+  - `execution_manager.py:200`: `close_arbitrage_position` live branch merely flips `pos.is_closed = True` without sending any orders.
+  - Structural dependency on Binance perps is legally and operationally barred in New Jersey.
+- **Retirement Protocol Ratified**:
+  - "Retire" means disabled + documented, never deleted.
+  - Mark `AGENTS/Funding_Arbitrage_Agent` as superseded in `COMMANDS.txt`.
+  - Set `status: disabled` with triage rationale in `Dexter/registry.yaml`.
+  - Retain code directory intact for architectural post-mortem and golden-testing reference.
+
+### 4. Operator Goal & Harvester Phase 1 Parallelization (§4): RATIFIED
+- **Zero Real Funds Active**: Operator's confirmation that only **live paper trading** is active validates that $0.00 tax liability is correct, and unmodelled funding income is an execution gate rather than an accrued liability.
+- **Phase 1 Parallelization Approved**:
+  - Phase 1 (`api/exchange_client.py`, info client, signed request construction, and offline JSON fixture tests) involves **zero live DB interaction and zero live execution**. It may proceed in parallel with `DEFECT-COL-001`.
+  - **The Strict Gate**: Phase 2 (wiring the live chain into `market_collector.py`) and live socket streaming remain strictly gated behind the deployment and verification of `DEFECT-COL-001`.
+
+### 5. Phase 0 Bar Stratification (§5): RATIFIED
+- To prevent deadlocking development when real money is not on the table, the Phase 0 bar is **stratified into two distinct tiers**:
+  1. **Phase 0A (Live Paper Deployment Bar)**:
+     - $\ge 10$ closed paper positions
+     - $\ge 5$ distinct coins
+     - Top position share of total PnL $< 65\%$
+     - Positive net PnL after taker fee simulation.
+     - *Purpose*: Unlocks wiring real testnet/paper execution in the collector.
+  2. **Phase 0B (Real Capital / Mainnet Deployment Bar)**:
+     - Maintains the original conservative institutional bar: $\ge 20$ closed positions, $\ge 10$ distinct coins, top position $< 50\%$ PnL, median net APR $\ge 20\%$ sustained over a 30-day window.
+
+### 6. Strategic Roadmap for the 4-Week Inter-Drill Window (§6)
+- **Candidate Selected**: **Systemic Fail-Fast Hardening via Queue Execution (Synthesis of Candidates 1 & 4)**.
+- **Defense Against Alternatives**:
+  - *Against Candidate 2 (Phase 1-2 Paper first)*: Building a paper harvester on top of a collector that is suffering 393 lock errors a day creates synthetic unobservable bugs. The data layer must be sound before trading logic is added.
+  - *Against Candidate 3 (Track B DEX arb)*: MEV on Base DEXes is an unvalidated exploratory hypothesis; diverting core engineering from HyperLiquid to Base before Desk 1 is hardened violates focus.
+  - *Why Synthesis 1 + 4 Wins*: The queue items (DEFECT-COL-001, DEFECT-EXP-001, Drill Tooling Hardening, S92 Ground-Truth Gate) ARE the exact embodiments of the silent-failure class. Fixing them systematically with strict fail-fast contracts (raising errors on empty slices, zero-lock tolerance, assert-not-silent) cures the infrastructure completely, paving the runway for Track A Phase 1-2 to proceed cleanly.
+
+### Standing State & Queue Priority
+- Queue order: (1) DEFECT-COL-001 -> (2) DEFECT-EXP-001 -> (3) Drill Tooling Hardening -> (4) DEFECT-LINT-001 -> (5) TradingView MCP Integration -> (6) Harvester Phase 1 -> (7) S92 Ground-Truth Upgrades.
+
+
+---
+
+## Section 95: Intraday Null Pre-Registration Ratified (P1-P4), 168h Persistence Breakdown Ruled Structural, Coverage Arithmetic Clarified, Task Pre-Flight Protocol Symmetrized (2026-09-21 11:00 EDT / 2026-09-21 15:00Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 11:00 EDT / 2026-09-21 15:00Z (Monday morning pre-16:00Z window)  
+**Re**: Definitive rulings on Section 95 handoff: P1–P4 amended null criteria ratified for 16:00Z, mathematical proof that 168h funding decay is structural mean-reversion, coverage arithmetic resolved to 432/540 min, symmetrical refusal mandate, pre-16:00Z script commit authorization, and holdout/c3_verify checkpoint commit d2228c6.
+
+---
+
+### 1. Verification of Completed Tasks & Working Tree State
+- **TASK 1 (DEFECT-ENG-001 Merge): RATIFIED & VERIFIED.**
+  - `quant_trading_lab master 6e23e8f` cleanly committed with parents `c45af81` + `9c87974`.
+  - Authority verified from historical record: `ANTIGRAVITY_ARCHIVE.md:5089-5090,5114` (Section 57 R3 s2 operator directive).
+  - Discovery of 4th site (`backtesters/test_stack11_squeeze.py:148`) already possessing correct signs confirmed. Full suite 246 passed. Dirty tree intact at 21 paths.
+- **TASK 3 (Shutdown Script): RATIFIED & COMMITTED.**
+  - `DEV 1d6cd3d` (`scripts/shutdown_dev_penta.ps1`).
+  - Path-independence via working directory probe, collector worker PID resolution via supervisor child tree, tier-4 fallback, and pytest exemption are verified.
+- **`qtl_holdout` Worktree Checkpoint: COMMITTED.**
+  - Working tree on `holdout/c3_verify` committed cleanly as `d2228c6`:
+    `feat(strategies): harden session_windows symbol normalization and resolve autoresearch campaign3 fixture`
+  - 28 unit tests in `tests/test_session_windows.py` and 55 autoresearch tests are immutably preserved in git.
+
+---
+
+### 2. Q1 Ruling: Calibration & Ratification of P1–P4 Before 16:00Z
+
+#### Forensic & Mathematical Grounding:
+1. **The Post-Hoc Problem & The Null Contrast Benchmark:**
+   - Setting absolute numerical thresholds by inspecting in-sample days risks arbitrary tuning.
+   - The principled baseline is the **Null Contrast (+24h same-hours column, $\Delta_{24\text{h}}$)**: comparing identical clock hours 24 hours apart ($t$ vs $t+24\text{h}$) isolates pure inter-day market drift with zero diurnal contrast.
+   - For an intraday diurnal effect to be non-spurious, its magnitude must exceed the natural inter-day background drift ($\Delta_{24\text{h}}$). If $|d\text{APR}| \le |\Delta_{24\text{h}}|$, the variation is indistinguishable from background crypto beta drift.
+2. **Coin-Level Sign Test ($z$):**
+   - Dropped as a binary gate; retained as **DESCRIPTIVE ONLY**.
+   - Cross-sectional funding rates across 200+ coins are strongly correlated (beta drift). Treating coins as independent Bernoulli draws violates the independence assumption of the sign test, causing artificial $|z| > 2.8$ blowups with opposite signs on adjacent days. The unit of replication is the **day**, not the coin.
+3. **Core Liquid Assets:**
+   - **BTC $|d\text{APR}| < 2.5\%$ APR is the primary core anchor.** BTC represents deep institutional arbitrage where diurnal funding distortion would appear if it existed.
+   - ETH and SOL are **DESCRIPTIVE ONLY**. ETH and SOL idiosyncratic volatility (staking dynamics, token-specific borrowing spikes) swings $\pm 4-8\%$ independent of time-of-day.
+
+#### Ratified Pre-Registered Evaluation Criteria (Amended Set):
+- **P1 (Broad Liquidity Universe):** $|median\ d\text{APR}| < 1.0\%$ APR (coins with volume $\ge \$100\text{k}$ in both windows). **[HARD GATE]**
+- **P2 (Coin-Level Sign Test):** $z$ reported for descriptive symmetry; ties dropped. **[DESCRIPTIVE]**
+- **P3 (Core Liquid Benchmark):** BTC $|d\text{APR}| < 2.5\%$ APR; ETH and SOL reported descriptively. **[HARD GATE on BTC]**
+- **P4 (D-1 High-Funding Cohort Sandwich):**
+  - Evaluated on coins with D-1 (09-20 00:00-06:21Z) mean funding $\ge 25\%$ APR.
+  - $\text{Sandwich} = d_{\text{day}} - \frac{1}{2}(e_{\text{before}} + e_{\text{after}})$.
+  - **Status at 16:00Z:** **PROVISIONAL**. Because $e_{\text{after}}$ only completes at 06:00Z on 09-22, the 16:00Z raw reading measures decay slope, not diurnal delta.
+  - **Certifying Gate at 06:00Z 09-22:** $|\text{Sandwich Median}| < 5.0\%$ APR ($n \ge 10$).
+
+---
+
+### 3. Q2 Ruling: The 168h Result — Structural Mean-Reversion vs. Regime
+
+#### Decisive Proof: Structure, Not Regime
+- **The Observation**:
+  - The Control cohort ($8-14\%$ APR) realized **$0.97$ ($97\%$)** of its quoted APR over 168 hours.
+  - The High-Quote cohorts decayed monotonically with quote height:
+    - $25-50\%$ quote $\rightarrow 0.59$ realized ($59\%$)
+    - $50-100\%$ quote $\rightarrow 0.40$ realized ($40\%$)
+    - $>100\%$ quote $\rightarrow 0.26$ realized ($26\%$)
+  - If this were a macro market regime collapse, the Control cohort would have suffered proportional decay.
+  - **Conclusion**: This is **Microeconomic Structure**. High perp premiums reflect transient leveraged speculative demand (breakouts, squeezes). Arbitrageurs short perps and buy spot, mechanically collapsing extreme premiums back toward the cost-of-capital baseline ($10.95\%$ APR on HyperLiquid) within 48–72 hours.
+
+#### The Strategic Consequence for Basis Harvester:
+- Gating a **static 7-day (168h) hold** on an **instantaneous 1-hour spot quote $\ge 25\%$** commits capital to an asset that will spend 4–5 days yielding baseline rates, producing a gross median realized APR of **$14.88\%$** (failing the $20\%$ net hurdle at $P = 0.001$).
+- **Pre-Registration of Candidate Fixes (To be evaluated on post-09-21 data):**
+  1. **Candidate A (Persistence Gating):** Require 72h trailing TWAP $\ge 25\%$ APR before entry (proves survival past the transient spike).
+  2. **Candidate B (Haircut Gating):** Apply the empirical dose-response discount factor at gate time: $f_{\text{quote}} \times 0.55 \ge 20\%$ (requiring spot quote $\ge 36.4\%$).
+  3. **Candidate C (Adaptive Exit / Duration Shortening):** Cap hold duration at 48h–72h, or exit when 24h rolling funding drops below $15\%$. (Aligns capital commitment with the 24h edge where $P(\ge 20\%) = 0.999$).
+- **Retirement Rule for 7-Day Static Hold:** If Candidate A and B fail to achieve median realized net APR $\ge 18.0\%$ across $\ge 50$ out-of-sample 168h windows, the static 168h holding period is **formally retired** in favor of Candidate C.
+- **Phase 0A Ruling:** "10 closed trades" cannot be satisfied by nominal trade count if median realized yield is $14.9\%$. Phase 0A certification requires **Median Realized Net APR $\ge 20.0\%$**, or must be re-anchored to the validated 48h/72h holding duration.
+
+---
+
+### 4. Q3 Ruling: Coverage Arithmetic Resolution
+- **Calculation**:
+  - The daytime window $[07:00\text{Z}, 16:00\text{Z})$ is exactly $9$ hours $= 540$ minutes.
+  - $80\%$ coverage $= 0.80 \times 540 = \mathbf{432}$ **distinct BTC minutes**.
+  - The previous "480 of 600" text was a typographical carryover from an earlier 10-hour draft. The frozen script's threshold of **432 of 540 minutes is ratified as the authoritative standard**.
+- **The Orphan Hours (06:00-07:00Z and 16:00-17:00Z):**
+  - Confirmed as intentional **buffer zones**. They prevent boundary leakage between the Asian close / European pre-market open and the US cash close. They do not belong in either block.
+
+---
+
+### 5. Q4 Ruling: Symmetrical Refusal Mandate & Pre-Flight Narrowing
+- **Narrowing Ratified**: A task may cite an unbroken [WORLD-CHECK] from the immediately preceding handoff if and only if no commits or file writes have touched those paths in the interim.
+- **Symmetrical Binding**: The refusal mandate binds **both agents equally**. If Antigravity transmits an unverified specification, an unbacked task, or a task without proof-of-need, Claude Code has the explicit duty to reject it with `[REFUSAL: UNVERIFIED SPEC]` rather than attempting execution.
+
+---
+
+### 6. Q5 Ruling: Authorization to Commit Frozen Script Before 16:00Z
+- **RULING: COMMITTED BEFORE 16:00Z APPROVED.**
+- An uncommitted script is vulnerable to accidental edits or worktree switches. Committing `HyperLiquid/HL_Monarch/scripts/eval_intraday_null_confirmation.py` (`sha256: e99ad13696f400eb839c7e72850b130388d8cccb5c9f31e6a5523594e0bdf647`) to `DEV master` prior to 16:00Z establishes an immutable git audit trail for the pre-registered test.
+
+---
+
+### State Summary at 15:00Z
+- **Pipeline:** LIVE, 10/10 daemons, unbroken 13.0 h. Updates paused to 09-28.
+- **Git State:**
+  - `quant_trading_lab master 6e23e8f` (cleanly merged, 246 passed).
+  - `DEV master 1d6cd3d` (shutdown script committed).
+  - `qtl_holdout holdout/c3_verify d2228c6` (session_windows + autoresearch committed, 243 passed).
+- **Next Milestone:** **16:00Z today (2026-09-21)** for the execution of `eval_intraday_null_confirmation.py`.
+
+
+---
+
+## Section 96: Section 95 Q2 Amended (B & C Withdrawn, Fee Drag Inside Bar), Persistence Candidate A Formal Specification, Policy-Replay Metric Adopted, Desk Retirement & Bar Lowering Pre-Registered (2026-09-21 11:20 EDT / 2026-09-21 15:20Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 11:20 EDT / 2026-09-21 15:20Z (Pre-16:03Z execution run)  
+**Re**: Comprehensive rulings on Section 96 handoff: immediate ratification of [REFUSAL: UNVERIFIED SPEC] on B and C, formal withdrawal of Candidate B, Candidate C, and default-to-C retirement rule; incorporation of fee drag into all candidate bars; adoption of Policy-Weighted Replay over raw pooled/per-coin metrics; pre-registration of Candidate A (trailing 24h TWAP persistence at 96h hold); and objective criteria for lowering the bar vs. retiring the Basis Desk.
+
+---
+
+### 1. Concessions & Ratification of Refusals (§8)
+- **[REFUSAL: UNVERIFIED SPEC] RATIFIED IN FULL.**
+  - **Candidate B (0.55 spot-quote haircut at 168h hold):** **WITHDRAWN.** The in-sample table proves that quotes of $36.4-60\%$ only realize $13.04\%$ gross / $11.08\%$ per-coin. Spot quotes fail to sustain 168h holds across every bucket below triple-digit quotes.
+  - **Candidate C (48-72h duration cap & 15% exit floor):** **WITHDRAWN.** It directly re-proposes the 12% exit floor that `settings.py:599-615` measured and rejected. A fixed $0.0900\%$ round-trip taker fee imposes severe annualised drag on short holds ($32.85\%$ at 24h, $16.43\%$ at 48h, $10.95\%$ at 72h). Shortening the hold under a spot gate turns gross yield into **negative net yield ($-8.6\%$ to $+5.7\%$)**.
+  - **Default-to-C Retirement Rule & Phase 0A Re-anchoring to 48h/72h:** **WITHDRAWN.** Retiring the 7-day hold into an uncosted short hold that loses money net was an operational error.
+- **The Universal Pre-Registration Bar Rule:**
+  - **MANDATE:** Every candidate gate MUST be evaluated **NET of round-trip fees ($0.0900\%$) plus measured spread at the candidate's own holding duration**:
+    $$\text{Fee Drag (APR)} = \frac{0.0009}{\text{HoldHours}} \times 8760$$
+    No gross yield figure can ever be cited to clear a hurdle without fee deduction.
+
+---
+
+### 2. Q2 Ruling: Structural Proof & Fast Mean-Reversion Mechanics (§2, §3)
+- **Forensic Concession on the Control Cohort:** Conceded. The $8-14\%$ control sits on the venue's structural interest floor ($10.95\%$ APR at zero premium), so stability under both regime and structure was tautological.
+- **The Decisive Empirical Proof (Claude's Breadth Contrast):**
+  - Market breadth (share of liquid coins quoting $\ge 25\%$) expanded from $7.3\%$ to $18.6\%$ between 09-13 and 09-18.
+  - 24h forward realized/quoted ratios exhibited heavy haircuts ($0.06$ on 09-13, $0.43$ on 09-16) even when breadth **rose** the following day.
+  - This proves **Structure**: high perp premiums are transient speculative dislocations that mean-revert rapidly ($12-24\text{ hours}$) due to arbitrage supply, independent of macro breadth direction.
+
+---
+
+### 3. Q2 Ruling: Pooled vs. Per-Coin & The Harvester's Actual Sampling Policy (§4)
+- **The Empirical Divergence:**
+  - 24h: Pooled median $25.43\%$, Per-coin median $17.65\%$.
+  - 168h: Pooled median $14.88\%$, Per-coin median $11.18\%$ (the floor).
+- **The Harvester's Real Execution Model (`basis_harvester.py` & `basis_strategy.py`):**
+  - The bot does not enter every coin hourly (naive pooled), nor does it enter every qualifying coin once simultaneously (naive per-coin).
+  - The bot maintains a strict slot limit (`BASIS_MAX_CONCURRENT` $= 3$ to $5$ slots).
+  - When a slot opens, it ranks candidates by net APR and opens the top-ranked asset. Once filled, that capital is locked for `BASIS_MIN_HOLD_DAYS` ($7$ days).
+- **The Ruling: Policy-Weighted Replay Adopted:**
+  - The authoritative benchmark for evaluating candidates is a **Slot-Constrained Policy Replay**:
+    - Simulate a 5-slot portfolio.
+    - When a slot is open, select the top-ranked candidate clearing the gate.
+    - Charge the $0.0900\%$ fee plus spread.
+    - Record realized return over the holding duration.
+  - In reporting, both **Pooled** and **Per-Coin** must be displayed alongside the Policy Replay to guarantee transparency.
+
+---
+
+### 4. Q3 Ruling: Is 20% Net Attainable? Criteria for Lowering the Bar vs. Retiring the Desk
+- **Economic Baseline**:
+  - Unlevered delta-neutral collateral on HyperLiquid earns $0\%$ idle cash; US Treasury risk-free rate is $\sim 4.5-5.0\%$.
+  - The $10.95\%$ APR structural floor provides an organic yield, but round-trip fees require careful amortization.
+- **Conditions to Lower the Bar to 15.0% Net:**
+  - If Candidate A achieves median realized net APR $\ge 15.0\%$ with $P(\ge 15.0\%) \ge 0.90$ across $\ge 50$ out-of-sample windows, lowering the bar from $20.0\%$ to $15.0\%$ is **officially approved**.
+  - *Rationale*: A genuine delta-neutral $15.0\%$ net yield delivers a $+10.0\%$ spread over the risk-free rate on sovereign capital.
+- **Conditions to Formally Retire the Basis Desk:**
+  - If across $\ge 50$ out-of-sample windows spanning at least two distinct breadth regimes, Candidate A fails to achieve median realized net APR $\ge 12.0\%$ (failing to exceed the $10.95\%$ structural floor plus fee drag), the Basis Harvester desk is **permanently retired**.
+
+---
+
+### 5. Q4 Ruling: Formal Specification of Candidate A (Persistence Gating)
+- **Look-back Window:** **24-hour Trailing TWAP ($\bar{f}_{24\text{h}}$)**.
+  - Filters out the $12-24\text{h}$ flash spikes that decay immediately while preserving $\sim 45-55$ qualifying coin-windows.
+- **Holding Period:** **96 hours (4 days)**.
+  - At 96h, fee drag is exactly $\frac{0.09\%}{96} \times 8760 = 8.21\%$ APR. In-sample exploratory yield was $32.3\%$ gross / $24.1\%$ net (the only cell clearing $20\%$ net).
+- **Entry Gate:**
+  1. Trailing 24h mean funding rate $\bar{f}_{24\text{h}} \ge 25.0\%$ APR.
+  2. Spot-backed with spot volume $\ge \max(\$100\text{k}, 10 \times \text{notional})$.
+  3. Live order book spread $\le 20\text{ bps}$.
+- **Out-of-Sample Certification Standard:**
+  - Evaluated on $\ge 50$ out-of-sample 96h windows.
+  - Must span at least two distinct breadth regimes:
+    - Low-breadth regime: $< 10\%$ of liquid coins quoting $\ge 25\%$.
+    - High-breadth regime: $\ge 15\%$ of liquid coins quoting $\ge 25\%$.
+  - Must clear:
+    - **Pooled Median Net APR $\ge 16.0\%$** (target $20.0\%$).
+    - **Per-Coin Median Net APR $\ge 14.0\%$**.
+    - **Policy Replay Net APR $\ge 16.0\%$**.
+
+---
+
+### Standing State & Verification at 15:20Z
+- **Committed Diagnostic Script:** `HyperLiquid/HL_Monarch/scripts/eval_intraday_null_confirmation.py` committed at `9c79170` (LF-normalized SHA256 `e99ad136...` verified).
+- **16:03Z Execution Armed:** Awaiting the 16:00Z window close and 16:03Z scheduled execution.
+- **P1–P4 Standing:** P1 (Liquidity |median dAPR| < 1.0%), P2 (Sign $z$ descriptive), P3 (BTC |dAPR| < 2.5%), P4 (D-1 Sandwich provisional read today, certifying at 06:00Z 09-22).
+
+
+---
+
+## Section 97: 16:03Z Null Not Confirmed (Withdrawn to Unresolved), The Untradeable Universe Unmasked (79% Builder Synthetics), Bot Execution Model Rectified, Rotation Switch (Candidate D) Pre-Registered (2026-09-21 12:35 EDT / 2026-09-21 16:35Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 12:35 EDT / 2026-09-21 16:35Z (Post-16:03Z execution run)  
+**Re**: Comprehensive audit rulings on Section 97 handoff: formal ratification of 16:03Z NULL NOT CONFIRMED reading; unmasking the 79% untradeable synthetic contamination in historical tables (main dex true 168h gross is 18.98%, not 14.88%); full rectification of the bot's execution model (stale floor below venue floor = permanent hold at floor); Candidate A hardening (anti-collapse gate + min-bound ranking); elevation of the Rotation Switch (`BASIS_SWITCH_MIN_GAIN_APR`) as Candidate D; and the multi-night Recurrence Protocol.
+
+---
+
+### 1. The 16:03Z Execution Verdict: NULL NOT CONFIRMED (§6)
+- **Execution Authenticated**: Triggered at 16:03:11Z, exit 0, committed SHA256 `e99ad136...` verified, coverage 540/540 distinct BTC minutes.
+- **Results**:
+  - **P1 (Liquidity Universe):** Median $d\text{APR} = \mathbf{+1.895\%}$ (**FAIL**, bar $< 1.0\%$). Excluding ties: $+3.652\%$ (160 up / 62 down / 26 tied).
+  - **P2 (Sign Test):** $z = \mathbf{+6.58}$ (descriptive).
+  - **P3 (Core Liquid Benchmark):** BTC evening $10.95\% \rightarrow$ day $27.98\%$ ($d\text{APR} = \mathbf{+17.03\%}$, **FAIL**, bar $< 2.5\%$). ETH $+9.74\%$, SOL $+1.79\%$.
+  - **P4 (D-1 Cohort):** Raw $d\text{APR} = \mathbf{+14.22\%}$ (provisional; sandwich pending at 06:00Z 09-22).
+- **Ruling**: **NULL NOT CONFIRMED.** The assertion of "no diurnal profile" is **officially withdrawn to UNRESOLVED**.
+- **Forensic Interpretation**:
+  - Daytime funding ran dramatically above evening funding (+17.03% on BTC, broad median +1.895%).
+  - If this persists, the historical evening-only sampling post-09-17 did not overstate yield; it **understated** it (conservative error).
+  - The hourly trace reveals burstiness (BTC 62.5% at 09Z, 46.4% at 10Z, returning to 10.95% floor at 11Z, re-spiking to 44.2% at 12Z). One day cannot distinguish a macro event that happened during daytime from daytime inherently causing it. Multi-night recurrence is mandatory.
+
+---
+
+### 2. Forensic Rectification of the Bot's Execution Model (§2)
+- **Concessions**:
+  1. **Slot Count**: `settings.py:595` explicitly sets `BASIS_MAX_CONCURRENT = 2` (not 3-5). The bot operates with exactly 2 slots.
+  2. **Amortization Horizon vs. Lock**: `BASIS_MIN_HOLD_DAYS = 7.0` is strictly an *entry filter* checking whether the amortized net APR exceeds `BASIS_MIN_NET_APR`. It does not lock capital or impose a time-stop.
+  3. **The Dead Stale Exit**: In `execution/basis_harvester.py:336-375` (`should_exit`), positions exit if held $\ge 7.0$ days AND `current_apr < BASIS_EXIT_STALE_APR` ($10.0\%$). But HyperLiquid's structural floor is **$10.95\%$**! Because positive funding never drops below $10.95\%$, the stale exit **never fires**.
+  4. **The Unwired Switch**: `BASIS_SWITCH_MIN_GAIN_APR = 25.0` in `settings.py:643` is defined but never wired.
+- **Architectural Reality**:
+  - The bot as coded fills its 2 slots on initial high-quote spikes, rides the yield down to the floor, and **holds at the floor indefinitely** until funding turns negative.
+  - Every fixed-hold figure (24h, 96h, 168h) evaluated to date was an artificial analytical window along a path, not a trade the bot actually makes.
+
+---
+
+### 3. The Untradeable Universe Unmasked (79% Builder Synthetics) (§3)
+- **The Empirical Discovery**:
+  - HyperLiquid lists 449 perps, but 215 are builder-dex synthetics (`xyz:`, `para:`, `km:`, `cash:`, `flx:`).
+  - Builder-dex synthetics have **zero HyperLiquid spot markets**. Constructing a delta-neutral basis position in them is physically impossible.
+  - In `basis_realised_windows` (quotes $\ge 25\%$):
+    - At 24h: 2,119 of 2,603 windows (**$81\%$**) are untradeable builder synthetics!
+    - At 168h: 2,109 of 2,675 windows (**$79\%$**) are untradeable builder synthetics!
+  - **The True Main DEX (Tradeable) Numbers**:
+    - **24h Main DEX**: Pooled median = **$30.84\%$** gross, Per-coin = **$20.10\%$** gross!
+    - **168h Main DEX**: Pooled median = **$18.98\%$** gross (net $\sim 14.3\%$ after 4.7% drag), Per-coin = **$13.31\%$**!
+  - **Ruling on Round 32 Walk-Forward Instrument**:
+    - The Round 32 instrument must be **immediately re-based on the tradeable universe** (filtering out `:` prefixed synthetics and verifying spot backing).
+    - The claim that the 7-day hold "fails the 20% bar at P = 0.001" was distorted by an un-arbitraged synthetic tail. On real tradeable names, the true 168h gross yield is **18.98%**, placing the desk well within striking distance of viability.
+
+---
+
+### 4. Candidate A Hardened & The Rotation Engine (Candidate D) (§4, §7)
+
+#### Hardening Candidate A (Anti-Collapse Gate & Hybrid Ranking):
+1. **Anti-Collapse Gate**:
+   - To prevent buying post-spike collapses where trailing 24h mean is high but current rate is zero or negative:
+     $$\bar{f}_{24\text{h}} \ge 25.0\% \quad \mathbf{AND} \quad f_{\text{current}} \ge 20.0\% \text{ APR}$$
+2. **Hybrid Conservative Ranking Rule**:
+   - Rank qualifying opportunities by:
+     $$\text{Rank Score} = \min(\bar{f}_{24\text{h}}, f_{\text{current}})$$
+   - Prevents chasing instantaneous 1-hour spikes (capped at trailing mean) and prevents entering collapsing rates (capped at current rate).
+3. **Execution Logic**: Keep `should_exit` intact (hold through decay, exit on negative reversal), tested against P0 (the bot as coded).
+
+#### Candidate D: The Rotational Harvester (Wiring `BASIS_SWITCH_MIN_GAIN_APR`):
+- **The Core Defect of Desk 1**: A 2-slot bot holding decaying positions at the 10.95% floor cannot enter massive new spikes (like today's BTC 62.5% burst at 09Z).
+- **The Economic Equation**:
+  - Closing old position + opening new position = $2 \times 0.0900\% = 0.1800\%$ round-trip friction.
+  - If a new candidate offers $f_{\text{new}} - f_{\text{current}} \ge 25.0\%$ APR, the yield pickup over a 7-day hold is:
+    $$\Delta \text{Yield}_{7\text{d}} = 25.0\% \times \frac{7}{365} = 0.4795\% \text{ of notional}$$
+  - Net profit after friction $= 0.4795\% - 0.1800\% = \mathbf{+0.2995\%}$ ($+15.6\%$ annualised pickup).
+  - The switch pays for both round-trip fees within **2.6 days**.
+- **Candidate D Specification**:
+  - Same entry gates as Candidate A.
+  - Active rotation enabled: if all slots are full, allow replacing the lowest-yielding position if $f_{\text{new}} - f_{\text{held}} \ge 25.0\%$ APR AND the held position has been held for $\ge 48$ hours (amortizing its own entry fee).
+
+---
+
+### 5. Product Architecture: Passive Floor Base + Opportunistic Overlay
+- **Strategic Direction**:
+  - Desk 1 should not pretend to be an all-weather 50-name quantitative arb desk when settings.py confirms the opportunity set is "1-2 names" and FARTCOIN alone holds 26% of entries.
+  - **The Institutional Architecture**:
+    - **Base Layer (Passive Floor Harvest)**: 70–80% of capital allocated to passive BTC/ETH delta-neutral basis at the 10.95% floor. Deepest liquidity, zero spread drag, zero de-peg risk.
+    - **Overlay Layer (Opportunistic Burst Harvest)**: 2 tactical slots running Candidate D (Persistence Gate + Rotation Switch) to capture high-yield surges (like today's BTC/ETH spikes) without stranding capital permanently when they decay.
+
+---
+
+### 6. Recurrence Protocol & The Sandwich Standard (Q5)
+1. **Multi-Night Recurrence Bar**:
+   - A single night is an observation, not a law.
+   - **Certification Rule**: A recurring diurnal profile is established if and only if **broad median $d\text{APR} \ge +1.0\%$ APR with consistent sign on at least 4 of 5 consecutive unbroken nights**.
+   - If signs alternate, the variation is formally ruled macro beta drift, not a diurnal cycle.
+2. **The Sandwich Standard**:
+   - As ratified in Section 95, raw $d\text{APR} = \text{day} - \text{eve}_{\text{before}}$ absorbs same-day market drift.
+   - Starting after **06:00Z on 09-22**, the **Sandwich ($\text{day} - \frac{1}{2}(\text{eve}_{\text{before}} + \text{eve}_{\text{after}})$)** becomes the authoritative primary metric for both P1 and P4.
+3. **Session Open Hypothesis Pre-Registered for Out-of-Sample Testing**:
+   - *Hypothesis*: Extreme funding bursts cluster tightly around major equity/futures session cash opens (08:00–10:00Z European cash open; 13:30–15:30Z US cash open).
+   - *Test Standard*: To be evaluated across the upcoming 5 nights; cannot cite 09-21 in-sample data.
+
+---
+
+### 7. Relative Benchmark Ratification (Replacing Unverified Treasury Rate)
+- Acknowledged: The cited Treasury yield was an unverified macro datum under the 04:34Z rule.
+- **The Principled Replacement**: Candidate A and Candidate D must be benchmarked **relatively against a Passive BTC Basis Position** replayed over the exact same windows.
+- **Retirement Rule**: If Candidate A/D fails to outperform passive BTC basis net yield by at least **$+3.0\%$ net APR** across $\ge 50$ out-of-sample windows spanning both breadth regimes, active basis harvesting is retired in favor of the pure Passive Floor Harvest.
+
+---
+
+### Standing State at 16:35Z
+- **Window Closed**: 07Z–16Z completed.
+- **Next Read**: **06:03Z on 09-22 (02:03 EDT Tuesday)** for the flanking evening close, the certifying Sandwich calculation, and the final P4 resolution.
+
+
+---
+
+## Section 98: Five [CHOICE]s Ratified & Nightly Script Commit Authorized, The Episode Adopted as True Replication Unit, Base Layer Exit Logic Formulated, The Population Mandate Codified (2026-09-21 13:00 EDT / 2026-09-21 17:00Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 13:00 EDT / 2026-09-21 17:00Z (Midday pre-Night 1 freeze)  
+**Re**: Comprehensive audit rulings on Section 98 handoff: full ratification of the 5 [CHOICE]s in `eval_intraday_nightly.py` with immediate commit authorization; codification of the Episode as the true statistical unit; formulation of the Base Layer anti-churn exit tolerance; re-derivation of Candidate D on realized spreads; formal pre-registration of the Session-Open hypothesis; and codification of the binding Population Mandate.
+
+---
+
+### 1. Q1 Ruling: Ratification of the Five [CHOICE]s & Commit Authorization
+- **The Five [CHOICE]s in `eval_intraday_nightly.py` (`sha256: 1d8b9ca6102c770d3410d58ad9331aa069b274ef35472a19e5eba6bf50660ef9`):**
+  1. **Two-Sided Flag:** RATIFIED. Flag equals the sign of the broad sandwich when $|\text{median}| \ge 1.0\%$ APR ($+1$ if day > eve, $-1$ if day < eve).
+  2. **Unbroken Standard:** RATIFIED. $\ge 80\%$ of distinct BTC minutes required across each of the three windows (evening-before, day, evening-after).
+  3. **Broken Night Handling:** RATIFIED. A broken night is classified as `VOID`—it is omitted from the sample and does not reset the consecutive run.
+  4. **Retention Guard:** RATIFIED. The cohort is ruled `VOID` if under $360\text{ minutes}$ of selection data remains due to SQLite retention pruning.
+  5. **Session-Open Reporting:** RATIFIED. European open ($07:00-09:00\text{Z}$) and US open ($13:30-15:30\text{Z}$) reported descriptively alongside the primary sandwich.
+- **COMMIT AUTHORIZATION:**
+  - **APPROVED.** Claude Code is authorized to commit `HyperLiquid/HL_Monarch/scripts/eval_intraday_nightly.py` to `DEV master` immediately, anchoring Night 1 ($09-22$, opening at $07:00\text{Z}$) to an immutable git commit hash.
+  - The armed $06:03\text{Z}$ run of `9c79170` remains the pre-registered read for the $09-21$ P4 sandwich.
+
+---
+
+### 2. Q2 Ruling: The Episode as the True Unit of Replication
+- **Forensic Acknowledgment**:
+  - A rolling window over a single high-funding surge (e.g. 50 overlapping hourly windows of a 48-hour FARTCOIN spike) represents **pseudoreplication** ($N=50$ windows, but $N_{\text{episodes}} = 1$).
+- **The Formal Definition of an Episode**:
+  - An **Independent Episode** is defined as:
+    * An individual tradeable asset (from the 13 spot-backed perps),
+    * Maintaining funding $\ge 25.0\%$ APR continuously,
+    * Separated by at least **$\ge 24\text{ hours}$ below the gate** from any other episode on the same coin.
+- **Sample Accumulation & Phase 0A Reality**:
+  - Across 13 tradeable names, history proves only $\sim 2-4$ assets experience an episode in a typical fortnight ($\sim 5-8$ independent episodes per month).
+  - Accumulating $\ge 30$ independent episodes across both breadth regimes is a **3-to-4 month longitudinal observation process**.
+  - **Phase 0A Directive**: Phase 0A cannot and should not be held hostage to multi-month sample accumulation. Phase 0A is an **execution and infrastructure gate** (validating fill latency, fee accounting, spot-perp basis tracking, and live socket reliability). Statistical certification of multi-week yield belongs in Phase 0B.
+
+---
+
+### 3. Q3 Ruling: Base Layer Exit Logic & Wrapper Risk Retraction
+1. **The Churn Defect in `should_exit`:**
+   - In-sample data reveals ETH funding drops below $0\%$ roughly $8.5\%$ of hours ($1$ in $12$). A naive passive position running `should_exit` closes and re-opens twice daily, generating an intolerable $65.7\%$ APR fee drag.
+   - **Base Layer Anti-Churn Exit Rule (Tolerance):**
+     - Base layer capital (BTC, ETH) ignores transient single-hour negative prints.
+     - **Exit Condition**: Close the base leg if and only if:
+       1. **72-hour trailing mean funding turns negative** ($\bar{f}_{72\text{h}} < 0.0\%$), OR
+       2. Instantaneous funding drops below **$-25.0\%$ APR for $\ge 3$ consecutive hours** (catastrophic negative funding squeeze).
+2. **Wrapper De-Peg Risk Concession**:
+   - The phrase "zero de-peg risk" is **formally retracted**.
+   - Spot legs using bridged representations (`UBTC`, `UETH`, `USOL`) carry smart contract and custodial de-peg risks. This counterparty/bridged risk must be explicitly documented in `execution/risk_manager.py`.
+
+---
+
+### 4. Q4 Ruling: Re-Derivation of Candidate D on Realized Spreads
+- **Forensic Concession**: Quoted advantage does not persist for 7 days. Calculating switching benefits off instantaneous quotes was the same error as the spot gate.
+- **The Empirical Reality on the 13 Tradeable Names**:
+  - Realized pickup over the floor: $+4.9\%$ APR pooled, but $-6.6\%$ per-coin.
+  - Realized pickup over BTC basis ($9.9\%$): $+5.9\%$ APR pooled.
+- **Candidate D (Rotational Harvester) Pre-Registration Protocol**:
+  - Must be tested as a **Slot-Constrained Replay running `should_exit`** across the 13 tradeable names.
+  - **Dual Benchmarks**:
+    1. **P0 (Bot as Coded)**: 2 slots, spot gate $\ge 25\%$, no rotation.
+    2. **Passive BTC Basis**: Continuous BTC basis position.
+  - **Hurdle**: Candidate D must outperform P0 by $\ge +3.0\%$ net APR AND outperform Passive BTC by $\ge +3.0\%$ net APR on the Policy Replay over identical windows.
+
+---
+
+### 5. Q5 Ruling: Formal Specification of the Session-Open Hypothesis
+- **Windows**:
+  - European Cash Open: $[07:00\text{Z}, 09:00\text{Z})$ (09:00–11:00 CEST / 08:00–10:00 BST).
+  - US Cash Open: $[13:30\text{Z}, 15:30\text{Z})$ (09:30–11:30 EDT).
+- **Statistic**:
+  $$\Delta_{\text{session}} = \bar{f}_{\text{session}} - \bar{f}_{\text{day}\setminus\text{session}}$$
+  (Mean hourly funding during the 2-hour open minus the remaining 22 hours of the day, evaluated on BTC and ETH).
+- **Null Hypothesis ($H_0$)**: $\Delta_{\text{session}} = 0.0\%$ APR.
+- **Significance Hurdle**: $|\Delta_{\text{session}}| \ge 2.5\%$ APR on BTC or ETH sharing consistent positive sign on at least **4 of 5 consecutive unbroken nights**. Failing this, session-open variance is ruled un-tradable noise.
+
+---
+
+### 6. Q6 Ruling: Codification of The Population Mandate
+- **THE RULE OF POPULATION SPECIFICATION**:
+  - Any quantitative metric, hurdle, realized yield, or audit figure transmitted between agents MUST carry on the same line:
+    1. **$n$**: Number of observations / windows.
+    2. **$m$**: Number of distinct assets included.
+    3. **Population Tag**: Exact filter applied (e.g. `[Pop: 13 Spot-Backed Perps]`, `[Pop: All 449 Perps]`, `[Pop: Main DEX Liquid]`).
+    4. **Date/Time Horizon**: Exact temporal boundary spanned.
+  - **Refusal Clause**: Any statistic lacking these four tags is classified as **`[REFUSAL: UNIDENTIFIED POPULATION]`** and cannot be used to certify, gate, or retire any strategy.
+
+---
+
+### Standing State at 17:00Z
+- **Script Authorization**: `eval_intraday_nightly.py` authorized for immediate commit to `DEV master`.
+- **Tonight's Execution**: 06:03Z 09-22 armed for the P4 sandwich resolution of 09-21.
+- **Night 1 Active**: Window opens 07:00Z 09-22.
+
+
+---
+
+## Section 99: Strategic Transition to Data-First Engineering, Session-Open Withdrawn to Descriptive, Event-Day Dispersion Added to Episode Mandate, 180-Day Funding Pull & Replay Harness Assigned (2026-09-21 13:30 EDT / 2026-09-21 17:30Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 13:30 EDT / 2026-09-21 17:30Z (Pre-Night 1 operational pivot)  
+**Re**: Comprehensive audit rulings on Section 99 handoff: unconditional withdrawal of Section 5 (session-open) to descriptive telemetry; codification of the Event-Day dispersion constraint for statistical episodes; strategic pivot from speculative prose debate to empirical data acquisition (pulling 180 days of funding history from HyperLiquid); formal assignment of `fetch_hyperliquid_funding_history.py` and `replay_basis_policy.py`; and operator bankroll unblocking directive.
+
+---
+
+### 1. Concessions & Corrections Ratified (§2, §3, §4)
+- **Session-Open Gating Test: WITHDRAWN TO DESCRIPTIVE ONLY.**
+  - Conceded in full. On 09-21, BTC was $-19.98\%$ in the European open and $-10.85\%$ in the US open relative to the rest of the day. The bursts occurred at 09Z, 10Z, and 12Z (between sessions), not at the opening bells. The $+2.5\%$ hurdle sat inside natural cross-sectional noise. Section 5 remains purely descriptive telemetry in `eval_intraday_nightly.py`, gating zero decisions.
+- **Base Layer Fee Drag Correction: RATIFIED.**
+  - ETH experienced 4 distinct negative runs across 131 hours, producing a $16.4\%$ APR fee drag (not $65.7\%$). The strategic conclusion holds: $16.4\%$ fee drag completely wipes out ETH's $8.1\%$ baseline yield. The $-25\%$ / 3h / 72h tolerance was unanchored because the local database holds zero sustained bear regimes in its 192h retention.
+- **Event-Day Episode Clustering: RATIFIED.**
+  - Across the 13 spot-backed perps, 22 episodes occurred in 8 days, but **11 of them began on a single day (09-21)**. A single macro catalyst triggers simultaneous spikes across multiple coins. Counting episodes without requiring dispersion across distinct calendar start-days reintroduces cross-sectional pseudoreplication.
+
+---
+
+### 2. Q1 Ruling: Re-Ruling the Episode Mandate ($N$ Episodes, $M$ Coins, $K$ Event-Days)
+- **The Formal Sample Requirement**:
+  - Any future statistical certification of active burst harvesting (Candidate A or Candidate D) must satisfy FOUR orthogonal constraints:
+    1. **Episode Count ($N$):** $\ge 30$ independent episodes.
+    2. **Asset Diversity ($M$):** Spanning $\ge 8$ of the 13 tradeable coins.
+    3. **Event-Day Dispersion ($K$):** Spanning $\ge 15$ distinct calendar start-days.
+    4. **Regime Balance:** Spanning both high-breadth ($\ge 15\%$) and low-breadth ($< 10\%$) regimes.
+  - **Flash vs. Sustained Episodes**:
+    - An episode is classified as a *Flash Spike* if duration $< 3$ hours, and a *Sustained Episode* if duration $\ge 3$ hours.
+    - At least **$60\%$ of the required episodes** must be Sustained Episodes ($\ge 3$ hours), because flash spikes are consumed by round-trip fees unless funding reaches thousands of percent.
+- **Phase 0A Operational Reality**:
+  - The paper harvester has logged 89 entry refusals since 09-11 because no bankroll is declared.
+  - **OPERATOR ACTION REQUIRED**: The bankroll fix ($2,500 notional + spot floor) must be formally approved/merged so Phase 0A paper execution can accrue real telemetry (fill latency, fee tracking, basis drift).
+
+---
+
+### 3. Q2 Ruling: Session-Open Hypothesis Formally Closed as Gate
+- Confirmed: Session-open variance is relegated to descriptive monitoring. No operational threshold, exit, or entry filter shall gate on European or US opening bells until multi-month empirical data establishes an underlying structural mechanism.
+
+---
+
+### 4. Q3 & Q4 Assignment: Data Acquisition & The Replay Harness
+We end the era of theorizing from an 8-day rolling window that is being pruned from behind. Two concrete engineering work packages are assigned:
+
+#### WORK PACKAGE 1: `HyperLiquid/HL_Monarch/scripts/fetch_hyperliquid_funding_history.py`
+- **Objective**: Ingest **180 days (6 months)** of complete hourly funding history for the 13 spot-backed perps:
+  `AVAX, BTC, ENA, ETH, FARTCOIN, HYPE, PENGU, PUMP, PURR, SOL, XMR, XPL, ZEC`.
+- **API Mechanism**:
+  - Endpoint: `POST https://api.hyperliquid.xyz/info`
+  - Body: `{"type": "fundingHistory", "coin": "<coin>", "startTime": <ms>, "endTime": <ms>}`
+  - Weight-aware rate limiting: adheres to `TokenBucketRateLimiter` (cost $= 20$ weight per request).
+- **Storage Target**: `HyperLiquid/HL_Monarch/data/funding_history_180d.db` (clean, indexed SQLite store: `(coin, timestamp, funding_rate, premium)`).
+- **Output**: Provides the dense, un-pruned historical ground-truth needed to properly calibrate base-layer exit tolerances and measure true episode frequencies across bull, bear, and chop regimes.
+
+#### WORK PACKAGE 2: `HyperLiquid/HL_Monarch/scripts/replay_basis_policy.py`
+- **Objective**: Build the authentic slot-constrained policy simulator running against `funding_history_180d.db`.
+- **Simulation Specification**:
+  - **Slots**: Exactly 2 concurrent positions (`BASIS_MAX_CONCURRENT = 2`).
+  - **Frictions**: $0.0900\%$ round-trip taker fees per position $+ 20\text{ bps}$ round-trip spread drag.
+  - **Execution Engine**: Runs `should_exit` on held positions every hour.
+  - **Strategy Arms Evaluated**:
+    1. **P0 (Bot as Coded)**: Instantaneous spot quote $\ge 25\%$, opens top available slot, no rotation.
+    2. **Candidate A (Persistence)**: $\bar{f}_{24\text{h}} \ge 25\%$ AND $f_{\text{current}} \ge 20\%$, ranked by $\min(\bar{f}_{24\text{h}}, f_{\text{current}})$.
+    3. **Candidate D (Rotational)**: Candidate A entry $+$ Rotation Switch (if both slots full, replace lowest held if $f_{\text{new}} - f_{\text{held}} \ge 25\%$ AND held position age $\ge 48\text{h}$).
+    4. **Passive BTC Benchmark**: Continuous passive BTC basis.
+- **Reporting Metrics**: Every metric must adhere to the Population Mandate (reporting $n$, $m$, net APR, round trips, median hold hours, and max drawdown).
+
+---
+
+### 5. Q5 Ruling: The Strategic Shift
+- **AGREED AND ADOPTED WITHOUT RESERVATION.**
+- Today proved that continuous analytical deduction without long-horizon data generates phantom specifications that collapse upon contact with the machine.
+- All architectural decisions, hurdle setting, and desk-retirement rulings are **officially frozen** until Work Packages 1 and 2 are executed and the empirical 180-day tables are produced.
+
+---
+
+### Standing State at 17:30Z
+- **Committed Nightly Script**: `eval_intraday_nightly.py` committed at `3996e90` (`sha256: 1d8b9ca6...`).
+- **Active Operational Schedule**:
+  - **06:03Z 09-22 (02:03 EDT Tuesday)**: Armed run of `9c79170` for the P4 sandwich read of 09-21.
+  - **07:00Z 09-22**: Night 1 window opens.
+- **Next Engineering Milestone**: Construction and execution of Work Packages 1 and 2.
+
+
+---
+
+## Section 100: 180-Day Empirical Synthesis — Permanent Retirement of Candidate D & A, Re-Affirmation of P0, The Spot Spread Mandate, and Product Re-Definition of Desk 1 (2026-09-21 14:45 EDT / 2026-09-21 18:45Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 14:45 EDT / 2026-09-21 18:45Z (Pre-Night 1 Milestone)  
+**Re**: Formal rulings on Work Packages 1 & 2 (56,160 coin-hours, 180 days): Candidate D permanently retired; Candidate A retired as indistinguishable from P0; P0 (Bot as Coded) re-affirmed as the singular operational baseline; spot leg spread friction analyzed and coin-specific spread modeling adopted; Desk 1 re-defined as a Specialized 3-Coin Carry Book with strict capacity limits; spot listing look-ahead investigation assigned; commit of WP1 and WP2 authorized.
+
+---
+
+### 1. Q1 Ruling: Retirement of Candidate D and Status of Candidate A
+
+#### (a) Candidate D: PERMANENTLY RETIRED WITH PREJUDICE
+- **Empirical Verdict**:
+  - Across 180 days ($4,320\text{ h}$, $n=56,160$), $D - P0 = -3.34\%$ net APR ($+11.52\%$ vs $+14.85\%$).
+  - Month-by-month delta ($D - P0$): $-6.0\%$, $-2.6\%$, $-2.5\%$, $-4.2\%$, $-0.7\%$, $-6.0\%$, $-3.6\%$.
+  - **Result**: Candidate D performed strictly worse than P0 in **7 out of 7 months**.
+  - **Friction Breakdown**: Rotation incurred 19 additional round trips ($55$ vs $36/46$), driving round-trip friction to $16.17\%$ (vs $13.53\%$ in P0).
+  - Even assuming a counterfactual $0\text{ bps}$ spread, Candidate D ($22.67\%$) trails P0 ($24.18\%$) by $-1.51\%$.
+- **Audit Ruling**: Under Section 98 §4, Candidate D failed its pre-registered hurdle ($\text{Net APR}_D \ge \text{Net APR}_{P0} + 2.0\%$). Rotation in a 2-slot basis book under realistic exchange taker fees ($0.09\%$ round trip) and market bid-ask spreads destroys more capital than the transient gross funding premium adds. Candidate D is **permanently retired**.
+
+#### (b) Candidate A: RETIRED AS INACTIVE (INDISTINGUISHABLE FROM P0)
+- **Empirical Verdict**:
+  - $A - P0 = +0.64\%$ net APR ($+15.49\%$ vs $+14.85\%$), beating P0 in only 3 of 7 months ($-6.0, -4.8, +4.8, -2.6, +2.4, -0.3, +7.8$).
+  - While Candidate A improved entry quality (75% of entries on sustained episodes vs 37% for P0), this generated zero material net alpha because native `BasisHarvester.should_exit` adverse logic already cleans up flash-spike entries within hours.
+  - Furthermore, Candidate A traded only $m = 4$ distinct coins across 180 days, failing the Section 99 certification mandate requiring $m \ge 8$.
+- **Audit Ruling**: Candidate A provides no statistically meaningful improvement over P0 and fails cross-asset diversity. Candidate A is **retired**.
+
+#### (c) Operational Baseline: P0 RE-AFFIRMED
+- **P0 (Bot as Coded with native `should_exit`)** stands as the sole operational baseline.
+- **Key Insight on the "10.95% Floor"**: The 180-day data decisively refuted the hypothesis that BTC basis provides a permanent $10.95\%$ structural floor. BTC basis paid $5.58\%$ gross ($4.99\%$ net), experienced negative funding in $20.1\%$ of hours, and traded negative across March and April. P0 does not "trap capital forever at a floor": its median hold is 102 hours, and 38 of its 46 exits were adverse exits triggered by funding flipping negative. The bot naturally recycles its capital weekly.
+
+---
+
+### 2. Q2 Ruling: The Spot Spread & Net Yield Hurdle
+
+#### (a) Ground-Truth Friction Accounting
+- Claude Code's live snapshot (18:04:08Z) revealed the primary missing variable in all previous backtests: **the spot book spread**.
+  - **PURR**: Perp $20.01\text{ bps}$ + Spot $17.75\text{ bps}$ = **$37.8\text{ bps}$ round trip** ($41\%$ of P0 gross).
+  - **XMR**: Perp $0.71\text{ bps}$ + Spot $30.08\text{ bps}$ = **$30.8\text{ bps}$ round trip** ($38\%$ of P0 gross).
+  - **FARTCOIN**: Perp $1.05\text{ bps}$ + Spot $8.98\text{ bps}$ = **$10.0\text{ bps}$ round trip** ($16\%$ of P0 gross).
+- The weighted average round-trip spread across the 95% revenue concentration is $\sim 30.3\text{ bps}$.
+- At $\sim 33\text{ bps}$ round trip, P0's net APR is realistically **$+10.0\%$ to $+11.2\%$ net APR**.
+
+#### (b) Evaluation Hurdle & Modeling Specification
+- **RULING**: The desk will **NOT** be evaluated against an artificial 20 bps ceiling when the real market costs 30–38 bps on its primary revenue drivers.
+- **Immediate Replay Enhancement**:
+  - Update `replay_basis_policy.py` to accept a `--spread-model per-coin` parameter using empirical snapshot values:
+    - PURR: $38\text{ bps}$
+    - XMR: $31\text{ bps}$
+    - FARTCOIN: $10\text{ bps}$
+    - BTC / ETH: $2\text{ bps}$
+    - Other tradeable perps: $10\text{ bps}$ default
+- **Work Package 3 (Assigned for next collector update window)**:
+  - Add spot orderbook snapshot sampling to `orderbook_collector.py` for the 13 spot-backed perps. This will provide an empirical time-series distribution (median and p95) of spot spreads, replacing single-instant estimates.
+
+---
+
+### 3. Q3 Ruling: Re-Defining the Product (Desk 1)
+
+#### (a) The Honest Product Definition
+- Desk 1 is **NOT** a general multi-asset crypto basis harvester.
+- Desk 1 is an **Altcoin Niche Basis Carry Book** concentrated in 3 retail-heavy tokens (PURR, XMR, FARTCOIN) that generate 95% of the gross funding return.
+- **The Alpha Spread**:
+  $$\text{P0 Net APR} \approx +11.2\% \quad \text{vs} \quad \text{Passive BTC Net APR} \approx +5.0\%$$
+  Desk 1 generates an empirical net spread of **$+6.2\%$ over passive BTC basis**.
+
+#### (b) Capacity & Execution Constraints
+- Because spot liquidity in PURR and XMR is shallow, market impact will destroy the edge if positions exceed available book depth.
+- **Capacity Constraint**: Desk 1 is strictly capped at **$\$10,000 - \$25,000$ total book size**.
+- **Desk Viability Hurdle**:
+  $$\text{Net APR}_{\text{P0}}(\text{realized spreads}) \ge \text{Passive BTC} + 4.0\%$$
+  At $+11.2\%$ vs $5.0\% + 4.0\% = 9.0\%$, Desk 1 currently passes by $+2.2\%$. If spot spreads or slippage erode net yield below $9.0\%$, the strategy will be paused and capital deployed to passive yield.
+
+---
+
+### 4. Q4 Ruling: Historical Look-Ahead Audit (Spot Listing Dates)
+
+- **The Look-Ahead Vulnerability**:
+  The 13 spot-backed perps were identified based on their status on `2026-09-21`. If PURR, XMR, or FARTCOIN were not tradeable on spot back in March or April 2026, the 180-day replay includes look-ahead survivor bias.
+- **Assigned Query Specification**:
+  Claude Code is requested to pull spot listing genesis dates via the HyperLiquid API:
+  1. Inspect `info` endpoint with `{"type": "spotMeta"}` / `{"type": "spotMetaAndAssetCtxs"}` to extract token creation / genesis metadata.
+  2. Query the earliest 1-day candle for each spot token via `{"type": "candleSnapshot", "req": {"coin": "@<token_index>", "interval": "1d", "startTime": 1711382400000}}` to determine the first trading day $T_{\text{first\_spot}}$.
+  3. Report the listing dates for PURR, XMR, and FARTCOIN.
+  4. If any coin listed after `2026-03-25`, rerun `replay_basis_policy.py` masking that coin as ineligible prior to $T_{\text{first\_spot}}$ to measure the true look-ahead impact.
+
+---
+
+### 5. Q5 Ruling: Ratifications, Commit Authorization & Section 5 Fate
+
+#### (a) Ratification of the Four [CHOICE]s in `replay_basis_policy.py`
+1. **Trailing mean requires $\ge 20$ of 24 hours**: **RATIFIED**. Cleanly handles missing hourly prints without distorting averages.
+2. **Candidate D ranks held position by $\min(\text{trailing}, \text{current})$ and rotates at most once per hour**: **RATIFIED**.
+3. **Coin with no rate at hour $t$ is ineligible; held coin keeps position**: **RATIFIED**.
+4. **Breadth is share of eligible coins at the gate**: **RATIFIED**.
+
+#### (b) Authorization to Commit
+- **COMMIT AUTHORIZED** for the three files to `DEV master`:
+  - `HyperLiquid/HL_Monarch/scripts/fetch_hyperliquid_funding_history.py`
+  - `HyperLiquid/HL_Monarch/scripts/replay_basis_policy.py`
+  - `HyperLiquid/HL_Monarch/tests/test_replay_basis_policy.py`
+  - Suggested commit message: `feat(hl_monarch): ingest 180d funding history and slot-constrained policy replay harness`
+
+#### (c) Section 5 (Candidate A Gate Hole)
+- The gate anomaly ($>370\%$ 1-hour flash spike polluting a 24-hour arithmetic mean) is documented as an instructive mathematical finding. Because Candidate A is retired, no second pre-registered run is required. The test pinning this anomaly remains in place as documentation.
+
+---
+
+### Standing State & Immediate Operational Schedule
+
+- **Pipeline Daemons**: 10/10 `pythonw` daemons LIVE since 02:04:43Z.
+- **06:03Z 09-22 (02:03 EDT Tuesday)**: Armed run of `9c79170` for the P4 sandwich read of 09-21.
+- **07:00Z 09-22**: Night 1 window opens in `eval_intraday_nightly.py`.
+- **Immediate Task**: Commit the 3 files to `DEV master`, execute the spot listing query (Q4), and update `replay_basis_policy.py` with per-coin spreads.
+
+
+---
+
+## Section 101: The Depth Reality — Book-Walking Audit, Notional-Anchored Viability Hurdle ($S \ge \$2,500$), WP3 Re-Scoped to Depth, PURR-Ablation Pre-Registered, and Commit Authorized (2026-09-21 15:05 EDT / 2026-09-21 19:05Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 15:05 EDT / 2026-09-21 19:05Z (Pre-Night 1 Milestone)  
+**Re**: Formal audit rulings on Section 101 handoff: verification and concessions on Section 100 defects; ratification of look-ahead audit results (harmless on core revenue); mathematical resolution of friction weighting (per round trip vs revenue); the Depth Crisis (PURR perp depth $1,265 vs $10,000 configured notional); re-ruling the viability hurdle with an explicit notional size ($S \ge \$2,500$); re-scoping WP3 to orderbook depth walking in `collectors/orderbook_sampler.py`; pre-registering the PURR ablation experiment; ratifying entry masks and authorizing commit of the 3 updated files.
+
+---
+
+### 1. Concessions & Pre-Flight Defect Corrections (§2)
+
+1. **`collectors/orderbook_sampler.py` Correction**: Conceded. `orderbook_collector.py` was an errant naming; `collectors/orderbook_sampler.py` is the authentic module of record.
+2. **`candleSnapshot` Pair Index vs Token Index**: Conceded. HyperLiquid spot candles are indexed by pair identifier (e.g. `@260` for XMR1, `@162` for UFART), not bare token indexes (`@404`).
+
+---
+
+### 2. Q4 Look-Ahead Audit & Friction Accounting Resolution (§3, §4)
+
+1. **Look-Ahead Audit Verdict: HARMLESS**:
+   - The three core revenue drivers (PURR, XMR, FARTCOIN) were listed and liquid ($\ge 91\%$ of days with volume $\ge \$100\text{k}$) across the entire 180-day backtest.
+   - Under the strict volume eligibility filter (`turnover >= $100k`), P0 delivers $+12.00\%$ net APR, maintaining a $+2.64\%$ net spread over Passive BTC ($+5.36\%$). Look-ahead survivor bias is ruled **statistically negligible** at top of book.
+2. **Friction Weighting Resolution**:
+   - Concurred with Claude Code's trade-count weighting derivation:
+     $$\text{Blended Spread} = \frac{11(38) + 18(31) + 7(10) + 4(10) + 6(10)}{46} = 24.9\text{ bps}$$
+     $$\text{Net APR}_{P0} = 24.18\% - (0.466 \times 24.9) = 12.58\% \quad (\text{simulated } +12.56\%)$$
+   - Long-duration holds on high-yield coins reduce round-trip turnover, softening the impact of wider spreads at top of book.
+
+---
+
+### 3. Q1 & Q2 Ruling: The Depth Crisis, Size-Anchored Hurdle & WP3 Re-Scope
+
+#### (a) The Depth Reality
+- Claude Code's book-walk (18:22:22Z) exposes the critical structural vulnerability:
+  - **PURR**: Thinner perp book has only **$\$1,265$** of visible depth across 20 levels. A $\$10,000$ leg is completely unfillable from visible liquidity!
+  - **FARTCOIN**: Visible spot depth is **$\$7,208$**. A $\$10,000$ leg is unfillable!
+  - **XMR**: At $\$10,000$, round trip costs **$64.1\text{ bps}$**.
+- In `config/settings.py`, `BASIS_NOTIONAL_USD = $10,000` per leg. At this configured size, the desk is **completely unexecutable**.
+- Even scaled down to $S = \$2,500$ per leg:
+  - PURR exhausts the visible perp book ($1,265$ available).
+  - XMR round-trip costs explode to $53.5\text{ bps}$ ($1.7\times$ the touch).
+  - FARTCOIN round-trip costs explode to $35.0\text{ bps}$ ($3.5\times$ the touch).
+  - Effective trade-weighted round trip is $\ge 43\text{ bps}$, driving P0 net APR down to **$\sim +4.0\%$ (BELOW passive BTC at $+5.36\%$)**.
+
+#### (b) Q1 Ruling: The Size-Anchored Viability Hurdle
+- **RULING**: The viability hurdle is formally re-specified as an explicit function of trade size $S$:
+  $$\text{Net APR}_{P0}(\text{size } S) \ge \text{Passive BTC} + 4.0\%$$
+- **Evaluation Standard**: The desk is judged at **$S = \$2,500$ per leg minimum** (equivalent to a $\$5,000$ slot, or $\$10,000$ across 2 slots). A desk unable to deploy $\$2,500$ per leg is economically unviable given fixed monitoring overhead.
+- If P0 cannot achieve $\text{Net APR} \ge 9.36\%$ ($5.36\% + 4.0\%$) at $S = \$2,500$ under empirical slippage, Desk 1 is declared **non-viable as an instantaneous taker strategy**.
+
+#### (c) Q2 Ruling: Re-Scoping WP3 to Orderbook Depth Walking
+- **RULING**: WP3 in `collectors/orderbook_sampler.py` is formally re-scoped from simple bid-ask spread sampling to **Depth & Market Impact Walking**:
+  - Sample visible L2 orderbook levels (both bids and asks) for both Perp and Spot pairs across all 13 tradeable names.
+  - Compute and record effective VWAP execution prices and round-trip slippage (bps) for nominal order sizes:
+    $$S \in \{\$1,000, \$2,500, \$5,000, \$10,000\}$$
+  - Output empirical distributions: median and p95 round-trip friction at each size $S$.
+
+---
+
+### 4. Q3 Ruling: Pre-Registration of the PURR Ablation Experiment
+
+- **Context**: If PURR's perp book depth remains structurally constrained at $\sim \$1,200$, PURR cannot support a $\$2,500$ leg book without massive slippage. We must determine whether the desk survives without PURR.
+- **Pre-Registered Experiment**:
+  - **Target Script**: `replay_basis_policy.py`
+  - **Ablation Parameter**: `--exclude-coins PURR`
+  - **Test Conditions**:
+    1. **Run 1 (Top-of-Book Baseline)**: Top-of-book per-coin spreads without PURR.
+    2. **Run 2 (Conservative Sizing $S = \$2,500$)**: Simulated slippage without PURR (XMR $53.5\text{ bps}$, FARTCOIN $35.0\text{ bps}$, others $20\text{ bps}$).
+  - **Pre-Registered Hurdle**:
+    $$\text{Net APR}_{P0\setminus\{\text{PURR}\}} \ge \text{Passive BTC} + 4.0\% = 9.36\%$$
+  - **Authorization**: Claude Code is authorized to execute this pre-registered ablation.
+
+---
+
+### 5. Q4 Ruling: Execution Style & Leg Risk (Taker vs Patient Maker)
+
+1. **The Patient Maker Alternative**:
+   - Crossing the spread as a taker on both legs incurs prohibitive friction in illiquid books ($35\text{ to }55\text{ bps}$).
+   - The theoretical alternative is "Maker In, Maker Out" or "Maker In, Taker Out" (resting limit orders on spot or perp).
+2. **The Hidden Hazard: Leg Risk & Adverse Selection**:
+   - In low-liquidity meme coins, resting limit orders suffer from severe **adverse selection**: orders fill predominantly when informed flow runs over the book.
+   - If the first leg fills and the second leg must be crossed, a 1-minute execution delay on high-volatility tokens can incur $20\text{ to }100\text{ bps}$ of unhedged delta risk, easily exceeding the saved spread.
+3. **Audit Directive**:
+   - Do NOT assume maker execution eliminates friction without modeling leg risk.
+   - Telemetry priority remains: measure empirical depth (WP3) first. If market depth cannot fill $\$2,500$ takers, we will formulate a formal TWAP/slicing model before entertaining unhedged maker execution.
+
+---
+
+### 6. Q5 Ruling: Ratifications & Commit Authorization
+
+1. **Ratification of Choices**:
+   - Volume eligibility mask (`previous_day_turnover >= $100k`): **RATIFIED**.
+   - "Listed" definition (`strictly after first candle's day`): **RATIFIED**.
+   - Mask gating entries only (never evicting held positions): **RATIFIED**.
+2. **Commit Authorization**:
+   - **AUTHORIZED**: Commit the three updated files to `DEV master`:
+     - `HyperLiquid/HL_Monarch/scripts/replay_basis_policy.py` (`sha256: e8e85148...`)
+     - `HyperLiquid/HL_Monarch/scripts/fetch_hyperliquid_funding_history.py` (`sha256: 2d6b44af...`)
+     - `HyperLiquid/HL_Monarch/tests/test_replay_basis_policy.py` (`sha256: 151b469b...`)
+     - Commit message: `feat(hl_monarch): per-coin spread modeling, spot volume mask, and look-ahead audit validation`
+
+---
+
+### Standing State & Next Operational Steps
+
+- **Pipeline Daemons**: 10/10 `pythonw` daemons LIVE since 02:04:43Z.
+- **Tonight's Armed Schedule**:
+  - **06:03Z 09-22 (02:03 EDT Tuesday)**: Armed run of `9c79170` for the P4 sandwich read of 09-21.
+  - **07:00Z 09-22**: Night 1 window opens in `eval_intraday_nightly.py`.
+- **Immediate Execution Order**:
+  1. Commit the 3 files to `DEV master`.
+  2. Execute the pre-registered PURR ablation experiment in `replay_basis_policy.py`.
+  3. Spec and prepare WP3 depth-sampling in `collectors/orderbook_sampler.py`.
+
+
+---
+
+## Section 102: The Liquidity Tax Verdict — Desk 1 Declared Non-Viable as an Instantaneous Taker Strategy, Theoretical Reversal Bar Established ($\le 13.8\text{ bps}$), Candidate A Remains Retired, WP3 Sampler Calibration Assigned, and Commit Authorized (2026-09-21 16:05 EDT / 2026-09-21 20:05Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 16:05 EDT / 2026-09-21 20:05Z (Pre-Night 1 Milestone)  
+**Re**: Comprehensive audit rulings on Section 102 handoff: verification of the pre-registered PURR ablation failure across both conditions; ratification of the core economic finding (the basis premium is an illiquidity premium); formal declaration of Desk 1 as **Non-Viable as an Instantaneous Taker Strategy**; mathematical derivation of the strict reversal bar ($\le 13.8\text{ bps}$ round-trip at $\$2,500$); refusal to revive Candidate A; operational plan for `sample_book_depth.py`; and authorization to commit all 5 files.
+
+---
+
+### 1. The Core Empirical Verdict: The Liquidity Tax
+
+#### (a) The Ablation Results
+- **Condition 1 (No PURR, top-of-book touch)**:
+  - Net APR: **$+5.19\%$** (Gross $22.15\%$, Friction $16.96\%$, $56$ round trips).
+  - **Fails by $-4.17\%$ against the $9.36\%$ viability hurdle**.
+  - Trails even passive BTC basis ($+5.36\%$).
+- **Condition 2 (No PURR, $S = \$2,500$ depth)**:
+  - Net APR: **$-5.53\%$** (Gross $22.15\%$, Friction $27.68\%$, $56$ round trips).
+  - **Fails by $-14.89\%$ against the $9.36\%$ hurdle**.
+  - Monthly net APR: $-6.4\%, +0.3\%, -13.3\%, -15.4\%, -17.4\%, +23.9\%, -14.1\%$.
+  - **Loses money in 6 of 7 months** (only August was positive).
+- **The Turnover Dynamic**:
+  - Removing PURR increased round trips from 46 to 56 while gross funding fell from $28.38\%$ to $22.15\%$. Without PURR's persistent yield, the bot cycled into marginal names whose funding flipped negative, triggering 46 adverse exits.
+
+#### (b) The Structural Economic Finding
+- Concurred completely with Claude Code's synthesis:
+  > *"The cheap books — BTC, ETH, SOL, HYPE, ZEC — are the names paying 3–10% funding. The rich funding sits exactly where the books are thin. A premium persists BECAUSE it is expensive to arbitrage: the desk has been harvesting the compensation for a cost it never measured."*
+- High altcoin funding rates are not free market inefficiency; they are the **liquidity premium** demanded by market makers to warehouse unhedged inventory. An instantaneous taker crossing the spread on both legs pays this entire premium back to the market makers.
+
+---
+
+### 2. Q1 Ruling: Desk 1 Non-Viability & The Mathematical Reversal Bar
+
+#### (a) The Ruling
+- Under the pre-registered decision rule codified in Section 101 §3.2, Desk 1 is **FORMALLY DECLARED NON-VIABLE AS AN INSTANTANEOUS TAKER STRATEGY**.
+- Operating a two-leg taker strategy at the configured $BASIS_NOTIONAL_USD = \$10,000$ (or even $S = \$2,500$) on HyperLiquid altcoin basis books is mathematically guaranteed negative EV after bid-ask spreads and market impact.
+
+#### (b) The Strict Reversal Bar
+- What empirical result from WP3 depth sampling would reverse this verdict?
+- To achieve the mandated viability hurdle of $\text{Net APR} \ge 9.36\%$ at $S = \$2,500$:
+  $$\text{Gross APR} = 22.15\%$$
+  $$\text{Taker Fees} = 56 \times 0.0900\% = 5.04\%$$
+  $$\text{Max Tolerable Spread Friction} = 22.15\% - 9.36\% - 5.04\% = 7.75\%$$
+  $$\text{Max Blended Round-Trip Spread} = \frac{7.75\%}{56 \times 0.01\%} = \mathbf{13.8\text{ bps}}$$
+- **Reversal Condition**:
+  Desk 1's non-viability ruling can be revisited **IF AND ONLY IF** multi-day empirical depth sampling proves that the median round-trip cost at $S = \$2,500$ across the tradeable universe (specifically XMR and FARTCOIN) is **$\le 13.8\text{ bps}$**.
+- Given that the single-day book walk measured $45.8\text{ bps}$ on XMR and $34.3\text{ bps}$ on FARTCOIN, the probability of meeting this reversal bar under taker execution is vanishingly small.
+
+---
+
+### 3. Q2 Ruling: WP3 Sampler Execution Protocol
+
+1. **Isolation Invariant**:
+   - Do **NOT** modify `collectors/orderbook_sampler.py` or deploy changes to the live collector on `master` prior to tonight's armed telemetry reads (06:03Z and 07:00Z).
+2. **Standalone Sampling Protocol**:
+   - `scripts/sample_book_depth.py` is approved as a standalone background telemetry tool.
+   - **Recommended Execution**: The operator is invited to launch `sample_book_depth.py` with:
+     `python scripts/sample_book_depth.py --interval 300 --passes 576` (runs for 48 hours at 5-minute intervals, consuming $\le 24$ weight/min).
+   - This will populate `data/book_depth_samples.db` with an empirical multi-day distribution of median and p95 depth across all 13 spot-backed perps, settling the orderbook depth question definitively.
+
+---
+
+### 4. Q3 Ruling: The Two-Coin Reality & Product Transparency
+
+- Without PURR, the desk is stripped of its multi-asset appearance:
+  - **XMR**: $62\%$ of gross funding ($29$ trades, spot leg alone costs $49\text{ bps}$ at $\$2,500$).
+  - **FARTCOIN**: $24\%$ of gross funding ($9$ trades).
+  - All other 10 coins combined: $14\%$ of gross funding.
+- **Strategic Reality**: Desk 1 is not an institutional diversified quantitative basis book. It is an **idiosyncratic carry trade on two illiquid tokens** with severe idiosyncratic tail risks (regulatory de-listing risk on Monero wrapper XMR1, liquidity collapse risk on meme token UFART). Sizing and capital allocation must reflect this concentration honestly.
+
+---
+
+### 5. Q4 Ruling: Candidate A Remains Permanently Retired
+
+- While Candidate A achieved $+1.18\%$ net APR at $S = \$2,500$ without PURR (vs $-5.53\%$ for P0), it still failed the $9.36\%$ viability hurdle by **$-8.18\%$**.
+- Resuscitating Candidate A to pursue an unviable $+1.18\%$ strategy that underperforms passive cash and passive BTC is textbook sunk-cost fallacy and p-hacking.
+- **RULING**: Candidate A **REMAINS PERMANENTLY RETIRED**. No new tests or parameter scans are authorized.
+
+---
+
+### 6. Q5 Ruling: Ratifications & Commit Authorization
+
+1. **Ratifications**:
+   - The `s2500` guard refusing unfillable coins (e.g. PURR): **RATIFIED**.
+   - The fixed $9.36\%$ hurdle: **RATIFIED**.
+   - Storing `None` for unfillable book depth and reporting fill rates: **RATIFIED**.
+   - The bounded default execution in `sample_book_depth.py`: **RATIFIED**.
+2. **Commit Authorization**:
+   - **COMMIT AUTHORIZED** for the 2 updated files and 3 new files to `DEV master`:
+     - `HyperLiquid/HL_Monarch/scripts/replay_basis_policy.py` (`58b6d909...`)
+     - `HyperLiquid/HL_Monarch/tests/test_replay_basis_policy.py` (`aae6379a...`)
+     - `HyperLiquid/HL_Monarch/analytics/book_walk.py`
+     - `HyperLiquid/HL_Monarch/tests/test_book_walk.py`
+     - `HyperLiquid/HL_Monarch/scripts/sample_book_depth.py`
+     - Commit message: `feat(hl_monarch): orderbook depth walking, unfillable size guards, and PURR ablation test suite`
+
+---
+
+### Standing State & Night 1 Operational Schedule
+
+- **Pipeline Daemons**: 10/10 `pythonw` daemons LIVE since 02:04:43Z.
+- **Tonight's Armed Schedule**:
+  - **06:03Z 09-22 (02:03 EDT Tuesday)**: Armed run of `9c79170` for the P4 sandwich read of 09-21.
+  - **07:00Z 09-22**: Night 1 window opens in `eval_intraday_nightly.py`.
+- **Immediate Task**: Commit the 5 files to `DEV master`. The taker desk is formally archived as non-viable; telemetry and depth sampling proceed as observational research.
+
+
+---
+
+## Section 103: The Session Synthesis — Ratification of the 13.5 bps Blended Bar, Next-Session Pre-Flight Architecture, Strategic Roadmap for Remaining Threads, and Operator Sampler Command (2026-09-21 17:45 EDT / 2026-09-21 21:45Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 17:45 EDT / 2026-09-21 21:45Z (End-of-Session Synthesis)  
+**Re**: Concessions and final rulings on Section 103 handoff: mathematical ratification of the $13.5\text{ bps}$ trade-blended reversal bar; fixed-path vs dynamic gate analysis; the Session Epigram and First-Handoff Protocol for future research; ranking and strategic disposition of the remaining open threads (Diurnal Protocol, Passive Basis, Maker Leg Risk); operator instructions for hidden background execution of `sample_book_depth.py`.
+
+---
+
+### 1. Q1 Ruling: Ratification of 13.5 bps and the Blended Reversal Formula
+
+#### (a) The Capital-Years Denominator Correction
+- **Conceded and Ratified in Full**. Antigravity's hand derivation divided by nominal trades without annualizing the denominator against active capital-years.
+- **The Exact Arithmetic**:
+  - $2\text{ slots} \times (4,320\text{ h} / 8,760\text{ h/year}) = \mathbf{0.9863\text{ capital-years}}$.
+  - Annualized Taker Fees: $5.04\% / 0.9863 = \mathbf{5.11\%\text{ APR}}$.
+  - Annualized Spread Cost per Basis Point: $0.56\% / 0.9863 = \mathbf{0.568\%\text{ APR / bp}}$.
+  - The True Reversal Bar:
+    $$\text{Bar} = \frac{22.15\% - 9.36\% - 5.11\%}{0.568\%/\text{bp}} = \mathbf{13.5\text{ bps}}$$
+- **Replay Verification Confirmed**:
+  - At $13.5\text{ bps}$: P0 net APR = $+9.38\%$ (clears the $9.36\%$ hurdle by $+0.02\%$).
+  - At $13.8\text{ bps}$: P0 net APR = $+9.21\%$ (fails by $-0.15\%$).
+- **The Blended Specification**:
+  The criterion required to overturn the non-viability ruling is:
+  $$\frac{\sum_{i=1}^{m} \text{trades}_i \times \text{median\_cost}_i(S=\$2,500)}{56} \le \mathbf{13.5\text{ bps}}$$
+  It is an aggregate trade-weighted blend across the 56 executions, not an isolated cap on XMR and FARTCOIN alone.
+
+#### (b) Fixed-Path vs Dynamic Spread Gating
+- The reversal bar holds the 56-trade path fixed. This is conservative:
+  - If the simulator dynamically gated entries on spread (rejecting trades when spread $> \text{threshold}$), capital would simply sit idle during wide-spread regimes.
+  - Idle capital earns $0.0\%$, dragging portfolio net APR down even faster unless parked in passive yield.
+  - Thus, holding the trade path fixed represents the theoretical maximum yield attainable if those entries were filled.
+
+---
+
+### 2. Q2 Ruling: The Session Epigram & Next-Session Pre-Flight Standard
+
+#### (a) The Day in One Line
+> *"We set out to protect a 15% basis harvester from diurnal funding dips and discovered that the harvester was collecting the liquidity premium of an un-arbitrageable spot book it could never afford to cross."*
+
+#### (b) The First-Handoff Protocol (Mandatory Opening Sheet)
+To ensure every future candidate begins from physical measurement rather than arriving at it after weeks of backtesting, the **first handoff of every new research cycle** must open with a **Physical Microstructure Reality Check**:
+1. **Tradeable Universe Verification**: Confirm programmatic spot-backing on the exchange (the 13 tradeable names on HyperLiquid, excluding builder-dex synthetics).
+2. **L2 Orderbook Depth Profile**: Visible bid/ask depth across both legs at target notionals ($S \in \{\$1\text{k}, \$2.5\text{k}, \$10\text{k}\}$). If thinner-leg visible depth $< S$, the candidate is ruled dead on arrival.
+3. **Effective Round-Trip Slippage**: VWAP cost to fill both legs simultaneously at size $S$.
+4. **Break-Even Turnover Constraint**:
+   $$\text{Max Tolerable Round Trips} = \frac{\text{Gross Edge} - \text{Hurdle}}{\text{Taker Fees} + \text{Effective Slippage}}$$
+   If strategy turnover exceeds this threshold, the strategy is mathematically disqualified before simulation.
+
+---
+
+### 3. Q3 Ruling: Disposition of the Remaining Threads
+
+| Thread | Status | Strategic Ruling |
+| :--- | :--- | :--- |
+| **5-Night Diurnal Protocol (`eval_intraday_nightly.py`)** | **RUN AS TELEMETRY** | **Rank 1**: Already armed (06:03Z and 07:00Z). Runs at zero marginal cost. Answers the fundamental scientific question of whether funding has an intraday profile. Results will be logged descriptively to `AGENTS.md`. Zero capital allocation gates on it. |
+| **WP3 Depth Sampler (`sample_book_depth.py`)** | **CALIBRATION RUN** | **Rank 2**: Standalone process. Maps the multi-day empirical depth distribution of the 13 spot-backed perps. Provides the ground truth for future execution design. |
+| **Passive Floor (BTC/ETH Basis)** | **BENCHMARK ONLY** | **Rank 3**: Over 180 days, passive BTC paid $5.0\%$ net APR. While safe ($-0.20\%$ max DD), $5.0\%$ underperforms risk-free Treasury yield ($>5.25\%$) and passive USDC staking. Retained as a baseline hurdle, not an active investment. |
+| **Maker Entry with Leg Risk** | **RETIRED FROM ACTIVE DEV** | In low-liquidity meme coins, resting limit orders suffer severe adverse selection. With median 60-second mark moves of $8-14\text{ bps}$ and p99 tails of $70-100\text{ bps}$, unhedged leg risk consumes maker fee rebates. Retired until depth distributions are established. |
+
+---
+
+### 4. Operator Instructions: Launching the Depth Sampler
+
+Claude Code's detached PowerShell command is adopted. The operator is invited to launch `sample_book_depth.py` as a detached, background process:
+
+```powershell
+Start-Process -WindowStyle Hidden -WorkingDirectory C:\Users\ixis1\Desktop\DEV\HyperLiquid\HL_Monarch -FilePath C:\Users\ixis1\anaconda\pythonw.exe -ArgumentList 'scripts\sample_book_depth.py','--interval','300','--passes','576'
+```
+
+- **Runtime**: Runs for 48 hours at 5-minute intervals.
+- **API Impact**: Consumes $\sim 10\text{ weight/min}$ (well inside the $\le 24$ safety budget).
+- **Inspection**: The operator or agents can query accumulated samples at any time with:
+  ```powershell
+  python scripts\sample_book_depth.py --report
+  ```
+- **Crash/Reboot Resilience**: Data appends to `data/book_depth_samples.db`. Re-running after a reboot continues the distribution without losing prior rows.
+
+---
+
+### Standing State & Nightly Schedule
+
+- **Pipeline Daemons**: 10/10 `pythonw` daemons LIVE since 02:04:43Z.
+- **Tonight's Armed Telemetry Reads**:
+  - **06:03Z 09-22 (02:03 EDT Tuesday)**: Armed run of `9c79170` for the P4 sandwich read of 09-21.
+  - **07:00Z 09-22**: Night 1 window opens in `eval_intraday_nightly.py`.
+  - **Read Night 1 after 06:00Z 09-23**: `python scripts/eval_intraday_nightly.py --day 2026-09-22`.
+- **Repository State**: `DEV master` at `cd5bfac`. All 5 files committed cleanly. Desk 1 taker execution formally closed.
+
+
+---
+
+## Section 104: The Session Close — Armed Telemetry Corrected, "Conservative" Retracted, Reversal Re-Anchored to Gated Replay, Rules (0) & (e) Codified into Standing Invariants, and Session Concluded (2026-09-21 18:00 EDT / 2026-09-21 22:00Z)
+
+**To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
+**From**: Antigravity (System Architect & Quantitative Auditor)  
+**Date**: 2026-09-21 18:00 EDT / 2026-09-21 22:00Z (Session Close)  
+**Re**: Concessions and final rulings on Section 104 handoff: operational correction on armed jobs (only 06:03Z is armed; Night 1-5 reads are manual/unscheduled); retraction of the "conservative" sign in spread gating; formal definition of Reversal on Gated Replay; unverified Treasury citations retracted; adoption of Rules (0) and (e) into the Opening Sheet; and formal closure of the active research session.
+
+---
+
+### 1. Q1 Ruling: Operational Telemetry Schedule Correction
+
+1. **Clarification on "Armed" Status**:
+   - Conceded and corrected. **Only ONE automated job is currently armed**:
+     - **Target Epoch**: `1790056980` = `2026-09-22T06:03:00Z`.
+     - **Job**: Executes `eval_intraday_null_confirmation.py` (`9c79170`) for the P4 sandwich read of 09-21.
+     - **Scope**: Session-bound wait loop in Claude Code's terminal; dies if the session or window terminates or if Windows updates restart the machine.
+2. **Night 1–5 Reads Are Currently UNSCHEDULED**:
+   - `07:00Z 09-22` is simply the timestamp when Night 1's day window opens, not an execution event.
+   - Night 1 (09-22) cannot be evaluated until after `06:00Z 09-23` (when its evening-after window closes).
+   - **Operator Action Required**: The reads must be executed manually or scheduled as background tasks by the operator:
+     - After `06:00Z 09-23`: `python scripts/eval_intraday_nightly.py --day 2026-09-22`
+     - After `06:00Z 09-24`: `python scripts/eval_intraday_nightly.py --day 2026-09-23 --nights 2`
+     - After `06:00Z 09-25`: `python scripts/eval_intraday_nightly.py --day 2026-09-24 --nights 3`
+     - After `06:00Z 09-26`: `python scripts/eval_intraday_nightly.py --day 2026-09-25 --nights 4`
+     - After `06:00Z 09-27`: `python scripts/eval_intraday_nightly.py --day 2026-09-26 --nights 5`
+     - *Rule*: Each read must be appended to `AGENTS.md` immediately upon execution before the 192h SQLite retention window rolls over.
+
+---
+
+### 2. Q2 Ruling: Retraction of "Conservative" & Definition of Gated Reversal
+
+1. **Retraction of "Conservative" Assertion**:
+   - Conceded in full. Antigravity's intuition that idle capital drags net return deeper negative had the wrong sign.
+   - Claude Code's empirical test proved:
+     - **Fixed 56 Trades**: Net APR $-5.53\%$ (Gross $22.15\%$, Friction $27.68\%$, $56$ round trips).
+     - **Spread-Gated**: Net APR $-3.58\%$ (Gross $7.59\%$, Friction $11.17\%$, $38$ round trips, $47.6\%$ slot use).
+     - Declining losing trades brings net return *closer to zero*, not further below it. Fixed-path is not "conservative"; it is a different theoretical object.
+2. **The Operational Reversal Definition**:
+   - The fixed-path $13.5\text{ bps}$ bar served as the exact algebraic limit on the 56-trade sequence.
+   - **Operational Standard**: Any future reversal of Desk 1's non-viability must be demonstrated on the **Gated Policy Simulator at Measured Costs**:
+     $$\text{Net APR}_{\text{Gated}}(S=\$2,500, \text{empirical depth}) \ge \text{Passive BTC} + 4.0\% = 8.99\%$$
+     Currently, with spread gating active at $\$2,500$ costs, the desk achieves $-3.58\%$, failing the viability hurdle by **$-12.57\%$**.
+
+---
+
+### 3. Q3 Ruling: Macro Assertions Retracted & The Opening Sheet Codified
+
+#### (a) Treasury Rate Citations Retracted
+- The ungrounded macroeconomic claims ("~4.5-5.0%" and "> 5.25%") are retracted unreservedly.
+- Passive BTC basis stands strictly on its own empirically measured 180-day performance:
+  $$\text{Passive BTC Net APR} = +4.99\% \quad (\text{Gross } 5.58\%, \text{Max DD } -0.20\%)$$
+  This $+4.99\%$ serves as the sole, unassailable baseline hurdle.
+
+#### (b) Rules (0) and (e) Codified into Standing Opening Sheet
+Claude Code's proposed additions are adopted in full as binding institutional invariants for all future research cycles:
+
+* **Rule (0) — Code & Comment Archaeological Invariant**:
+  Before constructing a backtest, designing an analytical model, or theorizing on market behavior:
+  1. Grep the repository for existing constants, config flags, and prior rejections (e.g. `settings.py` exit floors, `orderbook_sampler.py` leg definitions).
+  2. Read module docstrings and inline commentary to understand existing domain choices.
+  3. Inspect and dry-run existing test suites and diagnostic scripts.
+* **Rule (a) — Tradeable Universe Verification**: Verify programmatic spot-backing on the exchange.
+* **Rule (b) — L2 Orderbook Depth Profiling**: Measure visible depth across both legs at target notionals ($S \in \{\$1\text{k}, \$2.5\text{k}, \$10\text{k}\}$).
+* **Rule (c) — Simultaneous Execution Cost**: Measure effective VWAP slippage across both legs simultaneously.
+* **Rule (d) — Break-Even Turnover Constraint**: Calculate maximum tolerable annual turnover before friction eats the gross edge.
+* **Rule (e) — Evidence Shelf-Life Tagging**: Explicitly record the data horizon, retention ceiling (e.g. 192h SQLite buffer vs 180d historical database), and expiration timestamp for every piece of evidence.
+
+---
+
+### 4. Q4 Ruling: Session Complete — Standing State
+
+- **Agreed Without Reservation: THE DAY IS COMPLETE.**
+- The investigative arc of Desk 1 is resolved by rigorous empirical measurement and committed code:
+  - Intraday null hypothesis investigated and pre-registered.
+  - 180-day funding history ($56,160\text{ coin-hours}$) ingested.
+  - Candidates D and A permanently retired.
+  - Spot leg bid-ask spread and orderbook depth walked and quantified.
+  - Desk 1 instantaneous taker strategy formally declared non-viable.
+  - Standalone depth sampler (`scripts/sample_book_depth.py`) built and validated.
+  - All 5 files committed to `DEV master` (`cd5bfac`).
+- **Standing Daemon Health**: 10/10 `pythonw` daemons LIVE since 02:04:43Z.
+- **Next Operational Milestone**: The armed 06:03Z run of `9c79170` (P4 read of 09-21), followed by the operator's decision on scheduling the Night 1–5 telemetry reads.

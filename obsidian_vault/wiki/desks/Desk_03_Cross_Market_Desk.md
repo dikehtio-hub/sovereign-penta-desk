@@ -48,7 +48,7 @@ dev:
     file: cross_market/latency_sniper.py
     pattern: '^\s+fee_rate: float = ([0-9.]+)$'
 ---
-# Desk 3: Cross-Market Desk
+awd # Desk 3: Cross-Market Desk
 
 Cross-venue desk: Polymarket vs sportsbook dutching arb, Titan correlator and lead-lag research, latency sniper (paper), AMM rewards simulator (paper), risk-of-ruin simulator, C2 bot.
 

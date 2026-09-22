@@ -3,7 +3,7 @@ type: Concept
 title: Second strategy family search
 description: 'The operator''s research aim: find a second strategy family for the
   autoresearch loop. Harness criteria, families already measured, and every source
-  ranked by verdict. 0 live, 0 awaiting review.'
+  ranked by verdict. 0 live, 3 awaiting review.'
 tags:
 - concept
 - strategy-family-search
@@ -12,7 +12,7 @@ tags:
 - reading-intake
 generated:
   by: claude-code/fable-5.1
-  at: '2026-09-13T03:03:02Z'
+  at: '2026-09-20T07:16:14Z'
 status: draft
 sources:
 - id: campaign
@@ -23,9 +23,13 @@ dev:
   kind: strategy_family_search
   desk: 4
   aim: Find a second strategy family for the autoresearch loop
-  sources_n: 0
-  pending_n: 0
-  history: []
+  sources_n: 4
+  pending_n: 3
+  history:
+  - stem: source_clip_81f59cb347
+    verdict: not-a-strategy
+    family: sports_player_props
+    source_kind: clip
   parameters:
   - name: autoresearch_timeframe
     value: 1h
@@ -103,13 +107,15 @@ _None yet._ Drop links in the inbox and ask for a review.
 
 ## Rejected or background
 
-_None yet._
+- **not-a-strategy** - [[source_clip_81f59cb347|mattleonard16/nflalgorithm: NFL Algorithm started end of may]]: Out of scope for the autoresearch loop (not OHLCV). Desk 2: parked - no projector in the public clone, no prop odds feed without paid data, and nothing clears…
 
 ## Awaiting review
 
-_Nothing waiting._
+- [[source_clip_5aada95123|moondevonyt/Trading-View-MCP-for-AI-by-Moon-Dev: Trading view MCP for AI so you…]] - Clipped article, fetch ok
+- [[source_clip_7786712f7d|I Gave Claude Fable 5.1 Full Access to TradingView… Here’s What Happened]] - Clipped article, fetch ok
+- [[source_clip_9bdcfe9321|How to Connect Claude to TradingView (AI Trading Setup)]] - Clipped article, fetch ok
 
-0 source(s): 0 live, 0 rejected or background, 0 awaiting review.
+4 source(s): 0 live, 1 rejected or background, 3 awaiting review.
 
 ## Related
 

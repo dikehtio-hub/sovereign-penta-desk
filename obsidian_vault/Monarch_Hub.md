@@ -5,13 +5,13 @@ tags:
   - hub
   - executive-cockpit
   - dashboard
-last_synced: "2026-09-08 13:36:55 UTC"
+last_synced: "2026-09-21 17:22:52 UTC"
 ---
 
 # 👑 Monarch Intelligence Hub & Executive Command Center
 
 > [!INFO] **Vault Index**
-> - **Last Refreshed**: `2026-09-08 13:36:55 UTC`
+> - **Last Refreshed**: `2026-09-21 17:22:52 UTC`
 > - **Suites In This Vault**: `6` of 6
 > - **Vault Root**: `C:\Users\ixis1\Desktop\DEV\obsidian_vault`
 
@@ -29,7 +29,7 @@ last_synced: "2026-09-08 13:36:55 UTC"
 | [[Bot_Control|🎮 Bot Control & Activation Deck]] | Operations / Services | Background daemon telemetry, Windows 1-click launchers, Killswitch | `Active Cockpit` |
 | [[Bot_Config|⚙️ Bot Configuration & Risk Controller]] | Risk & Sizing | Hot-reloadable YAML frontmatter, presets (Conservative/Balanced/Aggressive) | `Live Config` |
 | [[Trading_Terminal|📈 Trading Terminal & 50-Trade Hurdle]] | Execution Telemetry | Paper account equity, active basis positions, resting limits, 50-trade hurdle | `Telemetry` |
-| [[HyperLiquid_Monarch|👑 HyperLiquid Monarch]] | Perp DEX / HIP-3 TradFi | Liquidations, funding arbitrage, whale portfolios, danger zone | `86` whale notes |
+| [[HyperLiquid_Monarch|👑 HyperLiquid Monarch]] | Perp DEX / HIP-3 TradFi | Liquidations, funding arbitrage, whale portfolios, danger zone | `92` whale notes |
 | [[Polymarket_Monarch|👑 Polymarket Monarch]] | Prediction markets | Sharp-trader PnL, whale fills, macro sentiment, consensus radar | `41` trader notes |
 | [[Quant_Trading_Lab|⚡ Quant Trading Lab]] | CME Futures / Microstructure | /NQ, /ES, /GC, /CL, 9 Strategy Stacks, ICT Killzones, Risk Sentinel | `Active Desk` |
 | [[Cross_Market_Titans|👑 Cross-Market Titans]] | Multi-Venue Intelligence | Whale entity resolution, logarithmic conviction score, macro co-positioning | `Active Intelligence` |

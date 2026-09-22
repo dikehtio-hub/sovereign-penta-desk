@@ -1,0 +1,42 @@
+# ---------------------------------------------------------------------------
+# Line endings.  Added 2026-09-21.
+#
+# MEASURED BEFORE WRITING THIS, because a careless `* text=auto` on a repo that
+# already holds CRLF blobs rewrites every one of them in a single commit and
+# buries real history under a renormalisation diff.  `git ls-files --eol` on
+# 1,252 tracked files reported:
+#
+#     i/lf  w/lf    772      i/lf  w/crlf  461      i/none  11
+#     i/lf  w/mixed   6      i/-text w/-text  2     i/crlf   0   <-- the number that matters
+#
+# ZERO files carry CRLF in the index: core.autocrlf=true has been normalising
+# on the way in all along.  So these rules codify what is already true and
+# rewrite nothing.  The 461 CRLF files are working-tree only, which is exactly
+# what autocrlf=true is meant to produce.
+#
+# WHY BOTHER, given autocrlf already does it: core.autocrlf is per-machine local
+# config.  It is not in the repo, so a fresh clone, a second machine, or an agent
+# running under a different git config does not inherit it.  .gitattributes
+# travels with the tree and is authoritative over autocrlf.
+# ---------------------------------------------------------------------------
+* text=auto
+
+# Windows shells are the one place the ending is FUNCTIONAL rather than
+# cosmetic: cmd can mis-parse a multi-line block, a label or a `goto` in a
+# .bat checked out with bare LF.  Today the tracked .bat files disagree with
+# each other (some w/lf, some w/crlf) because several were written directly by
+# tooling rather than checked out by git.  This pins them.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Never touch these: the bytes are the content.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.zip   binary
+*.db    binary
+*.sqlite binary
+*.sqlite3 binary

@@ -18,64 +18,86 @@ for stream liveness.
 
 ---
 
-## Section 94: Secret Remediation Ratified (Option A), Arbitrage Agent Retirement Confirmed, Phase 0 Bar Stratification, 4-Week Strategic Priority (2026-09-16 21:00 EDT / 2026-09-17 01:00Z)
+## Section 105: The Pre-Move Protocol — File-Watched Relay Ratified, Pre-Transit Backup Mandated (Empty Remote Risk), Gen-1 Cleanup Scheduled Post-Move, and Dynamic Reversal Formula Adopted (2026-09-21 22:35 EDT / 2026-09-22 02:35Z)
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-16 21:00 EDT / 2026-09-17 01:00Z (Wednesday evening post-drill)  
-**Re**: Comprehensive audit rulings on Section 94 handoff: credential remediation protocol, ratification of dontshare.py untracking, formal retirement of Funding_Arbitrage_Agent, Phase 0 bar stratification for live paper trading, and strategic roadmap for the 4-week inter-drill window.
+**Date**: 2026-09-21 22:35 EDT / 2026-09-22 02:35Z (Pre-Move Operational Check)  
+**Re**: Audit rulings on Section 105 handoff: ratification of Option (i) file-watched relay protocol; codification of the authority text for file-relayed rulings; scheduling of the 5-step Gen-1 script cleanup for a post-move branch; critical finding of the empty git remote and mandatory pre-transit cold backup protocol; and adoption of the within-run dynamic reversal hurdle.
 
-### 1. Secret Remediation & Git Remote Protocol (§1): OPTION (a) RATIFIED
-- **Forensic Verification**:
-  - `743496b:BOTS/Phemex/Phem_key.py`: Confirmed active string `key = '59fcd1fc...'` and `secret = 'fcunlq55...'`.
-  - `743496b:Polymarket/Polymarket_Moondev/poly_whale_monitor.py`: Confirmed fallback `'moongroup_31a630c54125eab9'`.
-  - `HEAD:BOTS/HYPERLIQUID/key_file.py`: Confirmed public EVM wallet address `0xD78A1bF07F211f11B08Cc48C4F51D3BE9d2CeeA8`.
-- **Ruling on Remedy**: **OPTION (a) RATIFIED**.
-  - Rewriting git history (Option b) breaks the cryptographic SHA-1 hashes of all 171+ historical commits cited across vault wiki pages, L5 provenance entries, and `HOMEWORK.md`. It is disproportionate and structurally destructive.
-  - The standard cryptographic and operational remedy is **immediate credential rotation and revocation at the issuer**. The operator must rotate/revoke keys at Phemex and Moon Dev. Once revoked, the strings in git history become inert dead text.
-  - Pushing to a strictly **private** authenticated remote (GitHub private or self-hosted bare git) with revoked credentials in history is safe and standard practice.
-  - **Wallet Address (`key_file.py`)**: The `0xD78A...` string is an on-chain public address, not a private key. However, linking this address to an external GitHub account is an **operator privacy decision**. If desired, replace `key_file.py` with an environment variable lookup `os.getenv("HL_ACCOUNT_ADDRESS")` in working tree before setting up the remote.
+---
 
-### 2. Untracking `dontshare.py` & `.gitignore` Negation (§2): RATIFIED
-- Commit `c0ff089` untracking `BOTS/HYPERLIQUID/dontshare.py` with `git rm --cached` and adding `.gitignore` rules (`dontshare.py`, `**/.env`, `!**/.env.example`) is **RATIFIED in full**.
-- Leaving an empty tracked file that is intended to hold secrets is an extreme hazard under `git add -A`. Removing it from the index permanently defuses the trap.
+### 1. Choice 1 Ruling: The Relay Protocol & Authority Boundary
 
-### 3. Retirement of `Funding_Arbitrage_Agent` (§3): RATIFIED
-- **Audit Findings Verified**:
-  - `execution_manager.py:161`: `_place_single_live_leg` sleeps 0.5s and unconditionally returns `status='FILLED'`.
-  - `execution_manager.py:173`: `_handle_leg_imbalance` calls `_place_single_live_leg` for unwinds, faking the emergency unwind too.
-  - `execution_manager.py:54`: `get_account_balance` returns `paper_balance_usd` in both dry-run and live modes.
-  - `execution_manager.py:200`: `close_arbitrage_position` live branch merely flips `pos.is_closed = True` without sending any orders.
-  - Structural dependency on Binance perps is legally and operationally barred in New Jersey.
-- **Retirement Protocol Ratified**:
-  - "Retire" means disabled + documented, never deleted.
-  - Mark `AGENTS/Funding_Arbitrage_Agent` as superseded in `COMMANDS.txt`.
-  - Set `status: disabled` with triage rationale in `Dexter/registry.yaml`.
-  - Retain code directory intact for architectural post-mortem and golden-testing reference.
+#### (a) Adoption of Option (i) (File-Watched Relay)
+- **RATIFIED AS STANDING PROTOCOL**:
+  - Claude Code watches `ANTIGRAVITY_PROMPT.md` by content hash.
+  - Antigravity reads `HANDOFF_PROMPT.md` directly from disk and writes rulings to `ANTIGRAVITY_PROMPT.md`.
+  - The operator does not copy-paste prompt bodies; the operator provides only a simple single-line trigger in Antigravity (e.g., `"read HANDOFF_PROMPT.md and rule"`).
+  - External GitHub relay tools (`deaddrop`, `severally`, `vibe-kanban`) are rejected: because turn-based LLMs require a user keystroke to invoke, none eliminate the operator trigger, while adding fragile Node/npm dependencies.
 
-### 4. Operator Goal & Harvester Phase 1 Parallelization (§4): RATIFIED
-- **Zero Real Funds Active**: Operator's confirmation that only **live paper trading** is active validates that $0.00 tax liability is correct, and unmodelled funding income is an execution gate rather than an accrued liability.
-- **Phase 1 Parallelization Approved**:
-  - Phase 1 (`api/exchange_client.py`, info client, signed request construction, and offline JSON fixture tests) involves **zero live DB interaction and zero live execution**. It may proceed in parallel with `DEFECT-COL-001`.
-  - **The Strict Gate**: Phase 2 (wiring the live chain into `market_collector.py`) and live socket streaming remain strictly gated behind the deployment and verification of `DEFECT-COL-001`.
+#### (b) Authority Text for File-Relayed Decisions
+- **CODIFIED AS BINDING INVARIANT**:
+  > *"A ruling in `ANTIGRAVITY_PROMPT.md` that names a file and explicitly states 'commit authorized' authorizes a git commit of that file only. Launching any persistent daemon, deleting files, or touching master's collector-imported modules always requires the operator's plain, explicit consent in chat."*
 
-### 5. Phase 0 Bar Stratification (§5): RATIFIED
-- To prevent deadlocking development when real money is not on the table, the Phase 0 bar is **stratified into two distinct tiers**:
-  1. **Phase 0A (Live Paper Deployment Bar)**:
-     - $\ge 10$ closed paper positions
-     - $\ge 5$ distinct coins
-     - Top position share of total PnL $< 65\%$
-     - Positive net PnL after taker fee simulation.
-     - *Purpose*: Unlocks wiring real testnet/paper execution in the collector.
-  2. **Phase 0B (Real Capital / Mainnet Deployment Bar)**:
-     - Maintains the original conservative institutional bar: $\ge 20$ closed positions, $\ge 10$ distinct coins, top position $< 50\%$ PnL, median net APR $\ge 20\%$ sustained over a 30-day window.
+---
 
-### 6. Strategic Roadmap for the 4-Week Inter-Drill Window (§6)
-- **Candidate Selected**: **Systemic Fail-Fast Hardening via Queue Execution (Synthesis of Candidates 1 & 4)**.
-- **Defense Against Alternatives**:
-  - *Against Candidate 2 (Phase 1-2 Paper first)*: Building a paper harvester on top of a collector that is suffering 393 lock errors a day creates synthetic unobservable bugs. The data layer must be sound before trading logic is added.
-  - *Against Candidate 3 (Track B DEX arb)*: MEV on Base DEXes is an unvalidated exploratory hypothesis; diverting core engineering from HyperLiquid to Base before Desk 1 is hardened violates focus.
-  - *Why Synthesis 1 + 4 Wins*: The queue items (DEFECT-COL-001, DEFECT-EXP-001, Drill Tooling Hardening, S92 Ground-Truth Gate) ARE the exact embodiments of the silent-failure class. Fixing them systematically with strict fail-fast contracts (raising errors on empty slices, zero-lock tolerance, assert-not-silent) cures the infrastructure completely, paving the runway for Track A Phase 1-2 to proceed cleanly.
+### 2. Choice 2 Ruling: Gen-1 Lifecycle Scripts Cleanup
 
-### Standing State & Queue Priority
-- Queue order: (1) DEFECT-COL-001 -> (2) DEFECT-EXP-001 -> (3) Drill Tooling Hardening -> (4) DEFECT-LINT-001 -> (5) TradingView MCP Integration -> (6) Harvester Phase 1 -> (7) S92 Ground-Truth Upgrades.
+- **The Discovery**:
+  - `shutdown_all.bat:53` calls `stop_all_ecosystem_sync.bat`, which attempts to kill by `WINDOWTITLE` and fails silently against detached `pythonw` processes.
+  - `start_all_ecosystem_sync.bat` remains a live test assertion and is wired into `Bot_Control.md` buttons, where clicking it spawns duplicate windowed exporter instances.
+- **RULING**:
+  - **Do NOT touch these scripts tonight** before transport.
+  - The proposed 5-step refactoring package is approved as **Work Package 4 (Lifecycle Unification)** to be executed on a dedicated branch `refactor/unify-lifecycle-scripts` after the house move is complete:
+    1. Delegate `shutdown_all.bat:53` to command-line sweeping or `shutdown_dev_penta.ps1` tiers 2–3.
+    2. Re-point test assertions to `telemetry_health.py` launch tables.
+    3. Regenerate `Bot_Control.md` buttons to `resume_all.bat` / `shutdown_dev_penta.ps1`.
+    4. Rewrite `MASTER_COMMANDS_GUIDE.txt:478-486`.
+    5. Move `start_all_ecosystem_sync.bat` and `stop_all_ecosystem_sync.bat` to `legacy/`.
+  - **Tonight's Shutdown**: Use `scripts/shutdown_dev_penta.ps1` (with the HOMEWORK.md 4-step command-line fallback) to ensure verified process count $= 0$.
+
+---
+
+### 3. Choice 3 Ruling: The Transit Backup Mandate (CRITICAL RISK)
+
+- **The Critical Vulnerability**:
+  - `git remote -v` returned **EMPTY**.
+  - This laptop contains the **sole copy on Earth** of the repository, all commit history, and uncommitted research.
+  - Untracked/git-ignored critical assets total $>8.5\text{ GB}$:
+    - `hyperliquid_data.db` ($8.49\text{ GB}$ of tick data).
+    - `funding_history_180d.db` ($2.6\text{ MB}$).
+    - `book_depth_samples.db`.
+    - `BOTS/HYPERLIQUID/dontshare.py` and API configurations.
+  - Transporting an unbacked machine during a physical house move exposes the entire project to total loss from hardware shock, theft, water damage, or drive failure.
+
+- **MANDATORY PRE-TRANSIT BACKUP PROCEDURE**:
+  1. **Execute Graceful Daemon Shutdown**: Run `scripts/shutdown_dev_penta.ps1` and verify process count $= 0$ to guarantee clean WAL checkpoints.
+  2. **Cold Media Backup**: Copy the entire `C:\Users\ixis1\Desktop\DEV` directory to an external USB drive, external SSD, or local cloud-sync folder (e.g. OneDrive).
+  3. **Private Remote Push**:
+     - Create a private repository (e.g. on GitHub/GitLab).
+     - Add remote: `git remote add origin <private_repo_url>`
+     - Push all branches (`git push -u origin master`, `git push origin --all`).
+     - (Verify that `dontshare.py` and `.db` files remain gitignored as configured).
+
+---
+
+### 4. Reversal Hurdle Refinement (From §5)
+
+- **Conceded and Ratified**:
+  To eliminate parameter drift and arbitrary constant mismatch, the reversal hurdle is formally defined dynamically within the same simulator run:
+  $$\mathbf{\Delta_{\text{Viability}}} = \text{Net APR}_{\text{P0\_gated}}(S=\$2,500, \text{empirical depth}) - \text{Net APR}_{\text{PASSIVE\_BTC}}(\text{measured}) \ge \mathbf{4.0\%}$$
+  Both arms are priced simultaneously against measured friction. (Currently: $-3.58\% - (+4.99\%) = -8.57\%$, failing by $12.57\%$).
+
+---
+
+### Standing State & Pre-Transit Checklist
+
+- **Pipeline Daemons**: 10/10 `pythonw` daemons LIVE since 02:04:43Z.
+- **Repository State**: `DEV master` clean at `cd5bfac`.
+- **Tonight's Pre-Move Sequence**:
+  1. Run P4 read if desired before shutdown (truncated evening window noted).
+  2. Execute `scripts/shutdown_dev_penta.ps1` (verify count $= 0$).
+  3. Perform cold copy of `DEV` to external storage.
+  4. Push git repository to a private remote.
+  5. Power down laptop safely for the move.

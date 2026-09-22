@@ -1,0 +1,189 @@
+url: https://www.youtube.com/watch?v=3DGD544hLRs
+canonical: https://www.youtube.com/watch?v=3DGD544hLRs
+kind: clip
+status: ok
+title: How to Connect Claude to TradingView (AI Trading Setup)
+fetched_at: 2026-09-20T07:11:08Z
+fetcher: clip
+chars: 13678
+sha256: 7f20a7d20a6df8383e77a102f9bb2a109f11b8339f41cd019c05c4e2811d9fc5
+---
+![](https://www.youtube.com/watch?v=3DGD544hLRs)
+
+Thanks for watching this guide on how to connect Claude to TradingView, friends ❤️  
+  
+Everything you need to set up the AI trading connection is right here 👇  
+  
+📖 Free Step-by-Step Guide (with the full install prompt)  
+👉 https://www.mindmathmoney.com/articles/how-to-connect-claude-to-tradingview-step-by-step-no-coding-required  
+  
+🔗 Official TradingView MCP GitHub Page (read this before installing)  
+👉 https://github.com/tradesdontlie/tradingview-mcp  
+  
+Below are the tools I personally use, all with exclusive bonuses for the Mind Math Money community 👇  
+  
+✔ TradingView – $15 Bonus + 30 Days Free Premium  
+👉 https://www.tradingview.com/pricing/?aff\_id=25412  
+  
+🤖 InvestingPro – AI Trading Tools (Up to 55% Off Through This Link)  
+👉 https://www.investing-referral.com/mindmathmoney/  
+  
+🔴 Bybit – Up to $30,000 in Trading Bonuses  
+👉 https://partner.bybit.com/b/88512  
+  
+🟢 Bitunix – No KYC + Up to $5,500 in Bonuses  
+👉 https://www.bitunix.com/register?vipCode=MindMathMoney  
+  
+🟠 Binance – 10% Off All Trading Fees  
+👉 https://accounts.binance.com/register?ref=XJC7FO2K  
+  
+🔵 Coinbase – The Easy Way to Buy Crypto  
+👉 https://coinbase-consumer.sjv.io/MindMathMoney  
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
+  
+📖 About This Video  
+  
+Claude AI can now see and control your TradingView charts in real time, and in this video you will learn exactly how to connect Claude to TradingView step by step, no coding required. This setup is for any trader who wants to use AI for technical analysis: Claude can read live price data, draw support and resistance lines automatically, manage indicators, and even work with Pine Script and alerts, all directly on your charts.  
+  
+You will learn what the TradingView MCP is (a free open-source bridge between Claude and TradingView), what you need before you start (the TradingView desktop app and the Claude desktop app), how to use my beginner-friendly install prompt so Claude guides you through the entire installation itself, why you should always check the official GitHub page before installing anything, which Claude model to pick for the best results, and how to test that the connection is live and healthy.  
+  
+⏱️ Timestamps  
+  
+0:00 - Claude AI Can Now See and Control Your TradingView Charts  
+0:11 - What Is the TradingView MCP? (Claude to TradingView Bridge Explained)  
+1:16 - What You Need: TradingView Desktop App + Claude Desktop App  
+1:54 - The Free Step-by-Step Guide and Install Prompt  
+3:07 - Check the Official TradingView MCP GitHub Page FIRST  
+4:29 - Installing the Claude to TradingView Connection Step by Step  
+5:02 - Which Claude Model to Use for AI Trading  
+6:52 - Testing the Connection: Claude Reads the Live Chart  
+7:49 - Watch the Full Claude AI + TradingView Course  
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
+  
+🧠 Full-Length Video Courses  
+  
+🎯 The 6-Hour Trading Masterclass (start here)  
+👉 https://youtu.be/9A28tTKjBuA  
+  
+Risk Management & Position Sizing 👉 https://youtu.be/KjCE5IR1hsc  
+Smart Money Concepts 👉 https://youtu.be/mRuohN6NzBA  
+MACD Indicator 👉 https://youtu.be/tSr6UorS9Ro  
+Fibonacci Trading 👉 https://youtu.be/tM1o5Zii0qI  
+Moving Averages 👉 https://youtu.be/ADRTal\_rWFk  
+RSI Indicator 👉 https://youtu.be/-7mljxd68Ps  
+Trading Psychology 👉 https://youtu.be/9d-WnsxYU\_0  
+How to Build Your Own Trading Strategy 👉 https://youtu.be/xAXisBRDDHM  
+Elliott Wave Theory 👉 https://youtu.be/NeSyZ26yjzA  
+Liquidity Trading Course 👉 https://youtu.be/lSRoNosc4zw  
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
+  
+📺 Keep Learning: Full Courses  
+  
+🎓 Full Trading Course Library (Most Popular)  
+👉 https://www.youtube.com/playlist?list=PLqJjKuP8g79xgdI8SvWfe7LndcqKE\_yUC  
+  
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
+  
+📬 Stay Connected  
+  
+📰 Free Newsletter (Mind Math Daily, Every Other Day)  
+👉 https://www.mindmathmoney.com/  
+  
+🛍️ Mind Math Money Store (Mugs, Desk Mats, Posters, Journals)  
+👉 https://shop.mindmathmoney.com/  
+  
+💎 Join the YouTube Community (Bonus Videos, Tools, Emojis)  
+👉 https://www.youtube.com/channel/UCTdlDD6JgJeplt4axozFmSQ/join  
+  
+❤️ Subscribe to the Channel  
+👉 https://www.youtube.com/MindMathMoney?sub\_confirmation=1  
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
+  
+🌐 Follow Me on Social  
+  
+Twitter/X: https://x.com/MindMathMoney  
+TikTok: https://www.tiktok.com/@mindmathmoney  
+Instagram: https://www.instagram.com/MindMathMoney/  
+Bluesky: https://bsky.app/profile/mindmathmoney.bsky.social  
+LinkedIn: https://www.linkedin.com/in/realmindmathmoney/  
+\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
+  
+DISCLAIMER: All content on this channel is for educational and entertainment purposes only. It is not financial advice. The content represents solely the author's opinions. Trading and investing involve risks, and viewers are advised to conduct their own research or consult with a professional financial advisor before making any financial decisions.  
+  
+AFFILIATE DISCLAIMER: This description may contain affiliate links. If you purchase through one of them, I may receive a commission at no additional cost to you.  
+  
+#trading #claudeai #tradingview
+
+## Transcript
+
+### Claude AI Can Now See and Control Your TradingView Charts
+
+**0:00** · Claude AI can now see and control your TradingView charts in real time. Here's exactly how to connect them step by step.
+
+### What Is the TradingView MCP? (Claude to TradingView Bridge Explained)
+
+**0:11** · To make this connection, we are going to use the TradingView MCP.
+
+**0:17** · And what this basically is is that it's a free open-source bridge or connection between Claude and TradingView. And this allows Claude, that is our AI, to directly see everything that happens on the screen. So, it can read read the real-time life live price data, and it can also control the chart automatically. So, what Claude actually can do is that it can, for example, draw support and resistance lines without you even touching the key the the keyboard.
+
+**0:48** · It's actually amazing. And here, the connection consists of four pieces. This is not really something you need to memorize or something you need to learn, but it consists of basically a node.js, the MCP, which is the connector, and we're actually going to use a debug mode. But, as I said, don't really worry about that because I have created a guide and a prompt that will guide you through how to connect TradingView to Claude step by step.
+
+**1:15** · But, what is very important that is that for this to work, you need the TradingView desktop app. So, you should not use TradingView in browser. You need to download TradingView desktop app, and I actually think you need a play paid plan for this. And here, if you don't have a paid plan, don't worry because I do have a special link to TradingView.
+
+### What You Need: TradingView Desktop App + Claude Desktop App
+
+**1:37** · You can use that link to get TradingView premium for free for 30 days. And if you later on decide that you want to upgrade, you can also get a $15 bonus.
+
+**1:46** · So, you need TradingView, and you also need to get the Claude desktop app. But, now I'm going to guide you through how to connect Claude to TradingView step by step.
+
+### The Free Step-by-Step Guide and Install Prompt
+
+**1:57** · And to do this, I have actually written a guide here on minemathmoney.com. I will make sure to link this guide in the description of the video, or you can just go to minemathmoney.com. You go to free educational guides right here, and you scroll down and press right here, how to connect Claude to TradingView.
+
+**2:17** · And here, if you're interested more deeply on how this works, I actually recommend to read through this guide.
+
+**2:25** · But if you scroll down a bit here, I have actually created a prompt that you can copy. So, what you want to do is that you want to copy this prompt right here, and then you actually want to place the prompt within Claude. Because here is the magical thing about AI. The easiest way to install this connection is to actually use Claude itself. So, by using this prompt, Claude will guide you guide you through the installation process step-by-step.
+
+**2:55** · This was exactly how I did to connect uh TradingView to Claude, and I have made this prompt to be beginner-friendly and step-by-step.
+
+### Check the Official TradingView MCP GitHub Page FIRST
+
+**3:07** · But here, real quick, before you make this connection, I also recommend that you actually check out the official uh GitHub page for this TradingView MCP, or in other words, for this connection between TradingView and Claude. And I also want to uh really emphasize right now that this uh this uh connection between TradingView and Claude is not an official tool made by TradingView. This is not made by TradingView.
+
+**3:34** · As you can see here on the GitHub page, this tool is not affiliated with or endorsed by TradingView. And this GitHub page uh explains everything. It explains, you know, how it works and why it's safe to run, and so on and so on. So, before doing anything, I actually really recommend that you read through, uh you know, the disclaimers and the important parts of this page. So, you really know what to do before you do it.
+
+**4:01** · But, as you can also see here, this page has, you know, 4.3 thousand stars. So, this is a connection that is already used by, you know, thousands and thousands of traders. But, yeah, a good habit to develop, you know, as soon as possible in the AI age is to always, you know, read through everything and really understand, you know, what you are installing before you do it.
+
+### Installing the Claude to TradingView Connection Step by Step
+
+**4:29** · Okay, so what you now need to do is that you need to download the Claude app, and you do that on claude.com/download.
+
+**4:36** · And you also need to download the TradingView desktop app, and you do that on tradingview.com/desktop.
+
+**4:45** · Then, you want to open up a new chat inside Claude, and then you want to paste the prompt that I showed you guys earlier that is in the article. This is the prompt that will guide you through the installation process step by step.
+
+**4:58** · So, you paste this prompt right here.
+
+**5:01** · And here, depending on your Claude plan, as you can see right here, I'm currently using the best model, which is Fable 5.
+
+### Which Claude Model to Use for AI Trading
+
+**5:09** · But, depending on when you watch this video, Fable 5 might not be available. Uh but, what I always recommend doing when you use AI is, if possible, you want to always use the best model, because the difference between, you know, a model that is at the very top and a model that is just a little bit below, there can actually be a very big difference in efficiency. So, if you can, um uh I recommend to actually use the highest model, uh especially when you do things like installing things and, you know, uh using it for trading. I highly recommend the the highest model.
+
+**5:40** · So, I'm going to use a Fable 5 here.
+
+**5:45** · And as you can see, uh in this installation process, I will not show the whole process, but it should be able to guide you through everything you need. So, for example, now it asks ask you, you know, are you on a Windows or Mac? So, I'm on Windows, so I press Windows. Uh it ask you, you know, do you have the TradingView desktop app installed? Installed? Yes, it's installed. Yes, Cloud is installed, and so on and so on. And it will start to work through work you through this whole process. And as you can see here, step one, you want to check if Node.js is installed.
+
+**6:16** · It shows show you everything, you know, everything really step by step.
+
+**6:22** · But right, so I really hope that installation process went well. If you have any questions regarding the installation process, I actually highly recommend to, you know, ask Cloud about it. It's, you know, much more intelligent than me in many cases. Uh but of course, if you, you know, stumble upon any problems, also you can leave a comment down below, and I will try my my really best to help. But now, we have opened up TradingView here. We are, as you can see, we are on Bitcoin on a daily time frame.
+
+### Testing the Connection: Claude Reads the Live Chart
+
+**6:56** · And Cloud is connected to TradingView.
+
+**7:00** · And here, as you can see, I usually like to have uh this on my second screen, so I usually have Cloud on one screen and TradingView on another, but so you guys can see everything at once, I will keep them both at the same screen. Uh so, here I'm just doing a simple test. I'm asking is Cloud uh connected to TradingView? Uh sometimes you need to allow for things to happen. And as you can see right here, yes, TradingView is connected and healthy. I can see your open chart, Bitstamp Bitcoin USD. So, it actually sees it. Uh it sees that we are on the daily time frame.
+
+**7:31** · Uh it says, I can control your chart, your indicators, pri- Pine Script, alerts, everything. So, it already starts to feel a little bit like magic, but we are used getting started.
+
+**7:47** · But right, so now then. Now, when you have This video was just a very short clip from our full course on how to use TradingView together with Claude AI. To watch the full course, all you need to do is to click or tap on the screen right here.

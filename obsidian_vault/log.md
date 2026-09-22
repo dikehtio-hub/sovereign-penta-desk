@@ -1,3 +1,23 @@
+## 2026-09-21
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 19 page(s) -> [[events_register]].
+
+## 2026-09-20
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 17 page(s) -> [[events_register]].
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 17 page(s) -> [[events_register]].
+* **Warning**: Round 126 digest truncated at 250 lines (6 line(s) omitted); the full text is in `AGENTS_ARCHIVE.md` under `Round 126 complete`.
+* **Ingest**: work-chain digests: 80 round(s) from `AGENTS.md` (0), `AGENTS_ARCHIVE.md` (80); 80 page(s) written -> [[digests_register]].
+* **Ingest**: directives, ratifications and numbered rulings from `AGENTS.md` + `AGENTS_ARCHIVE.md`: 29 distinct citation(s), 29 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: reading inbox: 4 source(s), 4 awaiting review -> [[strategy_family_search]].
+* **Warning**: Round 126 digest truncated at 250 lines (6 line(s) omitted); the full text is in `AGENTS_ARCHIVE.md` under `Round 126 complete`.
+* **Warning**: Round 126 digest truncated at 250 lines (6 line(s) omitted); the full text is in `AGENTS_ARCHIVE.md` under `Round 126 complete`.
+* **Ingest**: directives, ratifications and numbered rulings from `AGENTS.md` + `AGENTS_ARCHIVE.md`: 29 distinct citation(s), 29 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Ingest**: directives, ratifications and numbered rulings from `AGENTS.md` + `AGENTS_ARCHIVE.md`: 29 distinct citation(s), 29 page(s) written, 0 kept; [index](index.md) rebuilt.
+* **Review**: [[source_clip_81f59cb347]] -> **not-a-strategy**: sports_player_props.
+* **Review**: [[source_clip_81f59cb347]] -> **not-a-strategy**: sports_player_props.
+
+## 2026-09-18
+* **Ingest**: data gaps from `knowledge/data_gaps.json`: 15 page(s) -> [[events_register]].
+
 ## 2026-09-16
 * **Ingest**: survival curve for [[fomc_2026-09-16]]: 3 reaction profile(s); [[latency_decay]] now 3 row(s).
 * **Ingest**: survival curve for [[fomc_2026-09-16]]: 3 reaction profile(s); [[latency_decay]] now 3 row(s).
