@@ -18,86 +18,76 @@ for stream liveness.
 
 ---
 
-## Section 105: The Pre-Move Protocol — File-Watched Relay Ratified, Pre-Transit Backup Mandated (Empty Remote Risk), Gen-1 Cleanup Scheduled Post-Move, and Dynamic Reversal Formula Adopted (2026-09-21 22:35 EDT / 2026-09-22 02:35Z)
+## Section 106: Pre-Move Certification — Clean Shutdown Verified (03:44:21Z), Cloud Backup & Git Remote Certified, Arithmetic Re-Anchored, and Safe Power-Down Authorized (2026-09-22 00:45 EDT / 2026-09-22 04:45Z)
 
 **To**: Claude Code (Senior Implementation Engineer / Test Master) & Operator  
 **From**: Antigravity (System Architect & Quantitative Auditor)  
-**Date**: 2026-09-21 22:35 EDT / 2026-09-22 02:35Z (Pre-Move Operational Check)  
-**Re**: Audit rulings on Section 105 handoff: ratification of Option (i) file-watched relay protocol; codification of the authority text for file-relayed rulings; scheduling of the 5-step Gen-1 script cleanup for a post-move branch; critical finding of the empty git remote and mandatory pre-transit cold backup protocol; and adoption of the within-run dynamic reversal hurdle.
+**Date**: 2026-09-22 00:45 EDT / 2026-09-22 04:45Z (Pre-Move Final Seal)  
+**Re**: Formal certification of Section 106 handoff: audit and validation of the graceful daemon shutdown (first real run of `shutdown_dev_penta.ps1 -Execute`); certification of the 3 verified zip archives (2.95 GB) in Google Drive; verification of the private GitHub remote (`dikehtio-hub/sovereign-penta-desk`) and dual-branch push (`157e5e9` / `70bd232`); ratification of the arithmetic correction on measured passive BTC; and final authorization for safe machine power-down.
 
 ---
 
-### 1. Choice 1 Ruling: The Relay Protocol & Authority Boundary
+### 1. Verification of the Clean Shutdown (§2)
 
-#### (a) Adoption of Option (i) (File-Watched Relay)
-- **RATIFIED AS STANDING PROTOCOL**:
-  - Claude Code watches `ANTIGRAVITY_PROMPT.md` by content hash.
-  - Antigravity reads `HANDOFF_PROMPT.md` directly from disk and writes rulings to `ANTIGRAVITY_PROMPT.md`.
-  - The operator does not copy-paste prompt bodies; the operator provides only a simple single-line trigger in Antigravity (e.g., `"read HANDOFF_PROMPT.md and rule"`).
-  - External GitHub relay tools (`deaddrop`, `severally`, `vibe-kanban`) are rejected: because turn-based LLMs require a user keystroke to invoke, none eliminate the operator trigger, while adding fragile Node/npm dependencies.
-
-#### (b) Authority Text for File-Relayed Decisions
-- **CODIFIED AS BINDING INVARIANT**:
-  > *"A ruling in `ANTIGRAVITY_PROMPT.md` that names a file and explicitly states 'commit authorized' authorizes a git commit of that file only. Launching any persistent daemon, deleting files, or touching master's collector-imported modules always requires the operator's plain, explicit consent in chat."*
+1. **Shutdown Execution Certified**:
+   - `shutdown_dev_penta.ps1 -Execute` executed at `2026-09-22T03:44:21Z`.
+   - Collector shutdown verified: `graceful=true`, `forced=false`, waited $3.5\text{ s}$, `checkpointed=true`, WAL $0 \to 0\text{ bytes}$.
+   - All layer 2 and layer 3 daemons terminated via `--stop` sentinels; verified daemon count $= 0$.
+   - SQLite integrity verified: `quick_check ok`.
+2. **The Recorded Data Gap**:
+   - The formal downtime interval begins at **`2026-09-22T03:44:21Z`**.
+   - The 09-21 P4 sandwich read is recorded as partial ($82\%$ coverage, $17:00\text{–}03:43\text{Z}$); null remains unconfirmed on the ratified dataset. The armed 06:03Z sleeper was cancelled cleanly.
 
 ---
 
-### 2. Choice 2 Ruling: Gen-1 Lifecycle Scripts Cleanup
+### 2. Certification of Off-Machine Backup & Git Remote (§3)
 
-- **The Discovery**:
-  - `shutdown_all.bat:53` calls `stop_all_ecosystem_sync.bat`, which attempts to kill by `WINDOWTITLE` and fails silently against detached `pythonw` processes.
-  - `start_all_ecosystem_sync.bat` remains a live test assertion and is wired into `Bot_Control.md` buttons, where clicking it spawns duplicate windowed exporter instances.
-- **RULING**:
-  - **Do NOT touch these scripts tonight** before transport.
-  - The proposed 5-step refactoring package is approved as **Work Package 4 (Lifecycle Unification)** to be executed on a dedicated branch `refactor/unify-lifecycle-scripts` after the house move is complete:
-    1. Delegate `shutdown_all.bat:53` to command-line sweeping or `shutdown_dev_penta.ps1` tiers 2–3.
-    2. Re-point test assertions to `telemetry_health.py` launch tables.
-    3. Regenerate `Bot_Control.md` buttons to `resume_all.bat` / `shutdown_dev_penta.ps1`.
-    4. Rewrite `MASTER_COMMANDS_GUIDE.txt:478-486`.
-    5. Move `start_all_ecosystem_sync.bat` and `stop_all_ecosystem_sync.bat` to `legacy/`.
-  - **Tonight's Shutdown**: Use `scripts/shutdown_dev_penta.ps1` (with the HOMEWORK.md 4-step command-line fallback) to ensure verified process count $= 0$.
+#### (a) Cloud Backup Architecture Certified
+- The substitution of a one-time frozen archive instead of a live two-way sync was an essential pre-flight intervention that averted live WAL corruption and collector locks.
+- **The Verified Off-Machine Bundle in Google Drive (`G:\My Drive\DEV_backup_2026-09-22\`)**:
+  1. `DEV_backup_2026-09-22.zip` ($251.4\text{ MB}$, `sha256: d55e2346...`): 14,686 files containing all source code, complete `.git` trees (DEV, `quant_trading_lab`, worktrees), Obsidian vault, history files, and small databases.
+  2. `hyperliquid_data_snapshot_2026-09-22.zip` ($2.07\text{ GB}$, `sha256: 11eaad2e...`): Clean `VACUUM INTO` snapshot ($17,826,766$ asset snapshot rows).
+  3. `polymarket_drops_2026-09-22.zip` ($636.5\text{ MB}$, `sha256: 32b1e756...`): $2,980$ historical JSON market drops.
+  4. Verified git bundle (`--all`) in `records_final/`.
+- All cloud IDs and byte counts verified. The single-point-of-failure vulnerability of the laptop is **formally discharged**.
 
----
-
-### 3. Choice 3 Ruling: The Transit Backup Mandate (CRITICAL RISK)
-
-- **The Critical Vulnerability**:
-  - `git remote -v` returned **EMPTY**.
-  - This laptop contains the **sole copy on Earth** of the repository, all commit history, and uncommitted research.
-  - Untracked/git-ignored critical assets total $>8.5\text{ GB}$:
-    - `hyperliquid_data.db` ($8.49\text{ GB}$ of tick data).
-    - `funding_history_180d.db` ($2.6\text{ MB}$).
-    - `book_depth_samples.db`.
-    - `BOTS/HYPERLIQUID/dontshare.py` and API configurations.
-  - Transporting an unbacked machine during a physical house move exposes the entire project to total loss from hardware shock, theft, water damage, or drive failure.
-
-- **MANDATORY PRE-TRANSIT BACKUP PROCEDURE**:
-  1. **Execute Graceful Daemon Shutdown**: Run `scripts/shutdown_dev_penta.ps1` and verify process count $= 0$ to guarantee clean WAL checkpoints.
-  2. **Cold Media Backup**: Copy the entire `C:\Users\ixis1\Desktop\DEV` directory to an external USB drive, external SSD, or local cloud-sync folder (e.g. OneDrive).
-  3. **Private Remote Push**:
-     - Create a private repository (e.g. on GitHub/GitLab).
-     - Add remote: `git remote add origin <private_repo_url>`
-     - Push all branches (`git push -u origin master`, `git push origin --all`).
-     - (Verify that `dontshare.py` and `.db` files remain gitignored as configured).
+#### (b) Git Remote Registration & Push Verified
+- Remote `origin` registered to: `https://github.com/dikehtio-hub/sovereign-penta-desk.git`.
+- Catch-up commit `157e5e9` (+14,927 / -393 across 116 paths) committed and pushed to `origin/master`.
+- Branch `feat/collector-hardening` pushed at `70bd232`.
+- Verified via `git ls-remote origin`. From this point forward, the codebase is securely backed by remote cloud version control.
 
 ---
 
-### 4. Reversal Hurdle Refinement (From §5)
+### 3. Arithmetic Ratification (§1.4)
 
 - **Conceded and Ratified**:
-  To eliminate parameter drift and arbitrary constant mismatch, the reversal hurdle is formally defined dynamically within the same simulator run:
-  $$\mathbf{\Delta_{\text{Viability}}} = \text{Net APR}_{\text{P0\_gated}}(S=\$2,500, \text{empirical depth}) - \text{Net APR}_{\text{PASSIVE\_BTC}}(\text{measured}) \ge \mathbf{4.0\%}$$
-  Both arms are priced simultaneously against measured friction. (Currently: $-3.58\% - (+4.99\%) = -8.57\%$, failing by $12.57\%$).
+  Using measured passive BTC spread ($0.2\text{ bps}$) rather than the flat $20\text{ bps}$ entry table:
+  $$\text{Passive BTC Net APR} = +5.37\%$$
+  $$\mathbf{\Delta_{\text{Viability}}} = \text{Net APR}_{\text{P0\_gated}} - \text{Net APR}_{\text{PASSIVE\_BTC}} = -3.58\% - 5.37\% = \mathbf{-8.95\%}$$
+  The gated desk fails the $+4.0\%$ hurdle by **$12.95\%$** (adjusted from the prior $12.57\%$). The non-viability conclusion is reinforced.
 
 ---
 
-### Standing State & Pre-Transit Checklist
+### 4. Safe Power-Down Authorization & Post-Move Resume Checklist
 
-- **Pipeline Daemons**: 10/10 `pythonw` daemons LIVE since 02:04:43Z.
-- **Repository State**: `DEV master` clean at `cd5bfac`.
-- **Tonight's Pre-Move Sequence**:
-  1. Run P4 read if desired before shutdown (truncated evening window noted).
-  2. Execute `scripts/shutdown_dev_penta.ps1` (verify count $= 0$).
-  3. Perform cold copy of `DEV` to external storage.
-  4. Push git repository to a private remote.
-  5. Power down laptop safely for the move.
+- **POWER-DOWN AUTHORIZED**:
+  The operator is fully cleared to perform a normal Windows shutdown and power off the machine for transport. All research, state, and databases are preserved and backed up.
+
+- **Standing Resume Checklist (To Open the Next Session)**:
+  1. **Drive Preferences**: Verify no local folders are set to auto-mirror in Google Drive preferences.
+  2. **OS Updates**: Optional Windows 11 25H2 installation may be executed safely while the pipeline is down.
+  3. **Pipeline Resumption**: Launch `resume_all.bat`.
+  4. **Data Gap Registration**: Register gap `2026-09-22T03:44:21Z` to resume timestamp in `knowledge/data_gaps.json` and recompile via `python -m knowledge.ingest.data_gaps`.
+  5. **Git Sync**: Code remains tracked against `origin/master`; push at the end of sessions.
+  6. **WP4 Execution**: Branch `refactor/unify-lifecycle-scripts` to clean up Gen-1 scripts and regenerate `Bot_Control.md`.
+  7. **Diurnal Telemetry**: Restart the 5-night observation sequence from the first full night post-resume.
+  8. **Next Initiative**: Open the next session with the verified Opening Sheet (Rule 0 first) for **JEV AI** or subsequent research.
+
+---
+
+### Standing State
+
+- **Pipeline Daemons**: 0 running (verified cleanly stopped at 03:44:21Z).
+- **Git State**: Local `master` tracks `origin/master` at `157e5e9`.
+- **Machine State**: Safe for power-down and physical relocation.
