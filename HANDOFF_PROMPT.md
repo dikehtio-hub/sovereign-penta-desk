@@ -59,10 +59,14 @@ collector prunes everything older than 192 h from that moment, so their shelf li
 irreplaceable set is ~250 MB.
 
 === STATE ===
-Pipeline DOWN since 03:44:21Z, 0 daemons, laptop to be powered off for the move. DEV master cd5bfac,
-lab master 6e23e8f, no remote. Uncommitted: the standing catch-up set + HANDOFF_PROMPT.md /
-HANDOFF_ARCHIVE.md / AGENTS.md (the zip holds their 03:47Z versions; the final ones are copied beside it in
-records_final\). Nothing launched. Nothing deleted except the
+Pipeline DOWN since 03:44:21Z, 0 daemons, laptop to be powered off for the move. DEV master 157e5e9 =
+cd5bfac + the catch-up set, committed on the operator's "commit it" (116 paths, +14,927/-393); lab master
+6e23e8f. Remote: origin = https://github.com/dikehtio-hub/sovereign-penta-desk.git registered, repo created
+empty by the operator, PUSHED BY THE OPERATOR from the terminal (the app's permission classifier withholds
+publication from me): [WORLD-CHECK] git ls-remote origin -> master 157e5e9, feat/collector-hardening 70bd232;
+local master tracks origin/master. Also off-machine: git bundle (--all, verified) in
+G:\My Drive\DEV_backup_2026-09-22\records_final\, beside the final AGENTS.md and handoff files; the essential
+zip predates the commit (03:47Z). Uncommitted after this edit: AGENTS.md and HANDOFF_PROMPT.md only. Nothing launched. Nothing deleted except the
 temporary 5.2 GB snapshot file the zip replaced. Left in place for the operator: Desktop\DEV_backup_
 2026-09-22.zip and Desktop\DEV_data_2026-09-22\ (local copies of the same zips) and DEV\.tmp.driveupload
 (Drive's abandoned staging folder, ~2,000 entries) - both are safe to delete, neither was mine to delete.
@@ -70,6 +74,6 @@ temporary 5.2 GB snapshot file the zip replaced. Left in place for the operator:
 === NEXT SESSION OPENS WITH ===
 (1) confirm no folder is listed under Drive preferences -> Folders from your computer (none should be);
 (2) optional Windows 11 25H2 while the pipeline is down; (3) resume_all.bat; (4) register the gap
-(start 2026-09-22T03:44:21Z) in data_gaps.json + python -m knowledge.ingest.data_gaps; (5) create the
-private remote and push (s3.3) - pre-flight above is done; (6) WP4 on its branch; (7) nights 1-5 restart
+(start 2026-09-22T03:44:21Z) in data_gaps.json + python -m knowledge.ingest.data_gaps; (5) s3.3 DONE - both branches
+on GitHub; from now on `git push` at the end of a session keeps it current; (6) WP4 on its branch; (7) nights 1-5 restart
 from the first full night after resume. Your Opening Sheet, rule (0) first, for whatever comes next.
